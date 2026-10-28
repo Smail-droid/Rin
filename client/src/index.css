@@ -208,3 +208,10 @@ a.toc-link {
 .is-active-link::before {
   @apply bg-theme;
 }
+/* 覆盖默认容器宽度，使宽屏能够平铺展开 4 列卡片 */
+.wauto {
+  width: 100% !important;
+  max-width: 1440px !important;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
