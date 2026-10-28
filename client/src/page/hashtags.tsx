@@ -84,20 +84,19 @@ export function HashtagsPage() {
                         </div>
                     </div>
 
-                    <div className="wauto flex flex-col flex-wrap items-start justify-start mt-2">
+                    <div className="wauto flex flex-wrap items-center justify-start gap-2.5 sm:gap-3 mt-6">
                         {sortedHashtags?.map((hashtag, index) => {
                             return (
-                                <div key={index} className="flex min-w-0 w-full flex-row">
-                                    <div className="m-2 flex min-w-0 w-full flex-row items-center space-x-4 rounded-2xl duration-300">
-                                        <Link href={`/hashtag/${hashtag.name}`} className="min-w-0 text-base t-primary hover:text-theme text-pretty">
-                                            <HashTag name={hashtag.name} />
-                                        </Link>
-                                        <div className="flex-1" />
-                                        <span className="shrink-0 text-sm t-secondary">
-                                            {t("article.total_short$count", { count: hashtag.feeds })}
-                                        </span>
-                                    </div>
-                                </div>
+                                <Link
+                                    key={index}
+                                    href={`/hashtag/${hashtag.name}`}
+                                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/5 dark:bg-white/5 hover:bg-theme/10 hover:text-theme dark:hover:bg-theme/20 border border-transparent hover:border-theme/30 transition-all text-sm font-medium group"
+                                >
+                                    <HashTag name={hashtag.name} />
+                                    <span className="text-xs text-neutral-400 dark:text-neutral-500 group-hover:text-theme transition-colors">
+                                        {t("article.total_short$count", { count: hashtag.feeds })}
+                                    </span>
+                                </Link>
                             )
                         })}
                     </div>
