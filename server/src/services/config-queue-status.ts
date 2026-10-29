@@ -44,8 +44,13 @@ export async function retryQueueStatusTask(
     throw new Error("Feed not found");
   }
 
-  if (feed.ai_summary_status !== "failed") {
-    throw new Error("Only failed AI summary tasks can be retried");
+  const updatedAtMs = new Date(feed.updatedAt).getTime();
+  const isStalled =
+    (feed.ai_summary_status === "pending" || feed.ai_summary_status === "processing") &&
+    Date.now() - (isNaN(updatedAtMs) ? 0 : updatedAtMs) > 60 * 1000;
+
+  if (feed.ai_summary_status !== "failed" && !isStalled) {
+    throw new Error("任务正在处理中，如卡死请在 1 分钟后重试");
   }
 
   await syncFeedAISummaryQueueState(db, serverConfig, env, feedId, {
@@ -69,8 +74,13 @@ export async function deleteQueueStatusTask(
     throw new Error("Feed not found");
   }
 
-  if (feed.ai_summary_status !== "failed" && feed.ai_summary_status !== "completed") {
-    throw new Error("Only failed or completed AI summary task records can be deleted");
+  const updatedAtMs = new Date(feed.updatedAt).getTime();
+  const isStalled =
+    (feed.ai_summary_status === "pending" || feed.ai_summary_status === "processing") &&
+    Date.now() - (isNaN(updatedAtMs) ? 0 : updatedAtMs) > 60 * 1000;
+
+  if (feed.ai_summary_status !== "failed" && feed.ai_summary_status !== "completed" && !isStalled) {
+    throw new Error("任务正在处理中，如需删除请在 1 分钟后操作");
   }
 
   await db
