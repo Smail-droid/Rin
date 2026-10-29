@@ -74,22 +74,35 @@ export function MarkdownEditor({ content, setContent, placeholder = "> Write you
   const [uploading, setUploading] = useState(false);
   const { showAlert, AlertUI } = useAlert();
 
-  async function insertImage(
+async function insertImage(
     file: File,
     range: NonNullable<ReturnType<editor.IStandaloneCodeEditor["getSelection"]>>,
     showAlert: (msg: string) => void,
   ) {
+    // 拦截拖拽与粘贴超过 99MB 的文件（避免触发 Cloudflare 100MB 限制）
+    if (file.size > 99 * 1024 * 1024) {
+      showAlert(t("upload.failed$size", { size: 99 }));
+      return;
+    }
+
     try {
       const result = await uploadImageFile(file);
       const editorInstance = editorRef.current;
       if (!editorInstance) return;
+
+      // 判断文件类型：若为图片则保留图床预览语法，若为其他文件（.bin、.zip 等）则生成下载语法
+      const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(file.name);
+      const insertText = isImage
+        ? buildMarkdownImage(file.name, result.url, {
+            blurhash: result.blurhash,
+            width: result.width,
+            height: result.height,
+          })
+        : `\n<a href="${result.url}" download="${file.name}">📥 下载 ${file.name}</a>\n`;
+
       editorInstance.executeEdits(undefined, [{
         range,
-        text: buildMarkdownImage(file.name, result.url, {
-          blurhash: result.blurhash,
-          width: result.width,
-          height: result.height,
-        }),
+        text: insertText,
       }]);
     } catch (error) {
       console.error(error);
@@ -162,6 +175,19 @@ export function MarkdownEditor({ content, setContent, placeholder = "> Write you
     const urlEnd = positionAfterText(urlStart.lineNumber, urlStart.column, url);
 
     replaceSelection(selection, insertedText, new Selection(urlStart.lineNumber, urlStart.column, urlEnd.lineNumber, urlEnd.column));
+  };
+
+  const insertDownloadLink = () => {
+    const editorState = getEditorAndSelection();
+    if (!editorState) return;
+
+    const { model, selection } = editorState;
+    const selectedText = model.getValueInRange(selection);
+    const fileName = selectedText || "固件或软件包名.bin";
+    const url = "下载直链地址";
+    const text = `<a href="${url}" download="${fileName}">📥 下载 ${fileName}</a>`;
+
+    replaceSelection(selection, text);
   };
 
   const insertMarkdownImage = () => {
@@ -279,6 +305,7 @@ export function MarkdownEditor({ content, setContent, placeholder = "> Write you
     { key: "bold", icon: "ri-bold", label: t("markdown_editor.toolbar.bold"), onClick: () => wrapSelection("**", "**", t("markdown_editor.placeholder.bold")) },
     { key: "italic", icon: "ri-italic", label: t("markdown_editor.toolbar.italic"), onClick: () => wrapSelection("*", "*", t("markdown_editor.placeholder.italic")) },
     { key: "link", icon: "ri-link", label: t("markdown_editor.toolbar.link"), onClick: insertLink },
+    { key: "download", icon: "ri-download-2-line", label: "插入下载链接", onClick: insertDownloadLink },
     { key: "image", icon: "ri-image-line", label: t("markdown_editor.toolbar.image"), onClick: insertMarkdownImage },
     { key: "quote", icon: "ri-double-quotes-l", label: t("markdown_editor.toolbar.quote"), onClick: formatQuote },
     { key: "unordered-list", icon: "ri-list-unordered", label: t("markdown_editor.toolbar.unordered_list"), onClick: formatUnorderedList },
@@ -309,7 +336,7 @@ export function MarkdownEditor({ content, setContent, placeholder = "> Write you
 
   function UploadImageButton() {
     const uploadRef = useRef<HTMLInputElement>(null);
-    const label = t("markdown_editor.toolbar.upload_image");
+    const label = "上传文件 / 图片";
     
     const upChange = (event: React.ChangeEvent<HTMLInputElement>) => {
       const files = event.currentTarget.files;
@@ -317,8 +344,8 @@ export function MarkdownEditor({ content, setContent, placeholder = "> Write you
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (file.size > 5 * 1024000) {
-          showAlert(t("upload.failed$size", { size: 5 }));
+        if (file.size > 99 * 1024 * 1024) {
+          showAlert(t("upload.failed$size", { size: 99 }));
           uploadRef.current!.value = "";
         } else {
           const editor = editorRef.current;
@@ -340,11 +367,10 @@ export function MarkdownEditor({ content, setContent, placeholder = "> Write you
           onChange={upChange}
           className="hidden"
           type="file"
-          accept="image/gif,image/jpeg,image/jpg,image/png"
         />
         <MarkdownToolButton
           label={label}
-          icon="ri-image-add-line"
+          icon="ri-upload-2-line"
           disabled={uploading}
           onClick={() => uploadRef.current?.click()}
         />
