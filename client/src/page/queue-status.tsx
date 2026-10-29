@@ -28,8 +28,10 @@ function QueueStatusEntry({
   onDelete: (item: QueueStatusItem) => void;
 }) {
   const { t } = useTranslation();
-  const canRetry = item.aiSummaryStatus === "failed";
-  const canDelete = item.aiSummaryStatus === "failed" || item.aiSummaryStatus === "completed";
+  // 放宽限制：非完成状态（包括 pending 排队中、processing 处理中、failed 失败）均显示重试按钮
+  const canRetry = item.aiSummaryStatus !== "completed";
+  // 允许所有状态均显示删除按钮
+  const canDelete = true;
 
   return (
     <SettingsCard tone={getQueueTone(item.aiSummaryStatus)}>
