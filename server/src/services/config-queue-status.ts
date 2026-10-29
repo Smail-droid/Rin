@@ -45,18 +45,21 @@ export async function retryQueueStatusTask(
   }
 
   const updatedAtMs = new Date(feed.updatedAt).getTime();
+  const isRunning =
+    feed.ai_summary_status === "pending" || feed.ai_summary_status === "processing";
   const isStalled =
-    (feed.ai_summary_status === "pending" || feed.ai_summary_status === "processing") &&
-    Date.now() - (isNaN(updatedAtMs) ? 0 : updatedAtMs) > 60 * 1000;
+    isRunning && Date.now() - (isNaN(updatedAtMs) ? 0 : updatedAtMs) > 60 * 1000;
 
-  if (feed.ai_summary_status !== "failed" && !isStalled) {
+  // 仅对未满 1 分钟且处于运行中的任务进行防抖拦截，completed（已完成）、failed（失败）或卡死超时的任务均放行
+  if (isRunning && !isStalled) {
     throw new Error("任务正在处理中，如卡死请在 1 分钟后重试");
   }
 
+  // resetSummary 设为 true：覆盖清空老旧摘要，重新触发队列消费
   await syncFeedAISummaryQueueState(db, serverConfig, env, feedId, {
     draft: feed.draft === 1,
     updatedAt: feed.updatedAt,
-    resetSummary: false,
+    resetSummary: true,
   });
   await clearFeedCache(cache, feed.id, feed.alias, feed.alias);
 }

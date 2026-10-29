@@ -28,10 +28,17 @@ function QueueStatusEntry({
   onDelete: (item: QueueStatusItem) => void;
 }) {
   const { t } = useTranslation();
-  // 放宽限制：非完成状态（包括 pending 排队中、processing 处理中、failed 失败）均显示重试按钮
-  const canRetry = item.aiSummaryStatus !== "completed";
-  // 允许所有状态均显示删除按钮
+  // 所有状态均允许重新生成和删除
+  const canRetry = true;
   const canDelete = true;
+
+  // 已完成状态显示“重新生成”，失败状态显示“重试”
+  const retryBtnText =
+    loadingAction === "retry"
+      ? t("queue_status.retrying")
+      : item.aiSummaryStatus === "completed"
+        ? "重新生成"
+        : t("queue_status.retry");
 
   return (
     <SettingsCard tone={getQueueTone(item.aiSummaryStatus)}>
@@ -51,7 +58,7 @@ function QueueStatusEntry({
             <div className="flex flex-wrap gap-2 pt-2">
               {canRetry ? (
                 <Button
-                  title={loadingAction === "retry" ? t("queue_status.retrying") : t("queue_status.retry")}
+                  title={retryBtnText}
                   disabled={loadingAction !== undefined}
                   onClick={() => onRetry(item)}
                 />
