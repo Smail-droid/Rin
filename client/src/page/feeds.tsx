@@ -216,10 +216,11 @@ function StickyNoteItem({
     }
 
     if (type === "timeline") {
+        const targetUrl = siteConfig.atelierTimelineUrl || "/timeline";
         const bgImage = siteConfig.atelierTimelineBg;
         return (
             <div
-                onClick={() => setLocation("/timeline")}
+                onClick={() => setLocation(targetUrl)}
                 style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
                 className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform -rotate-2 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
                     bgImage
@@ -256,10 +257,11 @@ function StickyNoteItem({
     }
 
     if (type === "moments") {
+        const targetUrl = siteConfig.atelierMomentsUrl || "/moments";
         const bgImage = siteConfig.atelierMomentsBg;
         return (
             <div
-                onClick={() => setLocation("/moments")}
+                onClick={() => setLocation(targetUrl)}
                 style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
                 className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-2 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
                     bgImage
@@ -296,10 +298,11 @@ function StickyNoteItem({
     }
 
     if (type === "friends") {
+        const targetUrl = siteConfig.atelierFriendsUrl || "/friends";
         const bgImage = siteConfig.atelierFriendsBg;
         return (
             <div
-                onClick={() => setLocation("/friends")}
+                onClick={() => setLocation(targetUrl)}
                 style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
                 className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform -rotate-1 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
                     bgImage
@@ -336,7 +339,7 @@ function StickyNoteItem({
     }
 
     // Direct Search Sticky Note
-    const bgImage = siteConfig.atelierSearchBg || "/atelier/search-bg.svg";
+    const bgImage = siteConfig.atelierSearchBg;
     return (
         <div
             style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
@@ -406,7 +409,9 @@ function NextDeckFlipCard({
     siteConfig: any;
     canManage?: boolean;
 }) {
-    const bgImage = siteConfig?.atelierDeckBg || "/atelier/deck-bg.svg";
+    const bgImage = siteConfig?.atelierDeckBg;
+    const deckUrl = siteConfig?.atelierDeckUrl || "/gallery";
+    const deckDesc = siteConfig?.atelierDeckDesc || `共 ${totalCount} 张记忆相片已收录`;
     return (
         <div
             style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
@@ -431,11 +436,11 @@ function NextDeckFlipCard({
                 <span className="text-4xl block mb-2">🃏</span>
                 <p className={`font-extrabold text-base ${bgImage ? "text-white" : "t-primary"}`}>记忆翻动</p>
                 <p className={`text-xs mt-1 ${bgImage ? "text-neutral-200" : "text-neutral-500 dark:text-neutral-400"}`}>
-                    共 {totalCount} 张记忆相片已收录
+                    {deckDesc}
                 </p>
                 <div className="mt-4">
                     <Link
-                        href="/gallery"
+                        href={deckUrl}
                         className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-theme px-4 py-3 text-sm font-bold text-white shadow-md transition hover:opacity-90 active:scale-95"
                     >
                         <i className="ri-folder-image-line text-base" />

@@ -221,8 +221,8 @@ export function Settings() {
                   : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:text-neutral-300"
               }`}
             >
-              <i className="ri-gallery-line text-sm" />
-              <span>画廊随想便签</span>
+              <i className="ri-magic-line text-sm" />
+              <span>进阶设置</span>
             </button>
             <button
               type="button"
@@ -289,11 +289,54 @@ export function Settings() {
                 accept="image/png,image/jpeg,image/gif,image/svg+xml,image/x-icon"
                 onFileChange={handleFaviconChange}
               />
-              <ItemWithUpload
-                title={t("settings.wordpress.title")}
-                description={t("settings.wordpress.desc")}
-                accept="application/xml"
-                onFileChange={onFileChange}
+              <ItemSwitch
+                title="显示顶部导航栏"
+                description="开启后在首页显示顶部导航栏；关闭后首页将隐藏顶部导航栏，呈现完全沉浸式画廊视觉"
+                checked={clientConfig.get("header.show_nav") === true || clientConfig.get("header.show_nav") === "true"}
+                onChange={(checked) => {
+                  setConfigValue("client", "header.show_nav", checked);
+                }}
+              />
+              <ItemSwitch
+                title={t("settings.login.enable.title")}
+                description={t("settings.login.enable.desc", { url: oauth_url })}
+                checked={clientConfig.getBoolean("login.enabled")}
+                onChange={(checked) => {
+                  setConfigValue("client", "login.enabled", checked);
+                }}
+              />
+              <ItemSwitch
+                title={t("settings.comment.enable.title")}
+                description={t("settings.comment.enable.desc")}
+                checked={clientConfig.getBoolean("comment.enabled")}
+                onChange={(checked) => {
+                  setConfigValue("client", "comment.enabled", checked);
+                }}
+              />
+              <ItemSwitch
+                title={t("settings.counter.enable.title")}
+                description={t("settings.counter.enable.desc")}
+                checked={clientConfig.getBoolean("counter.enabled")}
+                onChange={(checked) => {
+                  setConfigValue("client", "counter.enabled", checked);
+                }}
+              />
+              <ItemSwitch
+                title={t("settings.rss.title")}
+                description={t("settings.rss.desc")}
+                checked={clientConfig.getBoolean("rss")}
+                onChange={(checked) => {
+                  setConfigValue("client", "rss", checked);
+                }}
+              />
+              <ItemInput
+                title={t("settings.footer.title")}
+                description={t("settings.footer.desc")}
+                configKeyTitle="Footer HTML"
+                value={String(clientConfig.get("footer") ?? "")}
+                onChange={(value) => {
+                  setConfigValue("client", "footer", value);
+                }}
               />
             </div>
           )}
@@ -502,15 +545,7 @@ export function Settings() {
       {/* Tab 3: Atelier & Sticky Notes Settings */}
       {activeCategory === "atelier" && (
         <div className="w-full flex flex-col space-y-3 ani-show">
-          <ItemTitle title="画廊随想与便签设置" />
-          <ItemSwitch
-            title="显示顶部导航栏"
-            description="开启后在首页显示顶部导航栏；关闭后首页将隐藏顶部导航栏，呈现完全沉浸式画廊视觉"
-            checked={clientConfig.get("header.show_nav") === true || clientConfig.get("header.show_nav") === "true"}
-            onChange={(checked) => {
-              setConfigValue("client", "header.show_nav", checked);
-            }}
-          />
+          <ItemTitle title="进阶设置 · 画廊随想与便签定制" />
           <ItemInput
             title="画廊主标题"
             description="首页画廊顶部展示的艺术标题"
@@ -521,9 +556,11 @@ export function Settings() {
               setConfigValue("client", "atelier.title", value);
             }}
           />
+
+          <ItemTitle title="1. “关于我”便签设置" />
           <ItemInput
-            title="“关于我”便签跳转链接"
-            description="点击画廊中“关于我”便签时跳转的文章别名或页面链接（例如 /about 或 /feed/1）"
+            title="“关于我”跳转链接"
+            description="点击便签时跳转的文章别名或页面链接（例如 /about 或 /feed/1）"
             configKeyTitle="atelier.about_url"
             value={String(clientConfig.get("atelier.about_url") ?? "/about")}
             placeholder="/about"
@@ -532,8 +569,8 @@ export function Settings() {
             }}
           />
           <ItemInput
-            title="“关于我”便签描述语"
-            description="画廊中“关于我”便签展示的随笔寄语"
+            title="“关于我”描述语"
+            description="便签卡片上展示的心情寄语"
             configKeyTitle="atelier.about_desc"
             value={String(clientConfig.get("atelier.about_desc") ?? "欢迎光临我的记忆工坊与随笔空间，点击了解更多。")}
             placeholder="欢迎光临我的记忆工坊与随笔空间，点击了解更多。"
@@ -542,66 +579,176 @@ export function Settings() {
             }}
           />
           <ItemImageInput
-            title="“关于我”便签背景图"
-            description="为画廊中的“关于我”便签设置专属艺术背景封面（支持上传图片或输入 URL，默认内置温馨猫爪工坊插画）"
+            title="“关于我”背景图"
+            description="为画廊中的“关于我”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
             configKeyTitle="atelier.about_bg"
             value={String(clientConfig.get("atelier.about_bg") ?? "")}
-            placeholder="/atelier/about-bg.svg"
+            placeholder="https://..."
             onChange={(value) => {
               setConfigValue("client", "atelier.about_bg", value);
             }}
             onError={showAlert}
           />
+
+          <ItemTitle title="2. “岁月轨迹”便签设置" />
+          <ItemInput
+            title="“岁月轨迹”跳转链接"
+            description="点击便签时跳转的页面链接"
+            configKeyTitle="atelier.timeline_url"
+            value={String(clientConfig.get("atelier.timeline_url") ?? "/timeline")}
+            placeholder="/timeline"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.timeline_url", value);
+            }}
+          />
+          <ItemInput
+            title="“岁月轨迹”描述语"
+            description="便签卡片上展示的时光寄语"
+            configKeyTitle="atelier.timeline_desc"
+            value={String(clientConfig.get("atelier.timeline_desc") ?? "以时间为轴，串联起每一次灵感与技术实践。")}
+            placeholder="以时间为轴，串联起每一次灵感与技术实践。"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.timeline_desc", value);
+            }}
+          />
           <ItemImageInput
-            title="“岁月轨迹”便签背景图"
-            description="为画廊中的“岁月轨迹”便签设置专属艺术背景封面（支持上传图片或输入 URL，默认内置星河长河插画）"
+            title="“岁月轨迹”背景图"
+            description="为画廊中的“岁月轨迹”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
             configKeyTitle="atelier.timeline_bg"
             value={String(clientConfig.get("atelier.timeline_bg") ?? "")}
-            placeholder="/atelier/timeline-bg.svg"
+            placeholder="https://..."
             onChange={(value) => {
               setConfigValue("client", "atelier.timeline_bg", value);
             }}
             onError={showAlert}
           />
+
+          <ItemTitle title="3. “日常随想”便签设置" />
+          <ItemInput
+            title="“日常随想”跳转链接"
+            description="点击便签时跳转的页面链接"
+            configKeyTitle="atelier.moments_url"
+            value={String(clientConfig.get("atelier.moments_url") ?? "/moments")}
+            placeholder="/moments"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.moments_url", value);
+            }}
+          />
+          <ItemInput
+            title="“日常随想”描述语"
+            description="便签卡片上展示的生活随想"
+            configKeyTitle="atelier.moments_desc"
+            value={String(clientConfig.get("atelier.moments_desc") ?? "生活碎碎念、朋友圈动态与不设限的日常记录。")}
+            placeholder="生活碎碎念、朋友圈动态与不设限的日常记录。"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.moments_desc", value);
+            }}
+          />
           <ItemImageInput
-            title="“日常随想”便签背景图"
-            description="为画廊中的“日常随想”便签设置专属艺术背景封面（支持上传图片或输入 URL，默认内置晨光绿植插画）"
+            title="“日常随想”背景图"
+            description="为画廊中的“日常随想”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
             configKeyTitle="atelier.moments_bg"
             value={String(clientConfig.get("atelier.moments_bg") ?? "")}
-            placeholder="/atelier/moments-bg.svg"
+            placeholder="https://..."
             onChange={(value) => {
               setConfigValue("client", "atelier.moments_bg", value);
             }}
             onError={showAlert}
           />
+
+          <ItemTitle title="4. “邻家友链”便签设置" />
+          <ItemInput
+            title="“邻家友链”跳转链接"
+            description="点击便签时跳转的页面链接"
+            configKeyTitle="atelier.friends_url"
+            value={String(clientConfig.get("atelier.friends_url") ?? "/friends")}
+            placeholder="/friends"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.friends_url", value);
+            }}
+          />
+          <ItemInput
+            title="“邻家友链”描述语"
+            description="便签卡片上展示的友谊寄语"
+            configKeyTitle="atelier.friends_desc"
+            value={String(clientConfig.get("atelier.friends_desc") ?? "漫步在同好博主的数字花园，交换思想火花。")}
+            placeholder="漫步在同好博主的数字花园，交换思想火花。"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.friends_desc", value);
+            }}
+          />
           <ItemImageInput
-            title="“邻家友链”便签背景图"
-            description="为画廊中的“邻家友链”便签设置专属艺术背景封面（支持上传图片或输入 URL，默认内置樱花信箱插画）"
+            title="“邻家友链”背景图"
+            description="为画廊中的“邻家友链”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
             configKeyTitle="atelier.friends_bg"
             value={String(clientConfig.get("atelier.friends_bg") ?? "")}
-            placeholder="/atelier/friends-bg.svg"
+            placeholder="https://..."
             onChange={(value) => {
               setConfigValue("client", "atelier.friends_bg", value);
             }}
             onError={showAlert}
           />
+
+          <ItemTitle title="5. “随心探索”便签设置" />
+          <ItemInput
+            title="“随心探索”跳转链接"
+            description="点击便签或回车时跳转的搜索页面链接"
+            configKeyTitle="atelier.search_url"
+            value={String(clientConfig.get("atelier.search_url") ?? "/search")}
+            placeholder="/search"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.search_url", value);
+            }}
+          />
+          <ItemInput
+            title="“随心探索”描述语"
+            description="便签卡片上展示的探索寄语"
+            configKeyTitle="atelier.search_desc"
+            value={String(clientConfig.get("atelier.search_desc") ?? "输入关键词即刻检索文章与解决方案。")}
+            placeholder="输入关键词即刻检索文章与解决方案。"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.search_desc", value);
+            }}
+          />
           <ItemImageInput
-            title="“随心探索”便签背景图"
-            description="为画廊中的“随心探索”便签设置专属艺术背景封面（支持上传图片或输入 URL，默认内置侦探寻宝插画）"
+            title="“随心探索”背景图"
+            description="为画廊中的“随心探索”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
             configKeyTitle="atelier.search_bg"
             value={String(clientConfig.get("atelier.search_bg") ?? "")}
-            placeholder="/atelier/search-bg.svg"
+            placeholder="https://..."
             onChange={(value) => {
               setConfigValue("client", "atelier.search_bg", value);
             }}
             onError={showAlert}
           />
+
+          <ItemTitle title="6. “记忆翻动”卡片设置" />
+          <ItemInput
+            title="“记忆翻动”跳转链接"
+            description="点击卡片中“漫游图床画廊”按钮时跳转的页面链接"
+            configKeyTitle="atelier.deck_url"
+            value={String(clientConfig.get("atelier.deck_url") ?? "/gallery")}
+            placeholder="/gallery"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.deck_url", value);
+            }}
+          />
+          <ItemInput
+            title="“记忆翻动”描述语"
+            description="卡片上展示的相片收录说明文字"
+            configKeyTitle="atelier.deck_desc"
+            value={String(clientConfig.get("atelier.deck_desc") ?? "漫游图床画廊，浏览大图并复制链接。")}
+            placeholder="漫游图床画廊，浏览大图并复制链接。"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.deck_desc", value);
+            }}
+          />
           <ItemImageInput
-            title="“记忆翻动”卡片背景图"
-            description="为画廊中的“记忆翻动”卡片设置专属艺术背景封面（支持上传图片或输入 URL，默认内置塔罗图床插画）"
+            title="“记忆翻动”背景图"
+            description="为画廊中的“记忆翻动”卡片设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
             configKeyTitle="atelier.deck_bg"
             value={String(clientConfig.get("atelier.deck_bg") ?? "")}
-            placeholder="/atelier/deck-bg.svg"
+            placeholder="https://..."
             onChange={(value) => {
               setConfigValue("client", "atelier.deck_bg", value);
             }}
@@ -613,55 +760,6 @@ export function Settings() {
       {/* Tab 4: Extensions & Services Settings */}
       {activeCategory === "services" && (
         <div className="w-full flex flex-col space-y-3 ani-show">
-          <ItemTitle title={t("settings.other.title")} />
-          <ItemSwitch
-            title={t("settings.login.enable.title")}
-            description={t("settings.login.enable.desc", { url: oauth_url })}
-            checked={clientConfig.getBoolean("login.enabled")}
-            onChange={(checked) => {
-              setConfigValue("client", "login.enabled", checked);
-            }}
-          />
-          <ItemSwitch
-            title={t("settings.comment.enable.title")}
-            description={t("settings.comment.enable.desc")}
-            checked={clientConfig.getBoolean("comment.enabled")}
-            onChange={(checked) => {
-              setConfigValue("client", "comment.enabled", checked);
-            }}
-          />
-          <ItemSwitch
-            title={t("settings.counter.enable.title")}
-            description={t("settings.counter.enable.desc")}
-            checked={clientConfig.getBoolean("counter.enabled")}
-            onChange={(checked) => {
-              setConfigValue("client", "counter.enabled", checked);
-            }}
-          />
-          <ItemSwitch
-            title={t("settings.rss.title")}
-            description={t("settings.rss.desc")}
-            checked={clientConfig.getBoolean("rss")}
-            onChange={(checked) => {
-              setConfigValue("client", "rss", checked);
-            }}
-          />
-          <ItemWithUpload
-            title={t("settings.favicon.title")}
-            description={t("settings.favicon.desc")}
-            accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
-            onFileChange={handleFaviconChange}
-          />
-          <ItemInput
-            title={t("settings.footer.title")}
-            description={t("settings.footer.desc")}
-            configKeyTitle="Footer HTML"
-            value={String(clientConfig.get("footer") ?? "")}
-            onChange={(value) => {
-              setConfigValue("client", "footer", value);
-            }}
-          />
-
           <ItemTitle title={t("settings.webhook.title")} />
           <ItemInput
             title={t("settings.webhook.url.title")}
@@ -798,7 +896,7 @@ export function Settings() {
           />
           <ItemButton
             title={t("settings.cache.clear.title")}
-            description={t("settings.cache.clear.desc")}
+            description="仅清空边缘 KV 缓存与预渲染结果，绝不影响数据库、已发布文章与上传的图片，用于修改配置后强制刷新边缘节点"
             buttonTitle={t("clear")}
             onConfirm={async () => {
               await client.config.clearCache().then(({ error }) => {
@@ -808,11 +906,11 @@ export function Settings() {
               });
             }}
             alertTitle={t("settings.cache.clear.confirm.title")}
-            alertDescription={t("settings.cache.clear.confirm.desc")}
+            alertDescription="确定要清除所有边缘缓存吗？该操作不会删除任何文章或文件数据。"
           />
           <ItemWithUpload
             title={t("settings.wordpress.title")}
-            description={t("settings.wordpress.desc")}
+            description="从 WordPress 导入（上传从 WordPress 后台导出的 WXR .xml 文件，将历史文章、分类及标签无损迁移到本博客系统中）"
             accept="application/xml"
             onFileChange={onFileChange}
           />

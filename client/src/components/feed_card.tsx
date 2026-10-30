@@ -85,6 +85,20 @@ const FEED_CARD_STYLES: Record<
         summary: "line-clamp-5 text-pretty text-[15px] leading-7 text-neutral-600 dark:text-neutral-300",
         title: "break-words text-2xl font-semibold tracking-[-0.02em] text-neutral-900 dark:text-white text-pretty overflow-hidden [overflow-wrap:anywhere]",
     },
+    compact: {
+        card: "my-2 inline-block w-full break-inside-avoid rounded-2xl border border-black/5 bg-w p-4 duration-200 hover:border-black/20 dark:border-white/5 dark:hover:border-white/20",
+        imageWrap: "mb-2 overflow-hidden rounded-xl",
+        meta: "text-xs text-neutral-400",
+        summary: "line-clamp-2 text-xs text-neutral-500 mt-1",
+        title: "text-base font-bold text-neutral-900 dark:text-white line-clamp-1",
+    },
+    poster: {
+        card: "my-3 inline-block w-full break-inside-avoid overflow-hidden rounded-3xl border border-black/10 bg-w p-2.5 shadow-md hover:shadow-2xl transition duration-300 dark:border-white/10",
+        imageWrap: "overflow-hidden rounded-2xl",
+        meta: "text-[11px] text-neutral-400 mt-2",
+        summary: "line-clamp-2 text-xs text-neutral-500 mt-1",
+        title: "text-lg font-extrabold text-neutral-900 dark:text-white line-clamp-1 mt-1.5",
+    },
 };
 
 function estimateReadingMinutes(text: string): number {

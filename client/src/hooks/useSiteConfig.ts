@@ -18,14 +18,26 @@ export const SITE_CONFIG_KEYS = {
     atelierTitle: "atelier.title",
     atelierAboutUrl: "atelier.about_url",
     atelierAboutDesc: "atelier.about_desc",
-    atelierTimelineDesc: "atelier.timeline_desc",
-    atelierMomentsDesc: "atelier.moments_desc",
-    atelierFriendsDesc: "atelier.friends_desc",
     atelierAboutBg: "atelier.about_bg",
+
+    atelierTimelineUrl: "atelier.timeline_url",
+    atelierTimelineDesc: "atelier.timeline_desc",
     atelierTimelineBg: "atelier.timeline_bg",
+
+    atelierMomentsUrl: "atelier.moments_url",
+    atelierMomentsDesc: "atelier.moments_desc",
     atelierMomentsBg: "atelier.moments_bg",
+
+    atelierFriendsUrl: "atelier.friends_url",
+    atelierFriendsDesc: "atelier.friends_desc",
     atelierFriendsBg: "atelier.friends_bg",
+
+    atelierSearchUrl: "atelier.search_url",
+    atelierSearchDesc: "atelier.search_desc",
     atelierSearchBg: "atelier.search_bg",
+
+    atelierDeckUrl: "atelier.deck_url",
+    atelierDeckDesc: "atelier.deck_desc",
     atelierDeckBg: "atelier.deck_bg",
 } as const;
 
@@ -57,15 +69,27 @@ export function useSiteConfig() {
         atelierTitle: config.get<string>(SITE_CONFIG_KEYS.atelierTitle) || "画廊随想",
         atelierAboutUrl: config.get<string>(SITE_CONFIG_KEYS.atelierAboutUrl) || "/about",
         atelierAboutDesc: config.get<string>(SITE_CONFIG_KEYS.atelierAboutDesc) || "欢迎光临我的记忆工坊与随笔空间，点击了解更多。",
+        atelierAboutBg: config.get<string>(SITE_CONFIG_KEYS.atelierAboutBg) || "",
+
+        atelierTimelineUrl: config.get<string>(SITE_CONFIG_KEYS.atelierTimelineUrl) || "/timeline",
         atelierTimelineDesc: config.get<string>(SITE_CONFIG_KEYS.atelierTimelineDesc) || "以时间为轴，串联起每一次灵感与技术实践。",
+        atelierTimelineBg: config.get<string>(SITE_CONFIG_KEYS.atelierTimelineBg) || "",
+
+        atelierMomentsUrl: config.get<string>(SITE_CONFIG_KEYS.atelierMomentsUrl) || "/moments",
         atelierMomentsDesc: config.get<string>(SITE_CONFIG_KEYS.atelierMomentsDesc) || "生活碎碎念、灵感火花与不设限的日常记录。",
+        atelierMomentsBg: config.get<string>(SITE_CONFIG_KEYS.atelierMomentsBg) || "",
+
+        atelierFriendsUrl: config.get<string>(SITE_CONFIG_KEYS.atelierFriendsUrl) || "/friends",
         atelierFriendsDesc: config.get<string>(SITE_CONFIG_KEYS.atelierFriendsDesc) || "漫步在同好博主的数字花园，交换思想火花。",
-        atelierAboutBg: config.get<string>(SITE_CONFIG_KEYS.atelierAboutBg) || "/atelier/about-bg.svg",
-        atelierTimelineBg: config.get<string>(SITE_CONFIG_KEYS.atelierTimelineBg) || "/atelier/timeline-bg.svg",
-        atelierMomentsBg: config.get<string>(SITE_CONFIG_KEYS.atelierMomentsBg) || "/atelier/moments-bg.svg",
-        atelierFriendsBg: config.get<string>(SITE_CONFIG_KEYS.atelierFriendsBg) || "/atelier/friends-bg.svg",
-        atelierSearchBg: config.get<string>(SITE_CONFIG_KEYS.atelierSearchBg) || "/atelier/search-bg.svg",
-        atelierDeckBg: config.get<string>(SITE_CONFIG_KEYS.atelierDeckBg) || "/atelier/deck-bg.svg",
+        atelierFriendsBg: config.get<string>(SITE_CONFIG_KEYS.atelierFriendsBg) || "",
+
+        atelierSearchUrl: config.get<string>(SITE_CONFIG_KEYS.atelierSearchUrl) || "/search",
+        atelierSearchDesc: config.get<string>(SITE_CONFIG_KEYS.atelierSearchDesc) || "输入关键词即刻检索文章与解决方案。",
+        atelierSearchBg: config.get<string>(SITE_CONFIG_KEYS.atelierSearchBg) || "",
+
+        atelierDeckUrl: config.get<string>(SITE_CONFIG_KEYS.atelierDeckUrl) || "/gallery",
+        atelierDeckDesc: config.get<string>(SITE_CONFIG_KEYS.atelierDeckDesc) || "漫游图床画廊，浏览大图并复制链接。",
+        atelierDeckBg: config.get<string>(SITE_CONFIG_KEYS.atelierDeckBg) || "",
     };
 }
 
