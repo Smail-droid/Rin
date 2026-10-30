@@ -2,6 +2,7 @@ import { useContext } from "react";
 import { ClientConfigContext } from "../state/config";
 import { normalizeFeedCardVariant } from "../components/feed-card-options";
 import { normalizeFeedLayout } from "../components/feed-layout-options";
+import { normalizeThemeOpacity } from "../utils/theme-color";
 
 // Site configuration keys
 export const SITE_CONFIG_KEYS = {
@@ -14,6 +15,9 @@ export const SITE_CONFIG_KEYS = {
     feedCardVariant: "feed.card_variant",
     headerLayout: "header.layout",
     themeColor: "theme.color",
+    themeOpacity: "theme.opacity",
+    themePreset: "theme.preset",
+    themeCustomColorEnabled: "theme.custom_color_enabled",
     headerShowNav: "header.show_nav",
     atelierTitle: "atelier.title",
     atelierAboutUrl: "atelier.about_url",
@@ -65,6 +69,9 @@ export function useSiteConfig() {
         feedCardVariant: normalizeFeedCardVariant(config.get<string>(SITE_CONFIG_KEYS.feedCardVariant) || "default"),
         headerLayout: config.get<string>(SITE_CONFIG_KEYS.headerLayout) || "classic",
         themeColor: config.get<string>(SITE_CONFIG_KEYS.themeColor) || "#fc466b",
+        themeOpacity: normalizeThemeOpacity(config.get(SITE_CONFIG_KEYS.themeOpacity)),
+        themePreset: config.get<string>(SITE_CONFIG_KEYS.themePreset) || "sakura",
+        themeCustomColorEnabled: config.getBoolean(SITE_CONFIG_KEYS.themeCustomColorEnabled),
         headerShowNav,
         atelierTitle: config.get<string>(SITE_CONFIG_KEYS.atelierTitle) || "画廊随想",
         atelierAboutUrl: config.get<string>(SITE_CONFIG_KEYS.atelierAboutUrl) || "/about",

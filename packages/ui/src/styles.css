@@ -14,6 +14,8 @@
   --rin-radius-control: 0.75rem;
   --rin-radius-surface: 1rem;
   --rin-shadow-overlay: 0 24px 80px rgb(0 0 0 / 0.22), 0 4px 20px rgb(0 0 0 / 0.12);
+  --rin-surface-alpha: 1;
+  --rin-glass-blur: 0px;
 }
 
 [data-color-mode="dark"] {
@@ -30,7 +32,9 @@
 }
 
 .bg-w {
-  background-color: rgb(var(--rin-surface-rgb));
+  background-color: rgb(var(--rin-surface-rgb) / var(--rin-surface-alpha, 1));
+  backdrop-filter: blur(var(--rin-glass-blur, 0px));
+  -webkit-backdrop-filter: blur(var(--rin-glass-blur, 0px));
 }
 
 .bg-secondary {
@@ -129,7 +133,9 @@
   overflow: auto;
   border: 1px solid rgb(var(--rin-border-rgb) / 0.1);
   border-radius: var(--rin-radius-surface);
-  background: rgb(var(--rin-surface-rgb));
+  background: rgb(var(--rin-surface-rgb) / var(--rin-surface-alpha, 1));
+  backdrop-filter: blur(var(--rin-glass-blur, 0px));
+  -webkit-backdrop-filter: blur(var(--rin-glass-blur, 0px));
   color: rgb(var(--rin-text-rgb));
   box-shadow: var(--rin-shadow-overlay);
 }

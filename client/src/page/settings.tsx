@@ -17,7 +17,16 @@ import { FEED_CARD_VARIANTS, normalizeFeedCardVariant } from "../components/feed
 import { FeedCardPreview } from "../components/feed-card-preview";
 import { FEED_LAYOUT_OPTIONS, normalizeFeedLayout } from "../components/feed-layout-options";
 import { useSiteConfig } from "../hooks/useSiteConfig";
-import { applyThemeColor, normalizeThemeColor } from "../utils/theme-color";
+import {
+  applyThemeColor,
+  normalizeThemeColor,
+  applyThemeOpacity,
+  normalizeThemeOpacity,
+  THEME_PRESETS,
+  ACCENT_COLOR_PRESETS,
+  OPACITY_SHORTCUTS,
+} from "../utils/theme-color";
+import { getStoredThemeMode, setThemeMode, type ThemeMode } from "../utils/darkModeUtils";
 import { AISummarySettings } from "./settings-ai";
 import { ItemButton, ItemImageInput, ItemInput, ItemSwitch, ItemTitle, ItemWithUpload } from "./settings-items";
 import {
@@ -40,14 +49,6 @@ const WEBHOOK_METHOD_OPTIONS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD",
   value,
 }));
 
-const THEME_COLOR_OPTIONS = [
-  { label: "Rose", value: "#fc466b" },
-  { label: "Violet", value: "#7c3aed" },
-  { label: "Blue", value: "#2563eb" },
-  { label: "Teal", value: "#0f766e" },
-  { label: "Orange", value: "#ea580c" },
-];
-
 export function Settings() {
   const { t } = useTranslation();
   const siteConfig = useSiteConfig();
@@ -65,9 +66,14 @@ export function Settings() {
   const initialDraftRef = useRef<SettingsDraft>({ clientConfig: {}, serverConfig: {} });
   const { showAlert, AlertUI } = useAlert();
   const [activeCategory, setActiveCategory] = useState<"general" | "theme" | "atelier" | "services">("general");
+  const [activeThemeMode, setActiveThemeMode] = useState<ThemeMode>(getStoredThemeMode());
 
   function getDraftThemeColor(nextDraft: SettingsDraft) {
     return typeof nextDraft.clientConfig["theme.color"] === "string" ? nextDraft.clientConfig["theme.color"] : undefined;
+  }
+
+  function getDraftThemeOpacity(nextDraft: SettingsDraft) {
+    return nextDraft.clientConfig["theme.opacity"];
   }
 
   useEffect(() => {
@@ -80,6 +86,7 @@ export function Settings() {
         setHasStoredAiApiKey(state.hasStoredAiApiKey);
         mergeSessionConfig(state.draft.clientConfig);
         applyThemeColor(getDraftThemeColor(state.draft));
+        applyThemeOpacity(getDraftThemeOpacity(state.draft));
       })
       .catch((err: any) => {
         showAlert(t("settings.get_config_failed$message", { message: err.message }));
@@ -91,6 +98,7 @@ export function Settings() {
 
     return () => {
       applyThemeColor(getDraftThemeColor(initialDraftRef.current));
+      applyThemeOpacity(getDraftThemeOpacity(initialDraftRef.current));
     };
   }, [showAlert, t]);
 
@@ -98,6 +106,9 @@ export function Settings() {
   const aiValue = useMemo(() => buildAIConfigDraftValue(draft, hasStoredAiApiKey), [draft, hasStoredAiApiKey]);
   const hasUnsavedChanges = !areSettingsDraftsEqual(draft, initialDraft);
   const themeColorValue = normalizeThemeColor(String(clientConfig.get("theme.color") ?? "#fc466b"));
+  const themeOpacityValue = normalizeThemeOpacity(clientConfig.get("theme.opacity"));
+  const themePresetValue = String(clientConfig.get("theme.preset") ?? "sakura");
+  const themeCustomColorEnabled = clientConfig.getBoolean("theme.custom_color_enabled");
   const feedLayoutValue = normalizeFeedLayout(String(clientConfig.get("feed.layout") ?? "list"));
   const feedCardVariantValue = normalizeFeedCardVariant(String(clientConfig.get("feed.card_variant") ?? "default"));
   const previewSiteName = String(clientConfig.get("site.name") ?? clientConfig.default("site.name") ?? "Rin");
@@ -110,6 +121,7 @@ export function Settings() {
   function handleReset() {
     setDraft(initialDraft);
     applyThemeColor(getDraftThemeColor(initialDraft));
+    applyThemeOpacity(getDraftThemeOpacity(initialDraft));
   }
 
   async function handleSave() {
@@ -457,60 +469,268 @@ export function Settings() {
                   </div>
                 </SettingsCardBody>
               </div>
+              {/* Window Opacity Control (Inspired by Modern Glassmorphism & Visual Settings) */}
               <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10">
-                <SettingsCardRow
-                  header={
-                    <SettingsCardHeader
-                      title={t("settings.theme_color.title")}
-                      description={t("settings.theme_color.desc")}
-                    />
-                  }
-                  action={
-                    <div className="text-sm font-medium t-primary">{themeColorValue}</div>
-                  }
-                />
-                <SettingsCardBody>
-                  <div className="flex flex-wrap gap-3">
-                    {THEME_COLOR_OPTIONS.map((option) => {
-                      const selected = themeColorValue === option.value;
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => {
-                            setConfigValue("client", "theme.color", option.value);
-                            applyThemeColor(option.value);
+                <div className="flex flex-col gap-3 rounded-2xl border border-black/5 bg-black/[0.015] p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold t-primary flex items-center gap-2">
+                        <i className="ri-contrast-drop-line text-theme" />
+                        <span>窗口透明度</span>
+                      </div>
+                      <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 max-w-md">
+                        调节整个应用窗口与卡片的通透度与毛玻璃质感，让背景质感若隐若现。较低时文字对比度更柔和。
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-start sm:items-end gap-2">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={50}
+                          max={100}
+                          step={1}
+                          value={themeOpacityValue}
+                          onChange={(e) => {
+                            const val = Number.parseInt(e.target.value, 10);
+                            setConfigValue("client", "theme.opacity", val);
+                            applyThemeOpacity(val);
                           }}
-                          className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition-all ${
-                            selected
-                              ? "border-theme bg-theme/5 shadow-sm shadow-theme/10"
-                              : "border-black/10 hover:border-black/20 dark:border-white/10 dark:hover:border-white/20"
-                          }`}
-                        >
-                          <span
-                            className="h-6 w-6 rounded-full border border-black/10 dark:border-white/10"
-                            style={{ backgroundColor: option.value }}
-                          />
-                          <span className="text-sm t-primary">{t(`settings.theme_color.options.${option.label.toLowerCase()}`)}</span>
-                          {selected ? <i className="ri-check-line text-theme" /> : null}
-                        </button>
-                      );
-                    })}
-                    <label className="flex items-center gap-3 rounded-xl border border-black/10 px-3 py-2 hover:border-black/20 dark:border-white/10 dark:hover:border-white/20">
-                      <input
-                        type="color"
-                        value={themeColorValue}
-                        onChange={(event) => {
-                          const normalized = normalizeThemeColor(event.target.value);
-                          setConfigValue("client", "theme.color", normalized);
-                          applyThemeColor(normalized);
-                        }}
-                        className="color-input-reset h-6 w-6 cursor-pointer rounded-full border-0 bg-transparent p-0"
-                      />
-                      <span className="text-sm t-primary">{t("settings.theme_color.custom")}</span>
-                    </label>
+                          className="h-2 w-32 sm:w-44 cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-theme dark:bg-white/15"
+                        />
+                        <span className="min-w-12 text-right font-mono text-sm font-bold text-theme">
+                          {themeOpacityValue}%
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {OPACITY_SHORTCUTS.map((pct) => {
+                          const isSelected = themeOpacityValue === pct;
+                          return (
+                            <button
+                              key={pct}
+                              type="button"
+                              onClick={() => {
+                                setConfigValue("client", "theme.opacity", pct);
+                                applyThemeOpacity(pct);
+                              }}
+                              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all select-none ${
+                                isSelected
+                                  ? "bg-theme text-white shadow-xs scale-105"
+                                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
+                              }`}
+                            >
+                              {pct}%
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
-                </SettingsCardBody>
+                </div>
+              </div>
+
+              {/* UI Theme & Presets Section (Mode Switcher + Theme Presets Grid + Custom Accent) */}
+              <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10">
+                <div className="flex flex-col gap-4 rounded-2xl border border-black/5 bg-black/[0.015] p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                  {/* Theme Mode Segmented Switcher */}
+                  <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
+                    <div>
+                      <div className="text-sm font-semibold t-primary">界面主题模式</div>
+                      <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                        快速预览与切换浅色、深色或跟随系统外观
+                      </div>
+                    </div>
+                    <div className="flex items-center rounded-xl bg-neutral-100 p-1 dark:bg-white/5 border border-black/5 dark:border-white/5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setThemeMode("light");
+                          setActiveThemeMode("light");
+                        }}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition select-none ${
+                          activeThemeMode === "light"
+                            ? "bg-white text-neutral-900 shadow-xs dark:bg-neutral-800 dark:text-white"
+                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+                        }`}
+                      >
+                        <i className="ri-sun-line text-amber-500" />
+                        <span>浅色</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setThemeMode("system");
+                          setActiveThemeMode("system");
+                        }}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition select-none ${
+                          activeThemeMode === "system"
+                            ? "bg-white text-neutral-900 shadow-xs dark:bg-neutral-800 dark:text-white"
+                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+                        }`}
+                      >
+                        <i className="ri-computer-line text-blue-500" />
+                        <span>系统</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setThemeMode("dark");
+                          setActiveThemeMode("dark");
+                        }}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition select-none ${
+                          activeThemeMode === "dark"
+                            ? "bg-white text-neutral-900 shadow-xs dark:bg-neutral-800 dark:text-white"
+                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+                        }`}
+                      >
+                        <i className="ri-moon-line text-purple-400" />
+                        <span>深色</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Preset Themes Grid */}
+                  <div className="flex flex-col gap-2.5 pb-3 border-b border-black/5 dark:border-white/5">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold t-primary">风格主题预设</div>
+                      <span className="text-xs text-neutral-400 dark:text-neutral-500">18 款精选方案</span>
+                    </div>
+                    <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                      内置多套高质感预设配色方案（极简纸墨、赛博冷萃、和风青空、午夜深邃等），点击即刻全局应用
+                    </div>
+                    <div className="grid grid-cols-6 sm:grid-cols-9 gap-2.5 pt-1">
+                      {THEME_PRESETS.map((preset) => {
+                        const isSelected = themePresetValue === preset.id;
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            title={`${preset.name} - ${preset.description}`}
+                            onClick={() => {
+                              setConfigValue("client", "theme.preset", preset.id);
+                              if (!themeCustomColorEnabled) {
+                                setConfigValue("client", "theme.color", preset.color);
+                                applyThemeColor(preset.color);
+                              }
+                            }}
+                            className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:scale-110 active:scale-95 ${
+                              isSelected
+                                ? "ring-2 ring-offset-2 ring-theme shadow-sm shadow-theme/30"
+                                : "hover:shadow-xs"
+                            }`}
+                            style={{
+                              backgroundColor: preset.previewBg,
+                              border: `1.5px solid ${isSelected ? preset.color : "rgba(0,0,0,0.08)"}`,
+                            }}
+                          >
+                            <span
+                              className="h-4 w-4 rounded-full shadow-2xs transition-transform group-hover:scale-110"
+                              style={{ backgroundColor: preset.color }}
+                            />
+                            {isSelected && (
+                              <span className="absolute inset-0 flex items-center justify-center">
+                                <i className="ri-check-line text-xs font-bold text-white drop-shadow-xs" />
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {(() => {
+                      const activePreset = THEME_PRESETS.find((p) => p.id === themePresetValue);
+                      if (!activePreset) return null;
+                      return (
+                        <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 bg-black/[0.02] dark:bg-white/[0.02] px-3 py-1.5 rounded-xl border border-black/5 dark:border-white/5">
+                          <span className="font-semibold t-primary">{activePreset.name}</span>
+                          <span>·</span>
+                          <span>{activePreset.description}</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Custom Accent Switch & Palette */}
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-semibold t-primary">使用自定义强调色</div>
+                        <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                          覆盖主题预设自带的强调色，自选专属视觉高光
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={themeCustomColorEnabled}
+                        onClick={() => {
+                          const nextVal = !themeCustomColorEnabled;
+                          setConfigValue("client", "theme.custom_color_enabled", nextVal);
+                          if (!nextVal) {
+                            const activePreset = THEME_PRESETS.find((p) => p.id === themePresetValue) ?? THEME_PRESETS[0];
+                            setConfigValue("client", "theme.color", activePreset.color);
+                            applyThemeColor(activePreset.color);
+                          }
+                        }}
+                        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-transparent transition-colors focus:outline-none ${
+                          themeCustomColorEnabled ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                        }`}
+                      >
+                        <span
+                          className={`block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                            themeCustomColorEnabled ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className={`flex flex-col gap-2 transition-opacity duration-200 ${themeCustomColorEnabled ? "opacity-100" : "opacity-45 pointer-events-none"}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">自定义强调色色谱</div>
+                        <div className="font-mono text-xs font-bold text-theme">{themeColorValue}</div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        {ACCENT_COLOR_PRESETS.map((color) => {
+                          const isSelected = themeColorValue.toLowerCase() === color.toLowerCase();
+                          return (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => {
+                                setConfigValue("client", "theme.color", color);
+                                setConfigValue("client", "theme.custom_color_enabled", true);
+                                applyThemeColor(color);
+                              }}
+                              className={`group relative flex h-7 w-7 items-center justify-center rounded-full transition-all duration-200 hover:scale-110 ${
+                                isSelected ? "ring-2 ring-offset-2 ring-theme shadow-xs scale-105" : "hover:shadow-xs"
+                              }`}
+                              style={{ backgroundColor: color }}
+                            >
+                              {isSelected && <i className="ri-check-line text-xs font-bold text-white drop-shadow-xs" />}
+                            </button>
+                          );
+                        })}
+
+                        {/* Native Color Picker Trigger */}
+                        <label
+                          title="自选色盘"
+                          className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-gradient-to-tr from-rose-500 via-purple-500 to-sky-500 text-white shadow-xs transition-transform hover:scale-110 active:scale-95"
+                        >
+                          <i className="ri-palette-line text-xs drop-shadow-xs" />
+                          <input
+                            type="color"
+                            value={themeColorValue}
+                            onChange={(event) => {
+                              const normalized = normalizeThemeColor(event.target.value);
+                              setConfigValue("client", "theme.color", normalized);
+                              setConfigValue("client", "theme.custom_color_enabled", true);
+                              applyThemeColor(normalized);
+                            }}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10">
                 <SettingsCardRow

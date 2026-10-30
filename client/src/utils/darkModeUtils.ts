@@ -1,5 +1,29 @@
 import { useState, useEffect } from "react";
 
+export type ThemeMode = "light" | "system" | "dark";
+
+export function getStoredThemeMode(): ThemeMode {
+  if (typeof localStorage === "undefined") return "system";
+  const stored = localStorage.getItem("theme");
+  if (stored === "light" || stored === "dark" || stored === "system") {
+    return stored;
+  }
+  return "system";
+}
+
+export function setThemeMode(mode: ThemeMode) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("theme", mode);
+
+  if (mode !== "system") {
+    document.documentElement.setAttribute("data-color-mode", mode);
+  } else {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    document.documentElement.setAttribute("data-color-mode", mediaQuery.matches ? "dark" : "light");
+  }
+  window.dispatchEvent(new Event("colorSchemeChange"));
+}
+
 export function listenSystemMode() {
   const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 

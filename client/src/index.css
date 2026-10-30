@@ -215,3 +215,21 @@ a.toc-link {
   padding-left: 1rem;
   padding-right: 1rem;
 }
+
+/* Glassmorphism & Translucency Enhancement */
+.bg-w {
+  background-color: rgb(var(--rin-surface-rgb) / var(--rin-surface-alpha, 1)) !important;
+  backdrop-filter: blur(var(--rin-glass-blur, 0px));
+  -webkit-backdrop-filter: blur(var(--rin-glass-blur, 0px));
+}
+
+[data-color-mode="dark"] .bg-w {
+  background-color: rgb(var(--rin-surface-rgb) / var(--rin-surface-alpha, 1)) !important;
+}
+
+.rin-glass {
+  background-color: rgb(var(--rin-surface-rgb) / var(--rin-surface-alpha, 1));
+  backdrop-filter: blur(var(--rin-glass-blur, 0px));
+  -webkit-backdrop-filter: blur(var(--rin-glass-blur, 0px));
+}
+
