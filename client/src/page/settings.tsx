@@ -464,10 +464,10 @@ export function Settings() {
           />
           <ItemImageInput
             title="“关于我”便签背景图"
-            description="为画廊中的“关于我”便签设置专属艺术背景封面"
+            description="为画廊中的“关于我”便签设置专属艺术背景封面（支持上传图片或输入 URL，默认内置温馨猫爪工坊插画）"
             configKeyTitle="atelier.about_bg"
             value={String(clientConfig.get("atelier.about_bg") ?? "")}
-            placeholder="https://..."
+            placeholder="/atelier/about-bg.svg"
             onChange={(value) => {
               setConfigValue("client", "atelier.about_bg", value);
             }}
@@ -475,10 +475,10 @@ export function Settings() {
           />
           <ItemImageInput
             title="“岁月轨迹”便签背景图"
-            description="为画廊中的“岁月轨迹”便签设置专属艺术背景封面"
+            description="为画廊中的“岁月轨迹”便签设置专属艺术背景封面（支持上传图片或输入 URL，默认内置星河长河插画）"
             configKeyTitle="atelier.timeline_bg"
             value={String(clientConfig.get("atelier.timeline_bg") ?? "")}
-            placeholder="https://..."
+            placeholder="/atelier/timeline-bg.svg"
             onChange={(value) => {
               setConfigValue("client", "atelier.timeline_bg", value);
             }}
@@ -486,10 +486,10 @@ export function Settings() {
           />
           <ItemImageInput
             title="“日常随想”便签背景图"
-            description="为画廊中的“日常随想”便签设置专属艺术背景封面"
+            description="为画廊中的“日常随想”便签设置专属艺术背景封面（支持上传图片或输入 URL，默认内置晨光绿植插画）"
             configKeyTitle="atelier.moments_bg"
             value={String(clientConfig.get("atelier.moments_bg") ?? "")}
-            placeholder="https://..."
+            placeholder="/atelier/moments-bg.svg"
             onChange={(value) => {
               setConfigValue("client", "atelier.moments_bg", value);
             }}
@@ -497,10 +497,10 @@ export function Settings() {
           />
           <ItemImageInput
             title="“邻家友链”便签背景图"
-            description="为画廊中的“邻家友链”便签设置专属艺术背景封面"
+            description="为画廊中的“邻家友链”便签设置专属艺术背景封面（支持上传图片或输入 URL，默认内置樱花信箱插画）"
             configKeyTitle="atelier.friends_bg"
             value={String(clientConfig.get("atelier.friends_bg") ?? "")}
-            placeholder="https://..."
+            placeholder="/atelier/friends-bg.svg"
             onChange={(value) => {
               setConfigValue("client", "atelier.friends_bg", value);
             }}

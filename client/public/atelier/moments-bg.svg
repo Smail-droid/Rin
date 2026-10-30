@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" width="800" height="480">
+  <defs>
+    <!-- Fresh Morning Mint Gradient -->
+    <linearGradient id="mintBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f0fdf4"/>
+      <stop offset="35%" stop-color="#dcfce7"/>
+      <stop offset="70%" stop-color="#86efac"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+
+    <!-- Morning Sun Ray -->
+    <linearGradient id="sunbeam" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" stop-opacity="0.6"/>
+      <stop offset="60%" stop-color="#bbf7d0" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#22c55e" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Vignette -->
+    <radialGradient id="mintVignette" cx="50%" cy="50%" r="70%">
+      <stop offset="45%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#14532d" stop-opacity="0.45"/>
+    </radialGradient>
+
+    <!-- Botanical Leaf Definition -->
+    <path id="leaf" d="M 0,0 C 25,-40 65,-25 80,0 C 65,25 25,40 0,0 Z" fill="#15803d" fill-opacity="0.28"/>
+  </defs>
+
+  <!-- Base background -->
+  <rect width="800" height="480" fill="url(#mintBg)"/>
+
+  <!-- Sunbeams shining across from top left -->
+  <polygon points="0,0 280,0 480,480 0,480" fill="url(#sunbeam)"/>
+  <polygon points="120,0 360,0 600,480 240,480" fill="url(#sunbeam)" opacity="0.6"/>
+
+  <!-- Window Frame Silhouette in upper left -->
+  <g stroke="#ffffff" stroke-width="6" stroke-opacity="0.35" fill="none">
+    <rect x="40" y="30" width="160" height="220" rx="4"/>
+    <line x1="120" y1="30" x2="120" y2="250"/>
+    <line x1="40" y1="140" x2="200" y2="140"/>
+  </g>
+
+  <!-- Monstera / Palm Leaves growing from right and bottom -->
+  <g transform="translate(740, 420) rotate(-40)">
+    <use href="#leaf" transform="scale(2.2)"/>
+    <use href="#leaf" transform="rotate(-30) scale(1.8)"/>
+    <use href="#leaf" transform="rotate(35) scale(1.9)"/>
+    <use href="#leaf" transform="rotate(-65) scale(1.6)"/>
+  </g>
+
+  <g transform="translate(680, 80) rotate(135)">
+    <use href="#leaf" transform="scale(1.7)"/>
+    <use href="#leaf" transform="rotate(-35) scale(1.4)"/>
+    <use href="#leaf" transform="rotate(35) scale(1.5)"/>
+  </g>
+
+  <!-- Cozy Journal Notebook on desk -->
+  <g transform="translate(380, 290) rotate(5)">
+    <!-- Notebook Paper -->
+    <rect x="-90" y="-60" width="180" height="120" rx="8" fill="#ffffff" fill-opacity="0.75" stroke="#86efac" stroke-width="2"/>
+    <!-- Notebook Spine -->
+    <line x1="0" y1="-60" x2="0" y2="60" stroke="#bbf7d0" stroke-width="3"/>
+    <!-- Subtle Journal Text Lines -->
+    <g stroke="#15803d" stroke-opacity="0.25" stroke-width="2" stroke-linecap="round">
+      <line x1="-75" y1="-38" x2="-15" y2="-38"/>
+      <line x1="-75" y1="-20" x2="-22" y2="-20"/>
+      <line x1="-75" y1="-2" x2="-35" y2="-2"/>
+      <line x1="-75" y1="16" x2="-18" y2="16"/>
+
+      <line x1="15" y1="-38" x2="75" y2="-38"/>
+      <line x1="15" y1="-20" x2="68" y2="-20"/>
+      <line x1="15" y1="-2" x2="72" y2="-2"/>
+      <line x1="15" y1="16" x2="55" y2="16"/>
+    </g>
+    <!-- Bookmark ribbon -->
+    <path d="M 0,60 L 0,85 L 8,76 L 16,85 L 16,60 Z" fill="#ef4444" fill-opacity="0.7"/>
+  </g>
+
+  <!-- WeChat-style Speech & Heart Chat Bubble Floating -->
+  <g transform="translate(250, 160) rotate(-8)">
+    <rect x="-35" y="-24" width="70" height="48" rx="14" fill="#ffffff" fill-opacity="0.8" stroke="#86efac" stroke-width="2"/>
+    <path d="M -8,22 L -18,34 L 2,24 Z" fill="#ffffff" fill-opacity="0.8"/>
+    <!-- Heart inside bubble -->
+    <path d="M 0,2 C -6,-8 -16,-2 -10,6 L 0,16 L 10,6 C 16,-2 6,-8 0,2 Z" fill="#ef4444" fill-opacity="0.75" transform="scale(0.8) translate(0, -6)"/>
+  </g>
+
+  <!-- Secondary Photo Bubble -->
+  <g transform="translate(540, 140) rotate(12)">
+    <rect x="-32" y="-22" width="64" height="44" rx="12" fill="#ffffff" fill-opacity="0.75" stroke="#86efac" stroke-width="1.5"/>
+    <!-- Camera icon silhouette -->
+    <path d="M -12,-6 L -8,-10 L 8,-10 L 12,-6 L 15,-6 C 17,-6 18,-5 18,-3 L 18,9 C 18,11 17,12 15,12 L -15,12 C -17,12 -18,11 -18,9 L -18,-3 C -18,-5 -17,-6 -15,-6 Z" fill="#15803d" fill-opacity="0.35"/>
+    <circle cx="0" cy="3" r="5" fill="#ffffff"/>
+  </g>
+
+  <!-- Floating Greenery Sparkles & Light Orbs -->
+  <circle cx="180" cy="360" r="16" fill="#ffffff" fill-opacity="0.3"/>
+  <circle cx="480" cy="80" r="12" fill="#ffffff" fill-opacity="0.35"/>
+  <circle cx="620" cy="230" r="20" fill="#ffffff" fill-opacity="0.25"/>
+  <circle cx="330" cy="420" r="14" fill="#ffffff" fill-opacity="0.25"/>
+
+  <!-- Vignette -->
+  <rect width="800" height="480" fill="url(#mintVignette)"/>
+</svg>
