@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react"
+import { useContext, useEffect, useMemo, useRef, useState } from "react"
 import { Helmet } from 'react-helmet'
 import { Link, useSearch } from "wouter"
 import { FeedCard } from "../components/feed_card"
@@ -66,6 +66,100 @@ function EmptyFeedsState({ listState, canWrite }: { listState: FeedType; canWrit
                     <span>{t('writing')}</span>
                 </Link>
             )}
+        </div>
+    );
+}
+
+function HeroGalleryShowcase({ feeds }: { feeds: any[] }) {
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const photoFeeds = useMemo(() => {
+        return feeds.filter((f) => Boolean(f.avatar)).slice(0, 8);
+    }, [feeds]);
+
+    if (photoFeeds.length === 0) return null;
+
+    const scroll = (direction: 'left' | 'right') => {
+        if (!scrollRef.current) return;
+        const offset = direction === 'left' ? -300 : 300;
+        scrollRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+    };
+
+    const rotations = ['-rotate-1', 'rotate-1', '-rotate-2', 'rotate-2', '-rotate-0.5', 'rotate-1.5'];
+
+    return (
+        <div className="wauto mb-8 ani-show">
+            <div className="flex items-center justify-between mb-3 px-1">
+                <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-theme/10 text-theme text-xs">
+                        <i className="ri-polaroid-line" />
+                    </span>
+                    <span className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
+                        画廊随想
+                    </span>
+                    <span className="text-xs text-neutral-400">· 发现精选</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <button
+                        onClick={() => scroll('left')}
+                        title="向左翻动"
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-black/10 bg-w text-neutral-600 shadow-2xs transition hover:bg-neutral-100 hover:scale-105 active:scale-95 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    >
+                        <i className="ri-arrow-left-s-line text-sm" />
+                    </button>
+                    <button
+                        onClick={() => scroll('right')}
+                        title="向右翻动"
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-black/10 bg-w text-neutral-600 shadow-2xs transition hover:bg-neutral-100 hover:scale-105 active:scale-95 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    >
+                        <i className="ri-arrow-right-s-line text-sm" />
+                    </button>
+                </div>
+            </div>
+
+            <div
+                ref={scrollRef}
+                className="flex gap-4 overflow-x-auto pb-4 pt-2 px-1 scrollbar-none snap-x snap-mandatory"
+            >
+                {photoFeeds.map((feed, index) => {
+                    const rot = rotations[index % rotations.length];
+                    return (
+                        <Link
+                            key={feed.id}
+                            href={`/feed/${feed.id}`}
+                            className={`group relative shrink-0 w-60 sm:w-72 snap-start rounded-2xl border border-black/10 bg-w p-2.5 pb-3.5 shadow-xs hover:shadow-xl transition-all duration-300 transform ${rot} hover:rotate-0 hover:scale-[1.03] hover:z-20 dark:border-white/10 dark:bg-neutral-900`}
+                        >
+                            {/* Washi tape accent on top */}
+                            <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-10 h-3 bg-amber-100/80 dark:bg-amber-900/40 rounded-xs shadow-2xs rotate-[-3deg] pointer-events-none" />
+
+                            {/* Photo area */}
+                            <div className="aspect-[16/10] w-full overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800 relative">
+                                <img
+                                    src={feed.avatar}
+                                    alt={feed.title}
+                                    loading="lazy"
+                                    className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+                                />
+                            </div>
+
+                            {/* Title & Meta */}
+                            <div className="px-1 mt-2.5">
+                                <h3 className="font-bold text-sm text-neutral-800 dark:text-neutral-100 line-clamp-1 group-hover:text-theme transition">
+                                    {feed.title}
+                                </h3>
+                                <div className="mt-1 flex items-center justify-between text-[11px] text-neutral-400">
+                                    <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
+                                    {feed.readingTime && (
+                                        <span className="flex items-center gap-1">
+                                            <i className="ri-time-line text-xs" />
+                                            <span>{feed.readingTime} 分钟阅读</span>
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </Link>
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -266,6 +360,11 @@ export function FeedsPage() {
                         )}
                     </div>
                 </div>
+
+                {/* Hero Polaroid / Gallery Showcase (only on page 1 of normal feeds) */}
+                {listState === 'normal' && page === 1 && currentFeedData.length > 0 && (
+                    <HeroGalleryShowcase feeds={currentFeedData} />
+                )}
 
                 {/* Content: Skeleton, Empty State, or Feed List */}
                 {status === 'loading' ? (

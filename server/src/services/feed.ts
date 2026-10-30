@@ -124,10 +124,13 @@ export function FeedService(): Hono<{
         }))).map(({ content, hashtags, summary, ...other }: any) => {
             const avatar = extractImageWithMetadata(content);
             const plainText = stripMarkdown(content);
+            const contentLength = (content || "").length;
+            const readingTime = Math.max(1, Math.ceil(contentLength / 350));
             return {
                 summary: summary.length > 0 ? summary : plainText.length > 100 ? plainText.slice(0, 100) : plainText,
                 hashtags: hashtags.map(({ hashtag }: any) => hashtag),
                 avatar,
+                readingTime,
                 ...other
             };
         });
@@ -583,9 +586,12 @@ export function SearchService(): Hono<{
             });
             const data = pageResult.rows.map(({ content, hashtags, summary, ...other }: any) => {
                 const plainText = stripMarkdown(content);
+                const contentLength = (content || "").length;
+                const readingTime = Math.max(1, Math.ceil(contentLength / 350));
                 return {
                     summary: summary.length > 0 ? summary : plainText.length > 100 ? plainText.slice(0, 100) : plainText,
                     hashtags: hashtags.map(({ hashtag }: any) => hashtag),
+                    readingTime,
                     ...other,
                 };
             });

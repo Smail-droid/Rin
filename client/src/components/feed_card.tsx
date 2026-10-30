@@ -100,6 +100,7 @@ export type FeedCardProps = {
     top?: number;
     title: string;
     summary: string;
+    readingTime?: number;
     hashtags?: { id: number, name: string }[];
     createdAt: Date;
     updatedAt: Date;
@@ -107,12 +108,13 @@ export type FeedCardProps = {
     variant?: FeedCardVariant;
 };
 
-export function FeedCard({ id, title, avatar, draft, listed, top, summary, hashtags, createdAt, updatedAt, preview = false, variant }: FeedCardProps) {
+export function FeedCard({ id, title, avatar, draft, listed, top, summary, readingTime, hashtags, createdAt, updatedAt, preview = false, variant }: FeedCardProps) {
     const { t } = useTranslation();
     const siteConfig = useSiteConfig();
     const safeHashtags = Array.isArray(hashtags) ? hashtags : [];
     const activeVariant = normalizeFeedCardVariant(variant ?? siteConfig.feedCardVariant);
     const styles = FEED_CARD_STYLES[activeVariant];
+    const finalReadingMinutes = readingTime ?? estimateReadingMinutes(summary);
     const body = (
         <div className={styles.card}>
             {avatar ? (
@@ -141,7 +143,7 @@ export function FeedCard({ id, title, avatar, draft, listed, top, summary, hasht
                     </div>
                     <span className="inline-flex items-center gap-1 opacity-85">
                         <i className="ri-time-line text-xs" />
-                        <span>{t('reading_time', { minutes: estimateReadingMinutes(summary), defaultValue: `${estimateReadingMinutes(summary)} 分钟阅读` })}</span>
+                        <span>{t('reading_time', { minutes: finalReadingMinutes, defaultValue: `${finalReadingMinutes} 分钟阅读` })}</span>
                     </span>
                 </div>
             </div>

@@ -32,6 +32,8 @@ function getFileCategory(contentType: string, key: string): "image" | "document"
     return "other";
 }
 
+type CopyFormat = "url" | "html" | "markdown" | "bbcode";
+
 export function AdminFilesPage() {
     const { t } = useTranslation();
     const [files, setFiles] = useState<StorageFileItem[]>([]);
@@ -51,6 +53,14 @@ export function AdminFilesPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [typeFilter, setTypeFilter] = useState<"all" | "image" | "document" | "other">("all");
     const [sortBy, setSortBy] = useState<"newest" | "oldest" | "largest" | "smallest">("newest");
+
+    // Per-card format selection: key -> "url" | "html" | "markdown" | "bbcode"
+    const [cardFormats, setCardFormats] = useState<Record<string, CopyFormat>>({});
+    // Recently copied card key (for highlight animation)
+    const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+    // Fullscreen image preview lightbox
+    const [previewModalUrl, setPreviewModalUrl] = useState<string | null>(null);
 
     // Toast state
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -112,7 +122,6 @@ export function AdminFilesPage() {
                 if (data && data.url) {
                     lastUrl = data.url;
                     successCount++;
-                    // Prepend newly uploaded item to list
                     const newItem: StorageFileItem = {
                         key: file.name,
                         size: file.size,
@@ -170,7 +179,7 @@ export function AdminFilesPage() {
         }
     };
 
-    // Global Paste (Ctrl+V) handler for images
+    // Global Paste (Ctrl+V) handler
     useEffect(() => {
         const handlePaste = (e: ClipboardEvent) => {
             if (!e.clipboardData) return;
@@ -305,10 +314,31 @@ export function AdminFilesPage() {
         }
     };
 
-    // Copy format helpers
-    const copyToClipboard = (text: string, label: string) => {
-        navigator.clipboard.writeText(text);
-        showToast(`${label} ${t("admin_files.copied", "已复制！")}`);
+    // Helper: generate code for a file and format
+    const getCodeForFormat = (file: StorageFileItem, format: CopyFormat): string => {
+        const fileName = file.key.split("/").pop() || file.key;
+        const rawUrl = file.url;
+        switch (format) {
+            case "url":
+                return rawUrl;
+            case "html":
+                return `<img src="${rawUrl}" alt="${fileName}">`;
+            case "markdown":
+                return `![${fileName}](${rawUrl})`;
+            case "bbcode":
+                return `[img]${rawUrl}[/img]`;
+        }
+    };
+
+    const handleCopy = (file: StorageFileItem) => {
+        const format = cardFormats[file.key] || "html";
+        const code = getCodeForFormat(file, format);
+        navigator.clipboard.writeText(code);
+        setCopiedKey(file.key);
+        showToast(`${format.toUpperCase()} 格式已复制！`);
+        setTimeout(() => {
+            setCopiedKey((curr) => (curr === file.key ? null : curr));
+        }, 1500);
     };
 
     return (
@@ -318,6 +348,20 @@ export function AdminFilesPage() {
                 <div className="fixed bottom-6 right-6 z-50 flex max-w-[90vw] items-center gap-2 rounded-xl bg-neutral-900/90 text-white px-4 py-2.5 text-sm shadow-xl backdrop-blur-md dark:bg-white/90 dark:text-neutral-900 animate-bounce">
                     <i className="ri-check-line text-emerald-400 dark:text-emerald-600 font-bold" />
                     <span>{toastMessage}</span>
+                </div>
+            )}
+
+            {/* Lightbox Preview Modal */}
+            {previewModalUrl && (
+                <div
+                    onClick={() => setPreviewModalUrl(null)}
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm cursor-zoom-out animate-fade-in"
+                >
+                    <img
+                        src={previewModalUrl}
+                        alt="Preview"
+                        className="max-h-[92vh] max-w-[92vw] rounded-2xl shadow-2xl object-contain"
+                    />
                 </div>
             )}
 
@@ -331,7 +375,7 @@ export function AdminFilesPage() {
                 onChange={handleFileInputChange}
             />
 
-            {/* 1. Upload Zone (matching Screenshot 3) */}
+            {/* 1. Upload Zone */}
             <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -343,7 +387,6 @@ export function AdminFilesPage() {
                         : "border-sky-300 hover:border-sky-400 bg-w hover:bg-neutral-50/60 dark:border-sky-700/60 dark:hover:border-sky-500 dark:bg-neutral-900/40"
                 }`}
             >
-                {/* Center graphic: yellow folder */}
                 <div className="relative mb-3 flex items-center justify-center">
                     {isUploading ? (
                         <i className="ri-loader-4-line animate-spin text-5xl text-theme" />
@@ -361,7 +404,6 @@ export function AdminFilesPage() {
                     支持 JPG、JPEG、PNG、GIF、WebP 等格式，最大 10MB
                 </p>
 
-                {/* Hotkey tip badge (Screenshot 3) */}
                 <div className="mt-3.5 inline-flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 bg-neutral-100/70 dark:bg-white/5 px-3 py-1 rounded-full border border-black/5 dark:border-white/5">
                     <span>💡 你也可以直接</span>
                     <kbd className="rounded-md border border-black/10 bg-w px-1.5 py-0.5 text-[11px] font-mono font-semibold text-neutral-700 shadow-2xs dark:border-white/10 dark:bg-neutral-800 dark:text-neutral-300">
@@ -371,7 +413,7 @@ export function AdminFilesPage() {
                 </div>
             </div>
 
-            {/* 2. Upload History & Management (matching Screenshot 4) */}
+            {/* 2. Upload History & Management */}
             <div className="flex flex-col gap-4">
                 {/* Section Header */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/5 pb-3 dark:border-white/5">
@@ -380,7 +422,6 @@ export function AdminFilesPage() {
                             <i className="ri-image-2-line text-theme" />
                             <span>历史上传</span>
                         </h2>
-                        {/* Stats pills */}
                         <div className="flex items-center gap-2 text-xs">
                             <span className="rounded-full bg-neutral-100 dark:bg-white/10 px-2.5 py-0.5 font-semibold text-neutral-600 dark:text-neutral-300">
                                 {totalCount} 个文件
@@ -391,7 +432,6 @@ export function AdminFilesPage() {
                         </div>
                     </div>
 
-                    {/* Refresh & Select All Controls */}
                     <div className="flex items-center gap-3">
                         <button
                             onClick={handleRefresh}
@@ -406,7 +446,6 @@ export function AdminFilesPage() {
 
                 {/* Search & Filter Toolbar */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                    {/* Search Input */}
                     <div className="relative flex-1">
                         <i className="ri-search-line absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 text-sm" />
                         <input
@@ -430,7 +469,7 @@ export function AdminFilesPage() {
                     <select
                         value={typeFilter}
                         onChange={(e) => setTypeFilter(e.target.value as any)}
-                        className="rounded-xl border border-black/10 bg-w px-3 py-2 text-sm t-primary focus:outline-none dark:border-white/10 dark:bg-neutral-900"
+                        className="rounded-xl border border-black/10 bg-w px-3 py-2 text-sm t-primary focus:outline-none dark:border-white/10 dark:bg-neutral-900 cursor-pointer"
                     >
                         <option value="all">{t("admin_files.filter_all", "全部类型")}</option>
                         <option value="image">{t("admin_files.filter_images", "图片")}</option>
@@ -442,7 +481,7 @@ export function AdminFilesPage() {
                     <select
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value as any)}
-                        className="rounded-xl border border-black/10 bg-w px-3 py-2 text-sm t-primary focus:outline-none dark:border-white/10 dark:bg-neutral-900"
+                        className="rounded-xl border border-black/10 bg-w px-3 py-2 text-sm t-primary focus:outline-none dark:border-white/10 dark:bg-neutral-900 cursor-pointer"
                     >
                         <option value="newest">{t("admin_files.sort_newest", "最新上传")}</option>
                         <option value="oldest">{t("admin_files.sort_oldest", "最早上传")}</option>
@@ -478,12 +517,12 @@ export function AdminFilesPage() {
                 </div>
             </div>
 
-            {/* 3. Cards Grid (matching Screenshot 4) */}
+            {/* 3. Cards Grid (Expansive, Crisp Image Preview, 4-Color Format Switcher) */}
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-pulse">
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 animate-pulse">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
                         <div key={i} className="rounded-2xl border border-black/5 bg-w p-3 dark:border-white/5">
-                            <div className="aspect-[16/10] w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 mb-2.5" />
+                            <div className="h-48 w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 mb-2.5" />
                             <div className="h-4 w-3/4 rounded bg-neutral-200 dark:bg-neutral-800 mb-2" />
                             <div className="h-3 w-1/2 rounded bg-neutral-200 dark:bg-neutral-800 mb-2.5" />
                             <div className="h-7 w-full rounded-lg bg-neutral-200 dark:bg-neutral-800" />
@@ -501,28 +540,25 @@ export function AdminFilesPage() {
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
                     {filteredFiles.map((file) => {
                         const fileName = file.key.split("/").pop() || file.key;
                         const isImage = getFileCategory(file.contentType, file.key) === "image";
                         const isSelected = selectedKeys.has(file.key);
-
-                        // Formats for copy
-                        const rawUrl = file.url;
-                        const htmlTag = `<img src="${rawUrl}" alt="${fileName}">`;
-                        const markdownTag = `![${fileName}](${rawUrl})`;
-                        const bbcodeTag = `[img]${rawUrl}[/img]`;
+                        const currentFormat = cardFormats[file.key] || "html";
+                        const displayCode = getCodeForFormat(file, currentFormat);
+                        const isCopied = copiedKey === file.key;
 
                         return (
                             <div
                                 key={file.key}
-                                className={`group relative flex flex-col justify-between rounded-2xl border bg-w p-3 shadow-2xs transition hover:shadow-md dark:border-white/10 dark:bg-neutral-900 ${
+                                className={`group relative flex flex-col justify-between rounded-2xl border bg-w p-3.5 shadow-2xs transition hover:shadow-md dark:border-white/10 dark:bg-neutral-900 ${
                                     isSelected
                                         ? "border-theme ring-2 ring-theme/20"
                                         : "border-black/10"
                                 }`}
                             >
-                                {/* Top Overlay Controls: Checkbox & Delete */}
+                                {/* Top Overlay Controls: Checkbox, Zoom, Delete */}
                                 <div className="absolute left-4 top-4 z-10">
                                     <input
                                         type="checkbox"
@@ -531,22 +567,45 @@ export function AdminFilesPage() {
                                         className="h-4 w-4 rounded text-theme focus:ring-theme cursor-pointer shadow-xs"
                                     />
                                 </div>
-                                <button
-                                    onClick={() => handleDeleteSingle(file)}
-                                    title={t("admin_files.delete", "删除")}
-                                    className="absolute right-4 top-4 z-10 flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-rose-500 shadow-sm backdrop-blur-xs transition hover:bg-rose-500 hover:text-white dark:bg-neutral-800/90"
-                                >
-                                    <i className="ri-delete-bin-line text-sm" />
-                                </button>
+                                <div className="absolute right-4 top-4 z-10 flex items-center gap-1.5">
+                                    {isImage && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setPreviewModalUrl(file.url);
+                                            }}
+                                            title="查看原图大图"
+                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-neutral-600 shadow-xs backdrop-blur-xs transition hover:bg-neutral-900 hover:text-white dark:bg-neutral-800/90 dark:text-neutral-300"
+                                        >
+                                            <i className="ri-zoom-in-line text-xs" />
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteSingle(file);
+                                        }}
+                                        title={t("admin_files.delete", "删除")}
+                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-rose-500 shadow-xs backdrop-blur-xs transition hover:bg-rose-500 hover:text-white dark:bg-neutral-800/90"
+                                    >
+                                        <i className="ri-delete-bin-line text-xs" />
+                                    </button>
+                                </div>
 
-                                {/* Preview Area */}
-                                <div className="aspect-[16/10] w-full overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800/50 mb-2.5 flex items-center justify-center relative">
+                                {/* Preview Area (Crisp, Distortion-Free object-contain) */}
+                                <div
+                                    onClick={() => handleCopy(file)}
+                                    className="h-44 sm:h-48 w-full overflow-hidden rounded-xl bg-neutral-50/70 dark:bg-neutral-950/40 mb-2.5 flex items-center justify-center relative cursor-pointer group/img border border-black/5 dark:border-white/5"
+                                    title="点击复制图片链接"
+                                >
                                     {isImage ? (
                                         <img
                                             src={file.url}
                                             alt={fileName}
                                             loading="lazy"
-                                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                            className="max-h-full max-w-full object-contain p-1 transition duration-300 group-hover/img:scale-105"
                                             onError={(e) => {
                                                 (e.target as HTMLElement).style.display = "none";
                                             }}
@@ -575,59 +634,99 @@ export function AdminFilesPage() {
                                     </div>
                                 </div>
 
-                                {/* Link input preview with click-to-copy (matching Screenshot 4) */}
+                                {/* Link code input: Click to copy & turns green on copy (Screenshots 2-5) */}
                                 <div className="mb-2">
                                     <input
                                         type="text"
                                         readOnly
-                                        value={htmlTag}
+                                        value={displayCode}
                                         onClick={(e) => {
                                             (e.target as HTMLInputElement).select();
-                                            copyToClipboard(htmlTag, "HTML");
+                                            handleCopy(file);
                                         }}
-                                        title={t("admin_files.click_to_copy", "点击复制")}
-                                        className="w-full rounded-lg border border-black/10 bg-neutral-50 px-2.5 py-1 text-[11px] text-neutral-600 font-mono focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 cursor-pointer hover:bg-neutral-100 dark:hover:bg-white/10 transition"
+                                        title="点击复制当前代码"
+                                        className={`w-full rounded-xl px-2.5 py-1.5 text-[11px] font-mono cursor-pointer transition-all duration-200 focus:outline-none ${
+                                            isCopied
+                                                ? "border-2 border-emerald-500 bg-emerald-100 text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-200 font-semibold shadow-xs"
+                                                : "border border-black/10 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300"
+                                        }`}
                                     />
                                 </div>
 
-                                {/* Quick format copy buttons (🔗, </>, M↓, [BB]) matching Screenshot 4 */}
-                                <div className="grid grid-cols-4 gap-1.5 pt-1 border-t border-black/5 dark:border-white/5 text-xs">
-                                    {/* 1. Raw URL */}
+                                {/* 4-Color Format Switcher Buttons (Exact Match to Screenshots 2, 3, 4, 5) */}
+                                <div className="grid grid-cols-4 gap-1.5 pt-1.5 border-t border-black/5 dark:border-white/5 text-xs">
+                                    {/* 1. Raw URL (Lime Green when active) */}
                                     <button
                                         type="button"
-                                        onClick={() => copyToClipboard(rawUrl, "URL")}
-                                        title={t("admin_files.copy_url", "复制链接")}
-                                        className="flex items-center justify-center rounded-lg py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:hover:bg-white/10 dark:text-neutral-300 transition"
+                                        onClick={() =>
+                                            setCardFormats((prev) => ({
+                                                ...prev,
+                                                [file.key]: "url",
+                                            }))
+                                        }
+                                        title="切换为 URL 格式"
+                                        className={`flex items-center justify-center rounded-xl py-1.5 transition text-xs font-semibold ${
+                                            currentFormat === "url"
+                                                ? "bg-lime-500 text-white font-bold shadow-xs scale-[1.02]"
+                                                : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:hover:bg-white/10 dark:text-neutral-400"
+                                        }`}
                                     >
                                         <i className="ri-link text-xs" />
                                     </button>
 
-                                    {/* 2. HTML (highlighted yellow as in Screenshot 4) */}
+                                    {/* 2. HTML (Amber Yellow when active) */}
                                     <button
                                         type="button"
-                                        onClick={() => copyToClipboard(htmlTag, "HTML")}
-                                        title={t("admin_files.copy_html", "复制 HTML 标签")}
-                                        className="flex items-center justify-center rounded-lg py-1.5 bg-amber-200/80 hover:bg-amber-300 text-amber-900 dark:bg-amber-500/30 dark:hover:bg-amber-500/40 dark:text-amber-200 font-bold transition text-[11px]"
+                                        onClick={() =>
+                                            setCardFormats((prev) => ({
+                                                ...prev,
+                                                [file.key]: "html",
+                                            }))
+                                        }
+                                        title="切换为 HTML 格式"
+                                        className={`flex items-center justify-center rounded-xl py-1.5 transition text-[11px] font-bold ${
+                                            currentFormat === "html"
+                                                ? "bg-amber-400 text-neutral-900 font-bold shadow-xs scale-[1.02]"
+                                                : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:hover:bg-white/10 dark:text-neutral-400"
+                                        }`}
                                     >
                                         &lt;/&gt;
                                     </button>
 
-                                    {/* 3. Markdown */}
+                                    {/* 3. Markdown (Sky Blue when active) */}
                                     <button
                                         type="button"
-                                        onClick={() => copyToClipboard(markdownTag, "Markdown")}
-                                        title={t("admin_files.copy_markdown", "复制 Markdown 格式")}
-                                        className="flex items-center justify-center rounded-lg py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:hover:bg-white/10 dark:text-neutral-300 font-bold transition text-[11px]"
+                                        onClick={() =>
+                                            setCardFormats((prev) => ({
+                                                ...prev,
+                                                [file.key]: "markdown",
+                                            }))
+                                        }
+                                        title="切换为 Markdown 格式"
+                                        className={`flex items-center justify-center rounded-xl py-1.5 transition text-[11px] font-bold ${
+                                            currentFormat === "markdown"
+                                                ? "bg-sky-400 text-white font-bold shadow-xs scale-[1.02]"
+                                                : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:hover:bg-white/10 dark:text-neutral-400"
+                                        }`}
                                     >
                                         M&darr;
                                     </button>
 
-                                    {/* 4. BBCode */}
+                                    {/* 4. BBCode (Coral/Salmon Orange when active) */}
                                     <button
                                         type="button"
-                                        onClick={() => copyToClipboard(bbcodeTag, "BBCode")}
-                                        title={t("admin_files.copy_bbcode", "复制 BBCode 格式")}
-                                        className="flex items-center justify-center rounded-lg py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:hover:bg-white/10 dark:text-neutral-300 font-semibold transition text-[10px]"
+                                        onClick={() =>
+                                            setCardFormats((prev) => ({
+                                                ...prev,
+                                                [file.key]: "bbcode",
+                                            }))
+                                        }
+                                        title="切换为 BBCode 格式"
+                                        className={`flex items-center justify-center rounded-xl py-1.5 transition text-[10px] font-bold ${
+                                            currentFormat === "bbcode"
+                                                ? "bg-rose-400 text-white font-bold shadow-xs scale-[1.02]"
+                                                : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:hover:bg-white/10 dark:text-neutral-400"
+                                        }`}
                                     >
                                         [BB]
                                     </button>
