@@ -141,6 +141,20 @@ describe('UserService', () => {
             expect(res.status).toBe(302);
             const setCookie = res.headers.get('Set-Cookie');
             expect(setCookie).toContain('redirect_to');
+            expect(setCookie).toContain('http%3A%2F%2Flocalhost%3A5173%2Fcallback');
+        });
+
+        it('should sanitize untrusted referer in redirect_to cookie', async () => {
+            const res = await app.request('/github', {
+                method: 'GET',
+                headers: { 'Referer': 'https://evil-attacker.com/malicious' }
+            }, env);
+            
+            expect(res.status).toBe(302);
+            const setCookie = res.headers.get('Set-Cookie');
+            expect(setCookie).toContain('redirect_to');
+            // Malicious referer should not be preserved in redirect_to cookie
+            expect(setCookie).not.toContain('evil-attacker.com');
         });
     });
 

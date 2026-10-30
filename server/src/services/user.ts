@@ -11,6 +11,7 @@ import {
     InternalServerError,
     NotFoundError
 } from "../errors";
+import { getSafeCallbackUrl, isAllowedOrigin } from "../utils/security";
 
 export function UserService(): Hono {
     const app = new Hono();
@@ -29,12 +30,13 @@ export function UserService(): Hono {
             throw new BadRequestError('Referer header is required');
         }
 
-        // Build callback URL from referer
-        const refererUrl = new URL(referer);
-        const callbackUrl = new URL('/callback', refererUrl.origin);
+        // Validate referer and build a trusted callback URL
+        const callbackUrl = getSafeCallbackUrl(referer, c.env, c.req.url);
 
         setCookie(c, 'redirect_to', callbackUrl.toString(), {
             path: '/',
+            httpOnly: true,
+            sameSite: 'Lax',
         });
 
         const genState = await profileAsync(c, 'user_oauth_state', () => Promise.resolve(oauth2.generateState()));
@@ -138,7 +140,21 @@ export function UserService(): Hono {
         }
 
         const redirectTo = getCookie(c, 'redirect_to');
-        const redirect_url = new URL(redirectTo || '/');
+        deleteCookie(c, 'redirect_to');
+
+        let redirect_url: URL;
+        const requestOrigin = new URL(c.req.url).origin;
+        try {
+            const parsedTarget = new URL(redirectTo || '/callback', requestOrigin);
+            if (isAllowedOrigin(parsedTarget.origin, c.env, requestOrigin)) {
+                redirect_url = parsedTarget;
+            } else {
+                redirect_url = getSafeCallbackUrl(undefined, c.env, c.req.url);
+            }
+        } catch {
+            redirect_url = getSafeCallbackUrl(undefined, c.env, c.req.url);
+        }
+
         // Add token to URL for frontend to store (for cross-domain auth)
         if (authToken) {
             redirect_url.searchParams.set('token', authToken);

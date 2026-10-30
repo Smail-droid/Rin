@@ -21,6 +21,7 @@ import { Tips } from "../components/tips";
 import mermaid from "mermaid";
 import { AdjacentSection } from "../components/adjacent_feed.tsx";
 import { stripImageUrlMetadata } from "../utils/image-upload";
+import { safeHttpUrl } from "../utils/url";
 
 function extractFirstMarkdownImageUrl(content: string) {
   const match = /!\[.*?\]\((\S+?)(?:\s+"[^"]*")?\)/.exec(content);
@@ -609,9 +610,9 @@ function CommentItem({
           <span className="min-w-0 truncate text-base font-bold t-primary">
             {commenterName}
           </span>
-          {comment.guestWebsite && (
+          {safeHttpUrl(comment.guestWebsite) && (
             <a
-              href={comment.guestWebsite}
+              href={safeHttpUrl(comment.guestWebsite)}
               target="_blank"
               rel="noopener noreferrer"
               className="shrink-0 text-gray-400 transition-colors hover:text-theme"

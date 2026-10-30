@@ -147,6 +147,26 @@ describe('CommentService', () => {
             expect(row.guest_website).toBe('https://example.com');
         });
 
+        it('should sanitize javascript pseudo-protocol in guestWebsite', async () => {
+            const createRes = await app.request('/1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: 'Comment with malicious website',
+                    guestName: 'Attacker',
+                    guestWebsite: 'javascript:alert(1)',
+                }),
+            }, env);
+            expect(createRes.status).toBe(200);
+
+            const res = await app.request('/1', { method: 'GET' }, env);
+            expect(res.status).toBe(200);
+            const data = await res.json() as any[];
+            const maliciousComment = data.find((c: any) => c.guestName === 'Attacker');
+            expect(maliciousComment).toBeDefined();
+            expect(maliciousComment.guestWebsite).toBe('');
+        });
+
         it('should reject guest comment without guestName', async () => {
             const res = await app.request('/1', {
                 method: 'POST',

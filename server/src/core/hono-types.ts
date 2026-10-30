@@ -5,7 +5,7 @@ import type { Context as HonoContext } from "hono";
 export type DB = DrizzleD1Database<typeof import("../db/schema")>;
 
 export interface JWTUtils {
-    sign(payload: any): Promise<string>;
+    sign(payload: any, options?: { expiresIn?: string | number }): Promise<string>;
     verify(token: string): Promise<any | null>;
 }
 

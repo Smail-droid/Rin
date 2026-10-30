@@ -13,6 +13,7 @@ import { ProfileContext } from "../state/profile";
 
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { siteName } from "../utils/constants";
+import { safeHttpUrl } from "../utils/url";
 
 
 type FriendItem = {
@@ -197,9 +198,10 @@ function Friend({ friend }: { friend: FriendItem }) {
         { value: 0, label: t('friends.review.waiting') },
         { value: 1, label: t('friends.review.accepted') }
     ]
+    const safeUrl = safeHttpUrl(friend.url);
     return (
         <>
-            <a title={friend.name} href={friend.url} target="_blank" rel="noopener noreferrer" className="relative flex min-w-0 w-full flex-col items-center justify-center overflow-hidden rounded-xl bg-w p-4 bg-button">
+            <a title={friend.name} href={safeUrl || "#"} target={safeUrl ? "_blank" : undefined} rel="noopener noreferrer" className="relative flex min-w-0 w-full flex-col items-center justify-center overflow-hidden rounded-xl bg-w p-4 bg-button">
                 <ImageWithFallback
                     className="h-16 w-16 rounded-full"
                     imageClassName={friend.health.length > 0 ? "grayscale" : ""}

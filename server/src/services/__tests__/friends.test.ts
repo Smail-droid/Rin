@@ -114,6 +114,38 @@ describe('FriendService', () => {
             expect(res.status).toBe(200);
         });
 
+        it('should reject javascript pseudo-protocol in url or avatar', async () => {
+            const resBadUrl = await app.request('/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer mock_token_1',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: 'Friend',
+                    desc: 'Description',
+                    avatar: 'https://example.com/avatar.png',
+                    url: 'javascript:alert(1)',
+                }),
+            }, env);
+            expect(resBadUrl.status).toBe(400);
+
+            const resBadAvatar = await app.request('/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer mock_token_1',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: 'Friend',
+                    desc: 'Description',
+                    avatar: 'javascript:alert(2)',
+                    url: 'https://example.com',
+                }),
+            }, env);
+            expect(resBadAvatar.status).toBe(400);
+        });
+
         it('should validate input length', async () => {
             const res = await app.request('/', {
                 method: 'POST',

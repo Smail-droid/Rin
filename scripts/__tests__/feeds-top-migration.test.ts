@@ -1,13 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import { Database } from "bun:sqlite";
+import { fileURLToPath } from "node:url";
 import {
   ADD_FEEDS_TOP_COLUMN_SQL,
   FEEDS_TABLE_EXISTS_QUERY,
   FEEDS_TOP_EXISTS_QUERY,
   fixTopField,
 } from "../../cli/src/lib/db-migration";
+import path from "node:path";
 
-const SQL_DIR = new URL("../../server/sql/", import.meta.url).pathname;
+const SQL_DIR = fileURLToPath(new URL("../../server/sql/", import.meta.url));
 
 function splitStatements(sql: string): string[] {
   return sql
@@ -17,7 +19,7 @@ function splitStatements(sql: string): string[] {
 }
 
 async function applyMigration(db: Database, fileName: string) {
-  const sql = await Bun.file(`${SQL_DIR}${fileName}`).text();
+  const sql = await Bun.file(path.join(SQL_DIR, fileName)).text();
   for (const statement of splitStatements(sql)) {
     db.exec(statement);
   }

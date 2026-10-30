@@ -6,6 +6,7 @@ import * as schema from "../db/schema";
 import { friends } from "../db/schema";
 import { notify } from "../utils/webhook";
 import { resolveWebhookConfig } from "./config-helpers";
+import { isValidHttpUrl, isValidSafeMediaUrl, sanitizeHttpUrl } from "../utils/security";
 
 export function FriendService(): Hono {
     const app = new Hono();
@@ -52,16 +53,24 @@ export function FriendService(): Hono {
             return c.text('Friend Link Apply Disabled', 403);
         }
         
-        if (name.length > 20 || desc.length > 100 || avatar.length > 100 || url.length > 100) {
-            return c.text('Invalid input', 400);
-        }
-        
-        if (name.length === 0 || desc.length === 0 || avatar.length === 0 || url.length === 0) {
-            return c.text('Invalid input', 400);
-        }
-        
         if (!uid) {
             return c.text('Unauthorized', 401);
+        }
+
+        if (!name || !desc || !avatar || !url) {
+            return c.text('Invalid input', 400);
+        }
+        
+        if (name.length > 20 || desc.length > 100 || avatar.length > 200 || url.length > 200) {
+            return c.text('Invalid input', 400);
+        }
+        
+        if (!isValidHttpUrl(url)) {
+            return c.text('Invalid URL: must start with http:// or https://', 400);
+        }
+
+        if (!isValidSafeMediaUrl(avatar)) {
+            return c.text('Invalid avatar URL: unsafe protocol not allowed', 400);
         }
         
         if (!admin) {
@@ -128,6 +137,14 @@ export function FriendService(): Hono {
         
         if (!uid) {
             return c.text('Unauthorized', 401);
+        }
+
+        if (url && !isValidHttpUrl(url)) {
+            return c.text('Invalid URL: must start with http:// or https://', 400);
+        }
+
+        if (avatar && !isValidSafeMediaUrl(avatar)) {
+            return c.text('Invalid avatar URL: unsafe protocol not allowed', 400);
         }
         
         const exist = await profileAsync(c, 'friend_update_lookup', () => db.query.friends.findFirst({ where: eq(friends.id, parseInt(id)) }));

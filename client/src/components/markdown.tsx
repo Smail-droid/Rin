@@ -8,6 +8,7 @@ import {
 } from "react-syntax-highlighter/dist/esm/styles/prism";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import gfm from "remark-gfm";
 import remarkMermaid from "../remark/remarkMermaid";
 import { remarkAlert } from "remark-github-blockquote-alert";
@@ -22,6 +23,68 @@ import { drawBlurhashToCanvas } from "../utils/blurhash";
 import { useColorMode } from "../utils/darkModeUtils";
 import { parseImageUrlMetadata } from "../utils/image-upload";
 import { useImageLoadState } from "../utils/use-image-load-state";
+import { safeHttpUrl } from "../utils/url";
+
+const sanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames || []),
+    "iframe",
+    "section",
+    "math",
+    "annotation",
+    "semantics",
+    "mtext",
+    "mn",
+    "mo",
+    "mi",
+    "mspace",
+    "mover",
+    "munder",
+    "munderover",
+    "msup",
+    "msub",
+    "msubsup",
+    "mfrac",
+    "mroot",
+    "msqrt",
+    "mtable",
+    "mtr",
+    "mtd",
+    "mlabeledtr",
+    "mrow",
+    "menclose",
+    "mstyle",
+    "mpadded",
+    "mphantom",
+    "mglyph",
+  ],
+  attributes: {
+    ...defaultSchema.attributes,
+    "*": [
+      ...(defaultSchema.attributes?.["*"] || []),
+      "className",
+      "style",
+      "dataFootnotes",
+      "data-footnotes",
+    ],
+    iframe: [
+      "src",
+      "title",
+      "width",
+      "height",
+      "allow",
+      "allowFullScreen",
+      "frameBorder",
+      "scrolling",
+      "loading",
+    ],
+  },
+  protocols: {
+    ...defaultSchema.protocols,
+    src: ["http", "https"],
+  },
+};
 
 
 const countNewlinesBeforeNode = (text: string, offset: number) => {
@@ -138,7 +201,7 @@ export function Markdown({ content }: { content: string }) {
       className="toc-content min-w-0 dark:text-neutral-300 [overflow-wrap:anywhere]"
       remarkPlugins={[gfm, remarkMermaid, remarkMath, remarkAlert, remarkBreaks]}
       children={content}
-      rehypePlugins={[rehypeKatex, rehypeRaw]}
+      rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema], rehypeKatex]}
       components={{
         img({ node, src, ...props }) {
           const offset = node!.position!.start.offset!;
@@ -419,17 +482,21 @@ export function Markdown({ content }: { content: string }) {
           return <section {...props}>{modifiedChildren}</section>;
         },
         iframe({ node, src, title, ...props }) {
+          const safeSrc = safeHttpUrl(src);
+          if (!safeSrc) {
+            return null;
+          }
           return (
             <div className="my-4 w-full">
               <iframe
                 {...props}
-                src={src}
+                src={safeSrc}
                 title={title || "Embedded content"}
                 className="w-full rounded-xl border border-black/10 dark:border-white/10"
                 style={{ minHeight: "400px" }}
                 loading="lazy"
                 referrerPolicy="no-referrer"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                sandbox="allow-scripts allow-popups allow-forms allow-presentation"
               />
             </div>
           );

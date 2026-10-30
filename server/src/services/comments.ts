@@ -5,6 +5,7 @@ import { comments, feeds, users } from "../db/schema";
 import { profileAsync } from "../core/server-timing";
 import { notify } from "../utils/webhook";
 import { resolveWebhookConfig } from "./config-helpers";
+import { sanitizeHttpUrl } from "../utils/security";
 
 export function CommentService(): Hono {
     const app = new Hono();
@@ -30,14 +31,14 @@ export function CommentService(): Hono {
                 // 登录用户的评论
                 return c;
             }
-            // 游客评论：去掉空的 user 字段，保留 guestName 等
+            // 游客评论：去掉空的 user 字段，保留 guestName 等，并清洗 guestWebsite
             const { user, ...rest } = c;
             return {
                 ...rest,
                 user: null,
                 guestName: rest.guestName || "",
                 guestEmail: rest.guestEmail || "",
-                guestWebsite: rest.guestWebsite || "",
+                guestWebsite: sanitizeHttpUrl(rest.guestWebsite || ""),
             };
         });
         
@@ -107,13 +108,15 @@ export function CommentService(): Hono {
             return c.text('Guest name is required', 400);
         }
 
+        const safeGuestWebsite = sanitizeHttpUrl(guestWebsite);
+
         await db.insert(comments).values({
             feedId,
             userId: null,
             content,
             guestName: guestName.trim(),
             guestEmail: guestEmail?.trim() || "",
-            guestWebsite: guestWebsite?.trim() || "",
+            guestWebsite: safeGuestWebsite,
             approved: 1,
         });
 

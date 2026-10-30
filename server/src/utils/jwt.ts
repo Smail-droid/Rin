@@ -16,8 +16,12 @@ export interface JWTPayloadSpec {
     iat?: number
 }
 
+export interface JWTSignOptions {
+    expiresIn?: string | number;
+}
+
 export interface JWTUtils {
-    sign: (payload: any) => Promise<string>;
+    sign: (payload: any, options?: JWTSignOptions) => Promise<string>;
     verify: (jwt?: string) => Promise<any | false>;
 }
 
@@ -28,10 +32,12 @@ export function createJWT(secret: string | Uint8Array | KeyLike): JWTUtils {
     const alg = 'HS256';
 
     return {
-        sign: async (payload: any) => {
+        sign: async (payload: any, options?: JWTSignOptions) => {
+            const expiresIn = options?.expiresIn ?? '7d';
             const jwt = new SignJWT(payload)
                 .setProtectedHeader({ alg })
-                .setIssuedAt();
+                .setIssuedAt()
+                .setExpirationTime(expiresIn);
             
             return jwt.sign(key);
         },
