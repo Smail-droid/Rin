@@ -13,7 +13,15 @@ function applyViewportScaling() {
 
 export function useAppBootstrap() {
   const initializedRef = useRef(false);
-  const [profile, setProfile] = useState<Profile | undefined | null>(undefined);
+  const [profile, setProfile] = useState<Profile | undefined | null>(() => {
+    try {
+      const cached = sessionStorage.getItem("cached_profile");
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {}
+    return undefined;
+  });
   const [config, setConfig] = useState<ConfigWrapper>(new ConfigWrapper({}, new Map()));
 
   useEffect(() => {
@@ -31,13 +39,20 @@ export function useAppBootstrap() {
 
     client.user.profile().then(({ data, error }) => {
       if (data) {
-        setProfile({
+        const nextProfile: Profile = {
           id: data.id,
           avatar: data.avatar || "",
           permission: data.permission,
           name: data.username,
-        });
+        };
+        try {
+          sessionStorage.setItem("cached_profile", JSON.stringify(nextProfile));
+        } catch {}
+        setProfile(nextProfile);
       } else if (error) {
+        try {
+          sessionStorage.removeItem("cached_profile");
+        } catch {}
         setProfile(null);
       }
     });

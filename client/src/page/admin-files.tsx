@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { client } from "../app/runtime";
 import type { StorageFileItem } from "../api/client";
@@ -42,6 +42,11 @@ export function AdminFilesPage() {
     const [loadingMore, setLoadingMore] = useState(false);
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
+    // Upload state
+    const [isDragging, setIsDragging] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     // Filters and sorting
     const [searchQuery, setSearchQuery] = useState("");
     const [typeFilter, setTypeFilter] = useState<"all" | "image" | "document" | "other">("all");
@@ -52,7 +57,7 @@ export function AdminFilesPage() {
 
     const showToast = useCallback((msg: string) => {
         setToastMessage(msg);
-        setTimeout(() => setToastMessage(null), 2000);
+        setTimeout(() => setToastMessage(null), 2500);
     }, []);
 
     const fetchFiles = useCallback(async (isRefresh = false, appendCursor?: string) => {
@@ -91,6 +96,104 @@ export function AdminFilesPage() {
     useEffect(() => {
         fetchFiles();
     }, [fetchFiles]);
+
+    // Handle file upload
+    const uploadFiles = useCallback(async (fileList: FileList | File[]) => {
+        const filesToUpload = Array.from(fileList);
+        if (filesToUpload.length === 0) return;
+
+        setIsUploading(true);
+        let successCount = 0;
+        let lastUrl = "";
+
+        for (const file of filesToUpload) {
+            try {
+                const { data, error } = await client.storage.upload(file, file.name);
+                if (data && data.url) {
+                    lastUrl = data.url;
+                    successCount++;
+                    // Prepend newly uploaded item to list
+                    const newItem: StorageFileItem = {
+                        key: file.name,
+                        size: file.size,
+                        uploaded: new Date().toISOString(),
+                        contentType: file.type || "application/octet-stream",
+                        url: data.url,
+                    };
+                    setFiles((prev) => [newItem, ...prev]);
+                } else if (error) {
+                    console.error("Upload error:", error);
+                }
+            } catch (err) {
+                console.error("Upload failed:", err);
+            }
+        }
+
+        setIsUploading(false);
+
+        if (successCount > 0) {
+            if (lastUrl) {
+                navigator.clipboard.writeText(lastUrl);
+                showToast(`上传成功 (${successCount} 个文件)，链接已复制！`);
+            } else {
+                showToast(`上传成功 (${successCount} 个文件)`);
+            }
+        }
+    }, [showToast]);
+
+    // Drag and drop handlers
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            uploadFiles(e.dataTransfer.files);
+        }
+    };
+
+    const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            uploadFiles(e.target.files);
+            e.target.value = "";
+        }
+    };
+
+    // Global Paste (Ctrl+V) handler for images
+    useEffect(() => {
+        const handlePaste = (e: ClipboardEvent) => {
+            if (!e.clipboardData) return;
+            const items = e.clipboardData.items;
+            const imageFiles: File[] = [];
+
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.startsWith("image/")) {
+                    const file = items[i].getAsFile();
+                    if (file) {
+                        imageFiles.push(file);
+                    }
+                }
+            }
+
+            if (imageFiles.length > 0) {
+                uploadFiles(imageFiles);
+            }
+        };
+
+        window.addEventListener("paste", handlePaste);
+        return () => window.removeEventListener("paste", handlePaste);
+    }, [uploadFiles]);
 
     const handleRefresh = () => {
         setSelectedKeys(new Set());
@@ -209,7 +312,7 @@ export function AdminFilesPage() {
     };
 
     return (
-        <div className="relative flex flex-col gap-5 ani-show">
+        <div className="relative flex flex-col gap-6 ani-show">
             {/* Toast Notification */}
             {toastMessage && (
                 <div className="fixed bottom-6 right-6 z-50 flex max-w-[90vw] items-center gap-2 rounded-xl bg-neutral-900/90 text-white px-4 py-2.5 text-sm shadow-xl backdrop-blur-md dark:bg-white/90 dark:text-neutral-900 animate-bounce">
@@ -218,42 +321,90 @@ export function AdminFilesPage() {
                 </div>
             )}
 
-            {/* Top Toolbar / Stats Bar */}
+            {/* Hidden file input */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={handleFileInputChange}
+            />
+
+            {/* 1. Upload Zone (matching Screenshot 3) */}
+            <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`relative flex flex-col items-center justify-center py-10 px-6 rounded-3xl border-2 border-dashed cursor-pointer transition-all duration-200 select-none ${
+                    isDragging
+                        ? "border-sky-500 bg-sky-50/70 dark:border-sky-400 dark:bg-sky-950/30 scale-[1.01] shadow-md"
+                        : "border-sky-300 hover:border-sky-400 bg-w hover:bg-neutral-50/60 dark:border-sky-700/60 dark:hover:border-sky-500 dark:bg-neutral-900/40"
+                }`}
+            >
+                {/* Center graphic: yellow folder */}
+                <div className="relative mb-3 flex items-center justify-center">
+                    {isUploading ? (
+                        <i className="ri-loader-4-line animate-spin text-5xl text-theme" />
+                    ) : (
+                        <div className="text-6xl drop-shadow-sm transform transition duration-200 hover:scale-105">
+                            📁
+                        </div>
+                    )}
+                </div>
+
+                <p className="text-base sm:text-lg font-semibold text-neutral-800 dark:text-neutral-100">
+                    {isUploading ? "正在上传中..." : "点击或拖拽上传图片"}
+                </p>
+                <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
+                    支持 JPG、JPEG、PNG、GIF、WebP 等格式，最大 10MB
+                </p>
+
+                {/* Hotkey tip badge (Screenshot 3) */}
+                <div className="mt-3.5 inline-flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 bg-neutral-100/70 dark:bg-white/5 px-3 py-1 rounded-full border border-black/5 dark:border-white/5">
+                    <span>💡 你也可以直接</span>
+                    <kbd className="rounded-md border border-black/10 bg-w px-1.5 py-0.5 text-[11px] font-mono font-semibold text-neutral-700 shadow-2xs dark:border-white/10 dark:bg-neutral-800 dark:text-neutral-300">
+                        Ctrl+V
+                    </kbd>
+                    <span>粘贴剪贴板中的图片</span>
+                </div>
+            </div>
+
+            {/* 2. Upload History & Management (matching Screenshot 4) */}
             <div className="flex flex-col gap-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    {/* Stats pills */}
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                        <div className="flex items-center gap-2 rounded-xl border border-black/10 bg-neutral-50 px-3 py-2 dark:border-white/10 dark:bg-white/5 shadow-xs">
-                            <i className="ri-file-text-line text-neutral-400" />
-                            <span className="text-neutral-500 dark:text-neutral-400">{t("admin_files.total_files_label", "文件")}</span>
-                            <span className="font-bold text-neutral-800 dark:text-neutral-200">{totalCount}</span>
-                        </div>
-                        <div className="flex items-center gap-2 rounded-xl border border-black/10 bg-neutral-50 px-3 py-2 dark:border-white/10 dark:bg-white/5 shadow-xs">
-                            <i className="ri-database-2-line text-amber-500" />
-                            <span className="text-neutral-500 dark:text-neutral-400">{t("admin_files.total_size_label", "空间")}</span>
-                            <span className="font-bold text-neutral-800 dark:text-neutral-200">{formatFileSize(totalSize)}</span>
-                        </div>
-                        <div className="flex items-center gap-2 rounded-xl border border-black/10 bg-neutral-50 px-3 py-2 dark:border-white/10 dark:bg-white/5 shadow-xs">
-                            <i className="ri-pie-chart-line text-indigo-500" />
-                            <span className="text-neutral-500 dark:text-neutral-400">{t("admin_files.filter_label", "类型")}</span>
-                            <span className="font-bold text-neutral-800 dark:text-neutral-200">
-                                {typeFilter === "all" ? t("admin_files.filter_all", "全部类型") : typeFilter === "image" ? t("admin_files.filter_images", "图片文件") : typeFilter === "document" ? t("admin_files.filter_documents", "文档") : t("admin_files.filter_other", "其他")}
+                {/* Section Header */}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/5 pb-3 dark:border-white/5">
+                    <div className="flex items-center gap-3">
+                        <h2 className="flex items-center gap-2 text-lg font-bold t-primary">
+                            <i className="ri-image-2-line text-theme" />
+                            <span>历史上传</span>
+                        </h2>
+                        {/* Stats pills */}
+                        <div className="flex items-center gap-2 text-xs">
+                            <span className="rounded-full bg-neutral-100 dark:bg-white/10 px-2.5 py-0.5 font-semibold text-neutral-600 dark:text-neutral-300">
+                                {totalCount} 个文件
+                            </span>
+                            <span className="rounded-full bg-neutral-100 dark:bg-white/10 px-2.5 py-0.5 font-semibold text-neutral-600 dark:text-neutral-300">
+                                {formatFileSize(totalSize)}
                             </span>
                         </div>
                     </div>
 
-                    {/* Refresh button */}
-                    <button
-                        onClick={handleRefresh}
-                        disabled={refreshing}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 bg-w px-3.5 py-2 text-xs font-semibold t-primary shadow-xs transition hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5 disabled:opacity-50"
-                    >
-                        <i className={`ri-refresh-line text-sm ${refreshing ? "animate-spin" : ""}`} />
-                        <span>{t("admin_files.refresh", "刷新")}</span>
-                    </button>
+                    {/* Refresh & Select All Controls */}
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleRefresh}
+                            disabled={refreshing}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 bg-w px-3 py-1.5 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5 disabled:opacity-50"
+                        >
+                            <i className={`ri-refresh-line text-sm ${refreshing ? "animate-spin" : ""}`} />
+                            <span>{t("admin_files.refresh", "刷新")}</span>
+                        </button>
+                    </div>
                 </div>
 
-                {/* Search & Filter Bar */}
+                {/* Search & Filter Toolbar */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
                     {/* Search Input */}
                     <div className="relative flex-1">
@@ -301,7 +452,7 @@ export function AdminFilesPage() {
                 </div>
 
                 {/* Batch selection bar */}
-                <div className="flex items-center justify-between border-b border-black/5 pb-2 dark:border-white/5">
+                <div className="flex items-center justify-between pt-1">
                     <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-neutral-600 dark:text-neutral-300 select-none">
                         <input
                             type="checkbox"
@@ -327,7 +478,7 @@ export function AdminFilesPage() {
                 </div>
             </div>
 
-            {/* File List / Grid */}
+            {/* 3. Cards Grid (matching Screenshot 4) */}
             {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-pulse">
                     {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
@@ -340,13 +491,13 @@ export function AdminFilesPage() {
                     ))}
                 </div>
             ) : filteredFiles.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-black/10 dark:border-white/10 rounded-2xl">
                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-400 dark:bg-white/5 dark:text-neutral-500 mb-3">
                         <i className="ri-folder-open-line text-3xl" />
                     </div>
                     <p className="text-base font-semibold t-primary">{t("admin_files.no_files", "暂无文件")}</p>
                     <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 max-w-sm">
-                        {t("admin_files.no_files_desc", "通过编辑器上传图片或文件后将在此处自动呈现与管理")}
+                        点击上方上传区或按 Ctrl+V 即可快速上传图片至 R2 存储桶
                     </p>
                 </div>
             ) : (
@@ -365,7 +516,7 @@ export function AdminFilesPage() {
                         return (
                             <div
                                 key={file.key}
-                                className={`group relative flex flex-col justify-between rounded-2xl border bg-w p-3 shadow-xs transition hover:shadow-md dark:border-white/10 dark:bg-neutral-900 ${
+                                className={`group relative flex flex-col justify-between rounded-2xl border bg-w p-3 shadow-2xs transition hover:shadow-md dark:border-white/10 dark:bg-neutral-900 ${
                                     isSelected
                                         ? "border-theme ring-2 ring-theme/20"
                                         : "border-black/10"
@@ -377,13 +528,13 @@ export function AdminFilesPage() {
                                         type="checkbox"
                                         checked={isSelected}
                                         onChange={() => toggleSelectKey(file.key)}
-                                        className="h-4 w-4 rounded text-theme focus:ring-theme cursor-pointer"
+                                        className="h-4 w-4 rounded text-theme focus:ring-theme cursor-pointer shadow-xs"
                                     />
                                 </div>
                                 <button
                                     onClick={() => handleDeleteSingle(file)}
                                     title={t("admin_files.delete", "删除")}
-                                    className="absolute right-4 top-4 z-10 flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 text-rose-500 shadow-sm backdrop-blur-xs transition hover:bg-rose-500 hover:text-white dark:bg-neutral-800/80"
+                                    className="absolute right-4 top-4 z-10 flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-rose-500 shadow-sm backdrop-blur-xs transition hover:bg-rose-500 hover:text-white dark:bg-neutral-800/90"
                                 >
                                     <i className="ri-delete-bin-line text-sm" />
                                 </button>
@@ -424,7 +575,7 @@ export function AdminFilesPage() {
                                     </div>
                                 </div>
 
-                                {/* Link input preview with click-to-copy */}
+                                {/* Link input preview with click-to-copy (matching Screenshot 4) */}
                                 <div className="mb-2">
                                     <input
                                         type="text"
@@ -435,11 +586,11 @@ export function AdminFilesPage() {
                                             copyToClipboard(htmlTag, "HTML");
                                         }}
                                         title={t("admin_files.click_to_copy", "点击复制")}
-                                        className="w-full rounded-lg border border-black/5 bg-neutral-50 px-2 py-1 text-[11px] text-neutral-500 font-mono focus:outline-none dark:border-white/5 dark:bg-white/5 cursor-pointer hover:bg-neutral-100 dark:hover:bg-white/10 transition"
+                                        className="w-full rounded-lg border border-black/10 bg-neutral-50 px-2.5 py-1 text-[11px] text-neutral-600 font-mono focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 cursor-pointer hover:bg-neutral-100 dark:hover:bg-white/10 transition"
                                     />
                                 </div>
 
-                                {/* Quick format copy buttons (URL, HTML, Markdown, BBCode) */}
+                                {/* Quick format copy buttons (🔗, </>, M↓, [BB]) matching Screenshot 4 */}
                                 <div className="grid grid-cols-4 gap-1.5 pt-1 border-t border-black/5 dark:border-white/5 text-xs">
                                     {/* 1. Raw URL */}
                                     <button
@@ -451,12 +602,12 @@ export function AdminFilesPage() {
                                         <i className="ri-link text-xs" />
                                     </button>
 
-                                    {/* 2. HTML */}
+                                    {/* 2. HTML (highlighted yellow as in Screenshot 4) */}
                                     <button
                                         type="button"
                                         onClick={() => copyToClipboard(htmlTag, "HTML")}
                                         title={t("admin_files.copy_html", "复制 HTML 标签")}
-                                        className="flex items-center justify-center rounded-lg py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:hover:bg-amber-900/40 dark:text-amber-400 font-bold transition text-[11px]"
+                                        className="flex items-center justify-center rounded-lg py-1.5 bg-amber-200/80 hover:bg-amber-300 text-amber-900 dark:bg-amber-500/30 dark:hover:bg-amber-500/40 dark:text-amber-200 font-bold transition text-[11px]"
                                     >
                                         &lt;/&gt;
                                     </button>
@@ -493,7 +644,7 @@ export function AdminFilesPage() {
                     <button
                         onClick={handleLoadMore}
                         disabled={loadingMore}
-                        className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-w px-6 py-2.5 text-sm font-medium t-primary shadow-xs transition hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-w px-6 py-2.5 text-sm font-medium t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5 disabled:opacity-50"
                     >
                         {loadingMore && <i className="ri-loader-4-line animate-spin" />}
                         <span>{t("admin_files.load_more", "加载更多")}</span>

@@ -345,20 +345,35 @@ export function UserAvatar({
               </div>
             </button>
             {profile.permission ? (
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  setLocation("/admin/writing");
-                }}
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-              >
-                <i className="ri-dashboard-line" />
-                <span>{t("admin.title")}</span>
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setLocation("/admin/writing");
+                  }}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  <i className="ri-dashboard-line" />
+                  <span>{t("admin.title")}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setLocation("/admin/files");
+                  }}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  <i className="ri-folder-image-line" />
+                  <span>{t("admin_files.title") || "R2 图床"}</span>
+                </button>
+              </>
             ) : null}
             <button
               onClick={async () => {
                 setIsOpen(false);
+                try {
+                  sessionStorage.removeItem("cached_profile");
+                } catch {}
                 await client.user.logout();
                 removeAuthToken();
                 window.location.reload();

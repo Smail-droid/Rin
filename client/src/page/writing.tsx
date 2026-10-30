@@ -249,7 +249,19 @@ export function WritingPage({ id }: { id?: number }) {
                 {id !== undefined ? t("update.title") : t("publish.title")}
               </p>
             </div>
-            <PublishButton className="w-auto" />
+            <div className="flex items-center gap-3">
+              <a
+                href="/admin/files"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-w px-4 py-2 text-xs font-semibold t-primary shadow-xs transition hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"
+                title={t("admin_files.title") || "R2 图床"}
+              >
+                <i className="ri-folder-image-line text-theme text-sm" />
+                <span>{t("admin_files.title") || "R2 图床"}</span>
+              </a>
+              <PublishButton className="w-auto" />
+            </div>
           </div>
 
           <div className="mt-5 grid gap-4 lg:grid-cols-2">

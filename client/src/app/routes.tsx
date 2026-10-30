@@ -155,13 +155,22 @@ function AppRoute({
   const siteConfig = useSiteConfig();
   const { t } = useTranslation();
 
-  const content =
-    requirePermission && !profile?.permission ? <ErrorPage error={t("error.permission_denied")} /> : children;
-
   return (
     <Route path={path}>
       {(params) => {
-        const resolvedContent = typeof content === "function" ? content(params) : content;
+        if (requirePermission && profile === undefined) {
+          return (
+            <div className="flex flex-col items-center justify-center py-24 ani-show">
+              <i className="ri-loader-4-line animate-spin text-3xl text-theme mb-3" />
+            </div>
+          );
+        }
+
+        if (requirePermission && !profile?.permission) {
+          return <ErrorPage error={t("error.permission_denied")} />;
+        }
+
+        const resolvedContent = typeof children === "function" ? children(params) : children;
         const layoutDefinition = getHeaderLayoutDefinition(siteConfig.headerLayout);
 
         return layoutDefinition.renderRouteShell({
@@ -190,16 +199,35 @@ function AdminRoute({
 }) {
   const profile = useContext(ProfileContext);
   const { t } = useTranslation();
-  const content =
-    requirePermission && !profile?.permission ? <ErrorPage error={t("error.permission_denied")} /> : children;
-
   return (
     <Route path={path}>
-      {(params) => (
-        <AdminLayout title={title} description={description}>
-          {typeof content === "function" ? content(params) : content}
-        </AdminLayout>
-      )}
+      {(params) => {
+        // While checking authentication, show a clean loading spinner inside AdminLayout
+        if (requirePermission && profile === undefined) {
+          return (
+            <AdminLayout title={title} description={description}>
+              <div className="flex flex-col items-center justify-center py-24 ani-show">
+                <i className="ri-loader-4-line animate-spin text-3xl text-theme mb-3" />
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                  {t("loading") || "Loading..."}
+                </p>
+              </div>
+            </AdminLayout>
+          );
+        }
+
+        // If verified without permission, show permission denied
+        if (requirePermission && !profile?.permission) {
+          return <ErrorPage error={t("error.permission_denied")} />;
+        }
+
+        const resolvedContent = typeof children === "function" ? children(params) : children;
+        return (
+          <AdminLayout title={title} description={description}>
+            {resolvedContent}
+          </AdminLayout>
+        );
+      }}
     </Route>
   );
 }
