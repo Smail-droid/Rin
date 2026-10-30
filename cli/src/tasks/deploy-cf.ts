@@ -271,6 +271,12 @@ export async function runCloudflareDeploy(target: "all" | "server" | "client" = 
     `)} >> wrangler.toml`.quiet();
   }
 
+  // Sync root wrangler.toml with server/wrangler.toml so commands running in server/ have the real D1 UUID
+  if (await Bun.file("wrangler.toml").exists()) {
+    const configContent = await Bun.file("wrangler.toml").text();
+    await Bun.write("server/wrangler.toml", configContent);
+  }
+
   const migrationVersion = await getMigrationVersion("remote", dbName);
   // Migration 0011 indexes feeds.top, so repair the column before pending SQL runs.
   await fixTopField("remote", dbName);

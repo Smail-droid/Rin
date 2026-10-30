@@ -1,7 +1,13 @@
 import { getWranglerEnv } from "./wrangler";
 
 const bunExec = process.execPath;
-const wranglerCwd = "server";
+function getWranglerCwd() {
+  const rootWrangler = Bun.file("wrangler.toml");
+  if (rootWrangler.size > 0) {
+    return ".";
+  }
+  return "server";
+}
 
 export const FEEDS_TABLE_EXISTS_QUERY =
   "SELECT name FROM sqlite_master WHERE type='table' AND name='feeds'";
@@ -19,7 +25,7 @@ export function getMigrationFileVersion(fileName: string) {
 
 async function runWranglerJson(args: string[]) {
   const proc = Bun.spawn([bunExec, "x", "wrangler", ...args], {
-    cwd: wranglerCwd,
+    cwd: getWranglerCwd(),
     env: getWranglerEnv(),
     stdout: "pipe",
     stderr: "pipe",
@@ -39,7 +45,7 @@ async function runWranglerJson(args: string[]) {
 
 async function runWranglerQuiet(args: string[]) {
   const proc = Bun.spawn([bunExec, "x", "wrangler", ...args], {
-    cwd: wranglerCwd,
+    cwd: getWranglerCwd(),
     env: getWranglerEnv(),
     stdout: "pipe",
     stderr: "pipe",
