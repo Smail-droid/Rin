@@ -399,10 +399,12 @@ describe('StorageService', () => {
             S3_ACCESS_HOST: 'https://cdn.example.com' as any,
         });
 
-        it('should require admin permission for GET /files', async () => {
-            const userApp = createAppWithEnv(r2Env, 1, false);
+        it('should allow public listing for GET /files', async () => {
+            const userApp = createAppWithEnv(r2Env, undefined, false);
             const res = await userApp.request('/files', { method: 'GET' }, r2Env);
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(200);
+            const data = await res.json() as any;
+            expect(data.files).toHaveLength(2);
         });
 
         it('should list files for admin', async () => {

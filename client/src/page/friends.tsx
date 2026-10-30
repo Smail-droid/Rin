@@ -1,5 +1,6 @@
 import i18next from "i18next";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Link } from "wouter";
 import { Helmet } from 'react-helmet';
 import { useTranslation } from "react-i18next";
 import { FlatActionButton, FlatPanel, Modal, SearchableSelect } from "@rin/ui";
@@ -96,6 +97,24 @@ export function FriendsPage() {
         </Helmet>
         <Waiting for={friendsAvailable.length !== 0 || friendsUnavailable.length !== 0 || status === "idle"}>
             <main className="w-full flex flex-col justify-center items-center mb-8 t-primary ani-show">
+                <div className="wauto text-start py-4 mb-4 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
+                    <div>
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 text-xs font-bold mb-2">
+                            <i className="ri-heart-pulse-line" />
+                            <span>邻家友链</span>
+                        </div>
+                        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight t-primary">
+                            {t('friends.title')}
+                        </h1>
+                    </div>
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900"
+                    >
+                        <i className="ri-arrow-left-line" />
+                        <span>返回画廊</span>
+                    </Link>
+                </div>
                 <FriendList title={t('friends.title')} show={friendsAvailable.length > 0} friends={friendsAvailable} />
                 <FriendList title={t('friends.left')} show={friendsUnavailable.length > 0} friends={friendsUnavailable} />
                 <FriendList title={t('friends.review.waiting')} show={waitList.length > 0} friends={waitList} />

@@ -93,6 +93,10 @@ export function AppRoutes() {
         <AdminFilesPage />
       </AdminRoute>
 
+      <AppRoute path="/gallery" paddingClassName="mx-3 sm:mx-6">
+        <AdminFilesPage readOnly />
+      </AppRoute>
+
       <AppRoute path="/callback">
         <CallbackPage />
       </AppRoute>

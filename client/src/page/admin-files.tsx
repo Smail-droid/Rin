@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "wouter";
 import { client } from "../app/runtime";
 import type { StorageFileItem } from "../api/client";
 
@@ -34,7 +35,7 @@ function getFileCategory(contentType: string, key: string): "image" | "document"
 
 type CopyFormat = "url" | "html" | "markdown" | "bbcode";
 
-export function AdminFilesPage() {
+export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}) {
     const { t } = useTranslation();
     const [files, setFiles] = useState<StorageFileItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -365,53 +366,79 @@ export function AdminFilesPage() {
                 </div>
             )}
 
+            {/* Read-only gallery mode header */}
+            {readOnly && (
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-black/10 dark:border-white/10">
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight t-primary flex items-center gap-2">
+                            <span>📷</span>
+                            <span>图床漫游 · 记忆画廊</span>
+                        </h1>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                            浏览全站图库与素材原图，点击图片或输入框即可快速复制多种格式链接
+                        </p>
+                    </div>
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900"
+                    >
+                        <i className="ri-arrow-left-line" />
+                        <span>返回主页</span>
+                    </Link>
+                </div>
+            )}
+
             {/* Hidden file input */}
-            <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*,application/pdf"
-                className="hidden"
-                onChange={handleFileInputChange}
-            />
+            {!readOnly && (
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={handleFileInputChange}
+                />
+            )}
 
             {/* 1. Upload Zone */}
-            <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`relative flex flex-col items-center justify-center py-10 px-6 rounded-3xl border-2 border-dashed cursor-pointer transition-all duration-200 select-none ${
-                    isDragging
-                        ? "border-sky-500 bg-sky-50/70 dark:border-sky-400 dark:bg-sky-950/30 scale-[1.01] shadow-md"
-                        : "border-sky-300 hover:border-sky-400 bg-w hover:bg-neutral-50/60 dark:border-sky-700/60 dark:hover:border-sky-500 dark:bg-neutral-900/40"
-                }`}
-            >
-                <div className="relative mb-3 flex items-center justify-center">
-                    {isUploading ? (
-                        <i className="ri-loader-4-line animate-spin text-5xl text-theme" />
-                    ) : (
-                        <div className="text-6xl drop-shadow-sm transform transition duration-200 hover:scale-105">
-                            📁
-                        </div>
-                    )}
-                </div>
+            {!readOnly && (
+                <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`relative flex flex-col items-center justify-center py-10 px-6 rounded-3xl border-2 border-dashed cursor-pointer transition-all duration-200 select-none ${
+                        isDragging
+                            ? "border-sky-500 bg-sky-50/70 dark:border-sky-400 dark:bg-sky-950/30 scale-[1.01] shadow-md"
+                            : "border-sky-300 hover:border-sky-400 bg-w hover:bg-neutral-50/60 dark:border-sky-700/60 dark:hover:border-sky-500 dark:bg-neutral-900/40"
+                    }`}
+                >
+                    <div className="relative mb-3 flex items-center justify-center">
+                        {isUploading ? (
+                            <i className="ri-loader-4-line animate-spin text-5xl text-theme" />
+                        ) : (
+                            <div className="text-6xl drop-shadow-sm transform transition duration-200 hover:scale-105">
+                                📁
+                            </div>
+                        )}
+                    </div>
 
-                <p className="text-base sm:text-lg font-semibold text-neutral-800 dark:text-neutral-100">
-                    {isUploading ? "正在上传中..." : "点击或拖拽上传图片"}
-                </p>
-                <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
-                    支持 JPG、JPEG、PNG、GIF、WebP 等格式，最大 10MB
-                </p>
+                    <p className="text-base sm:text-lg font-semibold text-neutral-800 dark:text-neutral-100">
+                        {isUploading ? "正在上传中..." : "点击或拖拽上传图片"}
+                    </p>
+                    <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
+                        支持 JPG、JPEG、PNG、GIF、WebP 等格式，最大 10MB
+                    </p>
 
-                <div className="mt-3.5 inline-flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 bg-neutral-100/70 dark:bg-white/5 px-3 py-1 rounded-full border border-black/5 dark:border-white/5">
-                    <span>💡 你也可以直接</span>
-                    <kbd className="rounded-md border border-black/10 bg-w px-1.5 py-0.5 text-[11px] font-mono font-semibold text-neutral-700 shadow-2xs dark:border-white/10 dark:bg-neutral-800 dark:text-neutral-300">
-                        Ctrl+V
-                    </kbd>
-                    <span>粘贴剪贴板中的图片</span>
+                    <div className="mt-3.5 inline-flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 bg-neutral-100/70 dark:bg-white/5 px-3 py-1 rounded-full border border-black/5 dark:border-white/5">
+                        <span>💡 你也可以直接</span>
+                        <kbd className="rounded-md border border-black/10 bg-w px-1.5 py-0.5 text-[11px] font-mono font-semibold text-neutral-700 shadow-2xs dark:border-white/10 dark:bg-neutral-800 dark:text-neutral-300">
+                            Ctrl+V
+                        </kbd>
+                        <span>粘贴剪贴板中的图片</span>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* 2. Upload History & Management */}
             <div className="flex flex-col gap-4">
@@ -581,17 +608,19 @@ export function AdminFilesPage() {
                                             <i className="ri-zoom-in-line text-xs" />
                                         </button>
                                     )}
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteSingle(file);
-                                        }}
-                                        title={t("admin_files.delete", "删除")}
-                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-rose-500 shadow-xs backdrop-blur-xs transition hover:bg-rose-500 hover:text-white dark:bg-neutral-800/90"
-                                    >
-                                        <i className="ri-delete-bin-line text-xs" />
-                                    </button>
+                                    {!readOnly && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteSingle(file);
+                                            }}
+                                            title={t("admin_files.delete", "删除")}
+                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-rose-500 shadow-xs backdrop-blur-xs transition hover:bg-rose-500 hover:text-white dark:bg-neutral-800/90"
+                                        >
+                                            <i className="ri-delete-bin-line text-xs" />
+                                        </button>
+                                    )}
                                 </div>
 
                                 {/* Preview Area (Crisp, Distortion-Free object-contain) */}

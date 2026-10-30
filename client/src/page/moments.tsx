@@ -8,7 +8,7 @@ import { siteName } from "../utils/constants"
 import { useTranslation } from "react-i18next"
 import { ProfileContext } from "../state/profile"
 import { tryInt } from "../utils/int"
-import { useSearch } from "wouter"
+import { Link, useSearch } from "wouter"
 import { useAlert, useConfirm } from "../components/dialog"
 import { MarkdownEditor } from "../components/markdown_editor"
 import { Waiting } from "../components/loading"
@@ -174,22 +174,40 @@ export function MomentsPage() {
             </Helmet>
             <Waiting for={!loading}>
                 <main className="w-full flex flex-col justify-center items-center mb-8 ani-show">
-                    <div className="wauto text-start text-black dark:text-white py-4 text-4xl font-bold">
-                        <p>
-                            {t('moments.title')}
-                        </p>
-                        <div className="flex flex-row justify-between items-center">
-                            <p className="text-sm mt-4 text-neutral-500 font-normal">
-                                {t('moments.total$count', { count: length })}
-                            </p>
-                            {profile?.permission && (
-                                <button 
-                                    onClick={openCreateModal}
-                                    className="text-sm font-normal rounded-full px-4 py-2 text-white bg-theme"
+                    {/* WeChat Moments Header */}
+                    <div className="wauto text-start py-4 mb-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-black/10 dark:border-white/10">
+                            <div>
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-xs font-bold mb-2">
+                                    <i className="ri-chat-smile-2-line" />
+                                    <span>朋友圈 · 碎碎念日常</span>
+                                </div>
+                                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight t-primary">
+                                    日常随想
+                                </h1>
+                                <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                                    共收录 {length} 条生活随想碎碎念
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-3 self-start sm:self-auto">
+                                <Link
+                                    href="/"
+                                    className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900"
                                 >
-                                    {t('publish.title')}
-                                </button>
-                            )}
+                                    <i className="ri-arrow-left-line" />
+                                    <span>返回画廊</span>
+                                </Link>
+                                {profile?.permission && (
+                                    <button 
+                                        onClick={openCreateModal}
+                                        className="inline-flex items-center gap-1.5 rounded-full bg-theme px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:opacity-90 active:scale-95"
+                                    >
+                                        <i className="ri-camera-lens-line" />
+                                        <span>发朋友圈</span>
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                     

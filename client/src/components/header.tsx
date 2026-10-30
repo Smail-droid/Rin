@@ -1,4 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { ProfileContext } from "../state/profile";
 import { Padding } from "./padding";
 import { useSiteConfig } from "../hooks/useSiteConfig";
@@ -6,8 +7,15 @@ import { getHeaderLayoutDefinition } from "./site-header/layout-registry";
 import { normalizeHeaderBehavior, normalizeHeaderLayout } from "./site-header/layout-options";
 
 export function Header({ children }: { children?: React.ReactNode }) {
+  const [location] = useLocation();
   const profile = useContext(ProfileContext);
   const siteConfig = useSiteConfig();
+
+  // On homepage, respect headerShowNav setting (hidden by default for immersive atelier gallery)
+  if (location === "/" && !siteConfig.headerShowNav) {
+    return null;
+  }
+
   const headerLayout = normalizeHeaderLayout(siteConfig.headerLayout);
   const headerBehavior = normalizeHeaderBehavior(siteConfig.headerBehavior);
   const layoutDefinition = getHeaderLayoutDefinition(headerLayout);

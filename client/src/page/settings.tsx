@@ -423,6 +423,46 @@ export function Settings() {
             </SettingsCard>
           </div>
 
+          <ItemTitle title="画廊随想与沉浸设置" />
+          <ItemSwitch
+            title="显示顶部导航栏"
+            description="开启后在首页显示顶部导航栏；关闭后首页将隐藏顶部导航栏，呈现完全沉浸式画廊视觉"
+            checked={Boolean(clientConfig.get("header.show_nav"))}
+            onChange={(checked) => {
+              setConfigValue("client", "header.show_nav", checked);
+            }}
+          />
+          <ItemInput
+            title="画廊主标题"
+            description="首页画廊顶部展示的艺术标题"
+            configKeyTitle="atelier.title"
+            value={String(clientConfig.get("atelier.title") ?? "画廊随想")}
+            placeholder="画廊随想"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.title", value);
+            }}
+          />
+          <ItemInput
+            title="“关于我”便签跳转链接"
+            description="点击画廊中“关于我”便签时跳转的文章别名或页面链接（例如 /about 或 /feed/1）"
+            configKeyTitle="atelier.about_url"
+            value={String(clientConfig.get("atelier.about_url") ?? "/about")}
+            placeholder="/about"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.about_url", value);
+            }}
+          />
+          <ItemInput
+            title="“关于我”便签描述语"
+            description="画廊中“关于我”便签展示的随笔寄语"
+            configKeyTitle="atelier.about_desc"
+            value={String(clientConfig.get("atelier.about_desc") ?? "欢迎光临我的记忆工坊与随笔空间，点击了解更多。")}
+            placeholder="欢迎光临我的记忆工坊与随笔空间，点击了解更多。"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.about_desc", value);
+            }}
+          />
+
           <ItemTitle title={t("settings.other.title")} />
           <ItemSwitch
             title={t("settings.login.enable.title")}

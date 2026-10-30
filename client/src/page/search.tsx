@@ -59,15 +59,26 @@ export function SearchPage({ keyword }: { keyword: string }) {
             </Helmet>
             <Waiting for={status === 'idle'}>
                 <main className="w-full flex flex-col justify-center items-center mb-8">
-                    <div className="wauto text-start text-black dark:text-white py-4 text-4xl font-bold">
-                        <p>
-                            {t('article.search.title')}
-                        </p>
-                        <div className="flex flex-row justify-between">
-                            <p className="text-sm mt-4 text-neutral-500 font-normal">
-                                {t('article.total$count', { count: feeds?.size })}
+                    <div className="wauto text-start py-4 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
+                        <div>
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 text-xs font-bold mb-2">
+                                <i className="ri-search-line" />
+                                <span>搜索探索</span>
+                            </div>
+                            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight t-primary">
+                                {t('article.search.title')}: <span className="text-theme font-normal">{keyword}</span>
+                            </h1>
+                            <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                                {t('article.total$count', { count: feeds?.size || 0 })}
                             </p>
                         </div>
+                        <Link
+                            href="/"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900"
+                        >
+                            <i className="ri-arrow-left-line" />
+                            <span>返回画廊</span>
+                        </Link>
                     </div>
                     <Waiting for={status === 'idle'}>
                         <div className={feedListClass}>

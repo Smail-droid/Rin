@@ -86,7 +86,6 @@ function AtelierPhotoCard({
     const tapeColor = TAPE_COLORS[(index + tiltOffset) % TAPE_COLORS.length];
     const readingTime = feed.readingTime || Math.max(1, Math.ceil((feed.summary?.length || 100) / 100));
 
-    // Has cover image or generate artistic fallback
     const hasImage = Boolean(feed.avatar) && !imageError;
 
     return (
@@ -110,7 +109,6 @@ function AtelierPhotoCard({
                         className="w-full h-auto max-h-[580px] object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                     />
                 ) : (
-                    // Elegant artistic typography poster for posts without cover
                     <div className="flex flex-col items-center justify-center p-8 min-h-60 bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200 dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-950 text-center">
                         <span className="text-3xl mb-3 opacity-60">✍️</span>
                         <h2 className="text-xl font-bold t-primary line-clamp-3 leading-snug">
@@ -119,7 +117,7 @@ function AtelierPhotoCard({
                     </div>
                 )}
 
-                {/* Subtle hover overlay badge: only appears on hover, keeping image 100% clean by default! */}
+                {/* Subtle hover overlay badge */}
                 <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-between text-white text-xs">
                     <span className="font-medium truncate max-w-[70%] drop-shadow-xs">
                         {feed.title}
@@ -146,27 +144,32 @@ function AtelierPhotoCard({
 }
 
 /**
- * 📌 Scattered Atelier Artifacts (Navigation Notes, Stamps, Washi Tapes interspersed among photos)
+ * 📌 Scattered Atelier Artifacts (Customizable Sticky Notes & Live Search)
  */
 function StickyNoteItem({
     type,
+    siteConfig,
 }: {
     type: "about" | "timeline" | "moments" | "friends" | "search";
-    index?: number;
+    siteConfig: any;
 }) {
     const [, setLocation] = useLocation();
+    const [searchKeyword, setSearchKeyword] = useState("");
 
     if (type === "about") {
+        const aboutUrl = siteConfig.atelierAboutUrl || "/about";
         return (
             <div
-                onClick={() => setLocation("/profile")}
+                onClick={() => setLocation(aboutUrl)}
                 className="group relative break-inside-avoid block w-full rounded-2xl bg-amber-100 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/40 p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-1 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none"
             >
                 <div className="absolute -top-2 left-6 w-8 h-3.5 bg-amber-200/80 dark:bg-amber-800/50 rounded-xs rotate-[-5deg]" />
                 <span className="text-2xl mb-1 block">🐾</span>
-                <p className="font-bold text-base text-amber-900 dark:text-amber-200">80hou's Home</p>
+                <p className="font-bold text-base text-amber-900 dark:text-amber-200">
+                    {siteConfig.name || "80hou's Home"}
+                </p>
                 <p className="text-xs text-amber-700/80 dark:text-amber-300/70 mt-1 leading-relaxed">
-                    欢迎光临我的记忆工坊与随笔空间，点击了解更多。
+                    {siteConfig.atelierAboutDesc || "欢迎光临我的记忆工坊与随笔空间，点击了解更多。"}
                 </p>
                 <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-amber-800 dark:text-amber-300 group-hover:underline">
                     <span>关于我 &rarr;</span>
@@ -185,10 +188,10 @@ function StickyNoteItem({
                 <span className="text-2xl mb-1 block">⏳</span>
                 <p className="font-bold text-base text-orange-900 dark:text-orange-200">岁月轨迹</p>
                 <p className="text-xs text-orange-700/80 dark:text-orange-300/70 mt-1 leading-relaxed">
-                    以时间为轴，串联起每一次灵感与技术实践。
+                    {siteConfig.atelierTimelineDesc || "以时间为轴，串联起每一次灵感与技术实践。"}
                 </p>
                 <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-orange-800 dark:text-orange-300 group-hover:underline">
-                    <span>时间轴足迹 &rarr;</span>
+                    <span>时光长河足迹 &rarr;</span>
                 </div>
             </div>
         );
@@ -204,10 +207,10 @@ function StickyNoteItem({
                 <span className="text-2xl mb-1 block">💭</span>
                 <p className="font-bold text-base text-emerald-900 dark:text-emerald-200">日常随想</p>
                 <p className="text-xs text-emerald-700/80 dark:text-emerald-300/70 mt-1 leading-relaxed">
-                    生活碎碎念、灵感火花与不设限的日常记录。
+                    {siteConfig.atelierMomentsDesc || "生活碎碎念、朋友圈动态与不设限的日常记录。"}
                 </p>
                 <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-emerald-800 dark:text-emerald-300 group-hover:underline">
-                    <span>探索动态 &rarr;</span>
+                    <span>朋友圈随笔 &rarr;</span>
                 </div>
             </div>
         );
@@ -223,7 +226,7 @@ function StickyNoteItem({
                 <span className="text-2xl mb-1 block">🌸</span>
                 <p className="font-bold text-base text-rose-900 dark:text-rose-200">邻家友链</p>
                 <p className="text-xs text-rose-700/80 dark:text-rose-300/70 mt-1 leading-relaxed">
-                    漫步在同好博主的数字花园，交换思想火花。
+                    {siteConfig.atelierFriendsDesc || "漫步在同好博主的数字花园，交换思想火花。"}
                 </p>
                 <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-rose-800 dark:text-rose-300 group-hover:underline">
                     <span>拜访朋友们 &rarr;</span>
@@ -232,30 +235,46 @@ function StickyNoteItem({
         );
     }
 
-    // Search note
+    // Direct Search Sticky Note (replaces dead click handler!)
     return (
         <div
-            onClick={() => {
-                const searchBtn = document.querySelector("button[aria-label='Search'], button[title='Search'], button[title*='搜索']") as HTMLButtonElement;
-                if (searchBtn) searchBtn.click();
-            }}
-            className="group relative break-inside-avoid block w-full rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/40 p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-1.5 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none"
+            className="group relative break-inside-avoid block w-full rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/40 p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-1.5 hover:rotate-0 hover:scale-[1.03]"
         >
             <div className="absolute -top-2.5 left-10 w-10 h-3.5 bg-sky-200/70 dark:bg-sky-800/50 rounded-xs rotate-[-4deg]" />
             <span className="text-2xl mb-1 block">🔍</span>
             <p className="font-bold text-base text-sky-900 dark:text-sky-200">随心探索</p>
             <p className="text-xs text-sky-700/80 dark:text-sky-300/70 mt-1 leading-relaxed">
-                输入任意关键词，探寻技术实战与解决方案。
+                输入关键词即刻检索文章与解决方案。
             </p>
-            <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-800 dark:text-sky-300 group-hover:underline">
-                <span>开启搜索 &rarr;</span>
-            </div>
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    if (searchKeyword.trim()) {
+                        setLocation(`/search/${encodeURIComponent(searchKeyword.trim())}`);
+                    }
+                }}
+                className="mt-3 flex items-center gap-1.5"
+            >
+                <input
+                    type="text"
+                    value={searchKeyword}
+                    onChange={(e) => setSearchKeyword(e.target.value)}
+                    placeholder="输入关键词按回车..."
+                    className="w-full rounded-xl border border-sky-300/70 bg-white/90 px-3 py-1.5 text-xs text-sky-950 placeholder-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-sky-700 dark:bg-neutral-900 dark:text-sky-100"
+                />
+                <button
+                    type="submit"
+                    className="shrink-0 rounded-xl bg-sky-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-sky-600 transition"
+                >
+                    搜索
+                </button>
+            </form>
         </div>
     );
 }
 
 /**
- * 🃏 Interactive Flip / Next Deck Card (replaces rigid pagination buttons!)
+ * 🃏 Interactive Flip / Gallery Deck Card
  */
 function NextDeckFlipCard({
     onFlipNext,
@@ -276,12 +295,21 @@ function NextDeckFlipCard({
                 共 {totalCount} 张记忆相片已收录
             </p>
             <div className="mt-4 flex flex-col gap-2">
+                {/* 📷 View Image Gallery (Read-only view without upload/delete) */}
+                <Link
+                    href="/gallery"
+                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-theme px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:opacity-90 active:scale-95"
+                >
+                    <i className="ri-folder-image-line text-sm" />
+                    <span>📷 漫游图床画廊 (仅浏览)</span>
+                </Link>
+
                 {hasMore && (
                     <button
                         onClick={onFlipNext}
-                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-theme px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:opacity-90 active:scale-95"
+                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold t-primary shadow-xs transition hover:bg-neutral-50 active:scale-95 dark:border-white/10 dark:bg-neutral-900"
                     >
-                        <i className="ri-folder-open-line text-sm" />
+                        <i className="ri-folder-open-line text-sm text-theme" />
                         <span>翻开下一叠相片</span>
                     </button>
                 )}
@@ -305,17 +333,16 @@ export function FeedsPage() {
 
     const [listState, _setListState] = useState<FeedType>((query.get("type") as FeedType) || "normal");
     const [status, setStatus] = useState<"loading" | "idle">("loading");
+    const [tags, setTags] = useState<{ id: number; name: string }[]>([]);
     const [feeds, setFeeds] = useState<FeedsMap>({
         draft: { size: 0, data: [], hasNext: false },
         unlisted: { size: 0, data: [], hasNext: false },
         normal: { size: 0, data: [], hasNext: false },
     });
 
-    // Page state (supports seamless deck appending!)
     const [page, setPage] = useState<number>(1);
-    const limit = 24; // Load generous cards for rich scattered atelier view!
+    const limit = 24;
 
-    // Shuffle state (re-rotates cards randomly on user click!)
     const [shuffleSeed, setShuffleSeed] = useState(0);
 
     const currentFeeds = feeds[listState] ?? { size: 0, data: [], hasNext: false };
@@ -348,6 +375,15 @@ export function FeedsPage() {
             });
     }
 
+    // Fetch popular tags for floating charms
+    useEffect(() => {
+        client.tag.list().then(({ data }) => {
+            if (data && Array.isArray(data)) {
+                setTags(data);
+            }
+        }).catch(() => {});
+    }, []);
+
     useEffect(() => {
         const type = (query.get("type") as FeedType) || "normal";
         if (type !== listState) {
@@ -357,19 +393,16 @@ export function FeedsPage() {
         fetchFeeds(type, 1, false);
     }, [query.get("type")]);
 
-    // Handle seamless next deck
     const handleFlipNext = () => {
         const nextPage = page + 1;
         setPage(nextPage);
         fetchFeeds(listState, nextPage, true);
     };
 
-    // Re-shuffle random tilt angles and order
     const handleShuffle = () => {
         setShuffleSeed((prev) => prev + 1);
     };
 
-    // Interleave scattered sticky notes among the photos
     const interleavedItems = useMemo(() => {
         const items: Array<{ type: "photo" | "note" | "deck"; data?: any; noteType?: any }> = [];
         const noteTypes: Array<"about" | "timeline" | "moments" | "friends" | "search"> = [
@@ -383,7 +416,6 @@ export function FeedsPage() {
         let noteIndex = 0;
         currentFeedData.forEach((feed, i) => {
             items.push({ type: "photo", data: feed });
-            // Every 3-4 cards, insert an organic sticky note artifact!
             if (listState === "normal" && (i === 1 || i === 4 || i === 7 || i === 11 || i === 15)) {
                 if (noteIndex < noteTypes.length) {
                     items.push({ type: "note", noteType: noteTypes[noteIndex] });
@@ -392,7 +424,6 @@ export function FeedsPage() {
             }
         });
 
-        // Always end with the interactive flip/shuffle deck card
         items.push({ type: "deck" });
 
         return items;
@@ -410,65 +441,87 @@ export function FeedsPage() {
             </Helmet>
 
             <main className="w-full max-w-[1780px] 2xl:max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 mb-16">
-                {/* Atelier Mood Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-2 border-b border-black/5 dark:border-white/5">
+                {/* Atelier Mood Bar (Clean Title with Admin Tabs, NO standalone shuffle button) */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-2 border-b border-black/5 dark:border-white/5">
                     <div className="flex items-center gap-3">
                         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight t-primary flex items-center gap-2">
-                            <span>{listState === "draft" ? t("draft_bin") : listState === "unlisted" ? t("unlisted") : t("atelier_gallery", "画廊随想")}</span>
+                            <span>{listState === "draft" ? t("draft_bin") : listState === "unlisted" ? t("unlisted") : siteConfig.atelierTitle || "画廊随想"}</span>
                             <span className="text-base font-normal text-neutral-400 dark:text-neutral-500 font-mono">
                                 ({currentFeeds.size})
                             </span>
                         </h1>
                     </div>
 
-                    <div className="flex items-center gap-2 self-start sm:self-auto">
-                        {/* 🎲 Shuffle button */}
-                        <button
-                            onClick={handleShuffle}
-                            title="随性打乱角度与排列"
-                            className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3.5 py-1.5 text-xs font-semibold text-neutral-700 shadow-2xs transition hover:bg-neutral-50 active:scale-95 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200"
-                        >
-                            <i className="ri-shuffle-line text-theme" />
-                            <span>随性洗牌</span>
-                        </button>
-
-                        {/* Admin status tabs */}
-                        {profile?.permission && (
-                            <div className="flex items-center gap-1 rounded-full bg-neutral-100 p-1 dark:bg-white/5 text-xs">
-                                <Link
-                                    href="/?type=normal"
-                                    className={`rounded-full px-3 py-1 transition ${
-                                        listState === "normal"
-                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
-                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
-                                    }`}
-                                >
-                                    {t("article.title")}
-                                </Link>
-                                <Link
-                                    href="/?type=draft"
-                                    className={`rounded-full px-3 py-1 transition ${
-                                        listState === "draft"
-                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
-                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
-                                    }`}
-                                >
-                                    {t("draft_bin")}
-                                </Link>
-                                <Link
-                                    href="/?type=unlisted"
-                                    className={`rounded-full px-3 py-1 transition ${
-                                        listState === "unlisted"
-                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
-                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
-                                    }`}
-                                >
-                                    {t("unlisted")}
-                                </Link>
-                            </div>
-                        )}
-                    </div>
+                    {profile?.permission && (
+                        <div className="flex items-center gap-1 rounded-full bg-neutral-100 p-1 dark:bg-white/5 text-xs self-start sm:self-auto">
+                            <Link
+                                href="/?type=normal"
+                                className={`rounded-full px-3 py-1 transition ${
+                                    listState === "normal"
+                                        ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
+                                        : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
+                                }`}
+                            >
+                                {t("article.title")}
+                            </Link>
+                            <Link
+                                href="/?type=draft"
+                                className={`rounded-full px-3 py-1 transition ${
+                                    listState === "draft"
+                                        ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
+                                        : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
+                                }`}
+                            >
+                                {t("draft_bin")}
+                            </Link>
+                            <Link
+                                href="/?type=unlisted"
+                                className={`rounded-full px-3 py-1 transition ${
+                                    listState === "unlisted"
+                                        ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
+                                        : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
+                                }`}
+                            >
+                                {t("unlisted")}
+                            </Link>
+                        </div>
+                    )}
                 </div>
+
+                {/* 🏷️ Floating Washi Tape Charms (Scattered delicately around the whitespace) */}
+                {tags.length > 0 && listState === "normal" && (
+                    <div className="flex flex-wrap items-center justify-center gap-3 my-4 px-2 select-none ani-show">
+                        {tags.slice(0, 8).map((tag, i) => {
+                            const rot = [
+                                "rotate-[-3deg]",
+                                "rotate-[2.5deg]",
+                                "-rotate-2",
+                                "rotate-[3deg]",
+                                "-rotate-1",
+                                "rotate-[2deg]",
+                                "rotate-[-2.5deg]",
+                                "rotate-[1.5deg]",
+                            ][i % 8];
+                            const bg = [
+                                "bg-amber-100/90 text-amber-900 border-amber-300/60 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800/40",
+                                "bg-sky-100/90 text-sky-900 border-sky-300/60 dark:bg-sky-950/40 dark:text-sky-200 dark:border-sky-800/40",
+                                "bg-rose-100/90 text-rose-900 border-rose-300/60 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-800/40",
+                                "bg-emerald-100/90 text-emerald-900 border-emerald-300/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800/40",
+                                "bg-purple-100/90 text-purple-900 border-purple-300/60 dark:bg-purple-950/40 dark:text-purple-200 dark:border-purple-800/40",
+                            ][i % 5];
+                            return (
+                                <Link
+                                    key={tag.id}
+                                    href={`/hashtag/${encodeURIComponent(tag.name)}`}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border shadow-2xs text-xs font-semibold transform ${rot} hover:rotate-0 hover:scale-110 hover:shadow-md transition-all duration-300 ${bg}`}
+                                >
+                                    <span className="opacity-60 text-[10px]">🏷️</span>
+                                    <span>#{tag.name}</span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                )}
 
                 {/* Main Atelier Canvas: Staggered, Organic Columns with Large Posters */}
                 {status === "loading" && currentFeedData.length === 0 ? (
@@ -504,12 +557,11 @@ export function FeedsPage() {
                                     <StickyNoteItem
                                         key={`note-${item.noteType}-${idx}`}
                                         type={item.noteType}
-                                        index={idx + shuffleSeed}
+                                        siteConfig={siteConfig}
                                     />
                                 );
                             }
 
-                            // Interactive Deck Card
                             return (
                                 <NextDeckFlipCard
                                     key="next-deck-card"

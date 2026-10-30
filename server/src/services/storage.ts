@@ -64,14 +64,9 @@ export function StorageService(): Hono {
         }
     });
 
-    // GET /storage/files - List files in R2 bucket (Admin only)
+    // GET /storage/files - List files in R2 bucket (Public gallery view)
     app.get('/files', async (c: AppContext) => {
-        const admin = c.get('admin');
         const env = c.get('env');
-
-        if (!admin) {
-            return c.text('Forbidden', 403);
-        }
 
         if (!env.R2_BUCKET) {
             return c.text('R2 bucket is not configured', 400);

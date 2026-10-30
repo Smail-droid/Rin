@@ -14,6 +14,13 @@ export const SITE_CONFIG_KEYS = {
     feedCardVariant: "feed.card_variant",
     headerLayout: "header.layout",
     themeColor: "theme.color",
+    headerShowNav: "header.show_nav",
+    atelierTitle: "atelier.title",
+    atelierAboutUrl: "atelier.about_url",
+    atelierAboutDesc: "atelier.about_desc",
+    atelierTimelineDesc: "atelier.timeline_desc",
+    atelierMomentsDesc: "atelier.moments_desc",
+    atelierFriendsDesc: "atelier.friends_desc",
 } as const;
 
 // Hook to get site configuration
@@ -27,6 +34,9 @@ export function useSiteConfig() {
                 ? parseInt(pageSizeValue, 10)
                 : NaN;
 
+    const showNavRaw = config.get<string | boolean>(SITE_CONFIG_KEYS.headerShowNav);
+    const headerShowNav = showNavRaw === undefined ? false : showNavRaw === true || showNavRaw === "true";
+
     return {
         name: config.get<string>(SITE_CONFIG_KEYS.name) || "Rin",
         description: config.get<string>(SITE_CONFIG_KEYS.description) || "",
@@ -37,6 +47,13 @@ export function useSiteConfig() {
         feedCardVariant: normalizeFeedCardVariant(config.get<string>(SITE_CONFIG_KEYS.feedCardVariant) || "default"),
         headerLayout: config.get<string>(SITE_CONFIG_KEYS.headerLayout) || "classic",
         themeColor: config.get<string>(SITE_CONFIG_KEYS.themeColor) || "#fc466b",
+        headerShowNav,
+        atelierTitle: config.get<string>(SITE_CONFIG_KEYS.atelierTitle) || "画廊随想",
+        atelierAboutUrl: config.get<string>(SITE_CONFIG_KEYS.atelierAboutUrl) || "/about",
+        atelierAboutDesc: config.get<string>(SITE_CONFIG_KEYS.atelierAboutDesc) || "欢迎光临我的记忆工坊与随笔空间，点击了解更多。",
+        atelierTimelineDesc: config.get<string>(SITE_CONFIG_KEYS.atelierTimelineDesc) || "以时间为轴，串联起每一次灵感与技术实践。",
+        atelierMomentsDesc: config.get<string>(SITE_CONFIG_KEYS.atelierMomentsDesc) || "生活碎碎念、灵感火花与不设限的日常记录。",
+        atelierFriendsDesc: config.get<string>(SITE_CONFIG_KEYS.atelierFriendsDesc) || "漫步在同好博主的数字花园，交换思想火花。",
     };
 }
 
