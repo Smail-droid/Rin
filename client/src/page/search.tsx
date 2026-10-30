@@ -75,20 +75,38 @@ export function SearchPage({ keyword }: { keyword: string }) {
                                 <FeedCard key={id} id={id} {...feed} />
                             ))}
                         </div>
-                        <div className="wauto flex flex-row items-center mt-4 ani-show">
-                            {page > 1 &&
-                                <Link href={`?page=${(page - 1)}&limit=${limit}`}
-                                    className={`text-sm font-normal rounded-full px-4 py-2 text-white bg-theme`}>
-                                    {t('previous')}
+                        <div className="wauto flex items-center justify-center gap-3 my-8 ani-show select-none text-sm">
+                            {page > 1 ? (
+                                <Link
+                                    href={`?page=${page - 1}&limit=${limit}`}
+                                    className="flex items-center gap-1 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 transition py-1 px-2"
+                                >
+                                    <span>&larr;</span>
+                                    <span>{t('previous')}</span>
                                 </Link>
-                            }
-                            <div className="flex-1" />
-                            {feeds?.hasNext &&
-                                <Link href={`?page=${(page + 1)}&limit=${limit}`}
-                                    className={`text-sm font-normal rounded-full px-4 py-2 text-white bg-theme`}>
-                                    {t('next')}
+                            ) : (
+                                <span className="flex items-center gap-1 text-neutral-300 dark:text-neutral-700 cursor-not-allowed py-1 px-2">
+                                    <span>&larr;</span>
+                                    <span>{t('previous')}</span>
+                                </span>
+                            )}
+                            <span className="flex h-7 w-7 items-center justify-center rounded-full border border-black/30 dark:border-white/30 text-xs font-semibold t-primary">
+                                {page}
+                            </span>
+                            {feeds?.hasNext ? (
+                                <Link
+                                    href={`?page=${page + 1}&limit=${limit}`}
+                                    className="flex items-center gap-1 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 transition py-1 px-2"
+                                >
+                                    <span>{t('next')}</span>
+                                    <span>&rarr;</span>
                                 </Link>
-                            }
+                            ) : (
+                                <span className="flex items-center gap-1 text-neutral-300 dark:text-neutral-700 cursor-not-allowed py-1 px-2">
+                                    <span>{t('next')}</span>
+                                    <span>&rarr;</span>
+                                </span>
+                            )}
                         </div>
                     </Waiting>
                 </main>

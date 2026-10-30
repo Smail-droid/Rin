@@ -755,6 +755,7 @@
   "sort_popular": "Popular",
   "total_tags": "Total {{count}} tags",
   "anonymous": "Anonymous",
+  "reading_time": "{{minutes}} min read",
   "admin_files": {
     "title": "File Manager",
     "description": "Browse, manage and copy links for files stored in R2 bucket",

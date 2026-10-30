@@ -755,6 +755,7 @@
   "sort_popular": "熱門",
   "total_tags": "共 {{count}} 個標籤",
   "anonymous": "匿名",
+  "reading_time": "{{minutes}} 分鐘閱讀",
   "admin_files": {
     "title": "檔案管理",
     "description": "瀏覽、管理 R2 儲存桶中的檔案並複製連結",

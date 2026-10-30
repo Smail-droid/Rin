@@ -70,6 +70,94 @@ function EmptyFeedsState({ listState, canWrite }: { listState: FeedType; canWrit
     );
 }
 
+function Pagination({
+    currentPage,
+    totalCount,
+    pageSize,
+    hasNext,
+    listState,
+}: {
+    currentPage: number;
+    totalCount: number;
+    pageSize: number;
+    hasNext: boolean;
+    listState: FeedType;
+}) {
+    const { t } = useTranslation();
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+    if (totalPages <= 1 && !hasNext) {
+        return null;
+    }
+
+    const pages: number[] = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    if (end - start + 1 < maxVisible) {
+        start = Math.max(1, end - maxVisible + 1);
+    }
+    for (let i = start; i <= end; i++) {
+        pages.push(i);
+    }
+
+    return (
+        <div className="wauto flex items-center justify-center gap-3 my-10 ani-show select-none text-sm">
+            {currentPage > 1 ? (
+                <Link
+                    href={`/?type=${listState}&page=${currentPage - 1}`}
+                    className="flex items-center gap-1 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 transition py-1 px-2"
+                >
+                    <span>&larr;</span>
+                    <span>{t('previous')}</span>
+                </Link>
+            ) : (
+                <span className="flex items-center gap-1 text-neutral-300 dark:text-neutral-700 cursor-not-allowed py-1 px-2">
+                    <span>&larr;</span>
+                    <span>{t('previous')}</span>
+                </span>
+            )}
+
+            <div className="flex items-center gap-1.5">
+                {pages.map((p) => {
+                    const isActive = p === currentPage;
+                    return isActive ? (
+                        <span
+                            key={p}
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-black/30 dark:border-white/30 text-xs font-semibold t-primary shadow-2xs"
+                        >
+                            {p}
+                        </span>
+                    ) : (
+                        <Link
+                            key={p}
+                            href={`/?type=${listState}&page=${p}`}
+                            className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 transition hover:bg-black/5 dark:hover:bg-white/5"
+                        >
+                            {p}
+                        </Link>
+                    );
+                })}
+            </div>
+
+            {hasNext || currentPage < totalPages ? (
+                <Link
+                    href={`/?type=${listState}&page=${currentPage + 1}`}
+                    className="flex items-center gap-1 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 transition py-1 px-2"
+                >
+                    <span>{t('next')}</span>
+                    <span>&rarr;</span>
+                </Link>
+            ) : (
+                <span className="flex items-center gap-1 text-neutral-300 dark:text-neutral-700 cursor-not-allowed py-1 px-2">
+                    <span>{t('next')}</span>
+                    <span>&rarr;</span>
+                </span>
+            )}
+        </div>
+    );
+}
+
 export function FeedsPage() {
     const { t } = useTranslation()
     const siteConfig = useSiteConfig();
@@ -77,7 +165,6 @@ export function FeedsPage() {
     const profile = useContext(ProfileContext);
     const [listState, _setListState] = useState<FeedType>(query.get("type") as FeedType || 'normal')
     const [status, setStatus] = useState<'loading' | 'idle'>('loading')
-    const [tags, setTags] = useState<{ id: number; name: string }[]>([])
     const [feeds, setFeeds] = useState<FeedsMap>({
         draft: { size: 0, data: [], hasNext: false },
         unlisted: { size: 0, data: [], hasNext: false },
@@ -107,15 +194,6 @@ export function FeedsPage() {
         })
     }
 
-    // Fetch popular tags once for tag cloud
-    useEffect(() => {
-        client.tag.list().then(({ data }) => {
-            if (data && Array.isArray(data)) {
-                setTags(data);
-            }
-        }).catch(() => {});
-    }, []);
-
     useEffect(() => {
         const key = `${query.get("page")} ${query.get("type")} ${limit}`
         if (ref.current == key) return
@@ -139,7 +217,7 @@ export function FeedsPage() {
                 <meta property="og:url" content={document.URL} />
             </Helmet>
             <main className="w-full flex flex-col justify-center items-center mb-8">
-                {/* Header section with enhanced visual hierarchy */}
+                {/* Header section with clean, elegant visual hierarchy */}
                 <div className="wauto text-start py-4">
                     <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
                         <div className="flex items-center gap-3">
@@ -187,32 +265,6 @@ export function FeedsPage() {
                             </div>
                         )}
                     </div>
-
-                    {/* Tag Cloud Summary Bar */}
-                    {tags.length > 0 && listState === 'normal' && (
-                        <div className="flex items-center gap-2 overflow-x-auto pt-4 pb-1 scrollbar-none ani-show">
-                            <span className="shrink-0 text-xs font-medium text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
-                                <i className="ri-price-tag-3-line text-xs" />
-                            </span>
-                            {tags.slice(0, 10).map((tag) => (
-                                <Link
-                                    key={tag.id}
-                                    href={`/hashtag/${encodeURIComponent(tag.name)}`}
-                                    className="shrink-0 rounded-full border border-black/5 bg-neutral-100/70 px-2.5 py-0.5 text-xs font-medium text-neutral-600 transition hover:bg-neutral-200 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
-                                >
-                                    #{tag.name}
-                                </Link>
-                            ))}
-                            {tags.length > 10 && (
-                                <Link
-                                    href="/hashtags"
-                                    className="shrink-0 text-xs text-theme hover:underline px-1"
-                                >
-                                    &rarr;
-                                </Link>
-                            )}
-                        </div>
-                    )}
                 </div>
 
                 {/* Content: Skeleton, Empty State, or Feed List */}
@@ -232,25 +284,13 @@ export function FeedsPage() {
                                 <FeedCard key={id} id={id} {...feed} />
                             ))}
                         </div>
-                        <div className="wauto flex flex-row items-center mt-6 ani-show">
-                            {page > 1 && (
-                                <Link
-                                    href={`/?type=${listState}&page=${page - 1}`}
-                                    className="text-sm font-medium rounded-full px-5 py-2 text-white bg-theme shadow-sm transition hover:opacity-90"
-                                >
-                                    {t('previous')}
-                                </Link>
-                            )}
-                            <div className="flex-1" />
-                            {currentFeeds.hasNext && (
-                                <Link
-                                    href={`/?type=${listState}&page=${page + 1}`}
-                                    className="text-sm font-medium rounded-full px-5 py-2 text-white bg-theme shadow-sm transition hover:opacity-90"
-                                >
-                                    {t('next')}
-                                </Link>
-                            )}
-                        </div>
+                        <Pagination
+                            currentPage={page}
+                            totalCount={currentFeeds.size}
+                            pageSize={limit}
+                            hasNext={currentFeeds.hasNext}
+                            listState={listState}
+                        />
                     </>
                 )}
             </main>

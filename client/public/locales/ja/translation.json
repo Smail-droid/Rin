@@ -746,6 +746,7 @@
   "sort_popular": "人気",
   "total_tags": "全 {{count}} 個のタグ",
   "anonymous": "匿名",
+  "reading_time": "{{minutes}} 分で読了",
   "admin_files": {
     "title": "ファイル管理",
     "description": "R2バケット内のファイルを閲覧・管理し、リンクをコピー",
