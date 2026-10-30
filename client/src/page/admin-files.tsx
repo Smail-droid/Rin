@@ -663,23 +663,23 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                     </div>
                                 </div>
 
-                                {/* Link code input: Click to copy & turns green on copy (Screenshots 2-5) */}
+                                {/* Link code box: Click to copy & turns green on copy (prevents translation plugin popup) */}
                                 <div className="mb-2">
-                                    <input
-                                        type="text"
-                                        readOnly
-                                        value={displayCode}
+                                    <div
                                         onClick={(e) => {
-                                            (e.target as HTMLInputElement).select();
+                                            e.preventDefault();
+                                            e.stopPropagation();
                                             handleCopy(file);
                                         }}
-                                        title="点击复制当前代码"
-                                        className={`w-full rounded-xl px-2.5 py-1.5 text-[11px] font-mono cursor-pointer transition-all duration-200 focus:outline-none ${
+                                        title="点击一键复制当前格式代码"
+                                        className={`w-full select-none rounded-xl px-2.5 py-1.5 text-[11px] font-mono cursor-pointer transition-all duration-300 truncate ${
                                             isCopied
-                                                ? "border-2 border-emerald-500 bg-emerald-100 text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-200 font-semibold shadow-xs"
-                                                : "border border-black/10 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300"
+                                                ? "border-2 border-emerald-500 bg-emerald-100 text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-200 font-semibold shadow-xs scale-[1.01]"
+                                                : "border border-black/10 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 hover:border-black/20"
                                         }`}
-                                    />
+                                    >
+                                        {displayCode}
+                                    </div>
                                 </div>
 
                                 {/* 4-Color Format Switcher Buttons (Exact Match to Screenshots 2, 3, 4, 5) */}

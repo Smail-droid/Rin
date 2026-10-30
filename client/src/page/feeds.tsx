@@ -335,40 +335,61 @@ function StickyNoteItem({
         );
     }
 
-    // Direct Search Sticky Note (replaces dead click handler!)
+    // Direct Search Sticky Note
+    const bgImage = siteConfig.atelierSearchBg || "/atelier/search-bg.svg";
     return (
         <div
-            className="group relative break-inside-avoid block w-full rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/40 p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-1.5 hover:rotate-0 hover:scale-[1.03]"
+            style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+            className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-1.5 hover:rotate-0 hover:scale-[1.03] select-none overflow-hidden ${
+                bgImage
+                    ? "bg-cover bg-center border border-black/10 dark:border-white/10"
+                    : "bg-sky-50 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/40"
+            }`}
         >
-            <div className="absolute -top-2.5 left-10 w-10 h-3.5 bg-sky-200/70 dark:bg-sky-800/50 rounded-xs rotate-[-4deg]" />
-            <span className="text-2xl mb-1 block">🔍</span>
-            <p className="font-bold text-base text-sky-900 dark:text-sky-200">随心探索</p>
-            <p className="text-xs text-sky-700/80 dark:text-sky-300/70 mt-1 leading-relaxed">
-                输入关键词即刻检索文章与解决方案。
-            </p>
-            <form
-                onSubmit={(e) => {
-                    e.preventDefault();
-                    if (searchKeyword.trim()) {
-                        setLocation(`/search/${encodeURIComponent(searchKeyword.trim())}`);
-                    }
-                }}
-                className="mt-3 flex items-center gap-1.5"
-            >
-                <input
-                    type="text"
-                    value={searchKeyword}
-                    onChange={(e) => setSearchKeyword(e.target.value)}
-                    placeholder="输入关键词按回车..."
-                    className="w-full rounded-xl border border-sky-300/70 bg-white/90 px-3 py-1.5 text-xs text-sky-950 placeholder-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-sky-700 dark:bg-neutral-900 dark:text-sky-100"
-                />
-                <button
-                    type="submit"
-                    className="shrink-0 rounded-xl bg-sky-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-sky-600 transition"
+            {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
+            <div className="absolute -top-2.5 left-10 w-10 h-3.5 bg-sky-200/70 dark:bg-sky-800/50 rounded-xs rotate-[-4deg] z-20" />
+
+            {canManage && (
+                <Link
+                    href="/admin/settings"
+                    onClick={(e) => e.stopPropagation()}
+                    title="在设置中修改此便签背景或文字"
+                    className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
                 >
-                    搜索
-                </button>
-            </form>
+                    <i className="ri-settings-3-line text-xs" />
+                </Link>
+            )}
+
+            <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
+                <span className="text-2xl mb-1 block">🔍</span>
+                <p className={`font-bold text-base ${bgImage ? "text-white" : "text-sky-900 dark:text-sky-200"}`}>随心探索</p>
+                <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-sky-700/80 dark:text-sky-300/70"}`}>
+                    输入关键词即刻检索文章与解决方案。
+                </p>
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        if (searchKeyword.trim()) {
+                            setLocation(`/search/${encodeURIComponent(searchKeyword.trim())}`);
+                        }
+                    }}
+                    className="mt-3 flex items-center gap-1.5"
+                >
+                    <input
+                        type="text"
+                        value={searchKeyword}
+                        onChange={(e) => setSearchKeyword(e.target.value)}
+                        placeholder="输入关键词按回车..."
+                        className="w-full rounded-xl border border-sky-300/70 bg-white/90 px-3 py-1.5 text-xs text-sky-950 placeholder-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-sky-700 dark:bg-neutral-900 dark:text-sky-100"
+                    />
+                    <button
+                        type="submit"
+                        className="shrink-0 rounded-xl bg-sky-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-sky-600 transition"
+                    >
+                        搜索
+                    </button>
+                </form>
+            </div>
         </div>
     );
 }
@@ -378,24 +399,49 @@ function StickyNoteItem({
  */
 function NextDeckFlipCard({
     totalCount,
+    siteConfig,
+    canManage = false,
 }: {
     totalCount: number;
+    siteConfig: any;
+    canManage?: boolean;
 }) {
+    const bgImage = siteConfig?.atelierDeckBg || "/atelier/deck-bg.svg";
     return (
-        <div className="break-inside-avoid block w-full rounded-3xl border-2 border-dashed border-theme/40 bg-theme/5 p-6 text-center select-none shadow-sm hover:shadow-xl transition-all duration-300 transform hover:scale-[1.03] hover:rotate-0 rotate-1">
-            <span className="text-4xl block mb-2">🃏</span>
-            <p className="font-extrabold text-base t-primary">记忆翻动</p>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                共 {totalCount} 张记忆相片已收录
-            </p>
-            <div className="mt-4">
+        <div
+            style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+            className={`group relative break-inside-avoid block w-full rounded-3xl p-6 text-center select-none shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-[1.03] hover:rotate-0 rotate-1 overflow-hidden border border-black/10 dark:border-white/10 ${
+                bgImage ? "bg-cover bg-center" : "bg-theme/5 border-2 border-dashed border-theme/40"
+            }`}
+        >
+            {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
+
+            {canManage && (
                 <Link
-                    href="/gallery"
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-theme px-4 py-3 text-sm font-bold text-white shadow-md transition hover:opacity-90 active:scale-95"
+                    href="/admin/settings"
+                    onClick={(e) => e.stopPropagation()}
+                    title="在设置中修改此卡片背景或文字"
+                    className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
                 >
-                    <i className="ri-folder-image-line text-base" />
-                    <span>漫游图床画廊 (仅浏览)</span>
+                    <i className="ri-settings-3-line text-xs" />
                 </Link>
+            )}
+
+            <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
+                <span className="text-4xl block mb-2">🃏</span>
+                <p className={`font-extrabold text-base ${bgImage ? "text-white" : "t-primary"}`}>记忆翻动</p>
+                <p className={`text-xs mt-1 ${bgImage ? "text-neutral-200" : "text-neutral-500 dark:text-neutral-400"}`}>
+                    共 {totalCount} 张记忆相片已收录
+                </p>
+                <div className="mt-4">
+                    <Link
+                        href="/gallery"
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-theme px-4 py-3 text-sm font-bold text-white shadow-md transition hover:opacity-90 active:scale-95"
+                    >
+                        <i className="ri-folder-image-line text-base" />
+                        <span>漫游图床画廊 (仅浏览)</span>
+                    </Link>
+                </div>
             </div>
         </div>
     );
@@ -631,6 +677,8 @@ export function FeedsPage() {
                                 <NextDeckFlipCard
                                     key="next-deck-card"
                                     totalCount={currentFeeds.size}
+                                    siteConfig={siteConfig}
+                                    canManage={Boolean(profile?.permission)}
                                 />
                             );
                         })}

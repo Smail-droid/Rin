@@ -64,6 +64,7 @@ export function Settings() {
   const ref = useRef(false);
   const initialDraftRef = useRef<SettingsDraft>({ clientConfig: {}, serverConfig: {} });
   const { showAlert, AlertUI } = useAlert();
+  const [activeCategory, setActiveCategory] = useState<"general" | "theme" | "atelier" | "services">("general");
 
   function getDraftThemeColor(nextDraft: SettingsDraft) {
     return typeof nextDraft.clientConfig["theme.color"] === "string" ? nextDraft.clientConfig["theme.color"] : undefined;
@@ -182,52 +183,125 @@ export function Settings() {
         <title>{`${t("settings.title")} - ${siteConfig.name}`}</title>
       </Helmet>
       <main className="w-full rounded-2xl bg-w" aria-label={t("main_content")}>
-        <div className="flex flex-col items-start space-y-2">
+        <div className="flex flex-col items-start space-y-4 w-full">
           {(loading || saving) && <ReactLoading width="1em" height="1em" type="spin" color="#FC466B" />}
-          <ItemTitle title={t("settings.site.title")} />
-          <ItemInput
-            title={t("settings.site.name.title")}
-            description={t("settings.site.name.desc")}
-            configKeyTitle={t("settings.site.name.label")}
-            value={String(clientConfig.get("site.name") ?? "")}
-            placeholder={String(clientConfig.default("site.name") ?? t("settings.site.name.label"))}
-            onChange={(value) => {
-              setConfigValue("client", "site.name", value);
-            }}
-          />
-          <ItemInput
-            title={t("settings.site.description.title")}
-            description={t("settings.site.description.desc")}
-            configKeyTitle={t("settings.site.description.label")}
-            value={String(clientConfig.get("site.description") ?? "")}
-            placeholder={String(clientConfig.default("site.description") ?? t("settings.site.description.label"))}
-            onChange={(value) => {
-              setConfigValue("client", "site.description", value);
-            }}
-          />
-          <ItemImageInput
-            title={t("settings.site.avatar.title")}
-            description={t("settings.site.avatar.desc")}
-            configKeyTitle={t("settings.site.avatar.label")}
-            value={String(clientConfig.get("site.avatar") ?? "")}
-            placeholder={String(clientConfig.default("site.avatar") ?? t("settings.site.avatar.label"))}
-            onChange={(value) => {
-              setConfigValue("client", "site.avatar", value);
-            }}
-            onError={showAlert}
-          />
-          <ItemInput
-            title={t("settings.site.page_size.title")}
-            description={t("settings.site.page_size.desc")}
-            configKeyTitle={t("settings.site.page_size.label")}
-            value={String(clientConfig.get("site.page_size") ?? "")}
-            placeholder={String(clientConfig.default("site.page_size") ?? t("settings.site.page_size.label"))}
-            onChange={(value) => {
-              setConfigValue("client", "site.page_size", value);
-            }}
-          />
 
-          <ItemTitle title={t("settings.personalization.title")} />
+          {/* Top Category Tabs (Modular Settings Navigation) */}
+          <div className="flex w-full items-center gap-2 overflow-x-auto pb-2 border-b border-black/10 dark:border-white/10 scrollbar-none">
+            <button
+              type="button"
+              onClick={() => setActiveCategory("general")}
+              className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition select-none ${
+                activeCategory === "general"
+                  ? "bg-theme text-white shadow-xs scale-[1.02]"
+                  : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:text-neutral-300"
+              }`}
+            >
+              <i className="ri-settings-4-line text-sm" />
+              <span>基础设置</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveCategory("theme")}
+              className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition select-none ${
+                activeCategory === "theme"
+                  ? "bg-theme text-white shadow-xs scale-[1.02]"
+                  : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:text-neutral-300"
+              }`}
+            >
+              <i className="ri-palette-line text-sm" />
+              <span>主题与布局</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveCategory("atelier")}
+              className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition select-none ${
+                activeCategory === "atelier"
+                  ? "bg-theme text-white shadow-xs scale-[1.02]"
+                  : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:text-neutral-300"
+              }`}
+            >
+              <i className="ri-gallery-line text-sm" />
+              <span>画廊随想便签</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveCategory("services")}
+              className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition select-none ${
+                activeCategory === "services"
+                  ? "bg-theme text-white shadow-xs scale-[1.02]"
+                  : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:text-neutral-300"
+              }`}
+            >
+              <i className="ri-apps-2-line text-sm" />
+              <span>扩展服务与集成</span>
+            </button>
+          </div>
+
+          {/* Tab 1: General Settings */}
+          {activeCategory === "general" && (
+            <div className="w-full flex flex-col space-y-3 ani-show">
+              <ItemTitle title={t("settings.site.title")} />
+              <ItemInput
+                title={t("settings.site.name.title")}
+                description={t("settings.site.name.desc")}
+                configKeyTitle={t("settings.site.name.label")}
+                value={String(clientConfig.get("site.name") ?? "")}
+                placeholder={String(clientConfig.default("site.name") ?? t("settings.site.name.label"))}
+                onChange={(value) => {
+                  setConfigValue("client", "site.name", value);
+                }}
+              />
+              <ItemInput
+                title={t("settings.site.description.title")}
+                description={t("settings.site.description.desc")}
+                configKeyTitle={t("settings.site.description.label")}
+                value={String(clientConfig.get("site.description") ?? "")}
+                placeholder={String(clientConfig.default("site.description") ?? t("settings.site.description.label"))}
+                onChange={(value) => {
+                  setConfigValue("client", "site.description", value);
+                }}
+              />
+              <ItemImageInput
+                title={t("settings.site.avatar.title")}
+                description={t("settings.site.avatar.desc")}
+                configKeyTitle={t("settings.site.avatar.label")}
+                value={String(clientConfig.get("site.avatar") ?? "")}
+                placeholder={String(clientConfig.default("site.avatar") ?? t("settings.site.avatar.label"))}
+                onChange={(value) => {
+                  setConfigValue("client", "site.avatar", value);
+                }}
+                onError={showAlert}
+              />
+              <ItemInput
+                title={t("settings.site.page_size.title")}
+                description={t("settings.site.page_size.desc")}
+                configKeyTitle={t("settings.site.page_size.label")}
+                value={String(clientConfig.get("site.page_size") ?? "")}
+                placeholder={String(clientConfig.default("site.page_size") ?? t("settings.site.page_size.label"))}
+                onChange={(value) => {
+                  setConfigValue("client", "site.page_size", value);
+                }}
+              />
+              <ItemWithUpload
+                title={t("settings.favicon.title")}
+                description={t("settings.favicon.desc")}
+                accept="image/png,image/jpeg,image/gif,image/svg+xml,image/x-icon"
+                onFileChange={handleFaviconChange}
+              />
+              <ItemWithUpload
+                title={t("settings.wordpress.title")}
+                description={t("settings.wordpress.desc")}
+                accept="application/xml"
+                onFileChange={onFileChange}
+              />
+            </div>
+          )}
+
+          {/* Tab 2: Theme & Layout Settings */}
+          {activeCategory === "theme" && (
+            <div className="w-full flex flex-col space-y-3 ani-show">
+              <ItemTitle title={t("settings.personalization.title")} />
           <div className="w-full">
             <SettingsCard>
               <SettingsCardRow
@@ -422,12 +496,17 @@ export function Settings() {
               </div>
             </SettingsCard>
           </div>
+        </div>
+      )}
 
-          <ItemTitle title="画廊随想与沉浸设置" />
+      {/* Tab 3: Atelier & Sticky Notes Settings */}
+      {activeCategory === "atelier" && (
+        <div className="w-full flex flex-col space-y-3 ani-show">
+          <ItemTitle title="画廊随想与便签设置" />
           <ItemSwitch
             title="显示顶部导航栏"
             description="开启后在首页显示顶部导航栏；关闭后首页将隐藏顶部导航栏，呈现完全沉浸式画廊视觉"
-            checked={Boolean(clientConfig.get("header.show_nav"))}
+            checked={clientConfig.get("header.show_nav") === true || clientConfig.get("header.show_nav") === "true"}
             onChange={(checked) => {
               setConfigValue("client", "header.show_nav", checked);
             }}
@@ -506,7 +585,34 @@ export function Settings() {
             }}
             onError={showAlert}
           />
+          <ItemImageInput
+            title="“随心探索”便签背景图"
+            description="为画廊中的“随心探索”便签设置专属艺术背景封面（支持上传图片或输入 URL，默认内置侦探寻宝插画）"
+            configKeyTitle="atelier.search_bg"
+            value={String(clientConfig.get("atelier.search_bg") ?? "")}
+            placeholder="/atelier/search-bg.svg"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.search_bg", value);
+            }}
+            onError={showAlert}
+          />
+          <ItemImageInput
+            title="“记忆翻动”卡片背景图"
+            description="为画廊中的“记忆翻动”卡片设置专属艺术背景封面（支持上传图片或输入 URL，默认内置塔罗图床插画）"
+            configKeyTitle="atelier.deck_bg"
+            value={String(clientConfig.get("atelier.deck_bg") ?? "")}
+            placeholder="/atelier/deck-bg.svg"
+            onChange={(value) => {
+              setConfigValue("client", "atelier.deck_bg", value);
+            }}
+            onError={showAlert}
+          />
+        </div>
+      )}
 
+      {/* Tab 4: Extensions & Services Settings */}
+      {activeCategory === "services" && (
+        <div className="w-full flex flex-col space-y-3 ani-show">
           <ItemTitle title={t("settings.other.title")} />
           <ItemSwitch
             title={t("settings.login.enable.title")}
@@ -731,6 +837,8 @@ export function Settings() {
               }
             }}
           />
+        </div>
+      )}
 
           {hasUnsavedChanges && (
             <div className="sticky bottom-4 z-20 mt-6 w-full pb-2">

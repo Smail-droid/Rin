@@ -25,6 +25,8 @@ export const SITE_CONFIG_KEYS = {
     atelierTimelineBg: "atelier.timeline_bg",
     atelierMomentsBg: "atelier.moments_bg",
     atelierFriendsBg: "atelier.friends_bg",
+    atelierSearchBg: "atelier.search_bg",
+    atelierDeckBg: "atelier.deck_bg",
 } as const;
 
 // Hook to get site configuration
@@ -62,6 +64,8 @@ export function useSiteConfig() {
         atelierTimelineBg: config.get<string>(SITE_CONFIG_KEYS.atelierTimelineBg) || "/atelier/timeline-bg.svg",
         atelierMomentsBg: config.get<string>(SITE_CONFIG_KEYS.atelierMomentsBg) || "/atelier/moments-bg.svg",
         atelierFriendsBg: config.get<string>(SITE_CONFIG_KEYS.atelierFriendsBg) || "/atelier/friends-bg.svg",
+        atelierSearchBg: config.get<string>(SITE_CONFIG_KEYS.atelierSearchBg) || "/atelier/search-bg.svg",
+        atelierDeckBg: config.get<string>(SITE_CONFIG_KEYS.atelierDeckBg) || "/atelier/deck-bg.svg",
     };
 }
 
