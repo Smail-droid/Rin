@@ -75,10 +75,12 @@ function AtelierPhotoCard({
     feed,
     index,
     tiltOffset = 0,
+    canManage = false,
 }: {
     feed: any;
     index: number;
     tiltOffset?: number;
+    canManage?: boolean;
 }) {
     const { t } = useTranslation();
     const [imageError, setImageError] = useState(false);
@@ -97,6 +99,18 @@ function AtelierPhotoCard({
             <div
                 className={`absolute -top-2.5 left-1/2 -translate-x-1/2 w-14 h-4 ${tapeColor} rounded-xs shadow-2xs rotate-[-2deg] pointer-events-none z-10 opacity-90`}
             />
+
+            {/* Quick Admin Edit Button on top-right (Screenshot 4) */}
+            {canManage && (
+                <Link
+                    href={`/admin/writing/${feed.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    title="编辑文章与更换封面"
+                    className="absolute right-4 top-4 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme"
+                >
+                    <i className="ri-edit-line text-xs" />
+                </Link>
+            )}
 
             {/* Poster area: high-res, crisp, large image */}
             <div className="relative w-full overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-800/60 shadow-inner">
@@ -144,92 +158,178 @@ function AtelierPhotoCard({
 }
 
 /**
- * 📌 Scattered Atelier Artifacts (Customizable Sticky Notes & Live Search)
+ * 📌 Scattered Atelier Artifacts (Customizable Sticky Notes with Custom Cover & Quick Edit)
  */
 function StickyNoteItem({
     type,
     siteConfig,
+    canManage = false,
 }: {
     type: "about" | "timeline" | "moments" | "friends" | "search";
     siteConfig: any;
+    canManage?: boolean;
 }) {
     const [, setLocation] = useLocation();
     const [searchKeyword, setSearchKeyword] = useState("");
 
     if (type === "about") {
         const aboutUrl = siteConfig.atelierAboutUrl || "/about";
+        const bgImage = siteConfig.atelierAboutBg;
         return (
             <div
                 onClick={() => setLocation(aboutUrl)}
-                className="group relative break-inside-avoid block w-full rounded-2xl bg-amber-100 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/40 p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-1 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none"
+                style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-1 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
+                    bgImage
+                        ? "bg-cover bg-center border border-black/10 dark:border-white/10"
+                        : "bg-amber-100 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/40"
+                }`}
             >
-                <div className="absolute -top-2 left-6 w-8 h-3.5 bg-amber-200/80 dark:bg-amber-800/50 rounded-xs rotate-[-5deg]" />
-                <span className="text-2xl mb-1 block">🐾</span>
-                <p className="font-bold text-base text-amber-900 dark:text-amber-200">
-                    {siteConfig.name || "80hou's Home"}
-                </p>
-                <p className="text-xs text-amber-700/80 dark:text-amber-300/70 mt-1 leading-relaxed">
-                    {siteConfig.atelierAboutDesc || "欢迎光临我的记忆工坊与随笔空间，点击了解更多。"}
-                </p>
-                <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-amber-800 dark:text-amber-300 group-hover:underline">
-                    <span>关于我 &rarr;</span>
+                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
+                <div className="absolute -top-2 left-6 w-8 h-3.5 bg-amber-200/80 dark:bg-amber-800/50 rounded-xs rotate-[-5deg] z-20" />
+
+                {canManage && (
+                    <Link
+                        href="/admin/settings"
+                        onClick={(e) => e.stopPropagation()}
+                        title="在设置中修改此便签背景或文字"
+                        className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
+                    >
+                        <i className="ri-settings-3-line text-xs" />
+                    </Link>
+                )}
+
+                <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
+                    <span className="text-2xl mb-1 block">🐾</span>
+                    <p className={`font-bold text-base ${bgImage ? "text-white" : "text-amber-900 dark:text-amber-200"}`}>
+                        {siteConfig.name || "80hou's Home"}
+                    </p>
+                    <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-amber-700/80 dark:text-amber-300/70"}`}>
+                        {siteConfig.atelierAboutDesc || "欢迎光临我的记忆工坊与随笔空间，点击了解更多。"}
+                    </p>
+                    <div className={`mt-3 flex items-center gap-1 text-xs font-semibold group-hover:underline ${bgImage ? "text-amber-300" : "text-amber-800 dark:text-amber-300"}`}>
+                        <span>关于我 &rarr;</span>
+                    </div>
                 </div>
             </div>
         );
     }
 
     if (type === "timeline") {
+        const bgImage = siteConfig.atelierTimelineBg;
         return (
             <div
                 onClick={() => setLocation("/timeline")}
-                className="group relative break-inside-avoid block w-full rounded-2xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200/80 dark:border-orange-800/40 p-5 shadow-md hover:shadow-xl transition-all duration-300 transform -rotate-2 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none"
+                style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform -rotate-2 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
+                    bgImage
+                        ? "bg-cover bg-center border border-black/10 dark:border-white/10"
+                        : "bg-orange-50 dark:bg-orange-950/40 border border-orange-200/80 dark:border-orange-800/40"
+                }`}
             >
-                <div className="absolute -top-2.5 right-6 w-10 h-3.5 bg-orange-200/70 dark:bg-orange-800/50 rounded-xs rotate-[3deg]" />
-                <span className="text-2xl mb-1 block">⏳</span>
-                <p className="font-bold text-base text-orange-900 dark:text-orange-200">岁月轨迹</p>
-                <p className="text-xs text-orange-700/80 dark:text-orange-300/70 mt-1 leading-relaxed">
-                    {siteConfig.atelierTimelineDesc || "以时间为轴，串联起每一次灵感与技术实践。"}
-                </p>
-                <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-orange-800 dark:text-orange-300 group-hover:underline">
-                    <span>时光长河足迹 &rarr;</span>
+                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
+                <div className="absolute -top-2.5 right-6 w-10 h-3.5 bg-orange-200/70 dark:bg-orange-800/50 rounded-xs rotate-[3deg] z-20" />
+
+                {canManage && (
+                    <Link
+                        href="/admin/settings"
+                        onClick={(e) => e.stopPropagation()}
+                        title="在设置中修改此便签背景或文字"
+                        className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
+                    >
+                        <i className="ri-settings-3-line text-xs" />
+                    </Link>
+                )}
+
+                <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
+                    <span className="text-2xl mb-1 block">⏳</span>
+                    <p className={`font-bold text-base ${bgImage ? "text-white" : "text-orange-900 dark:text-orange-200"}`}>岁月轨迹</p>
+                    <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-orange-700/80 dark:text-orange-300/70"}`}>
+                        {siteConfig.atelierTimelineDesc || "以时间为轴，串联起每一次灵感与技术实践。"}
+                    </p>
+                    <div className={`mt-3 flex items-center gap-1 text-xs font-semibold group-hover:underline ${bgImage ? "text-orange-300" : "text-orange-800 dark:text-orange-300"}`}>
+                        <span>时光长河足迹 &rarr;</span>
+                    </div>
                 </div>
             </div>
         );
     }
 
     if (type === "moments") {
+        const bgImage = siteConfig.atelierMomentsBg;
         return (
             <div
                 onClick={() => setLocation("/moments")}
-                className="group relative break-inside-avoid block w-full rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/40 p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-2 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none"
+                style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-2 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
+                    bgImage
+                        ? "bg-cover bg-center border border-black/10 dark:border-white/10"
+                        : "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/40"
+                }`}
             >
-                <div className="absolute -top-2 left-8 w-10 h-3.5 bg-emerald-200/70 dark:bg-emerald-800/50 rounded-xs rotate-[-3deg]" />
-                <span className="text-2xl mb-1 block">💭</span>
-                <p className="font-bold text-base text-emerald-900 dark:text-emerald-200">日常随想</p>
-                <p className="text-xs text-emerald-700/80 dark:text-emerald-300/70 mt-1 leading-relaxed">
-                    {siteConfig.atelierMomentsDesc || "生活碎碎念、朋友圈动态与不设限的日常记录。"}
-                </p>
-                <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-emerald-800 dark:text-emerald-300 group-hover:underline">
-                    <span>朋友圈随笔 &rarr;</span>
+                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
+                <div className="absolute -top-2 left-8 w-10 h-3.5 bg-emerald-200/70 dark:bg-emerald-800/50 rounded-xs rotate-[-3deg] z-20" />
+
+                {canManage && (
+                    <Link
+                        href="/admin/settings"
+                        onClick={(e) => e.stopPropagation()}
+                        title="在设置中修改此便签背景或文字"
+                        className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
+                    >
+                        <i className="ri-settings-3-line text-xs" />
+                    </Link>
+                )}
+
+                <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
+                    <span className="text-2xl mb-1 block">💭</span>
+                    <p className={`font-bold text-base ${bgImage ? "text-white" : "text-emerald-900 dark:text-emerald-200"}`}>日常随想</p>
+                    <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-emerald-700/80 dark:text-emerald-300/70"}`}>
+                        {siteConfig.atelierMomentsDesc || "生活碎碎念、朋友圈动态与不设限的日常记录。"}
+                    </p>
+                    <div className={`mt-3 flex items-center gap-1 text-xs font-semibold group-hover:underline ${bgImage ? "text-emerald-300" : "text-emerald-800 dark:text-emerald-300"}`}>
+                        <span>朋友圈随笔 &rarr;</span>
+                    </div>
                 </div>
             </div>
         );
     }
 
     if (type === "friends") {
+        const bgImage = siteConfig.atelierFriendsBg;
         return (
             <div
                 onClick={() => setLocation("/friends")}
-                className="group relative break-inside-avoid block w-full rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/40 p-5 shadow-md hover:shadow-xl transition-all duration-300 transform -rotate-1 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none"
+                style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform -rotate-1 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
+                    bgImage
+                        ? "bg-cover bg-center border border-black/10 dark:border-white/10"
+                        : "bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/40"
+                }`}
             >
-                <div className="absolute -top-2 right-8 w-10 h-3.5 bg-rose-200/70 dark:bg-rose-800/50 rounded-xs rotate-[4deg]" />
-                <span className="text-2xl mb-1 block">🌸</span>
-                <p className="font-bold text-base text-rose-900 dark:text-rose-200">邻家友链</p>
-                <p className="text-xs text-rose-700/80 dark:text-rose-300/70 mt-1 leading-relaxed">
-                    {siteConfig.atelierFriendsDesc || "漫步在同好博主的数字花园，交换思想火花。"}
-                </p>
-                <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-rose-800 dark:text-rose-300 group-hover:underline">
-                    <span>拜访朋友们 &rarr;</span>
+                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
+                <div className="absolute -top-2 right-8 w-10 h-3.5 bg-rose-200/70 dark:bg-rose-800/50 rounded-xs rotate-[4deg] z-20" />
+
+                {canManage && (
+                    <Link
+                        href="/admin/settings"
+                        onClick={(e) => e.stopPropagation()}
+                        title="在设置中修改此便签背景或文字"
+                        className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
+                    >
+                        <i className="ri-settings-3-line text-xs" />
+                    </Link>
+                )}
+
+                <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
+                    <span className="text-2xl mb-1 block">🌸</span>
+                    <p className={`font-bold text-base ${bgImage ? "text-white" : "text-rose-900 dark:text-rose-200"}`}>邻家友链</p>
+                    <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-rose-700/80 dark:text-rose-300/70"}`}>
+                        {siteConfig.atelierFriendsDesc || "漫步在同好博主的数字花园，交换思想火花。"}
+                    </p>
+                    <div className={`mt-3 flex items-center gap-1 text-xs font-semibold group-hover:underline ${bgImage ? "text-rose-300" : "text-rose-800 dark:text-rose-300"}`}>
+                        <span>拜访朋友们 &rarr;</span>
+                    </div>
                 </div>
             </div>
         );
@@ -277,14 +377,8 @@ function StickyNoteItem({
  * 🃏 Interactive Flip / Gallery Deck Card
  */
 function NextDeckFlipCard({
-    onFlipNext,
-    onShuffle,
-    hasMore,
     totalCount,
 }: {
-    onFlipNext: () => void;
-    onShuffle: () => void;
-    hasMore: boolean;
     totalCount: number;
 }) {
     return (
@@ -294,32 +388,14 @@ function NextDeckFlipCard({
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                 共 {totalCount} 张记忆相片已收录
             </p>
-            <div className="mt-4 flex flex-col gap-2">
-                {/* 📷 View Image Gallery (Read-only view without upload/delete) */}
+            <div className="mt-4">
                 <Link
                     href="/gallery"
-                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-theme px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:opacity-90 active:scale-95"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-theme px-4 py-3 text-sm font-bold text-white shadow-md transition hover:opacity-90 active:scale-95"
                 >
-                    <i className="ri-folder-image-line text-sm" />
-                    <span>📷 漫游图床画廊 (仅浏览)</span>
+                    <i className="ri-folder-image-line text-base" />
+                    <span>漫游图床画廊 (仅浏览)</span>
                 </Link>
-
-                {hasMore && (
-                    <button
-                        onClick={onFlipNext}
-                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold t-primary shadow-xs transition hover:bg-neutral-50 active:scale-95 dark:border-white/10 dark:bg-neutral-900"
-                    >
-                        <i className="ri-folder-open-line text-sm text-theme" />
-                        <span>翻开下一叠相片</span>
-                    </button>
-                )}
-                <button
-                    onClick={onShuffle}
-                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold t-primary shadow-xs transition hover:bg-neutral-50 active:scale-95 dark:border-white/10 dark:bg-neutral-900"
-                >
-                    <i className="ri-shuffle-line text-sm text-theme" />
-                    <span>随性洗牌重排</span>
-                </button>
             </div>
         </div>
     );
@@ -340,10 +416,8 @@ export function FeedsPage() {
         normal: { size: 0, data: [], hasNext: false },
     });
 
-    const [page, setPage] = useState<number>(1);
-    const limit = 24;
-
-    const [shuffleSeed, setShuffleSeed] = useState(0);
+    const limit = 36;
+    const shuffleSeed = 0;
 
     const currentFeeds = feeds[listState] ?? { size: 0, data: [], hasNext: false };
     const currentFeedData = Array.isArray(currentFeeds.data) ? currentFeeds.data : [];
@@ -389,19 +463,8 @@ export function FeedsPage() {
         if (type !== listState) {
             _setListState(type);
         }
-        setPage(1);
         fetchFeeds(type, 1, false);
     }, [query.get("type")]);
-
-    const handleFlipNext = () => {
-        const nextPage = page + 1;
-        setPage(nextPage);
-        fetchFeeds(listState, nextPage, true);
-    };
-
-    const handleShuffle = () => {
-        setShuffleSeed((prev) => prev + 1);
-    };
 
     const interleavedItems = useMemo(() => {
         const items: Array<{ type: "photo" | "note" | "deck"; data?: any; noteType?: any }> = [];
@@ -548,6 +611,7 @@ export function FeedsPage() {
                                         feed={item.data}
                                         index={idx}
                                         tiltOffset={shuffleSeed}
+                                        canManage={Boolean(profile?.permission)}
                                     />
                                 );
                             }
@@ -558,6 +622,7 @@ export function FeedsPage() {
                                         key={`note-${item.noteType}-${idx}`}
                                         type={item.noteType}
                                         siteConfig={siteConfig}
+                                        canManage={Boolean(profile?.permission)}
                                     />
                                 );
                             }
@@ -565,9 +630,6 @@ export function FeedsPage() {
                             return (
                                 <NextDeckFlipCard
                                     key="next-deck-card"
-                                    onFlipNext={handleFlipNext}
-                                    onShuffle={handleShuffle}
-                                    hasMore={currentFeeds.hasNext}
                                     totalCount={currentFeeds.size}
                                 />
                             );

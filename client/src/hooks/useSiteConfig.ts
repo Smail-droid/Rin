@@ -21,6 +21,10 @@ export const SITE_CONFIG_KEYS = {
     atelierTimelineDesc: "atelier.timeline_desc",
     atelierMomentsDesc: "atelier.moments_desc",
     atelierFriendsDesc: "atelier.friends_desc",
+    atelierAboutBg: "atelier.about_bg",
+    atelierTimelineBg: "atelier.timeline_bg",
+    atelierMomentsBg: "atelier.moments_bg",
+    atelierFriendsBg: "atelier.friends_bg",
 } as const;
 
 // Hook to get site configuration
@@ -35,7 +39,7 @@ export function useSiteConfig() {
                 : NaN;
 
     const showNavRaw = config.get<string | boolean>(SITE_CONFIG_KEYS.headerShowNav);
-    const headerShowNav = showNavRaw === undefined ? false : showNavRaw === true || showNavRaw === "true";
+    const headerShowNav = showNavRaw === undefined ? undefined : showNavRaw === true || showNavRaw === "true";
 
     return {
         name: config.get<string>(SITE_CONFIG_KEYS.name) || "Rin",
@@ -54,6 +58,10 @@ export function useSiteConfig() {
         atelierTimelineDesc: config.get<string>(SITE_CONFIG_KEYS.atelierTimelineDesc) || "以时间为轴，串联起每一次灵感与技术实践。",
         atelierMomentsDesc: config.get<string>(SITE_CONFIG_KEYS.atelierMomentsDesc) || "生活碎碎念、灵感火花与不设限的日常记录。",
         atelierFriendsDesc: config.get<string>(SITE_CONFIG_KEYS.atelierFriendsDesc) || "漫步在同好博主的数字花园，交换思想火花。",
+        atelierAboutBg: config.get<string>(SITE_CONFIG_KEYS.atelierAboutBg) || "",
+        atelierTimelineBg: config.get<string>(SITE_CONFIG_KEYS.atelierTimelineBg) || "",
+        atelierMomentsBg: config.get<string>(SITE_CONFIG_KEYS.atelierMomentsBg) || "",
+        atelierFriendsBg: config.get<string>(SITE_CONFIG_KEYS.atelierFriendsBg) || "",
     };
 }
 

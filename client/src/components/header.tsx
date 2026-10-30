@@ -11,11 +11,6 @@ export function Header({ children }: { children?: React.ReactNode }) {
   const profile = useContext(ProfileContext);
   const siteConfig = useSiteConfig();
 
-  // On homepage, respect headerShowNav setting (hidden by default for immersive atelier gallery)
-  if (location === "/" && !siteConfig.headerShowNav) {
-    return null;
-  }
-
   const headerLayout = normalizeHeaderLayout(siteConfig.headerLayout);
   const headerBehavior = normalizeHeaderBehavior(siteConfig.headerBehavior);
   const layoutDefinition = getHeaderLayoutDefinition(headerLayout);
@@ -66,6 +61,16 @@ export function Header({ children }: { children?: React.ReactNode }) {
       window.removeEventListener("resize", setHeaderScrollOffset);
     };
   }, [headerBehavior, headerLayout]);
+
+  // ALL HOOKS ARE CALLED UNCONDITIONALLY ABOVE (prevents React Error #310)
+  const isHome = location === "/";
+  const showNavOnHome = profile?.permission
+    ? siteConfig.headerShowNav !== false
+    : Boolean(siteConfig.headerShowNav);
+
+  if (isHome && !showNavOnHome) {
+    return null;
+  }
 
   const useTopHeader = layoutDefinition.kind === "top";
   const headerPaddingClassName = headerLayout === "compact" ? "mx-0 mt-0" : "mx-4 mt-4";

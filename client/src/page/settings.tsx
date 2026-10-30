@@ -462,6 +462,50 @@ export function Settings() {
               setConfigValue("client", "atelier.about_desc", value);
             }}
           />
+          <ItemImageInput
+            title="“关于我”便签背景图"
+            description="为画廊中的“关于我”便签设置专属艺术背景封面"
+            configKeyTitle="atelier.about_bg"
+            value={String(clientConfig.get("atelier.about_bg") ?? "")}
+            placeholder="https://..."
+            onChange={(value) => {
+              setConfigValue("client", "atelier.about_bg", value);
+            }}
+            onError={showAlert}
+          />
+          <ItemImageInput
+            title="“岁月轨迹”便签背景图"
+            description="为画廊中的“岁月轨迹”便签设置专属艺术背景封面"
+            configKeyTitle="atelier.timeline_bg"
+            value={String(clientConfig.get("atelier.timeline_bg") ?? "")}
+            placeholder="https://..."
+            onChange={(value) => {
+              setConfigValue("client", "atelier.timeline_bg", value);
+            }}
+            onError={showAlert}
+          />
+          <ItemImageInput
+            title="“日常随想”便签背景图"
+            description="为画廊中的“日常随想”便签设置专属艺术背景封面"
+            configKeyTitle="atelier.moments_bg"
+            value={String(clientConfig.get("atelier.moments_bg") ?? "")}
+            placeholder="https://..."
+            onChange={(value) => {
+              setConfigValue("client", "atelier.moments_bg", value);
+            }}
+            onError={showAlert}
+          />
+          <ItemImageInput
+            title="“邻家友链”便签背景图"
+            description="为画廊中的“邻家友链”便签设置专属艺术背景封面"
+            configKeyTitle="atelier.friends_bg"
+            value={String(clientConfig.get("atelier.friends_bg") ?? "")}
+            placeholder="https://..."
+            onChange={(value) => {
+              setConfigValue("client", "atelier.friends_bg", value);
+            }}
+            onError={showAlert}
+          />
 
           <ItemTitle title={t("settings.other.title")} />
           <ItemSwitch
