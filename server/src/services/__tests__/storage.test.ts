@@ -143,6 +143,46 @@ describe('StorageService', () => {
             expect(res.status).toBeLessThanOrEqual(401);
         });
 
+        it('should reject dangerous file extensions', async () => {
+            const r2App = createAppWithEnv(env, 1);
+            const formData = new FormData();
+            formData.append('key', 'malicious.html');
+            formData.append('file', new File(['<script>alert(1)</script>'], 'malicious.html', { type: 'text/html' }));
+
+            const res = await r2App.request('/', {
+                method: 'POST',
+                body: formData,
+            }, env);
+
+            expect(res.status).toBe(400);
+            expect(await res.text()).toContain('Dangerous file extension');
+        });
+
+        it('should reject files exceeding size limit', async () => {
+            const r2App = createAppWithEnv(env, 1);
+            const formData = new FormData();
+            formData.append('key', 'huge.png');
+            // Fake a file larger than 10MB
+            const hugeContent = new Uint8Array(11 * 1024 * 1024);
+            formData.append('file', new File([hugeContent], 'huge.png', { type: 'image/png' }));
+
+            const res = await r2App.request('/', {
+                method: 'POST',
+                body: formData,
+            }, env);
+
+            expect(res.status).toBe(413);
+        });
+
+        it('should reject path traversal in blob requests', async () => {
+            const res = await app.request('/blob/..%2F..%2Fsecret', {
+                method: 'GET',
+            }, env);
+
+            expect(res.status).toBe(400);
+            expect(await res.text()).toBe('Invalid blob key');
+        });
+
         it('should upload through R2 binding when configured', async () => {
             const putCalls: Array<{ key: string; type: string | undefined }> = [];
             const r2Env = createMockEnv({

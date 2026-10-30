@@ -13,6 +13,9 @@ export function CommentService(): Hono {
     app.get('/:feed', async (c: AppContext) => {
         const db = c.get('db');
         const feedId = parseInt(c.req.param('feed'));
+        if (Number.isNaN(feedId) || feedId <= 0) {
+            return c.text('Invalid feed ID', 400);
+        }
         
         const comment_list = await profileAsync(c, 'comment_list_db', () => db.query.comments.findMany({
             where: eq(comments.feedId, feedId),
@@ -51,6 +54,9 @@ export function CommentService(): Hono {
         const serverConfig = c.get('serverConfig');
         const uid = c.get('uid');
         const feedId = parseInt(c.req.param('feed'));
+        if (Number.isNaN(feedId) || feedId <= 0) {
+            return c.text('Invalid feed ID', 400);
+        }
         const body = await profileAsync(c, 'comment_create_parse', () => c.req.json());
         const { content, guestName, guestEmail, guestWebsite } = body;
         
@@ -157,6 +163,9 @@ export function CommentService(): Hono {
         }
         
         const id_num = parseInt(c.req.param('id'));
+        if (Number.isNaN(id_num) || id_num <= 0) {
+            return c.text('Invalid comment ID', 400);
+        }
         const comment = await profileAsync(c, 'comment_delete_lookup', () => db.query.comments.findFirst({ where: eq(comments.id, id_num) }));
         
         if (!comment) {

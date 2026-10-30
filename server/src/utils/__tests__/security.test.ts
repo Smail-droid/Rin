@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { isAllowedOrigin, getSafeCallbackUrl, isValidHttpUrl, sanitizeHttpUrl } from "../security";
+import { isAllowedOrigin, getSafeCallbackUrl, isValidHttpUrl, sanitizeHttpUrl, isPrivateIp, isSafePublicUrl } from "../security";
 
 describe("security utils", () => {
   const envWithFrontend = { FRONTEND_URL: "https://myblog.com" };
@@ -59,6 +59,29 @@ describe("security utils", () => {
       expect(sanitizeHttpUrl("javascript:alert(1)")).toBe("");
       expect(sanitizeHttpUrl("data:text/html,test")).toBe("");
       expect(sanitizeHttpUrl("https://example.com")).toBe("https://example.com");
+    });
+  });
+
+  describe("isPrivateIp and isSafePublicUrl (SSRF protection)", () => {
+    it("identifies private and reserved IP addresses", () => {
+      expect(isPrivateIp("localhost")).toBe(true);
+      expect(isPrivateIp("127.0.0.1")).toBe(true);
+      expect(isPrivateIp("10.0.1.20")).toBe(true);
+      expect(isPrivateIp("192.168.1.1")).toBe(true);
+      expect(isPrivateIp("172.16.0.5")).toBe(true);
+      expect(isPrivateIp("169.254.169.254")).toBe(true);
+      expect(isPrivateIp("[::1]")).toBe(true);
+      expect(isPrivateIp("8.8.8.8")).toBe(false);
+      expect(isPrivateIp("example.com")).toBe(false);
+    });
+
+    it("verifies public safe URLs for webhooks and crontabs", () => {
+      expect(isSafePublicUrl("https://api.github.com/webhook")).toBe(true);
+      expect(isSafePublicUrl("https://myblog.com/feed.xml")).toBe(true);
+      expect(isSafePublicUrl("http://169.254.169.254/latest/meta-data")).toBe(false);
+      expect(isSafePublicUrl("http://127.0.0.1:8080/admin")).toBe(false);
+      expect(isSafePublicUrl("http://localhost:3000")).toBe(false);
+      expect(isSafePublicUrl("javascript:alert(1)")).toBe(false);
     });
   });
 });

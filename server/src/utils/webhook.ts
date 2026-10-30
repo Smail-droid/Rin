@@ -1,3 +1,5 @@
+import { isSafePublicUrl } from "./security";
+
 export interface WebhookEventPayload {
   event: string;
   message: string;
@@ -129,5 +131,11 @@ export async function notify(
     ...format,
     urlTemplate: webhookUrl,
   });
+
+  if (!isSafePublicUrl(request.url) && !process.env.ALLOW_LOCAL_WEBHOOK) {
+    console.warn(`[Webhook] Blocked unsafe or non-public URL: ${request.url}`);
+    return;
+  }
+
   return await sendWebhook(request.url, request.method, request.body, request.headers);
 }

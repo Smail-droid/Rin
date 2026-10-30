@@ -1,5 +1,5 @@
-import { describe, expect, it } from "bun:test";
-import { buildWebhookRequest } from "../webhook";
+import { describe, expect, it, mock } from "bun:test";
+import { buildWebhookRequest, notify } from "../webhook";
 
 describe("buildWebhookRequest", () => {
   it("uses the default JSON webhook body", () => {
@@ -138,5 +138,27 @@ describe("buildWebhookRequest", () => {
     );
 
     expect(request.body).toBe("message=hello \"quoted\"\nnext line");
+  });
+
+  describe("notify (SSRF protection)", () => {
+    it("blocks SSRF attempts to private or metadata addresses", async () => {
+      let fetchCalled = false;
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = mock(async () => {
+        fetchCalled = true;
+        return new Response("ok");
+      });
+
+      try {
+        await notify("http://169.254.169.254/latest/meta-data", {
+          event: "test",
+          message: "ssrf",
+        });
+
+        expect(fetchCalled).toBe(false);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
   });
 });

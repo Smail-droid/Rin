@@ -6,7 +6,7 @@ import * as schema from "../db/schema";
 import { friends } from "../db/schema";
 import { notify } from "../utils/webhook";
 import { resolveWebhookConfig } from "./config-helpers";
-import { isValidHttpUrl, isValidSafeMediaUrl, sanitizeHttpUrl } from "../utils/security";
+import { isValidHttpUrl, isValidSafeMediaUrl, sanitizeHttpUrl, isSafePublicUrl } from "../utils/security";
 
 export function FriendService(): Hono {
     const app = new Hono();
@@ -127,6 +127,10 @@ export function FriendService(): Hono {
         const clientConfig = c.get('clientConfig');
         const serverConfig = c.get('serverConfig');
         const id = c.req.param('id');
+        const id_num = parseInt(id);
+        if (Number.isNaN(id_num) || id_num <= 0) {
+            return c.text('Invalid friend ID', 400);
+        }
         const body = await profileAsync(c, 'friend_update_parse', () => c.req.json());
         const { name, desc, avatar, url, accepted, sort_order } = body;
         
@@ -147,7 +151,7 @@ export function FriendService(): Hono {
             return c.text('Invalid avatar URL: unsafe protocol not allowed', 400);
         }
         
-        const exist = await profileAsync(c, 'friend_update_lookup', () => db.query.friends.findFirst({ where: eq(friends.id, parseInt(id)) }));
+        const exist = await profileAsync(c, 'friend_update_lookup', () => db.query.friends.findFirst({ where: eq(friends.id, id_num) }));
         if (!exist) {
             return c.text('Not found', 404);
         }
@@ -175,7 +179,7 @@ export function FriendService(): Hono {
             url: wrap(url),
             accepted: finalAccepted === undefined ? undefined : finalAccepted,
             sort_order: finalSortOrder === undefined ? undefined : finalSortOrder,
-        }).where(eq(friends.id, parseInt(id))));
+        }).where(eq(friends.id, id_num)));
         
         if (!admin) {
             const {
@@ -215,12 +219,16 @@ export function FriendService(): Hono {
         const uid = c.get('uid');
         const db = c.get('db');
         const id = c.req.param('id');
+        const id_num = parseInt(id);
+        if (Number.isNaN(id_num) || id_num <= 0) {
+            return c.text('Invalid friend ID', 400);
+        }
         
         if (!uid) {
             return c.text('Unauthorized', 401);
         }
         
-        const exist = await profileAsync(c, 'friend_delete_lookup', () => db.query.friends.findFirst({ where: eq(friends.id, parseInt(id)) }));
+        const exist = await profileAsync(c, 'friend_delete_lookup', () => db.query.friends.findFirst({ where: eq(friends.id, id_num) }));
         if (!exist) {
             return c.text('Not found', 404);
         }
@@ -229,7 +237,7 @@ export function FriendService(): Hono {
             return c.text('Permission denied', 403);
         }
         
-        await profileAsync(c, 'friend_delete_db', () => db.delete(friends).where(eq(friends.id, parseInt(id))));
+        await profileAsync(c, 'friend_delete_db', () => db.delete(friends).where(eq(friends.id, id_num)));
         return c.text('OK');
     });
 
@@ -259,6 +267,10 @@ export async function friendCrontab(
     let unhealthy = 0;
     
     for (const friend of friend_list) {
+        if (!isSafePublicUrl(friend.url)) {
+            console.warn(`[FriendCrontab] Skipping non-public URL for ${friend.name}: ${friend.url}`);
+            continue;
+        }
         console.info(`checking ${friend.name}: ${friend.url}`);
         try {
             const response = await fetch(new Request(friend.url, { 

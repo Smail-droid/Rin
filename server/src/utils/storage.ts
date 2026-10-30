@@ -96,6 +96,8 @@ function createStorageResponse(object: R2ObjectBody | R2Object, body?: BodyInit 
     headers.set("Access-Control-Allow-Origin", "*");
   }
 
+  headers.set("X-Content-Type-Options", "nosniff");
+
   return new Response(body ?? null, {
     status: 200,
     headers,

@@ -119,3 +119,53 @@ export function sanitizeHttpUrl(urlStr: string | null | undefined): string {
 
   return "";
 }
+
+export function isPrivateIp(hostname: string): boolean {
+  const normalized = hostname.trim().toLowerCase();
+
+  if (
+    normalized === "localhost" ||
+    normalized === "127.0.0.1" ||
+    normalized === "0.0.0.0" ||
+    normalized === "::1" ||
+    normalized === "[::1]"
+  ) {
+    return true;
+  }
+
+  const ipv4Match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(normalized);
+  if (ipv4Match) {
+    const o1 = Number(ipv4Match[1]);
+    const o2 = Number(ipv4Match[2]);
+    if (o1 === 0 || o1 === 10 || o1 === 127) return true;
+    if (o1 === 169 && o2 === 254) return true;
+    if (o1 === 172 && o2 >= 16 && o2 <= 31) return true;
+    if (o1 === 192 && o2 === 168) return true;
+  }
+
+  if (normalized.startsWith("[") && normalized.endsWith("]")) {
+    const raw = normalized.slice(1, -1);
+    if (raw === "::1" || raw.startsWith("fe80:") || raw.startsWith("fc00:") || raw.startsWith("fd")) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function isSafePublicUrl(urlStr: string | null | undefined): boolean {
+  if (!urlStr || typeof urlStr !== "string") {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(urlStr.trim());
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return false;
+    }
+    return !isPrivateIp(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+

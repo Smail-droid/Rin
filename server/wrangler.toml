@@ -1,0 +1,24 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "rin-server"
+main = "src/_worker.ts"
+compatibility_date = "2026-01-20"
+
+[assets]
+directory = "../dist/client"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "rin"
+database_id = "local-db-id"
+
+[ai]
+binding = "AI"
+
+[vars]
+S3_FOLDER = "images/"
+S3_CACHE_FOLDER = "cache/"
+S3_REGION = "auto"
+S3_FORCE_PATH_STYLE = "false"
+CACHE_STORAGE_MODE = "database"
+PAGE_SIZE = "5"

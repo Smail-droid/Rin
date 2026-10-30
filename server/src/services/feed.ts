@@ -265,41 +265,63 @@ export function FeedService(): Hono<{
             const ip = c.req.header('cf-connecting-ip') || c.req.header('x-real-ip') || "UNK";
             const visitorKey = `${ip}`;
 
-            // Get or create visit stats for this feed
-            let stats = await profileAsync(c, 'feed_detail_stats_lookup', () => db.query.visitStats.findFirst({
+            // Fast lookup current visit stats for this feed
+            const stats = await profileAsync(c, 'feed_detail_stats_lookup', () => db.query.visitStats.findFirst({
                 where: eq(visitStats.feedId, feed.id)
             }));
 
+            let newHllData: string;
             if (!stats) {
-                // Create new stats record
-                await profileAsync(c, 'feed_detail_stats_insert', () => db.insert(visitStats).values({
-                    feedId: feed.id,
-                    pv: 1,
-                    hllData: new HyperLogLog().serialize()
-                }));
                 pv = 1;
                 uv = 1;
+                const hll = new HyperLogLog();
+                hll.add(visitorKey);
+                newHllData = hll.serialize();
             } else {
-                // Update existing stats
                 const hll = new HyperLogLog(stats.hllData);
                 hll.add(visitorKey);
-                const newHllData = hll.serialize();
-                const newPv = stats.pv + 1;
-
-                await profileAsync(c, 'feed_detail_stats_update', () => db.update(visitStats)
-                    .set({
-                        pv: newPv,
-                        hllData: newHllData,
-                        updatedAt: new Date()
-                    })
-                    .where(eq(visitStats.feedId, feed.id)));
-
-                pv = newPv;
+                newHllData = hll.serialize();
+                pv = stats.pv + 1;
                 uv = Math.round(hll.count());
             }
 
-            // Keep recording to visits table for backup/history
-            await profileAsync(c, 'feed_detail_visit_insert', () => db.insert(visits).values({ feedId: feed.id, ip: ip }));
+            // Perform D1 write operations asynchronously to prevent blocking the response
+            const recordTask = async () => {
+                try {
+                    if (!stats) {
+                        await db.insert(visitStats).values({
+                            feedId: feed.id,
+                            pv: 1,
+                            hllData: newHllData
+                        });
+                    } else {
+                        await db.update(visitStats)
+                            .set({
+                                pv,
+                                hllData: newHllData,
+                                updatedAt: new Date()
+                            })
+                            .where(eq(visitStats.feedId, feed.id));
+                    }
+                    await db.insert(visits).values({ feedId: feed.id, ip });
+                } catch (error: any) {
+                    console.error('[VisitStats] Background write error:', error?.message);
+                }
+            };
+
+            let hasExecutionCtx = false;
+            try {
+                if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
+                    c.executionCtx.waitUntil(recordTask());
+                    hasExecutionCtx = true;
+                }
+            } catch {
+                hasExecutionCtx = false;
+            }
+
+            if (!hasExecutionCtx) {
+                await recordTask();
+            }
         }
 
         return c.json({ ...other, hashtags: hashtags_flatten, pv, uv });
