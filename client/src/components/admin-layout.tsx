@@ -19,7 +19,7 @@ function AdminNavItem({
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
+      className={`shrink-0 flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors ${
         active
           ? "bg-theme text-white"
           : "t-primary hover:bg-neutral-100 dark:hover:bg-white/5"
@@ -62,8 +62,9 @@ export function AdminLayout({
               <p className="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400 dark:text-neutral-500">
                 {t("admin.title")}
               </p>
-              <div className="mt-3 flex flex-col gap-2">
+              <div className="mt-3 flex flex-row lg:flex-col gap-2 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
                 <AdminNavItem href="/admin/writing" icon="ri-quill-pen-line" label={t("writing")} />
+                <AdminNavItem href="/admin/files" icon="ri-folder-image-line" label={t("admin_files.title")} />
                 <AdminNavItem href="/admin/settings" icon="ri-settings-3-line" label={t("settings.title")} />
                 <AdminNavItem href="/admin/health" icon="ri-heart-pulse-line" label={t("health.title")} />
                 <AdminNavItem href="/admin/queue-status" icon="ri-todo-line" label={t("queue_status.title")} />

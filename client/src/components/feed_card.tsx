@@ -88,6 +88,11 @@ const FEED_CARD_STYLES: Record<
     },
 };
 
+function estimateReadingMinutes(text: string): number {
+    const chars = (text || "").length;
+    return Math.max(1, Math.round(chars / 250));
+}
+
 export type FeedCardProps = {
     id: string;
     avatar?: string;
@@ -127,6 +132,10 @@ export function FeedCard({ id, title, avatar, draft, listed, top, summary, hasht
                             {t('feed_card.updated$time', { time: timeago(updatedAt) })}
                         </span>
                     }
+                    <span className="inline-flex items-center gap-1 opacity-75">
+                        <i className="ri-time-line text-xs" />
+                        <span>{estimateReadingMinutes(summary)} min</span>
+                    </span>
                 </p>
                 <p className={`space-x-2 ${styles.meta} ${activeVariant === "editorial" ? "mt-2" : ""}`}>
                     {draft === 1 && <span>{t("draft")}</span>}

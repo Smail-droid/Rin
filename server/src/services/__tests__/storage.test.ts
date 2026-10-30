@@ -108,7 +108,7 @@ describe('StorageService', () => {
         `);
     }
 
-    function createAppWithEnv(appEnv: Env, uid?: number) {
+    function createAppWithEnv(appEnv: Env, uid?: number, admin?: boolean) {
         const serviceApp = new Hono<{ Bindings: Env; Variables: Variables }>();
         serviceApp.use(createMiddleware<{ Bindings: Env; Variables: Variables }>(async (c, next) => {
             c.set('db', db);
@@ -121,6 +121,9 @@ describe('StorageService', () => {
             } as JWTUtils);
             c.set('env', appEnv);
             c.set('uid', uid);
+            if (admin !== undefined) {
+                c.set('admin', admin);
+            }
             await next();
         }));
         serviceApp.route('/', StorageService());
@@ -358,6 +361,82 @@ describe('StorageService', () => {
             expect(res.status).toBe(200);
             expect(res.headers.get('content-type')).toBe('text/plain');
             expect(await res.text()).toBe('test');
+        });
+    });
+
+    describe('Admin R2 Bucket Management', () => {
+        const deletedKeys: string[] = [];
+        const r2BucketMock = {
+            list: async () => ({
+                objects: [
+                    {
+                        key: 'images/sample.png',
+                        size: 2048,
+                        uploaded: new Date('2026-10-30T10:00:00Z'),
+                        httpMetadata: { contentType: 'image/png' },
+                    },
+                    {
+                        key: 'images/doc.pdf',
+                        size: 4096,
+                        uploaded: new Date('2026-10-30T11:00:00Z'),
+                        httpMetadata: { contentType: 'application/pdf' },
+                    },
+                ],
+                truncated: false,
+                cursor: undefined,
+            }),
+            delete: async (keys: string | string[]) => {
+                if (Array.isArray(keys)) {
+                    deletedKeys.push(...keys);
+                } else {
+                    deletedKeys.push(keys);
+                }
+            },
+        };
+
+        const r2Env = createMockEnv({
+            R2_BUCKET: r2BucketMock as unknown as R2Bucket,
+            S3_ACCESS_HOST: 'https://cdn.example.com' as any,
+        });
+
+        it('should require admin permission for GET /files', async () => {
+            const userApp = createAppWithEnv(r2Env, 1, false);
+            const res = await userApp.request('/files', { method: 'GET' }, r2Env);
+            expect(res.status).toBe(403);
+        });
+
+        it('should list files for admin', async () => {
+            const adminApp = createAppWithEnv(r2Env, 1, true);
+            const res = await adminApp.request('/files', { method: 'GET' }, r2Env);
+            expect(res.status).toBe(200);
+
+            const data = await res.json() as any;
+            expect(data.files).toHaveLength(2);
+            expect(data.files[0].key).toBe('images/sample.png');
+            expect(data.files[0].url).toBe('https://cdn.example.com/images/sample.png');
+            expect(data.files[1].contentType).toBe('application/pdf');
+        });
+
+        it('should delete a single file for admin', async () => {
+            const adminApp = createAppWithEnv(r2Env, 1, true);
+            const res = await adminApp.request('/file/images%2Fsample.png', { method: 'DELETE' }, r2Env);
+            expect(res.status).toBe(200);
+            expect(deletedKeys).toContain('images/sample.png');
+        });
+
+        it('should batch delete files for admin', async () => {
+            const adminApp = createAppWithEnv(r2Env, 1, true);
+            const res = await adminApp.request('/files', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keys: ['images/f1.png', 'images/f2.png'] }),
+            }, r2Env);
+
+            expect(res.status).toBe(200);
+            const data = await res.json() as any;
+            expect(data.deleted).toBe(2);
+            expect(deletedKeys).toContain('images/f1.png');
+            expect(deletedKeys).toContain('images/f2.png');
         });
     });
 });

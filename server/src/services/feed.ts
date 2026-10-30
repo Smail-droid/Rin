@@ -545,6 +545,11 @@ export function SearchService(): Hono<{
         Variables: Variables;
     }>();
 
+    // GET /search (empty search fallback)
+    app.get('/', async (c) => {
+        return c.json({ size: 0, data: [], hasNext: false });
+    });
+
     // GET /search/:keyword
     app.get('/:keyword', async (c) => {
         const db = c.get('db');
@@ -552,9 +557,14 @@ export function SearchService(): Hono<{
         const admin = c.get('admin');
         const page = c.req.query('page');
         const limit = c.req.query('limit');
-        let keyword = c.req.param('keyword');
+        let rawKeyword = c.req.param('keyword') || '';
 
-        keyword = decodeURI(keyword);
+        let keyword: string;
+        try {
+            keyword = decodeURIComponent(rawKeyword);
+        } catch {
+            keyword = rawKeyword;
+        }
         const page_num = parsePositiveInteger(page, 1) - 1;
         const limit_num = parsePositiveInteger(limit, 20, 50);
 

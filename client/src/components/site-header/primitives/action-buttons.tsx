@@ -1,5 +1,4 @@
-import { Modal } from "@rin/ui";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Popup from "reactjs-popup";
 import { useLocation } from "wouter";
@@ -8,8 +7,6 @@ import { ClientConfigContext } from "../../../state/config";
 import { type Profile } from "../../../state/profile";
 import { removeAuthToken } from "../../../utils/auth";
 import { ImageWithFallback } from "../../image-with-fallback";
-import { Button } from "../../button";
-import { Input } from "../../input";
 import { HEADER_POPUP_PANEL_CLASS } from "../shared";
 
 export function HeaderActions({
@@ -32,49 +29,196 @@ export function HeaderActions({
   );
 }
 
-export function SearchButton({ className, onClose, plain = false }: { className?: string; onClose?: () => void; plain?: boolean }) {
+export function SearchButton({ className = "", onClose, plain = false }: { className?: string; onClose?: () => void; plain?: boolean }) {
   const { t } = useTranslation();
   const [isOpened, setIsOpened] = useState(false);
   const [, setLocation] = useLocation();
   const [value, setValue] = useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const label = t("article.search.title");
 
-  const onSearch = () => {
-    const key = `${encodeURIComponent(value)}`;
-    setTimeout(() => {
+  useEffect(() => {
+    if (isOpened) {
+      inputRef.current?.focus();
+    } else {
+      setValue("");
+      setResults([]);
+    }
+  }, [isOpened]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpened(false);
+        onClose?.();
+      }
+    };
+    if (isOpened) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpened, onClose]);
+
+  useEffect(() => {
+    const query = value.trim();
+    if (!query) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const timer = setTimeout(() => {
+      client.search
+        .search(query, { limit: 5 })
+        .then(({ data }) => {
+          if (data && Array.isArray(data.data)) {
+            setResults(data.data);
+          } else {
+            setResults([]);
+          }
+        })
+        .catch(() => {
+          setResults([]);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [value]);
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const query = value.trim();
+    if (query) {
       setIsOpened(false);
-      if (value.length !== 0) onClose?.();
-    }, 100);
-    if (value.length !== 0) setLocation(`/search/${key}`);
+      onClose?.();
+      setLocation(`/search/${encodeURIComponent(query)}`);
+    }
+  };
+
+  const handleSelectResult = (id: string | number) => {
+    setIsOpened(false);
+    onClose?.();
+    setLocation(`/feed/${id}`);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setIsOpened(false);
+      onClose?.();
+    }
   };
 
   return (
-    <div className={className + " flex flex-row items-center"}>
-      <button
-        onClick={() => setIsOpened(true)}
-        title={label}
-        aria-label={label}
-        className={
-          plain
-            ? "flex aspect-[1] items-center justify-center px-1.5 text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
-            : "flex rounded-full border dark:border-neutral-600 px-2 bg-w aspect-[1] items-center justify-center t-primary bg-button"
-        }
-      >
-        <i className="ri-search-line" />
-      </button>
-      <Modal
-        isOpen={isOpened}
-        onRequestClose={() => setIsOpened(false)}
-        contentLabel={label}
-        position="top"
-        size="sm"
-        panelClassName="p-4"
-      >
-        <div className="flex w-full flex-row items-center justify-between space-x-4">
-          <Input value={value} setValue={setValue} placeholder={t("article.search.placeholder")} autofocus onSubmit={onSearch} />
-          <Button title={value.length === 0 ? t("close") : label} onClick={onSearch} />
-        </div>
-      </Modal>
+    <div ref={containerRef} className={`${className} relative flex items-center`}>
+      {!isOpened ? (
+        <button
+          onClick={() => setIsOpened(true)}
+          title={label}
+          aria-label={label}
+          className={
+            plain
+              ? "flex aspect-[1] items-center justify-center px-1.5 text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+              : "flex rounded-full border dark:border-neutral-600 px-2 bg-w aspect-[1] items-center justify-center t-primary bg-button"
+          }
+        >
+          <i className="ri-search-line" />
+        </button>
+      ) : (
+        <form
+          onSubmit={handleSubmit}
+          className="relative flex items-center ani-show"
+        >
+          <div className="flex items-center rounded-full border border-black/15 bg-w dark:border-white/15 px-3 py-1 shadow-sm transition-all focus-within:ring-2 focus-within:ring-theme/30 focus-within:border-theme max-w-[85vw] sm:max-w-none w-36 sm:w-60 md:w-72">
+            <i className="ri-search-line text-neutral-400 mr-2 shrink-0 text-sm" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t("article.search.placeholder") || "Search..."}
+              className="w-full bg-transparent text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none"
+            />
+            {value && (
+              <button
+                type="button"
+                onClick={() => setValue("")}
+                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 ml-1 p-0.5"
+              >
+                <i className="ri-close-line text-xs" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpened(false);
+                onClose?.();
+              }}
+              className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 ml-1.5 p-0.5"
+              title={t("close") || "Close"}
+            >
+              <i className="ri-close-circle-line text-sm" />
+            </button>
+          </div>
+
+          {/* Live Search Results Dropdown */}
+          {value.trim().length > 0 && (
+            <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 md:w-96 max-w-[90vw] rounded-2xl border border-black/10 bg-w p-2 shadow-xl backdrop-blur-lg dark:border-white/10 dark:bg-neutral-900/95 z-50 ani-show max-h-96 overflow-y-auto">
+              {loading ? (
+                <div className="flex items-center justify-center py-6 text-sm text-neutral-400">
+                  <i className="ri-loader-4-line animate-spin mr-2 text-base text-theme" />
+                  <span>{t("searching") || "Searching..."}</span>
+                </div>
+              ) : results.length > 0 ? (
+                <div className="flex flex-col gap-1">
+                  <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+                    {t("article.search.title") || "Results"}
+                  </div>
+                  {results.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleSelectResult(item.id)}
+                      className="group flex flex-col items-start rounded-xl px-3 py-2 text-left transition-colors hover:bg-neutral-100 dark:hover:bg-white/5 w-full"
+                    >
+                      <span className="font-medium text-sm text-neutral-800 dark:text-neutral-200 group-hover:text-theme line-clamp-1 transition-colors">
+                        {item.title}
+                      </span>
+                      {item.summary && (
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1 mt-0.5">
+                          {item.summary}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    className="mt-1 flex items-center justify-center gap-1.5 rounded-xl border-t border-black/5 dark:border-white/5 pt-2 pb-1 text-xs font-medium text-theme hover:underline w-full"
+                  >
+                    <span>{t("article.search.view_all") || "View all results"}</span>
+                    <i className="ri-arrow-right-line" />
+                  </button>
+                </div>
+              ) : (
+                <div className="py-6 text-center text-sm text-neutral-400">
+                  <i className="ri-inbox-line text-2xl block mb-1 opacity-50" />
+                  <span>{t("search.no_results") || "No articles found"}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </form>
+      )}
     </div>
   );
 }

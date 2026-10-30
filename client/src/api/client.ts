@@ -40,6 +40,20 @@ export interface SettingsConfigResponse {
   serverConfig: ConfigResponse;
 }
 
+export interface StorageFileItem {
+  key: string;
+  size: number;
+  uploaded: string;
+  contentType: string;
+  url: string;
+}
+
+export interface StorageListResponse {
+  files: StorageFileItem[];
+  cursor?: string;
+  truncated: boolean;
+}
+
 export interface ConfigHealthItem {
   id: string;
   title: {
@@ -267,8 +281,8 @@ class HttpClient {
     return this.request<T>("PATCH", path, body, options);
   }
 
-  async delete<T>(path: string, options?: RequestOptions): Promise<ApiResponse<T>> {
-    return this.request<T>("DELETE", path, undefined, options);
+  async delete<T>(path: string, body?: unknown, options?: RequestOptions): Promise<ApiResponse<T>> {
+    return this.request<T>("DELETE", path, body, options);
   }
 }
 
@@ -571,6 +585,26 @@ class StorageAPI {
     if (key) formData.append("key", key);
     
     return this.http.post<UploadResponse>("/api/storage", formData);
+  }
+
+  // GET /api/storage/files
+  async listFiles(params?: { prefix?: string; cursor?: string; limit?: number }): Promise<ApiResponse<StorageListResponse>> {
+    const searchParams = new URLSearchParams();
+    if (params?.prefix) searchParams.set("prefix", params.prefix);
+    if (params?.cursor) searchParams.set("cursor", params.cursor);
+    if (params?.limit) searchParams.set("limit", params.limit.toString());
+    const query = searchParams.toString();
+    return this.http.get<StorageListResponse>(`/api/storage/files${query ? `?${query}` : ""}`);
+  }
+
+  // DELETE /api/storage/file/:key
+  async deleteFile(key: string): Promise<ApiResponse<{ success: boolean; key: string }>> {
+    return this.http.delete<{ success: boolean; key: string }>(`/api/storage/file/${encodeURIComponent(key)}`);
+  }
+
+  // DELETE /api/storage/files
+  async deleteFiles(keys: string[]): Promise<ApiResponse<{ success: boolean; deleted: number }>> {
+    return this.http.delete<{ success: boolean; deleted: number }>("/api/storage/files", { keys });
   }
 }
 
