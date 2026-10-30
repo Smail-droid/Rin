@@ -190,9 +190,9 @@ function StickyNoteItem({
 
                 {canManage && (
                     <Link
-                        href="/admin/settings"
+                        href="/admin/settings?tab=atelier&focus=about"
                         onClick={(e) => e.stopPropagation()}
-                        title="在设置中修改此便签背景或文字"
+                        title="在设置中修改此便签背景、图标或文字"
                         className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
                     >
                         <i className="ri-settings-3-line text-xs" />
@@ -200,7 +200,7 @@ function StickyNoteItem({
                 )}
 
                 <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                    <span className="text-2xl mb-1 block">🐾</span>
+                    <span className="text-2xl mb-1 block">{siteConfig.atelierAboutIcon || "🐾"}</span>
                     <p className={`font-bold text-base ${bgImage ? "text-white" : "text-amber-900 dark:text-amber-200"}`}>
                         {siteConfig.name || "80hou's Home"}
                     </p>
@@ -233,9 +233,9 @@ function StickyNoteItem({
 
                 {canManage && (
                     <Link
-                        href="/admin/settings"
+                        href="/admin/settings?tab=atelier&focus=timeline"
                         onClick={(e) => e.stopPropagation()}
-                        title="在设置中修改此便签背景或文字"
+                        title="在设置中修改此便签背景、图标或文字"
                         className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
                     >
                         <i className="ri-settings-3-line text-xs" />
@@ -243,7 +243,7 @@ function StickyNoteItem({
                 )}
 
                 <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                    <span className="text-2xl mb-1 block">⏳</span>
+                    <span className="text-2xl mb-1 block">{siteConfig.atelierTimelineIcon || "⏳"}</span>
                     <p className={`font-bold text-base ${bgImage ? "text-white" : "text-orange-900 dark:text-orange-200"}`}>岁月轨迹</p>
                     <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-orange-700/80 dark:text-orange-300/70"}`}>
                         {siteConfig.atelierTimelineDesc || "以时间为轴，串联起每一次灵感与技术实践。"}
@@ -274,9 +274,9 @@ function StickyNoteItem({
 
                 {canManage && (
                     <Link
-                        href="/admin/settings"
+                        href="/admin/settings?tab=atelier&focus=moments"
                         onClick={(e) => e.stopPropagation()}
-                        title="在设置中修改此便签背景或文字"
+                        title="在设置中修改此便签背景、图标或文字"
                         className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
                     >
                         <i className="ri-settings-3-line text-xs" />
@@ -284,7 +284,7 @@ function StickyNoteItem({
                 )}
 
                 <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                    <span className="text-2xl mb-1 block">💭</span>
+                    <span className="text-2xl mb-1 block">{siteConfig.atelierMomentsIcon || "💭"}</span>
                     <p className={`font-bold text-base ${bgImage ? "text-white" : "text-emerald-900 dark:text-emerald-200"}`}>日常随想</p>
                     <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-emerald-700/80 dark:text-emerald-300/70"}`}>
                         {siteConfig.atelierMomentsDesc || "生活碎碎念、朋友圈动态与不设限的日常记录。"}
@@ -315,9 +315,9 @@ function StickyNoteItem({
 
                 {canManage && (
                     <Link
-                        href="/admin/settings"
+                        href="/admin/settings?tab=atelier&focus=friends"
                         onClick={(e) => e.stopPropagation()}
-                        title="在设置中修改此便签背景或文字"
+                        title="在设置中修改此便签背景、图标或文字"
                         className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
                     >
                         <i className="ri-settings-3-line text-xs" />
@@ -325,7 +325,7 @@ function StickyNoteItem({
                 )}
 
                 <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                    <span className="text-2xl mb-1 block">🌸</span>
+                    <span className="text-2xl mb-1 block">{siteConfig.atelierFriendsIcon || "🌸"}</span>
                     <p className={`font-bold text-base ${bgImage ? "text-white" : "text-rose-900 dark:text-rose-200"}`}>邻家友链</p>
                     <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-rose-700/80 dark:text-rose-300/70"}`}>
                         {siteConfig.atelierFriendsDesc || "漫步在同好博主的数字花园，交换思想火花。"}
@@ -354,9 +354,9 @@ function StickyNoteItem({
 
             {canManage && (
                 <Link
-                    href="/admin/settings"
+                    href="/admin/settings?tab=atelier&focus=search"
                     onClick={(e) => e.stopPropagation()}
-                    title="在设置中修改此便签背景或文字"
+                    title="在设置中修改此便签背景、图标或文字"
                     className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
                 >
                     <i className="ri-settings-3-line text-xs" />
@@ -364,7 +364,7 @@ function StickyNoteItem({
             )}
 
             <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                <span className="text-2xl mb-1 block">🔍</span>
+                <span className="text-2xl mb-1 block">{siteConfig.atelierSearchIcon || "🔍"}</span>
                 <p className={`font-bold text-base ${bgImage ? "text-white" : "text-sky-900 dark:text-sky-200"}`}>随心探索</p>
                 <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-sky-700/80 dark:text-sky-300/70"}`}>
                     输入关键词即刻检索文章与解决方案。
@@ -423,9 +423,9 @@ function NextDeckFlipCard({
 
             {canManage && (
                 <Link
-                    href="/admin/settings"
+                    href="/admin/settings?tab=atelier&focus=deck"
                     onClick={(e) => e.stopPropagation()}
-                    title="在设置中修改此卡片背景或文字"
+                    title="在设置中修改此卡片背景、图标或文字"
                     className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
                 >
                     <i className="ri-settings-3-line text-xs" />
@@ -472,6 +472,42 @@ export function FeedsPage() {
 
     const currentFeeds = feeds[listState] ?? { size: 0, data: [], hasNext: false };
     const currentFeedData = Array.isArray(currentFeeds.data) ? currentFeeds.data : [];
+
+    const isCentered = siteConfig.galleryAlign !== "fluid";
+    const paddingSide = Math.max(0, siteConfig.galleryPadding ?? 24);
+    const gapSize = Math.max(12, siteConfig.galleryCardGap ?? 24);
+
+    const getColumnsClass = (cols: string) => {
+        switch (cols) {
+            case "2":
+                return "columns-1 sm:columns-2";
+            case "3":
+                return "columns-1 sm:columns-2 lg:columns-3";
+            case "4":
+                return "columns-1 sm:columns-2 lg:columns-3 xl:columns-4";
+            case "5":
+                return "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5";
+            case "auto":
+            default:
+                return "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-4";
+        }
+    };
+
+    const getMainMaxWidth = () => {
+        if (!isCentered) return "100%";
+        switch (siteConfig.galleryColumns) {
+            case "2":
+                return "1080px";
+            case "3":
+                return "1440px";
+            case "4":
+                return "1820px";
+            case "5":
+                return "2200px";
+            default:
+                return "1820px";
+        }
+    };
 
     function fetchFeeds(type: FeedType, targetPage = 1, append = false) {
         if (!append) {
@@ -554,7 +590,14 @@ export function FeedsPage() {
                 <meta property="og:url" content={document.URL} />
             </Helmet>
 
-            <main className="w-full max-w-[1780px] 2xl:max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 mb-16">
+            <main
+                style={{
+                    paddingLeft: `${paddingSide}px`,
+                    paddingRight: `${paddingSide}px`,
+                    maxWidth: getMainMaxWidth(),
+                }}
+                className="w-full mx-auto py-4 sm:py-6 mb-16 transition-all duration-300"
+            >
                 {/* Atelier Mood Bar (Clean Title with Admin Tabs, NO standalone shuffle button) */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-2 border-b border-black/5 dark:border-white/5">
                     <div className="flex items-center gap-3">
@@ -639,7 +682,10 @@ export function FeedsPage() {
 
                 {/* Main Atelier Canvas: Staggered, Organic Columns with Large Posters */}
                 {status === "loading" && currentFeedData.length === 0 ? (
-                    <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-4 gap-6 space-y-6">
+                    <div
+                        style={{ columnGap: `${gapSize}px` }}
+                        className={`${getColumnsClass(siteConfig.galleryColumns)} space-y-6`}
+                    >
                         {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                             <div
                                 key={i}
@@ -653,7 +699,10 @@ export function FeedsPage() {
                 ) : currentFeedData.length === 0 ? (
                     <EmptyFeedsState listState={listState} canWrite={Boolean(profile?.permission)} />
                 ) : (
-                    <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-4 gap-6 space-y-6 ani-show">
+                    <div
+                        style={{ columnGap: `${gapSize}px` }}
+                        className={`${getColumnsClass(siteConfig.galleryColumns)} space-y-6 ani-show`}
+                    >
                         {interleavedItems.map((item, idx) => {
                             if (item.type === "photo") {
                                 return (

@@ -2,13 +2,13 @@ import { Modal, SearchableSelect, SettingsBadge, SettingsCard, SettingsCardBody,
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useSearch } from "wouter";
 import ReactLoading from "react-loading";
 import { client, oauth_url } from "../app/runtime";
 import { Button } from "../components/button";
 import { useAlert } from "../components/dialog.tsx";
 import { HeaderLayoutPreview } from "../components/site-header/layout-preview";
 import {
-  HEADER_BEHAVIOR_OPTIONS,
   HEADER_LAYOUT_OPTIONS,
   normalizeHeaderBehavior,
   normalizeHeaderLayout,
@@ -52,6 +52,11 @@ const WEBHOOK_METHOD_OPTIONS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD",
 export function Settings() {
   const { t } = useTranslation();
   const siteConfig = useSiteConfig();
+  const searchString = useSearch();
+  const searchParams = useMemo(() => new URLSearchParams(searchString), [searchString]);
+  const initialCategoryParam = searchParams.get("tab") as "general" | "theme" | "atelier" | "services" | null;
+  const focusTarget = searchParams.get("focus");
+
   const [isOpen, setIsOpen] = useState(false);
   const [msg, setMsg] = useState("");
   const [msgList, setMsgList] = useState<{ title: string; reason: string }[]>([]);
@@ -65,8 +70,36 @@ export function Settings() {
   const ref = useRef(false);
   const initialDraftRef = useRef<SettingsDraft>({ clientConfig: {}, serverConfig: {} });
   const { showAlert, AlertUI } = useAlert();
-  const [activeCategory, setActiveCategory] = useState<"general" | "theme" | "atelier" | "services">("general");
+  const [activeCategory, setActiveCategory] = useState<"general" | "theme" | "atelier" | "services">(
+    initialCategoryParam && ["general", "theme", "atelier", "services"].includes(initialCategoryParam)
+      ? initialCategoryParam
+      : "general"
+  );
   const [activeThemeMode, setActiveThemeMode] = useState<ThemeMode>(getStoredThemeMode());
+
+  // URL tab change synchronizer
+  useEffect(() => {
+    const tabParam = searchParams.get("tab") as "general" | "theme" | "atelier" | "services" | null;
+    if (tabParam && ["general", "theme", "atelier", "services"].includes(tabParam)) {
+      setActiveCategory(tabParam);
+    }
+  }, [searchString]);
+
+  // Smooth scroll and focus anchor when jumping from sticky note gear
+  useEffect(() => {
+    if (!focusTarget) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`setting-atelier-${focusTarget}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("ring-4", "ring-theme/50", "rounded-2xl", "transition-all", "duration-500");
+        setTimeout(() => {
+          el.classList.remove("ring-4", "ring-theme/50");
+        }, 2400);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [focusTarget, activeCategory]);
 
   function getDraftThemeColor(nextDraft: SettingsDraft) {
     return typeof nextDraft.clientConfig["theme.color"] === "string" ? nextDraft.clientConfig["theme.color"] : undefined;
@@ -362,8 +395,8 @@ export function Settings() {
               <SettingsCardRow
                 header={
                   <SettingsCardHeader
-                    title={t("settings.header_layout.title")}
-                    description={t("settings.header_layout.desc")}
+                    title="顶部站点导航栏（Header）布局样式"
+                    description="选择桌面端站点头部导航栏的排布风格（经典居中平衡 或 极简纯文本）"
                   />
                 }
                 action={
@@ -374,9 +407,9 @@ export function Settings() {
                     }}
                     options={HEADER_LAYOUT_OPTIONS.map((value) => ({
                       value,
-                      label: t(`settings.header_layout.options.${value}`),
+                      label: value === "classic" ? "经典居中" : "极简纯文本",
                     }))}
-                    placeholder={t("settings.header_layout.title")}
+                    placeholder="选择顶部导航栏布局"
                     emptyLabel={t("no_more")}
                     searchable={false}
                   />
@@ -394,8 +427,8 @@ export function Settings() {
                       }}
                       layout={value}
                       selected={normalizeHeaderLayout(String(clientConfig.get("header.layout") ?? "classic")) === value}
-                      title={t(`settings.header_layout.options.${value}`)}
-                      description={t(`settings.header_layout.preview.${value}`)}
+                      title={value === "classic" ? "经典居中" : "极简纯文本"}
+                      description={value === "classic" ? "品牌、居中导航和操作区保持平衡居中布局。" : "几乎去掉所有装饰，只保留最必要的信息和操作。"}
                       onClick={() => {
                         setConfigValue("client", "header.layout", value);
                       }}
@@ -403,6 +436,153 @@ export function Settings() {
                   ))}
                 </div>
               </SettingsCardBody>
+
+              {/* Homepage Atelier Gallery Layout Customization */}
+              <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10">
+                <div className="flex flex-col gap-4 rounded-2xl border border-black/5 bg-black/[0.015] p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                  <div>
+                    <div className="text-sm font-semibold t-primary flex items-center gap-2">
+                      <i className="ri-layout-masonry-line text-theme" />
+                      <span>首页画廊瀑布流专属排版定制</span>
+                    </div>
+                    <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                      首页已升级为艺术画廊画报流，以下配置将直接控制首页两侧留白边距、画报列数、对齐方式与尺寸
+                    </div>
+                  </div>
+
+                  {/* Padding Slider & Shortcuts */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-black/5 dark:border-white/5">
+                    <div>
+                      <div className="text-xs font-semibold t-primary">首页两侧留白边距</div>
+                      <div className="text-xs text-neutral-500 dark:text-neutral-400">控制首页主体内容距离屏幕左右两侧的留白空隙</div>
+                    </div>
+                    <div className="flex flex-col items-start sm:items-end gap-1.5">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={0}
+                          max={120}
+                          step={4}
+                          value={Number.parseInt(String(clientConfig.get("gallery.padding") ?? 24), 10) || 24}
+                          onChange={(e) => {
+                            const val = Number.parseInt(e.target.value, 10);
+                            setConfigValue("client", "gallery.padding", val);
+                          }}
+                          className="h-2 w-32 sm:w-44 cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-theme dark:bg-white/15"
+                        />
+                        <span className="min-w-14 text-right font-mono text-xs font-bold text-theme">
+                          {Number.parseInt(String(clientConfig.get("gallery.padding") ?? 24), 10) || 24}px
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {[0, 12, 24, 48, 80].map((px) => {
+                          const currentVal = Number.parseInt(String(clientConfig.get("gallery.padding") ?? 24), 10) || 24;
+                          const isSelected = currentVal === px;
+                          return (
+                            <button
+                              key={px}
+                              type="button"
+                              onClick={() => setConfigValue("client", "gallery.padding", px)}
+                              className={`rounded-md px-2 py-0.5 text-[11px] font-semibold transition select-none ${
+                                isSelected
+                                  ? "bg-theme text-white shadow-2xs"
+                                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300"
+                              }`}
+                            >
+                              {px === 0 ? "无边距" : `${px}px`}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Gallery Columns & Alignment */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-black/5 dark:border-white/5">
+                    <div>
+                      <div className="text-xs font-semibold t-primary mb-1.5">画廊列数控制</div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {[
+                          { label: "自适应 Auto", value: "auto" },
+                          { label: "2 列", value: "2" },
+                          { label: "3 列", value: "3" },
+                          { label: "4 列", value: "4" },
+                          { label: "5 列", value: "5" },
+                        ].map((col) => {
+                          const currentCol = String(clientConfig.get("gallery.columns") ?? "auto");
+                          const isSelected = currentCol === col.value;
+                          return (
+                            <button
+                              key={col.value}
+                              type="button"
+                              onClick={() => setConfigValue("client", "gallery.columns", col.value)}
+                              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition select-none ${
+                                isSelected
+                                  ? "bg-theme text-white shadow-xs"
+                                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300"
+                              }`}
+                            >
+                              {col.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-semibold t-primary mb-1.5">画廊排版对齐方式</div>
+                      <div className="flex items-center gap-1.5">
+                        {[
+                          { label: "居中聚拢 (Center)", value: "center" },
+                          { label: "撑满两端 (Fluid)", value: "fluid" },
+                        ].map((align) => {
+                          const currentAlign = String(clientConfig.get("gallery.align") ?? "center");
+                          const isSelected = currentAlign === align.value;
+                          return (
+                            <button
+                              key={align.value}
+                              type="button"
+                              onClick={() => setConfigValue("client", "gallery.align", align.value)}
+                              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition select-none ${
+                                isSelected
+                                  ? "bg-theme text-white shadow-xs"
+                                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300"
+                              }`}
+                            >
+                              {align.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Gap & Max Width Fine-tuning */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-black/5 dark:border-white/5">
+                    <div>
+                      <div className="text-xs font-semibold t-primary">卡片列间距与间隙</div>
+                      <div className="text-xs text-neutral-500 dark:text-neutral-400">调节瀑布流每列卡片之间的水平与垂直间隙</div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min={12}
+                        max={48}
+                        step={4}
+                        value={Number.parseInt(String(clientConfig.get("gallery.card_gap") ?? 24), 10) || 24}
+                        onChange={(e) => {
+                          const val = Number.parseInt(e.target.value, 10);
+                          setConfigValue("client", "gallery.card_gap", val);
+                        }}
+                        className="h-2 w-32 sm:w-44 cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-theme dark:bg-white/15"
+                      />
+                      <span className="min-w-14 text-right font-mono text-xs font-bold text-theme">
+                        {Number.parseInt(String(clientConfig.get("gallery.card_gap") ?? 24), 10) || 24}px
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10">
                 <SettingsCardRow
                   header={
@@ -479,7 +659,7 @@ export function Settings() {
                         <span>窗口透明度</span>
                       </div>
                       <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 max-w-md">
-                        调节整个应用窗口与卡片的通透度与毛玻璃质感，让背景质感若隐若现。较低时文字对比度更柔和。
+                        调节卡片与窗口的通透度与毛玻璃磨砂程度。已注入环境弥散光晕，调低时可清晰看到背景光晕透出与通透悬浮层次。
                       </div>
                     </div>
                     <div className="flex flex-col items-start sm:items-end gap-2">
@@ -588,16 +768,16 @@ export function Settings() {
                     </div>
                   </div>
 
-                  {/* Preset Themes Grid */}
-                  <div className="flex flex-col gap-2.5 pb-3 border-b border-black/5 dark:border-white/5">
+                  {/* Preset Themes Grid (Compact row matching accent palette below) */}
+                  <div className="flex flex-col gap-2 pb-3 border-b border-black/5 dark:border-white/5">
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-semibold t-primary">风格主题预设</div>
-                      <span className="text-xs text-neutral-400 dark:text-neutral-500">18 款精选方案</span>
+                      <span className="text-xs text-neutral-400 dark:text-neutral-500">18 款精选方案 · 紧凑点选</span>
                     </div>
                     <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                      内置多套高质感预设配色方案（极简纸墨、赛博冷萃、和风青空、午夜深邃等），点击即刻全局应用
+                      内置多套高质感配色方案（极简纸墨、赛博冷萃、和风青空、午夜深邃等），点击即刻全局应用
                     </div>
-                    <div className="grid grid-cols-6 sm:grid-cols-9 gap-2.5 pt-1">
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
                       {THEME_PRESETS.map((preset) => {
                         const isSelected = themePresetValue === preset.id;
                         return (
@@ -612,23 +792,23 @@ export function Settings() {
                                 applyThemeColor(preset.color);
                               }
                             }}
-                            className={`group relative flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:scale-110 active:scale-95 ${
+                            className={`group relative flex h-7 w-7 items-center justify-center rounded-full transition-all duration-200 hover:scale-110 active:scale-95 ${
                               isSelected
-                                ? "ring-2 ring-offset-2 ring-theme shadow-sm shadow-theme/30"
+                                ? "ring-2 ring-offset-2 ring-theme shadow-xs scale-105"
                                 : "hover:shadow-xs"
                             }`}
                             style={{
                               backgroundColor: preset.previewBg,
-                              border: `1.5px solid ${isSelected ? preset.color : "rgba(0,0,0,0.08)"}`,
+                              border: `1.5px solid ${isSelected ? preset.color : "rgba(0,0,0,0.12)"}`,
                             }}
                           >
                             <span
-                              className="h-4 w-4 rounded-full shadow-2xs transition-transform group-hover:scale-110"
+                              className="h-3.5 w-3.5 rounded-full shadow-2xs transition-transform group-hover:scale-110"
                               style={{ backgroundColor: preset.color }}
                             />
                             {isSelected && (
                               <span className="absolute inset-0 flex items-center justify-center">
-                                <i className="ri-check-line text-xs font-bold text-white drop-shadow-xs" />
+                                <i className="ri-check-line text-[11px] font-bold text-white drop-shadow-xs" />
                               </span>
                             )}
                           </button>
@@ -736,8 +916,8 @@ export function Settings() {
                 <SettingsCardRow
                   header={
                     <SettingsCardHeader
-                      title={t("settings.header_behavior.title")}
-                      description={t("settings.header_behavior.desc")}
+                      title="顶部导航栏吸顶滚动行为"
+                      description="控制页面向下滚动时，顶部导航栏是固定吸顶悬浮、随页面滚出屏幕，还是向上滑动时自动呼出"
                     />
                   }
                   action={
@@ -746,11 +926,12 @@ export function Settings() {
                       onChange={(value) => {
                         setConfigValue("client", "header.behavior", value);
                       }}
-                      options={HEADER_BEHAVIOR_OPTIONS.map((value) => ({
-                        value,
-                        label: t(`settings.header_behavior.options.${value}`),
-                      }))}
-                      placeholder={t("settings.header_behavior.title")}
+                      options={[
+                        { value: "fixed", label: "固定吸顶在顶部 (Fixed)" },
+                        { value: "static", label: "跟随页面滚动 (Static)" },
+                        { value: "reveal", label: "向上滑动时自动呼出 (Reveal)" },
+                      ]}
+                      placeholder="顶部导航栏滚动行为"
                       emptyLabel={t("no_more")}
                       searchable={false}
                     />
@@ -777,203 +958,275 @@ export function Settings() {
             }}
           />
 
-          <ItemTitle title="1. “关于我”便签设置" />
-          <ItemInput
-            title="“关于我”跳转链接"
-            description="点击便签时跳转的文章别名或页面链接（例如 /about 或 /feed/1）"
-            configKeyTitle="atelier.about_url"
-            value={String(clientConfig.get("atelier.about_url") ?? "/about")}
-            placeholder="/about"
-            onChange={(value) => {
-              setConfigValue("client", "atelier.about_url", value);
-            }}
-          />
-          <ItemInput
-            title="“关于我”描述语"
-            description="便签卡片上展示的心情寄语"
-            configKeyTitle="atelier.about_desc"
-            value={String(clientConfig.get("atelier.about_desc") ?? "欢迎光临我的记忆工坊与随笔空间，点击了解更多。")}
-            placeholder="欢迎光临我的记忆工坊与随笔空间，点击了解更多。"
-            onChange={(value) => {
-              setConfigValue("client", "atelier.about_desc", value);
-            }}
-          />
-          <ItemImageInput
-            title="“关于我”背景图"
-            description="为画廊中的“关于我”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
-            configKeyTitle="atelier.about_bg"
-            value={String(clientConfig.get("atelier.about_bg") ?? "")}
-            placeholder="https://..."
-            onChange={(value) => {
-              setConfigValue("client", "atelier.about_bg", value);
-            }}
-            onError={showAlert}
-          />
+          <div id="setting-atelier-about" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
+            <ItemTitle title="1. “关于我”便签设置" />
+            <ItemInput
+              title="“关于我”便签图标 (Emoji / 符号)"
+              description="便签卡片左上角显示的符号图标（支持输入任意 Emoji，如 🐾、🐱、🍀 等）"
+              configKeyTitle="atelier.about_icon"
+              value={String(clientConfig.get("atelier.about_icon") ?? "🐾")}
+              placeholder="🐾"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.about_icon", value);
+              }}
+            />
+            <ItemInput
+              title="“关于我”跳转链接"
+              description="点击便签时跳转的文章别名或页面链接（例如 /about 或 /feed/1）"
+              configKeyTitle="atelier.about_url"
+              value={String(clientConfig.get("atelier.about_url") ?? "/about")}
+              placeholder="/about"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.about_url", value);
+              }}
+            />
+            <ItemInput
+              title="“关于我”描述语"
+              description="便签卡片上展示的心情寄语"
+              configKeyTitle="atelier.about_desc"
+              value={String(clientConfig.get("atelier.about_desc") ?? "欢迎光临我的记忆工坊与随笔空间，点击了解更多。")}
+              placeholder="欢迎光临我的记忆工坊与随笔空间，点击了解更多。"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.about_desc", value);
+              }}
+            />
+            <ItemImageInput
+              title="“关于我”背景图"
+              description="为画廊中的“关于我”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
+              configKeyTitle="atelier.about_bg"
+              value={String(clientConfig.get("atelier.about_bg") ?? "")}
+              placeholder="https://..."
+              onChange={(value) => {
+                setConfigValue("client", "atelier.about_bg", value);
+              }}
+              onError={showAlert}
+            />
+          </div>
 
-          <ItemTitle title="2. “岁月轨迹”便签设置" />
-          <ItemInput
-            title="“岁月轨迹”跳转链接"
-            description="点击便签时跳转的页面链接"
-            configKeyTitle="atelier.timeline_url"
-            value={String(clientConfig.get("atelier.timeline_url") ?? "/timeline")}
-            placeholder="/timeline"
-            onChange={(value) => {
-              setConfigValue("client", "atelier.timeline_url", value);
-            }}
-          />
-          <ItemInput
-            title="“岁月轨迹”描述语"
-            description="便签卡片上展示的时光寄语"
-            configKeyTitle="atelier.timeline_desc"
-            value={String(clientConfig.get("atelier.timeline_desc") ?? "以时间为轴，串联起每一次灵感与技术实践。")}
-            placeholder="以时间为轴，串联起每一次灵感与技术实践。"
-            onChange={(value) => {
-              setConfigValue("client", "atelier.timeline_desc", value);
-            }}
-          />
-          <ItemImageInput
-            title="“岁月轨迹”背景图"
-            description="为画廊中的“岁月轨迹”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
-            configKeyTitle="atelier.timeline_bg"
-            value={String(clientConfig.get("atelier.timeline_bg") ?? "")}
-            placeholder="https://..."
-            onChange={(value) => {
-              setConfigValue("client", "atelier.timeline_bg", value);
-            }}
-            onError={showAlert}
-          />
+          <div id="setting-atelier-timeline" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
+            <ItemTitle title="2. “岁月轨迹”便签设置" />
+            <ItemInput
+              title="“岁月轨迹”便签图标 (Emoji / 符号)"
+              description="便签卡片左上角显示的符号图标（如 ⏳、⏰、📜 等）"
+              configKeyTitle="atelier.timeline_icon"
+              value={String(clientConfig.get("atelier.timeline_icon") ?? "⏳")}
+              placeholder="⏳"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.timeline_icon", value);
+              }}
+            />
+            <ItemInput
+              title="“岁月轨迹”跳转链接"
+              description="点击便签时跳转的页面链接"
+              configKeyTitle="atelier.timeline_url"
+              value={String(clientConfig.get("atelier.timeline_url") ?? "/timeline")}
+              placeholder="/timeline"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.timeline_url", value);
+              }}
+            />
+            <ItemInput
+              title="“岁月轨迹”描述语"
+              description="便签卡片上展示的时光寄语"
+              configKeyTitle="atelier.timeline_desc"
+              value={String(clientConfig.get("atelier.timeline_desc") ?? "以时间为轴，串联起每一次灵感与技术实践。")}
+              placeholder="以时间为轴，串联起每一次灵感与技术实践。"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.timeline_desc", value);
+              }}
+            />
+            <ItemImageInput
+              title="“岁月轨迹”背景图"
+              description="为画廊中的“岁月轨迹”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
+              configKeyTitle="atelier.timeline_bg"
+              value={String(clientConfig.get("atelier.timeline_bg") ?? "")}
+              placeholder="https://..."
+              onChange={(value) => {
+                setConfigValue("client", "atelier.timeline_bg", value);
+              }}
+              onError={showAlert}
+            />
+          </div>
 
-          <ItemTitle title="3. “日常随想”便签设置" />
-          <ItemInput
-            title="“日常随想”跳转链接"
-            description="点击便签时跳转的页面链接"
-            configKeyTitle="atelier.moments_url"
-            value={String(clientConfig.get("atelier.moments_url") ?? "/moments")}
-            placeholder="/moments"
-            onChange={(value) => {
-              setConfigValue("client", "atelier.moments_url", value);
-            }}
-          />
-          <ItemInput
-            title="“日常随想”描述语"
-            description="便签卡片上展示的生活随想"
-            configKeyTitle="atelier.moments_desc"
-            value={String(clientConfig.get("atelier.moments_desc") ?? "生活碎碎念、朋友圈动态与不设限的日常记录。")}
-            placeholder="生活碎碎念、朋友圈动态与不设限的日常记录。"
-            onChange={(value) => {
-              setConfigValue("client", "atelier.moments_desc", value);
-            }}
-          />
-          <ItemImageInput
-            title="“日常随想”背景图"
-            description="为画廊中的“日常随想”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
-            configKeyTitle="atelier.moments_bg"
-            value={String(clientConfig.get("atelier.moments_bg") ?? "")}
-            placeholder="https://..."
-            onChange={(value) => {
-              setConfigValue("client", "atelier.moments_bg", value);
-            }}
-            onError={showAlert}
-          />
+          <div id="setting-atelier-moments" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
+            <ItemTitle title="3. “日常随想”便签设置" />
+            <ItemInput
+              title="“日常随想”便签图标 (Emoji / 符号)"
+              description="便签卡片左上角显示的符号图标（如 💭、💬、🫧 等）"
+              configKeyTitle="atelier.moments_icon"
+              value={String(clientConfig.get("atelier.moments_icon") ?? "💭")}
+              placeholder="💭"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.moments_icon", value);
+              }}
+            />
+            <ItemInput
+              title="“日常随想”跳转链接"
+              description="点击便签时跳转的页面链接"
+              configKeyTitle="atelier.moments_url"
+              value={String(clientConfig.get("atelier.moments_url") ?? "/moments")}
+              placeholder="/moments"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.moments_url", value);
+              }}
+            />
+            <ItemInput
+              title="“日常随想”描述语"
+              description="便签卡片上展示的生活随想"
+              configKeyTitle="atelier.moments_desc"
+              value={String(clientConfig.get("atelier.moments_desc") ?? "生活碎碎念、朋友圈动态与不设限的日常记录。")}
+              placeholder="生活碎碎念、朋友圈动态与不设限的日常记录。"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.moments_desc", value);
+              }}
+            />
+            <ItemImageInput
+              title="“日常随想”背景图"
+              description="为画廊中的“日常随想”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
+              configKeyTitle="atelier.moments_bg"
+              value={String(clientConfig.get("atelier.moments_bg") ?? "")}
+              placeholder="https://..."
+              onChange={(value) => {
+                setConfigValue("client", "atelier.moments_bg", value);
+              }}
+              onError={showAlert}
+            />
+          </div>
 
-          <ItemTitle title="4. “邻家友链”便签设置" />
-          <ItemInput
-            title="“邻家友链”跳转链接"
-            description="点击便签时跳转的页面链接"
-            configKeyTitle="atelier.friends_url"
-            value={String(clientConfig.get("atelier.friends_url") ?? "/friends")}
-            placeholder="/friends"
-            onChange={(value) => {
-              setConfigValue("client", "atelier.friends_url", value);
-            }}
-          />
-          <ItemInput
-            title="“邻家友链”描述语"
-            description="便签卡片上展示的友谊寄语"
-            configKeyTitle="atelier.friends_desc"
-            value={String(clientConfig.get("atelier.friends_desc") ?? "漫步在同好博主的数字花园，交换思想火花。")}
-            placeholder="漫步在同好博主的数字花园，交换思想火花。"
-            onChange={(value) => {
-              setConfigValue("client", "atelier.friends_desc", value);
-            }}
-          />
-          <ItemImageInput
-            title="“邻家友链”背景图"
-            description="为画廊中的“邻家友链”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
-            configKeyTitle="atelier.friends_bg"
-            value={String(clientConfig.get("atelier.friends_bg") ?? "")}
-            placeholder="https://..."
-            onChange={(value) => {
-              setConfigValue("client", "atelier.friends_bg", value);
-            }}
-            onError={showAlert}
-          />
+          <div id="setting-atelier-friends" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
+            <ItemTitle title="4. “邻家友链”便签设置" />
+            <ItemInput
+              title="“邻家友链”便签图标 (Emoji / 符号)"
+              description="便签卡片左上角显示的符号图标（如 🌸、🏡、🤝 等）"
+              configKeyTitle="atelier.friends_icon"
+              value={String(clientConfig.get("atelier.friends_icon") ?? "🌸")}
+              placeholder="🌸"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.friends_icon", value);
+              }}
+            />
+            <ItemInput
+              title="“邻家友链”跳转链接"
+              description="点击便签时跳转的页面链接"
+              configKeyTitle="atelier.friends_url"
+              value={String(clientConfig.get("atelier.friends_url") ?? "/friends")}
+              placeholder="/friends"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.friends_url", value);
+              }}
+            />
+            <ItemInput
+              title="“邻家友链”描述语"
+              description="便签卡片上展示的友谊寄语"
+              configKeyTitle="atelier.friends_desc"
+              value={String(clientConfig.get("atelier.friends_desc") ?? "漫步在同好博主的数字花园，交换思想火花。")}
+              placeholder="漫步在同好博主的数字花园，交换思想火花。"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.friends_desc", value);
+              }}
+            />
+            <ItemImageInput
+              title="“邻家友链”背景图"
+              description="为画廊中的“邻家友链”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
+              configKeyTitle="atelier.friends_bg"
+              value={String(clientConfig.get("atelier.friends_bg") ?? "")}
+              placeholder="https://..."
+              onChange={(value) => {
+                setConfigValue("client", "atelier.friends_bg", value);
+              }}
+              onError={showAlert}
+            />
+          </div>
 
-          <ItemTitle title="5. “随心探索”便签设置" />
-          <ItemInput
-            title="“随心探索”跳转链接"
-            description="点击便签或回车时跳转的搜索页面链接"
-            configKeyTitle="atelier.search_url"
-            value={String(clientConfig.get("atelier.search_url") ?? "/search")}
-            placeholder="/search"
-            onChange={(value) => {
-              setConfigValue("client", "atelier.search_url", value);
-            }}
-          />
-          <ItemInput
-            title="“随心探索”描述语"
-            description="便签卡片上展示的探索寄语"
-            configKeyTitle="atelier.search_desc"
-            value={String(clientConfig.get("atelier.search_desc") ?? "输入关键词即刻检索文章与解决方案。")}
-            placeholder="输入关键词即刻检索文章与解决方案。"
-            onChange={(value) => {
-              setConfigValue("client", "atelier.search_desc", value);
-            }}
-          />
-          <ItemImageInput
-            title="“随心探索”背景图"
-            description="为画廊中的“随心探索”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
-            configKeyTitle="atelier.search_bg"
-            value={String(clientConfig.get("atelier.search_bg") ?? "")}
-            placeholder="https://..."
-            onChange={(value) => {
-              setConfigValue("client", "atelier.search_bg", value);
-            }}
-            onError={showAlert}
-          />
+          <div id="setting-atelier-search" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
+            <ItemTitle title="5. “随心探索”便签设置" />
+            <ItemInput
+              title="“随心探索”便签图标 (Emoji / 符号)"
+              description="便签卡片左上角显示的符号图标（如 🔍、🧭、🔎 等）"
+              configKeyTitle="atelier.search_icon"
+              value={String(clientConfig.get("atelier.search_icon") ?? "🔍")}
+              placeholder="🔍"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.search_icon", value);
+              }}
+            />
+            <ItemInput
+              title="“随心探索”跳转链接"
+              description="点击便签或回车时跳转的搜索页面链接"
+              configKeyTitle="atelier.search_url"
+              value={String(clientConfig.get("atelier.search_url") ?? "/search")}
+              placeholder="/search"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.search_url", value);
+              }}
+            />
+            <ItemInput
+              title="“随心探索”描述语"
+              description="便签卡片上展示的探索寄语"
+              configKeyTitle="atelier.search_desc"
+              value={String(clientConfig.get("atelier.search_desc") ?? "输入关键词即刻检索文章与解决方案。")}
+              placeholder="输入关键词即刻检索文章与解决方案。"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.search_desc", value);
+              }}
+            />
+            <ItemImageInput
+              title="“随心探索”背景图"
+              description="为画廊中的“随心探索”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
+              configKeyTitle="atelier.search_bg"
+              value={String(clientConfig.get("atelier.search_bg") ?? "")}
+              placeholder="https://..."
+              onChange={(value) => {
+                setConfigValue("client", "atelier.search_bg", value);
+              }}
+              onError={showAlert}
+            />
+          </div>
 
-          <ItemTitle title="6. “记忆翻动”卡片设置" />
-          <ItemInput
-            title="“记忆翻动”跳转链接"
-            description="点击卡片中“漫游图床画廊”按钮时跳转的页面链接"
-            configKeyTitle="atelier.deck_url"
-            value={String(clientConfig.get("atelier.deck_url") ?? "/gallery")}
-            placeholder="/gallery"
-            onChange={(value) => {
-              setConfigValue("client", "atelier.deck_url", value);
-            }}
-          />
-          <ItemInput
-            title="“记忆翻动”描述语"
-            description="卡片上展示的相片收录说明文字"
-            configKeyTitle="atelier.deck_desc"
-            value={String(clientConfig.get("atelier.deck_desc") ?? "漫游图床画廊，浏览大图并复制链接。")}
-            placeholder="漫游图床画廊，浏览大图并复制链接。"
-            onChange={(value) => {
-              setConfigValue("client", "atelier.deck_desc", value);
-            }}
-          />
-          <ItemImageInput
-            title="“记忆翻动”背景图"
-            description="为画廊中的“记忆翻动”卡片设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
-            configKeyTitle="atelier.deck_bg"
-            value={String(clientConfig.get("atelier.deck_bg") ?? "")}
-            placeholder="https://..."
-            onChange={(value) => {
-              setConfigValue("client", "atelier.deck_bg", value);
-            }}
-            onError={showAlert}
-          />
+          <div id="setting-atelier-deck" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
+            <ItemTitle title="6. “记忆翻动”卡片设置" />
+            <ItemInput
+              title="“记忆翻动”卡片图标 (Emoji / 符号)"
+              description="卡片上显示的翻动符号图标（如 🎴、🖼️、📸 等）"
+              configKeyTitle="atelier.deck_icon"
+              value={String(clientConfig.get("atelier.deck_icon") ?? "🎴")}
+              placeholder="🎴"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.deck_icon", value);
+              }}
+            />
+            <ItemInput
+              title="“记忆翻动”跳转链接"
+              description="点击卡片中“漫游图床画廊”按钮时跳转的页面链接"
+              configKeyTitle="atelier.deck_url"
+              value={String(clientConfig.get("atelier.deck_url") ?? "/gallery")}
+              placeholder="/gallery"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.deck_url", value);
+              }}
+            />
+            <ItemInput
+              title="“记忆翻动”描述语"
+              description="卡片上展示的相片收录说明文字"
+              configKeyTitle="atelier.deck_desc"
+              value={String(clientConfig.get("atelier.deck_desc") ?? "漫游图床画廊，浏览大图并复制链接。")}
+              placeholder="漫游图床画廊，浏览大图并复制链接。"
+              onChange={(value) => {
+                setConfigValue("client", "atelier.deck_desc", value);
+              }}
+            />
+            <ItemImageInput
+              title="“记忆翻动”背景图"
+              description="为画廊中的“记忆翻动”卡片设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
+              configKeyTitle="atelier.deck_bg"
+              value={String(clientConfig.get("atelier.deck_bg") ?? "")}
+              placeholder="https://..."
+              onChange={(value) => {
+                setConfigValue("client", "atelier.deck_bg", value);
+              }}
+              onError={showAlert}
+            />
+          </div>
         </div>
       )}
 

@@ -15,9 +15,14 @@
 }
 
 body {
-  background: rgb(var(--rin-canvas-rgb));
+  background-color: rgb(var(--rin-canvas-rgb));
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgb(var(--theme-rgb) / 0.16), transparent 70%),
+    radial-gradient(circle 600px at 0% 20%, rgb(var(--theme-rgb) / 0.06), transparent 50%);
+  background-attachment: fixed;
   color: rgb(var(--rin-text-rgb));
   font-family: Cantarell, "Source Han Serif CN VF", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif !important;
+  min-height: 100vh;
 }
 
 textarea:focus {
@@ -221,6 +226,7 @@ a.toc-link {
   background-color: rgb(var(--rin-surface-rgb) / var(--rin-surface-alpha, 1)) !important;
   backdrop-filter: blur(var(--rin-glass-blur, 0px));
   -webkit-backdrop-filter: blur(var(--rin-glass-blur, 0px));
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, calc((1 - var(--rin-surface-alpha, 1)) * 0.15 + 0.03));
 }
 
 [data-color-mode="dark"] .bg-w {
