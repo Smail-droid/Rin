@@ -326,4 +326,20 @@ a.toc-link {
   letter-spacing: -0.03em;
 }
 
+/* ==========================================================================
+   Danmaku Floating Stream (画廊弹幕飘窗流动动画)
+   ========================================================================== */
+
+@keyframes danmakuMarquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: danmakuMarquee 35s linear infinite;
+}
+
+
 
