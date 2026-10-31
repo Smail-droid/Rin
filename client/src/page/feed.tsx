@@ -228,39 +228,46 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                 className="rounded-3xl bg-w m-2 px-6 py-6 sm:px-8 sm:py-8 border border-black/5 dark:border-white/5 shadow-sm overflow-hidden"
                 aria-label={feed.title ?? "Unnamed"}
               >
-                {/* Large Artistic Hero Poster Banner */}
+                {/* Adaptive Artistic Exhibition Poster Frame (自适应完整画幅，绝对无裁切，带环境弥散底色) */}
                 {(() => {
                   const coverImage = (feed as any).avatar || (feed.content ? extractFirstMarkdownImageUrl(feed.content) : undefined);
                   if (!coverImage) return null;
                   return (
                     <div
                       onClick={() => setLightboxImage(coverImage)}
-                      className="relative mb-6 -mx-6 -mt-6 sm:-mx-8 sm:-mt-8 h-64 sm:h-80 md:h-96 overflow-hidden border-b border-black/10 dark:border-white/10 group cursor-zoom-in"
+                      className="relative mb-6 -mx-6 -mt-6 sm:-mx-8 sm:-mt-8 max-h-[380px] overflow-hidden border-b border-black/10 dark:border-white/10 group cursor-zoom-in bg-black/[0.04] dark:bg-white/[0.03] flex items-center justify-center p-3 sm:p-5"
                       title="点击展开全屏画廊大图预览"
                     >
+                      {/* 背景环境弥散光晕 (取自封面图本身) */}
                       <img
                         src={coverImage}
-                        alt={feed.title || "Cover"}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                        loading="lazy"
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute inset-0 w-full h-full object-cover filter blur-2xl opacity-40 scale-125 pointer-events-none select-none"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pointer-events-none" />
-                      <div className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                        <i className="ri-fullscreen-line" />
-                        <span>全屏欣赏原图</span>
+                      <div className="absolute inset-0 bg-black/15 dark:bg-black/35 pointer-events-none" />
+
+                      {/* 顶层无损完整高清海报画幅 (自适应居中包含，绝不裁切文字与构图) */}
+                      <div className="relative z-10 max-h-[340px] max-w-full flex items-center justify-center rounded-2xl overflow-hidden shadow-2xl border border-white/40 dark:border-white/20">
+                        <img
+                          src={coverImage}
+                          alt={feed.title || "Cover"}
+                          className="max-h-[340px] w-auto max-w-full object-contain transition-transform duration-700 group-hover:scale-[1.02]"
+                          loading="lazy"
+                        />
                       </div>
-                      <div className="absolute bottom-6 left-6 right-6 z-10 text-white">
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <span className="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold text-white">
-                            EXHIBIT #{String(feed.id).padStart(4, "0")}
-                          </span>
-                          <span className="px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-xs font-medium text-neutral-200">
-                            ☕ 约 {readingMinutes} 分钟阅读 · {wordCount} 字
-                          </span>
-                        </div>
-                        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white drop-shadow-md">
-                          {feed.title}
-                        </h1>
+
+                      {/* 浮动全屏查看标签 */}
+                      <div className="absolute top-4 right-4 z-20 px-3 py-1 rounded-full bg-black/50 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition duration-300 shadow-md">
+                        <i className="ri-fullscreen-line text-sm" />
+                        <span>全屏画廊大图</span>
+                      </div>
+
+                      {/* 左下角小展签 */}
+                      <div className="absolute bottom-3 left-4 z-20 flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-full bg-black/50 backdrop-blur-md text-[11px] font-bold text-white shadow-2xs">
+                          EXHIBIT #{String(feed.id).padStart(4, "0")}
+                        </span>
                       </div>
                     </div>
                   );
@@ -268,11 +275,9 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
 
                 <div className="flex justify-between items-start">
                   <div>
-                    {!((feed as any).avatar || (feed.content && extractFirstMarkdownImageUrl(feed.content))) && (
-                      <h1 className="text-2xl sm:text-3xl font-extrabold t-primary break-all mb-2">
-                        {feed.title}
-                      </h1>
-                    )}
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold t-primary break-all mb-2 leading-tight">
+                      {feed.title}
+                    </h1>
                     <div className="mt-1 mb-2 flex flex-wrap items-center gap-3 text-xs text-neutral-400">
                       <span className="inline-flex items-center gap-1 font-mono font-bold text-theme">
                         #{String(feed.id).padStart(4, "0")}

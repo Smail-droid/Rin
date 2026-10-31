@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { client } from "../app/runtime";
 import { useAlert, useConfirm } from "./dialog";
 import { timeago } from "../utils/timeago";
+import { useSiteConfig } from "../hooks/useSiteConfig";
 import type { Profile } from "../state/profile";
 
 // 30+ 款考究的二次元萌系角色预设昵称
@@ -13,6 +14,9 @@ export const ANIME_NICKNAMES = [
   "伊莉雅", "早坂爱", "藤林杏", "古河渚", "立华奏",
   "小鸟游六花", "时崎狂三", "初音未来", "雷姆", "灰原哀"
 ];
+
+// 本地离线高保真 SVG 二次元猫娘备用头像 (确保外网 Dicebear 波动时绝不破图)
+const FALLBACK_ANIME_AVATAR = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="%23fff0f5"/><path d="M 20 38 L 12 12 L 38 24 Z" fill="%23fc466b"/><path d="M 80 38 L 88 12 L 62 24 Z" fill="%23fc466b"/><circle cx="50" cy="56" r="34" fill="%23fff" stroke="%23fc466b" stroke-width="2"/><circle cx="38" cy="54" r="4" fill="%234a0e2e"/><circle cx="62" cy="54" r="4" fill="%234a0e2e"/><ellipse cx="28" cy="62" rx="4" ry="2" fill="%23ff8da1"/><ellipse cx="72" cy="62" rx="4" ry="2" fill="%23ff8da1"/><path d="M 45 62 Q 50 66 55 62" stroke="%234a0e2e" stroke-width="2" fill="none"/></svg>`;
 
 // 生成 Dicebear lorelei 专属二次元头像 URL
 export function getDicebearLoreleiAvatar(seed: string): string {
@@ -36,8 +40,39 @@ export type CommentData = {
   guestWebsite?: string;
 };
 
-// 预设二次元常用萌系快捷 Emoji 贴纸
-const QUICK_EMOJIS = ["🌸", "✨", "🐾", "🍵", "🍰", "🐱", "🎉", "💭", "💡", "💌", "🌟", "🧸"];
+// 5 大二次元精致分类 Emoji 面板 (拒绝常见老土符号)
+const EMOJI_CATEGORIES = [
+  {
+    id: "default",
+    name: "默认",
+    icon: "🌸",
+    emojis: ["🌸", "✨", "🎀", "🪄", "💌", "💖", "🧸", "🍭", "🎈", "🎐", "🫧", "💫", "🧁", "🍡", "🍧"],
+  },
+  {
+    id: "food",
+    name: "食材",
+    icon: "🍰",
+    emojis: ["🍰", "🥐", "🍮", "🍧", "🍡", "🍵", "☕", "🍓", "🥞", "🍩", "🍦", "🍕", "🍙", "🍣", "🍟"],
+  },
+  {
+    id: "items",
+    name: "道具",
+    icon: "🎮",
+    emojis: ["🎮", "🎧", "📸", "🎴", "🏹", "🗝️", "🔮", "🎨", "🎬", "🛸", "🚀", "🎪", "🎭", "🎻", "🎸"],
+  },
+  {
+    id: "cats",
+    name: "猫咪",
+    icon: "🐾",
+    emojis: ["🐾", "🐱", "🐶", "🦊", "🐰", "🐼", "🐨", "🐯", "🦁", "🦄", "🐣", "🐧", "🐬", "🦋", "🐿️"],
+  },
+  {
+    id: "symbols",
+    name: "符号",
+    icon: "⚡",
+    emojis: ["⚡", "💎", "🌟", "🍀", "🌈", "🎯", "💡", "🪐", "🌌", "💠", "🔷", "💜", "🌠", "🛰️", "💫"],
+  },
+];
 
 export function GalleryComments({
   feedId,
@@ -118,7 +153,14 @@ export function GalleryComments({
                     key={`danmaku-${c.id}`}
                     className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-w/90 dark:bg-neutral-900/90 border border-black/10 dark:border-white/10 shadow-xs backdrop-blur-md text-xs t-primary shrink-0 transition hover:scale-105"
                   >
-                    <img src={avatar} alt={name} className="h-5 w-5 rounded-full bg-theme/10 object-cover" />
+                    <img
+                      src={avatar}
+                      alt={name}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = FALLBACK_ANIME_AVATAR;
+                      }}
+                      className="h-5 w-5 rounded-full bg-theme/10 object-cover"
+                    />
                     <span className="font-bold text-theme">{name}:</span>
                     <span className="max-w-xs truncate">{c.content}</span>
                   </div>
@@ -181,8 +223,10 @@ function GalleryCommentInput({
   onRefresh: () => void;
 }) {
   const { showAlert, AlertUI } = useAlert();
+  const siteConfig = useSiteConfig();
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [activeEmojiCategory, setActiveEmojiCategory] = useState("default");
 
   // 随机二次元昵称
   const [nickname, setNickname] = useState(() => {
@@ -201,11 +245,16 @@ function GalleryCommentInput({
     setNickname(next);
   };
 
-  // 生成的 Dicebear 专属头像
+  // 严格安全回退的头像 URL，杜绝任何破图
   const avatarUrl = useMemo(() => {
-    if (profile?.avatar) return profile.avatar;
+    if (profile) {
+      return profile.avatar || siteConfig.avatar || getDicebearLoreleiAvatar(profile.name || "admin");
+    }
     return getDicebearLoreleiAvatar(nickname);
-  }, [profile, nickname]);
+  }, [profile, siteConfig.avatar, nickname]);
+
+  const currentEmojis =
+    EMOJI_CATEGORIES.find((c) => c.id === activeEmojiCategory)?.emojis || EMOJI_CATEGORIES[0].emojis;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -251,11 +300,14 @@ function GalleryCommentInput({
         {/* Author Avatar & Nickname Bar (免填邮箱/网站) */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center gap-3">
-            {/* Dicebear Avatar Preview */}
-            <div className="relative h-11 w-11 shrink-0 rounded-2xl bg-black/[0.03] p-0.5 shadow-sm ring-2 ring-theme/20 dark:bg-white/[0.04] group">
+            {/* Avatar with fallback protection */}
+            <div className="relative h-11 w-11 shrink-0 rounded-2xl bg-black/[0.03] p-0.5 shadow-sm ring-2 ring-theme/20 dark:bg-white/[0.04] group overflow-hidden">
               <img
                 src={avatarUrl}
                 alt={nickname}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = FALLBACK_ANIME_AVATAR;
+                }}
                 className="h-full w-full rounded-xl object-cover transition-transform group-hover:scale-110"
               />
             </div>
@@ -305,39 +357,64 @@ function GalleryCommentInput({
           />
         </div>
 
-        {/* Quick Emojis & Submit Button */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          {/* Quick Emoji bar */}
-          <div className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none">
-            {QUICK_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => setContent((prev) => `${prev}${emoji}`)}
-                className="h-7 w-7 rounded-lg flex items-center justify-center text-sm hover:scale-125 transition-transform hover:bg-black/5 dark:hover:bg-white/10"
-              >
-                {emoji}
-              </button>
-            ))}
+        {/* Categorized Emoji Selection Bar & Submit Button */}
+        <div className="flex flex-col gap-2 pt-1 border-t border-black/5 dark:border-white/5">
+          {/* Emoji Category Tabs (默认/食材/道具/猫咪/符号) */}
+          <div className="flex items-center gap-1 text-[11px] font-semibold">
+            {EMOJI_CATEGORIES.map((cat) => {
+              const isActive = activeEmojiCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setActiveEmojiCategory(cat.id)}
+                  className={`px-2.5 py-0.5 rounded-lg transition select-none flex items-center gap-1 ${
+                    isActive
+                      ? "bg-theme text-white shadow-2xs font-bold"
+                      : "bg-black/5 text-neutral-500 hover:bg-black/10 dark:bg-white/5 dark:text-neutral-400"
+                  }`}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.name}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <button
-            type="submit"
-            disabled={submitting || !content.trim()}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-theme px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition"
-          >
-            {submitting ? (
-              <>
-                <i className="ri-loader-4-line animate-spin" />
-                <span>正在贴便签…</span>
-              </>
-            ) : (
-              <>
-                <i className="ri-send-plane-fill" />
-                <span>贴上画廊留言</span>
-              </>
-            )}
-          </button>
+          {/* Current Category Emojis Grid & Submit */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-1.5 py-1">
+              {currentEmojis.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => setContent((prev) => `${prev}${emoji}`)}
+                  className="h-7 w-7 rounded-lg flex items-center justify-center text-sm hover:scale-125 transition-transform hover:bg-black/5 dark:hover:bg-white/10 select-none shadow-2xs"
+                  title={`插入 ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting || !content.trim()}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-theme px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition shrink-0 ml-auto"
+            >
+              {submitting ? (
+                <>
+                  <i className="ri-loader-4-line animate-spin" />
+                  <span>正在贴便签…</span>
+                </>
+              ) : (
+                <>
+                  <i className="ri-send-plane-fill" />
+                  <span>贴上画廊留言</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </form>
       <AlertUI />
@@ -392,6 +469,9 @@ function GalleryCommentItem({
           <img
             src={avatarUrl}
             alt={commenterName}
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = FALLBACK_ANIME_AVATAR;
+            }}
             className="h-8 w-8 rounded-full bg-theme/10 object-cover ring-1 ring-black/10 dark:ring-white/10"
           />
           <div className="min-w-0">

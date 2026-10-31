@@ -103,7 +103,7 @@ export function FriendsPage() {
                             <i className="ri-heart-pulse-line" />
                             <span>邻家友链</span>
                         </div>
-                        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight t-primary">
+                        <h1 className={`text-3xl sm:text-4xl font-extrabold tracking-tight art-title-${siteConfig.friendsTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"}`}>
                             {t('friends.title')}
                         </h1>
                     </div>

@@ -363,10 +363,47 @@ export function Markdown({ content }: { content: string }) {
           );
         },
 
+        table({ children, ...props }: any) {
+          return (
+            <div className="my-6 w-full overflow-x-auto rounded-2xl border border-black/10 bg-w shadow-2xs dark:border-white/10">
+              <table className="w-full text-left text-xs sm:text-sm border-collapse" {...props}>
+                {children}
+              </table>
+            </div>
+          );
+        },
+        thead({ children, ...props }: any) {
+          return (
+            <thead className="bg-black/[0.03] dark:bg-white/[0.04] border-b border-black/10 dark:border-white/10 text-xs font-bold t-primary select-none" {...props}>
+              {children}
+            </thead>
+          );
+        },
+        th({ children, ...props }: any) {
+          return (
+            <th className="px-4 py-3 font-extrabold text-theme/90 dark:text-theme tracking-wider border-r border-black/5 dark:border-white/5 last:border-r-0 whitespace-nowrap" {...props}>
+              {children}
+            </th>
+          );
+        },
+        td({ children, ...props }: any) {
+          return (
+            <td className="px-4 py-3 text-xs sm:text-sm leading-relaxed border-t border-black/5 dark:border-white/5 border-r border-black/5 dark:border-white/5 last:border-r-0 t-primary" {...props}>
+              {children}
+            </td>
+          );
+        },
+        tr({ children, ...props }) {
+          return (
+            <tr className="transition-colors hover:bg-black/[0.015] dark:hover:bg-white/[0.02]" {...props}>
+              {children}
+            </tr>
+          );
+        },
         ul({ children, className, ...props }) {
           const listClass = className?.includes("contains-task-list")
-            ? "list-none pl-5"
-            : "list-disc pl-5 mt-2";
+            ? "list-none pl-2 my-2 space-y-1"
+            : "list-disc pl-5 my-2 space-y-1";
           return (
             <ul className={listClass} {...props}>
               {children}
@@ -375,14 +412,14 @@ export function Markdown({ content }: { content: string }) {
         },
         ol({ children, ...props }) {
           return (
-            <ol className="list-decimal pl-5" {...props}>
+            <ol className="list-decimal pl-5 my-2 space-y-1.5 marker:text-theme marker:font-bold" {...props}>
               {children}
             </ol>
           );
         },
         li({ children, ...props }) {
           return (
-            <li className="pl-2 py-1" {...props}>
+            <li className="pl-1 py-0.5 leading-relaxed" {...props}>
               {children}
             </li>
           );
@@ -390,7 +427,7 @@ export function Markdown({ content }: { content: string }) {
         a({ children, ...props }) {
           return (
             <a
-              className="break-words text-[#0686c8] hover:underline dark:text-[#2590f1] [overflow-wrap:anywhere]"
+              className="break-words text-theme font-medium hover:underline [overflow-wrap:anywhere]"
               {...props}
             >
               {children}
@@ -402,10 +439,11 @@ export function Markdown({ content }: { content: string }) {
             <h1
               id={children?.toString()}
               {...props}
-              className={`${props.className || ""} mt-4 break-words text-3xl font-bold [overflow-wrap:anywhere]`.trim()}
+              className={`${props.className || ""} mt-8 mb-4 text-2xl sm:text-3xl font-extrabold t-primary tracking-tight flex items-center gap-2.5 pb-2.5 border-b border-black/10 dark:border-white/10`.trim()}
               style={{ ...props.style, scrollMarginTop: "var(--header-scroll-offset, 7rem)" }}
             >
-              {children}
+              <span className="flex h-6 w-1.5 rounded-full bg-theme shrink-0 shadow-xs" />
+              <span className="break-words [overflow-wrap:anywhere] flex-1">{children}</span>
             </h1>
           );
         },
@@ -414,10 +452,11 @@ export function Markdown({ content }: { content: string }) {
             <h2
               id={children?.toString()}
               {...props}
-              className={`${props.className || ""} mt-4 break-words text-2xl font-bold [overflow-wrap:anywhere]`.trim()}
+              className={`${props.className || ""} mt-7 mb-3 text-xl sm:text-2xl font-bold t-primary tracking-tight flex items-center gap-2 pb-1`.trim()}
               style={{ ...props.style, scrollMarginTop: "var(--header-scroll-offset, 7rem)" }}
             >
-              {children}
+              <span className="h-2 w-2 rounded-full bg-theme/80 shrink-0 shadow-2xs" />
+              <span className="break-words [overflow-wrap:anywhere] flex-1">{children}</span>
             </h2>
           );
         },
@@ -426,10 +465,11 @@ export function Markdown({ content }: { content: string }) {
             <h3
               id={children?.toString()}
               {...props}
-              className={`${props.className || ""} mt-4 break-words text-xl font-bold [overflow-wrap:anywhere]`.trim()}
+              className={`${props.className || ""} mt-5 mb-2 text-lg sm:text-xl font-bold t-primary flex items-center gap-2`.trim()}
               style={{ ...props.style, scrollMarginTop: "var(--header-scroll-offset, 7rem)" }}
             >
-              {children}
+              <span className="text-theme text-xs select-none">◆</span>
+              <span className="break-words [overflow-wrap:anywhere] flex-1">{children}</span>
             </h3>
           );
         },
@@ -479,13 +519,6 @@ export function Markdown({ content }: { content: string }) {
         hr({ children, ...props }) {
           return <hr className="my-4" {...props} />;
         },
-        table: ({ node, ...props }) => <table className="table block max-w-full overflow-x-auto" {...props} />,
-        th: ({ node, ...props }) => (
-          <th className="px-4 py-2 border bg-gray-600" {...props} />
-        ),
-        td: ({ node, ...props }) => (
-          <td className="px-4 py-2 border" {...props} />
-        ),
         sup: ({ children, ...props }) => (
           <sup className="text-xs mr-[4px]" {...props}>
             {children}

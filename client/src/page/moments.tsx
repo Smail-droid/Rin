@@ -182,7 +182,7 @@ export function MomentsPage() {
                                     <i className="ri-chat-smile-2-line" />
                                     <span>朋友圈 · 碎碎念日常</span>
                                 </div>
-                                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight t-primary">
+                                <h1 className={`text-3xl sm:text-4xl font-extrabold tracking-tight art-title-${siteConfig.momentsTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"}`}>
                                     日常随想
                                 </h1>
                                 <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">

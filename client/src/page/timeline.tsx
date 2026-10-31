@@ -91,7 +91,7 @@ export function TimelinePage() {
                             <i className="ri-compass-3-line" />
                             <span>岁月长河刻度</span>
                         </div>
-                        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight t-primary">
+                        <h1 className={`text-3xl sm:text-4xl font-extrabold tracking-tight art-title-${siteConfig.timelineTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"}`}>
                             时光长河 · 岁月轨迹
                         </h1>
                         <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-2">
