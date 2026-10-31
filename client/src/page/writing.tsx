@@ -321,18 +321,7 @@ export function WritingPage({ id }: { id?: number }) {
                 {id !== undefined ? t("update.title") : t("publish.title")}
               </p>
             </div>
-            <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => setCopilotOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-theme/30 bg-theme/10 hover:bg-theme/20 text-theme px-3.5 py-2.5 text-xs font-bold transition shadow-2xs"
-                title="打开右侧 AI 创作助手抽屉（可实时提问代码、查询配置与流水线梳理）"
-              >
-                <i className="ri-sparkling-fill text-sm" />
-                <span>AI 助手</span>
-              </button>
-              <PublishButton className="w-auto" />
-            </div>
+            <PublishButton className="w-auto" />
           </div>
 
           <div className="mt-5 grid gap-4 lg:grid-cols-2">

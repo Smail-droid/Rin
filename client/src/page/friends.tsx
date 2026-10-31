@@ -220,21 +220,52 @@ function Friend({ friend }: { friend: FriendItem }) {
     const safeUrl = safeHttpUrl(friend.url);
     return (
         <>
-            <a title={friend.name} href={safeUrl || "#"} target={safeUrl ? "_blank" : undefined} rel="noopener noreferrer" className="relative flex min-w-0 w-full flex-col items-center justify-center overflow-hidden rounded-xl bg-w p-4 bg-button">
-                <ImageWithFallback
-                    className="h-16 w-16 rounded-full"
-                    imageClassName={friend.health.length > 0 ? "grayscale" : ""}
-                    src={friend.avatar}
-                    alt={friend.name}
-                />
-                <p className="mt-1 max-w-full truncate text-center text-base">{friend.name}</p>
-                {friend.health.length == 0 && <p className="line-clamp-2 max-w-full text-center text-sm text-neutral-500 [overflow-wrap:anywhere]">{friend.desc}</p>}
-                {friend.accepted !== 1 && <p className={`${friend.accepted === 0 ? "t-primary" : "text-theme"}`}>{statusOption[friend.accepted + 1].label}</p>}
-                {friend.health.length > 0 && <p className="max-w-full text-center text-sm text-gray-500 [overflow-wrap:anywhere]">{errorHumanize(friend.health)}</p>}
-                {(profile?.permission || profile?.id === friend.uid) && <>
-                    <button onClick={(e) => { e.preventDefault(); setIsOpen(true) }} className="absolute top-0 right-0 m-2 px-2 py-1 bg-secondary t-primary rounded-full bg-button">
-                        <i className="ri-settings-line"></i>
-                    </button></>}
+            <a
+                title={friend.name}
+                href={safeUrl || "#"}
+                target={safeUrl ? "_blank" : undefined}
+                rel="noopener noreferrer"
+                className="group relative flex min-w-0 w-full flex-col items-center justify-between rounded-2xl bg-w p-4 sm:p-5 border border-black/10 shadow-2xs hover:shadow-xl hover:border-theme/40 transition-all duration-300 transform hover:scale-[1.03] select-none dark:border-white/10"
+            >
+                {/* Washi Tape Accent */}
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-10 h-3 bg-theme/20 dark:bg-theme/30 backdrop-blur-xs rounded-xs rotate-[-2deg] pointer-events-none" />
+
+                {/* Polaroid Frame & Avatar */}
+                <div className="relative mb-2.5 flex h-20 w-20 items-center justify-center rounded-2xl bg-black/[0.03] p-1 shadow-inner dark:bg-white/[0.04] group-hover:scale-105 transition-transform">
+                    <ImageWithFallback
+                        className="h-full w-full rounded-xl object-cover"
+                        imageClassName={friend.health.length > 0 ? "grayscale" : ""}
+                        src={friend.avatar}
+                        alt={friend.name}
+                    />
+                </div>
+
+                <div className="w-full text-center">
+                    <p className="font-bold text-sm sm:text-base t-primary truncate">{friend.name}</p>
+                    {friend.health.length == 0 && (
+                        <p className="mt-1 line-clamp-2 text-xs text-neutral-500 dark:text-neutral-400 [overflow-wrap:anywhere] leading-snug">
+                            {friend.desc || "这位博主很神秘，还没有写下寄语~"}
+                        </p>
+                    )}
+                    {friend.accepted !== 1 && (
+                        <span className={`inline-block mt-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${friend.accepted === 0 ? "bg-amber-500/10 text-amber-600" : "bg-rose-500/10 text-theme"}`}>
+                            {statusOption[friend.accepted + 1].label}
+                        </span>
+                    )}
+                    {friend.health.length > 0 && (
+                        <p className="mt-1 text-[11px] text-rose-500 truncate">{errorHumanize(friend.health)}</p>
+                    )}
+                </div>
+
+                {(profile?.permission || profile?.id === friend.uid) && (
+                    <button
+                        onClick={(e) => { e.preventDefault(); setIsOpen(true); }}
+                        className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/5 hover:bg-theme hover:text-white transition dark:bg-white/10"
+                        title="设置友链"
+                    >
+                        <i className="ri-settings-line text-xs" />
+                    </button>
+                )}
             </a>
 
             <Modal

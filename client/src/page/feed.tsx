@@ -185,49 +185,80 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
           <>
             <div className="xl:w-64" />
             <main className="wauto">
+              {/* Gallery Top SPA Navigation Bar */}
+              <div className="mb-3 mx-2 flex items-center justify-between">
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-w px-4 py-2 text-xs font-bold t-primary shadow-2xs hover:shadow-md hover:border-theme transition"
+                >
+                  <i className="ri-arrow-left-line text-theme" />
+                  <span>返回画廊随想</span>
+                </Link>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/5 dark:bg-white/5 text-xs text-neutral-400">
+                  <i className="ri-gallery-line text-theme" />
+                  <span>艺术画廊展厅</span>
+                </div>
+              </div>
+
               <article
-                className="rounded-2xl bg-w m-2 px-6 py-4"
+                className="rounded-3xl bg-w m-2 px-6 py-6 sm:px-8 sm:py-8 border border-black/5 dark:border-white/5 shadow-sm overflow-hidden"
                 aria-label={feed.title ?? "Unnamed"}
               >
-                <div className="flex justify-between">
-                  <div>
-                    <div className="mt-1 mb-1 flex gap-1">
-                      <p
-                        className="text-gray-400 text-[12px]"
-                        title={new Date(feed.createdAt).toLocaleString()}
-                      >
-                        {t("feed_card.published$time", {
-                          time: timeago(feed.createdAt),
-                        })}
-                      </p>
-
-                      {feed.createdAt !== feed.updatedAt && (
-                        <p
-                          className="text-gray-400 text-[12px]"
-                          title={new Date(feed.updatedAt).toLocaleString()}
-                        >
-                          {t("feed_card.updated$time", {
-                            time: timeago(feed.updatedAt),
-                          })}
-                        </p>
-                      )}
+                {/* Large Artistic Hero Poster Banner */}
+                {(() => {
+                  const coverImage = (feed as any).avatar || (feed.content ? extractFirstMarkdownImageUrl(feed.content) : undefined);
+                  if (!coverImage) return null;
+                  return (
+                    <div className="relative mb-6 -mx-6 -mt-6 sm:-mx-8 sm:-mt-8 h-64 sm:h-80 md:h-96 overflow-hidden border-b border-black/10 dark:border-white/10 group">
+                      <img
+                        src={coverImage}
+                        alt={feed.title || "Cover"}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pointer-events-none" />
+                      <div className="absolute bottom-6 left-6 right-6 z-10 text-white">
+                        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white drop-shadow-md">
+                          {feed.title}
+                        </h1>
+                      </div>
                     </div>
-                    {counterEnabled && <p className='text-[12px] text-gray-400 font-normal link-line'>
-                      <span> {t("count.pv")} </span>
-                      <span>
-                        {feed.pv}
-                      </span>
-                      <span> |</span>
-                      <span> {t("count.uv")} </span>
-                      <span>
-                        {feed.uv}
-                      </span>
-                    </p>}
-                    <div className="flex flex-row items-center">
-                      <h1 className="text-2xl font-bold t-primary break-all">
+                  );
+                })()}
+
+                <div className="flex justify-between items-start">
+                  <div>
+                    {!((feed as any).avatar || (feed.content && extractFirstMarkdownImageUrl(feed.content))) && (
+                      <h1 className="text-2xl sm:text-3xl font-extrabold t-primary break-all mb-2">
                         {feed.title}
                       </h1>
-                      <div className="flex-1 w-0" />
+                    )}
+                    <div className="mt-1 mb-2 flex flex-wrap items-center gap-3 text-xs text-neutral-400">
+                      <span
+                        className="inline-flex items-center gap-1"
+                        title={new Date(feed.createdAt).toLocaleString()}
+                      >
+                        <i className="ri-calendar-line text-theme" />
+                        <span>{timeago(feed.createdAt)}</span>
+                      </span>
+
+                      {feed.createdAt !== feed.updatedAt && (
+                        <span
+                          className="inline-flex items-center gap-1"
+                          title={new Date(feed.updatedAt).toLocaleString()}
+                        >
+                          <i className="ri-refresh-line" />
+                          <span>更新于 {timeago(feed.updatedAt)}</span>
+                        </span>
+                      )}
+
+                      {counterEnabled && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/5 dark:bg-white/5">
+                          <span>{t("count.pv")} {feed.pv}</span>
+                          <span>·</span>
+                          <span>{t("count.uv")} {feed.uv}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="pt-2">

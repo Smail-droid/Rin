@@ -50,6 +50,38 @@ export const AI_EXPERT_PERSONAS: AIExpertPersona[] = [
   },
 ];
 
+// 二次元萌系猫娘看板娘专属矢量 Avatar
+function AnimeChibiAvatar({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
+  const dim = size === "lg" ? "h-11 w-11" : size === "md" ? "h-9 w-9" : "h-7 w-7";
+  return (
+    <div className={`relative ${dim} shrink-0 select-none`}>
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        {/* Cat Ears */}
+        <path d="M 20 40 L 10 10 L 40 25 Z" fill="#fc466b" />
+        <path d="M 23 35 L 18 18 L 36 26 Z" fill="#ffd1dc" />
+        <path d="M 80 40 L 90 10 L 60 25 Z" fill="#fc466b" />
+        <path d="M 77 35 L 82 18 L 64 26 Z" fill="#ffd1dc" />
+        {/* Head Base */}
+        <circle cx="50" cy="55" r="38" fill="#fff5f7" stroke="#fc466b" strokeWidth="2.5" />
+        {/* Bangs */}
+        <path d="M 18 45 Q 35 32 50 48 Q 65 32 82 45 Q 75 30 50 28 Q 25 30 18 45 Z" fill="#ffb6c1" />
+        {/* Eyes (Anime Sparkle) */}
+        <ellipse cx="36" cy="56" rx="5" ry="7" fill="#4a0e2e" />
+        <circle cx="34" cy="54" r="2.2" fill="#ffffff" />
+        <ellipse cx="64" cy="56" rx="5" ry="7" fill="#4a0e2e" />
+        <circle cx="62" cy="54" r="2.2" fill="#ffffff" />
+        {/* Blush */}
+        <ellipse cx="26" cy="62" rx="4.5" ry="2.5" fill="#ff8da1" opacity="0.7" />
+        <ellipse cx="74" cy="62" rx="4.5" ry="2.5" fill="#ff8da1" opacity="0.7" />
+        {/* Smile */}
+        <path d="M 46 63 Q 50 67 54 63" fill="none" stroke="#4a0e2e" strokeWidth="2" strokeLinecap="round" />
+        {/* Ribbon Star */}
+        <path d="M 72 26 L 76 22 L 78 27 L 82 28 L 78 30 L 76 35 L 73 31 L 68 30 Z" fill="#ffd700" />
+      </svg>
+    </div>
+  );
+}
+
 export function WritingAICopilotDrawer({
   isOpen,
   onClose,
@@ -75,7 +107,7 @@ export function WritingAICopilotDrawer({
     {
       role: "assistant",
       content:
-        "你好！我是你的专属 AI 创作机器人。已开启【硬核技术干货】模式，拒绝 AI 口水废话。你可以随时在下方提问命令、配置、代码漏洞或排版梳理。",
+        "喵呜~ 主人好！我是您的专属 AI 萌娘创作伴侣。已开启【纯硬核技术干货】模式，严禁任何废话套话。您可以随时在下方提问命令、配置、代码漏洞或排版梳理。",
     },
   ]);
   const [inputQuestion, setInputQuestion] = useState("");
@@ -96,7 +128,7 @@ export function WritingAICopilotDrawer({
   const activePersona =
     AI_EXPERT_PERSONAS.find((p) => p.id === selectedPersonaId) ?? AI_EXPERT_PERSONAS[0];
 
-  // 局部平滑滚动，彻底杜绝调用原生 scrollIntoView 导致整页上滚的 Bug
+  // 严格局部平滑滚动，彻底杜绝调用原生 scrollIntoView 导致整页上滚的 Bug
   useEffect(() => {
     if (activeTab === "chat" && messagesContainerRef.current) {
       const container = messagesContainerRef.current;
@@ -115,7 +147,6 @@ export function WritingAICopilotDrawer({
     setChatLoading(true);
 
     try {
-      // 包含文章上下文作为辅助系统提示
       const contextPrefix =
         articleContent.trim().length > 0
           ? `当前博主正在编辑的文章内容如下（供参考）：\n\"\"\"\n${articleContent.slice(0, 4000)}\n\"\"\"\n\n`
@@ -136,7 +167,9 @@ export function WritingAICopilotDrawer({
 
       const { data, error } = await client.config.chatAI({ messages: apiMessages });
       if (data?.success && data.reply) {
-        setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
+        // 清理可能由于非标准后端产生的 undefined 等脏字符串
+        const cleanReply = data.reply.replace(/\s*undefined\s*$/g, "").trim();
+        setMessages((prev) => [...prev, { role: "assistant", content: cleanReply }]);
       } else {
         setMessages((prev) => [
           ...prev,
@@ -193,28 +226,30 @@ export function WritingAICopilotDrawer({
 
   return (
     <>
-      {/* 1. 左下角常驻机器人触发悬浮球 (不遮挡主编辑区) */}
+      {/* 1. 左下角常驻二次元萌系看板娘触发球 (不遮挡主编辑区) */}
       <div className="fixed left-4 sm:left-6 bottom-5 z-40 flex items-center gap-2">
         <button
           type="button"
           onClick={() => {
             if (onToggle) onToggle();
           }}
-          className={`flex items-center gap-2 rounded-full px-3.5 py-2.5 shadow-2xl transition-all duration-300 border-2 select-none ${
+          className={`group flex items-center gap-2 rounded-full p-1.5 pr-4 shadow-2xl transition-all duration-300 border-2 select-none ${
             isOpen
               ? "bg-theme text-white border-white dark:border-neutral-800 scale-105 ring-4 ring-theme/30"
-              : "bg-w text-theme border-theme/40 hover:border-theme hover:bg-theme/10 hover:scale-105 dark:border-white/20"
+              : "bg-w/95 text-theme border-theme/40 hover:border-theme hover:bg-theme/10 hover:scale-105 dark:border-white/20 backdrop-blur-md"
           }`}
-          title="点击展开/收起左下角 AI 机器人助手"
+          title="点击展开/收回 AI 萌宠助手"
         >
-          <div className="relative flex items-center justify-center">
-            <i className="ri-robot-2-line text-lg animate-pulse" />
-            <span className="absolute -top-1 -right-1 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          <AnimeChibiAvatar size="md" />
+          <div className="flex flex-col text-left">
+            <span className="text-xs font-bold leading-tight flex items-center gap-1">
+              <span>AI 萌娘伴侣</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+            </span>
+            <span className="text-[10px] text-neutral-400 dark:text-neutral-300 leading-tight">
+              {isOpen ? "点击收起 (-)" : "点击咨询代码"}
             </span>
           </div>
-          <span className="text-xs font-bold font-mono">AI 助手</span>
         </button>
 
         {!isOpen && (
@@ -224,17 +259,15 @@ export function WritingAICopilotDrawer({
         )}
       </div>
 
-      {/* 2. 左下角现代化对话机器人卡片浮窗 (完全不遮挡右侧编辑区与对比模式) */}
+      {/* 2. 左下角现代化二次元画廊风浮窗 (支持最小化收回，不挡右侧编辑) */}
       {isOpen && (
         <aside
           className="fixed left-4 sm:left-6 bottom-20 z-50 flex w-[430px] max-w-[94vw] h-[600px] max-h-[82vh] flex-col rounded-3xl border border-black/10 bg-w/98 shadow-2xl backdrop-blur-2xl transition-all duration-300 dark:border-white/10 ani-show overflow-hidden"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-black/5 px-4 py-3 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.015]">
-            <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/15 text-theme text-base shadow-2xs">
-                <i className={activePersona.icon} />
-              </span>
+            <div className="flex items-center gap-2.5">
+              <AnimeChibiAvatar size="sm" />
               <div>
                 <div className="flex items-center gap-2">
                   <p className="text-xs font-extrabold t-primary">{activePersona.name}</p>
@@ -246,14 +279,25 @@ export function WritingAICopilotDrawer({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-white/5 dark:hover:text-neutral-200 transition"
-              title="收起 AI 机器人"
-            >
-              <i className="ri-close-line text-base" />
-            </button>
+            {/* 包含收起 (-) 与关闭 (X) 按钮 */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-white/5 dark:hover:text-neutral-200 transition font-bold"
+                title="收回 (-)"
+              >
+                <i className="ri-subtract-line text-base" />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-white/5 dark:hover:text-neutral-200 transition"
+                title="关闭"
+              >
+                <i className="ri-close-line text-base" />
+              </button>
+            </div>
           </div>
 
           {/* Mode Switcher Tabs */}
@@ -268,7 +312,7 @@ export function WritingAICopilotDrawer({
               }`}
             >
               <i className="ri-chat-smile-2-line" />
-              <span>机器人对话</span>
+              <span>萌娘对话</span>
             </button>
             <button
               type="button"
@@ -304,7 +348,7 @@ export function WritingAICopilotDrawer({
                       type="button"
                       onClick={() => {
                         setSelectedPersonaId(persona.id);
-                        showToast(`已切换至【${persona.name}】专家模式！`);
+                        showToast(`已切换至【${persona.name}】模式！`);
                       }}
                       className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition select-none ${
                         isSelected
@@ -318,6 +362,27 @@ export function WritingAICopilotDrawer({
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Quick Prompts (多行自适应平铺，不再强制单行截断) */}
+              <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 border-b border-black/5 text-[11px] dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]">
+                {[
+                  "帮我写段命令行配置",
+                  "检查代码块是否闭合",
+                  "润色选中的段落",
+                  "提炼3个核心要点",
+                  "排查语法漏洞与参数",
+                  "提取为技术实操手册",
+                ].map((qp) => (
+                  <button
+                    key={qp}
+                    type="button"
+                    onClick={() => handleSendMessage(qp)}
+                    className="rounded-full bg-black/5 px-2.5 py-0.5 text-neutral-600 hover:bg-theme/10 hover:text-theme dark:bg-white/5 dark:text-neutral-300 transition text-[10px]"
+                  >
+                    {qp}
+                  </button>
+                ))}
               </div>
 
               {/* Messages Container (局部容器滚动，杜绝整页上滚) */}
@@ -389,7 +454,7 @@ export function WritingAICopilotDrawer({
                 )}
               </div>
 
-              {/* Chat Input at the BOTTOM (多行 Textarea，按 Enter 发送，Shift+Enter 换行) */}
+              {/* Chat Input at the BOTTOM (多行 Textarea) */}
               <div className="p-3 border-t border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.015]">
                 <form
                   onSubmit={(e) => {
