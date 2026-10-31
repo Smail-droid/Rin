@@ -283,6 +283,38 @@ export async function generateAISummaryResult(
 }
 
 /**
+ * Execute multi-turn AI Chat conversation for the writing assistant drawer
+ */
+export async function executeAIChat(
+    env: Env,
+    serverConfig: ConfigReader,
+    messages: { role: "system" | "user" | "assistant"; content: string }[]
+): Promise<{ success: boolean; reply: string; error?: string }> {
+    const config = await getAIConfig(serverConfig);
+    if (!config.enabled) {
+        return { success: false, reply: "", error: "AI 服务尚未开启，请先在后台 AI 助手开启并配置" };
+    }
+
+    const { provider, model } = config;
+    try {
+        let result: string | null = null;
+        if (provider === "worker-ai") {
+            const fullModelName = getWorkerAIModelId(model);
+            result = await executeWorkerAI(env, fullModelName, messages);
+        } else {
+            result = await executeExternalAI(config, messages);
+        }
+        if (!result || !result.trim()) {
+            return { success: false, reply: "", error: "AI 服务返回为空" };
+        }
+        const cleaned = stripReasoningTags(result);
+        return { success: true, reply: cleaned.trim() };
+    } catch (err: any) {
+        return { success: false, reply: "", error: err.message || String(err) };
+    }
+}
+
+/**
  * Execute a single prompt call with the configured AI provider
  */
 async function callAIOnce(

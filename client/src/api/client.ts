@@ -563,6 +563,13 @@ class ConfigAPI {
     return this.http.post<any>("/api/config/ai/pipeline", body);
   }
 
+  // POST /api/config/ai/chat - AI interactive chat conversation
+  async chatAI(body: {
+    messages: { role: "system" | "user" | "assistant"; content: string }[];
+  }): Promise<ApiResponse<{ success: boolean; reply: string; error?: string }>> {
+    return this.http.post<any>("/api/config/ai/chat", body);
+  }
+
   async testWebhook(body: {
     webhook_url?: string;
     "webhook.method"?: string;

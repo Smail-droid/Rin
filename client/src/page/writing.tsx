@@ -14,6 +14,7 @@ import {siteName} from "../utils/constants";
 import mermaid from 'mermaid';
 import { MarkdownEditor } from '../components/markdown_editor';
 import { Markdown } from "../components/markdown";
+import { WritingAICopilotDrawer } from "../components/writing-ai-copilot-drawer";
 
 async function publish({
   title,
@@ -131,6 +132,7 @@ export function WritingPage({ id }: { id?: number }) {
   const [content, setContent] = cache.useCache("content", "");
   const [createdAt, setCreatedAt] = useState<Date | undefined>(new Date());
   const [publishing, setPublishing] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
   const [pipelineStages, setPipelineStages] = useState<string[]>([]);
   const [autoRunOnPublish, setAutoRunOnPublish] = useState(false);
   const [runningPipeline, setRunningPipeline] = useState(false);
@@ -319,7 +321,18 @@ export function WritingPage({ id }: { id?: number }) {
                 {id !== undefined ? t("update.title") : t("publish.title")}
               </p>
             </div>
-            <PublishButton className="w-auto" />
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setCopilotOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-theme/30 bg-theme/10 hover:bg-theme/20 text-theme px-3.5 py-2.5 text-xs font-bold transition shadow-2xs"
+                title="打开右侧 AI 创作助手抽屉（可实时提问代码、查询配置与流水线梳理）"
+              >
+                <i className="ri-sparkling-fill text-sm" />
+                <span>AI 助手</span>
+              </button>
+              <PublishButton className="w-auto" />
+            </div>
           </div>
 
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
@@ -512,37 +525,79 @@ export function WritingPage({ id }: { id?: number }) {
             </button>
           </div>
 
-          {/* 生成的 AI 摘要卡片预览 */}
-          {pipelinePreviewData?.summary && (
-            <div className="p-3.5 rounded-xl bg-theme/5 border border-theme/20 text-xs">
-              <span className="font-bold text-theme flex items-center gap-1 mb-1">
-                <i className="ri-file-text-line" />
-                <span>AI 提炼摘要 (将作为文章独立摘要卡片展示)：</span>
-              </span>
-              <p className="t-primary leading-relaxed">{pipelinePreviewData.summary}</p>
+          {/* 分区 1: 生成的 AI 摘要卡片 (独立分区，支持独立复制与独立设为简介) */}
+          {pipelinePreviewData?.summary && !pipelinePreviewData.summary.includes("请提供") && !pipelinePreviewData.summary.includes("请发送") && (
+            <div className="p-4 rounded-2xl bg-theme/5 border border-theme/20 flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-xs text-theme flex items-center gap-1.5">
+                  <i className="ri-sparkling-fill" />
+                  <span>分区 A · AI 精炼摘要（文章独立卡片）</span>
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(pipelinePreviewData.summary || "");
+                      showAlert("已复制 AI 摘要纯文本到剪贴板！");
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-theme/30 bg-w text-[11px] font-semibold text-theme hover:bg-theme/10 transition"
+                  >
+                    <i className="ri-file-copy-line" />
+                    <span>仅复制摘要</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (pipelinePreviewData.summary) {
+                        setSummary(pipelinePreviewData.summary);
+                        showAlert("已将 AI 摘要填入文章简介！");
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-theme text-white text-[11px] font-semibold hover:bg-theme-hover transition"
+                  >
+                    <i className="ri-check-line" />
+                    <span>设为文章简介</span>
+                  </button>
+                </div>
+              </div>
+              <p className="t-primary text-xs leading-relaxed bg-white/60 dark:bg-black/30 p-2.5 rounded-xl border border-black/5 dark:border-white/5">
+                {pipelinePreviewData.summary}
+              </p>
             </div>
           )}
 
-          {/* 梳理后的文章内容预览 */}
-          <div className="flex-1 min-h-0 overflow-y-auto p-4 rounded-xl border border-black/10 bg-neutral-50/70 dark:border-white/10 dark:bg-neutral-900/40 text-sm">
-            <Markdown content={pipelinePreviewData?.result || ""} />
+          {/* 分区 2: 梳理后的文章正文结果 (独立分区，绝不混入摘要) */}
+          <div className="flex-1 min-h-0 flex flex-col gap-2 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-neutral-900/40">
+            <div className="flex items-center justify-between gap-2 pb-2 border-b border-black/5 dark:border-white/5">
+              <span className="font-bold text-xs t-primary flex items-center gap-1.5">
+                <i className="ri-file-text-line text-theme" />
+                <span>分区 B · 优化排版后的文章正文</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (pipelinePreviewData?.result) {
+                    navigator.clipboard.writeText(pipelinePreviewData.result);
+                    showAlert("已复制正文纯 Markdown 内容到剪贴板！");
+                  }
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-black/10 bg-w text-[11px] font-semibold t-primary hover:bg-neutral-100 dark:border-white/10 dark:hover:bg-white/5 transition"
+              >
+                <i className="ri-file-copy-line" />
+                <span>仅复制正文</span>
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1 text-sm">
+              <Markdown content={pipelinePreviewData?.result || ""} />
+            </div>
           </div>
 
-          {/* 底部操作栏 */}
+          {/* 底部操作栏：直接静默应用，绝不弹二次 Confirm 弹窗打断写作 */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-black/5 dark:border-white/5">
-            <button
-              type="button"
-              onClick={() => {
-                if (pipelinePreviewData?.result) {
-                  navigator.clipboard.writeText(pipelinePreviewData.result);
-                  showAlert("已成功复制梳理后的文章内容到剪贴板！");
-                }
-              }}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-black/10 bg-w px-4 py-2 text-xs font-semibold t-primary hover:bg-neutral-100 dark:border-white/10 dark:hover:bg-white/5 transition"
-            >
-              <i className="ri-file-copy-line text-sm" />
-              <span>复制梳理结果</span>
-            </button>
+            <p className="text-[11px] text-neutral-400">
+              💡 提示：点击确认替换后将直接写入编辑器，绝不弹窗打扰写作，如需撤销可随时按 Ctrl+Z。
+            </p>
 
             <div className="flex items-center gap-2 justify-end">
               <button
@@ -560,8 +615,8 @@ export function WritingPage({ id }: { id?: number }) {
                     if (pipelinePreviewData.summary && (!summary || summary.trim().length === 0)) {
                       setSummary(pipelinePreviewData.summary);
                     }
+                    // 静默关闭弹窗，不弹任何二次阻塞 Alert！
                     setPreviewModalOpen(false);
-                    showAlert("已成功应用 AI 梳理结果并更新到编辑器中！如需撤销可按 Ctrl+Z。");
                   }
                 }}
                 className="rounded-xl bg-theme px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-theme-hover transition"
@@ -572,6 +627,21 @@ export function WritingPage({ id }: { id?: number }) {
           </div>
         </div>
       </Modal>
+
+      <WritingAICopilotDrawer
+        isOpen={copilotOpen}
+        onClose={() => setCopilotOpen(false)}
+        articleContent={content}
+        onInsertText={(text) => {
+          setContent(content ? `${content}\n\n${text}` : text);
+        }}
+        onReplaceContent={(newContent) => {
+          setContent(newContent);
+        }}
+        onApplySummary={(sum) => {
+          setSummary(sum);
+        }}
+      />
 
       <AlertUI />
     </>

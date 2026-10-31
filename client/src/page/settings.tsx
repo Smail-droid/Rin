@@ -18,10 +18,12 @@ import { FeedCardPreview } from "../components/feed-card-preview";
 import { FEED_LAYOUT_OPTIONS, normalizeFeedLayout } from "../components/feed-layout-options";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import {
+  applyArtTitleColor,
   applyThemeColor,
   normalizeThemeColor,
   applyThemeOpacity,
   normalizeThemeOpacity,
+  applyThemeFontSize,
   THEME_PRESETS,
   ACCENT_COLOR_PRESETS,
   OPACITY_SHORTCUTS,
@@ -725,6 +727,81 @@ export function Settings() {
                 </div>
               </div>
 
+              {/* Global Typography Scale / Font Size Customization */}
+              <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10">
+                <div className="flex flex-col gap-3 rounded-2xl border border-black/5 bg-black/[0.015] p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold t-primary flex items-center gap-2">
+                        <i className="ri-font-size-2 text-theme" />
+                        <span>全站正文阅读字号</span>
+                      </div>
+                      <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 max-w-md">
+                        自由调节文章卡片与阅读页面的基准字号，字号越大排版越宽松清晰，字号越小信息密度越高。
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-start sm:items-end gap-2">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={13}
+                          max={20}
+                          step={1}
+                          value={Number.parseInt(String(clientConfig.get("theme.font_size") ?? 16), 10) || 16}
+                          onChange={(e) => {
+                            const val = Number.parseInt(e.target.value, 10);
+                            setConfigValue("client", "theme.font_size", val);
+                            applyThemeFontSize(val);
+                          }}
+                          className="h-2 w-32 sm:w-44 cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-theme dark:bg-white/15"
+                        />
+                        <span className="min-w-12 text-right font-mono text-sm font-bold text-theme">
+                          {Number.parseInt(String(clientConfig.get("theme.font_size") ?? 16), 10) || 16}px
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {[
+                          { px: 14, label: "14px 精致" },
+                          { px: 16, label: "16px 标准" },
+                          { px: 17, label: "17px 舒适" },
+                          { px: 18, label: "18px 宽大" },
+                        ].map((item) => {
+                          const currentSize = Number.parseInt(String(clientConfig.get("theme.font_size") ?? 16), 10) || 16;
+                          const isSelected = currentSize === item.px;
+                          return (
+                            <button
+                              key={item.px}
+                              type="button"
+                              onClick={() => {
+                                setConfigValue("client", "theme.font_size", item.px);
+                                applyThemeFontSize(item.px);
+                              }}
+                              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all select-none ${
+                                isSelected
+                                  ? "bg-theme text-white shadow-xs scale-105"
+                                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
+                              }`}
+                            >
+                              {item.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Real-time typography preview */}
+                  <div className="mt-1 p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/5 dark:border-white/5">
+                    <p
+                      style={{ fontSize: `${Number.parseInt(String(clientConfig.get("theme.font_size") ?? 16), 10) || 16}px` }}
+                      className="t-primary leading-relaxed transition-all duration-200"
+                    >
+                      字号实时预览：岁月不语，惟石能言。每一篇随笔都是长河里静止的浮游微光，在字里行间静候知音。
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* UI Theme & Presets Section (Mode Switcher + Theme Presets Grid + Custom Accent) */}
               <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10">
                 <div className="flex flex-col gap-4 rounded-2xl border border-black/5 bg-black/[0.015] p-4 dark:border-white/5 dark:bg-white/[0.02]">
@@ -1031,6 +1108,92 @@ export function Settings() {
                         </button>
                       );
                     })}
+                  </div>
+
+                  {/* Custom Art Title Color Option */}
+                  <div className="mt-2 pt-3 border-t border-black/5 dark:border-white/5 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-semibold t-primary">使用自定义艺术标题色彩</div>
+                        <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                          覆盖默认强调色，自选专属标题光晕与流光基调色彩
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={clientConfig.getBoolean("atelier.title_custom_color_enabled")}
+                        onClick={() => {
+                          const nextVal = !clientConfig.getBoolean("atelier.title_custom_color_enabled");
+                          setConfigValue("client", "atelier.title_custom_color_enabled", nextVal);
+                          if (!nextVal) {
+                            applyArtTitleColor(undefined);
+                          } else {
+                            applyArtTitleColor(String(clientConfig.get("atelier.title_color") || themeColorValue));
+                          }
+                        }}
+                        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-transparent transition-colors focus:outline-none ${
+                          clientConfig.getBoolean("atelier.title_custom_color_enabled") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                        }`}
+                      >
+                        <span
+                          className={`block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                            clientConfig.getBoolean("atelier.title_custom_color_enabled") ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className={`flex flex-col gap-2 transition-opacity duration-200 ${clientConfig.getBoolean("atelier.title_custom_color_enabled") ? "opacity-100" : "opacity-45 pointer-events-none"}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">艺术标题颜色色谱</div>
+                        <div className="font-mono text-xs font-bold text-theme">
+                          {String(clientConfig.get("atelier.title_color") || themeColorValue)}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        {ACCENT_COLOR_PRESETS.map((color) => {
+                          const titleColorVal = String(clientConfig.get("atelier.title_color") || themeColorValue).toLowerCase();
+                          const isSelected = titleColorVal === color.toLowerCase();
+                          return (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => {
+                                setConfigValue("client", "atelier.title_color", color);
+                                setConfigValue("client", "atelier.title_custom_color_enabled", true);
+                                applyArtTitleColor(color);
+                              }}
+                              className={`group relative flex h-7 w-7 items-center justify-center rounded-full transition-all duration-200 hover:scale-110 ${
+                                isSelected ? "ring-2 ring-offset-2 ring-theme shadow-xs scale-105" : "hover:shadow-xs"
+                              }`}
+                              style={{ backgroundColor: color }}
+                            >
+                              {isSelected && <i className="ri-check-line text-xs font-bold text-white drop-shadow-xs" />}
+                            </button>
+                          );
+                        })}
+
+                        {/* Native Color Picker */}
+                        <label
+                          title="自选专属色盘"
+                          className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-gradient-to-tr from-rose-500 via-purple-500 to-sky-500 text-white shadow-xs transition-transform hover:scale-110 active:scale-95"
+                        >
+                          <i className="ri-palette-line text-xs drop-shadow-xs" />
+                          <input
+                            type="color"
+                            value={String(clientConfig.get("atelier.title_color") || themeColorValue)}
+                            onChange={(event) => {
+                              const normalized = normalizeThemeColor(event.target.value);
+                              setConfigValue("client", "atelier.title_color", normalized);
+                              setConfigValue("client", "atelier.title_custom_color_enabled", true);
+                              applyArtTitleColor(normalized);
+                            }}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          />
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </SettingsCardBody>

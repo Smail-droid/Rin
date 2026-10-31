@@ -3,7 +3,7 @@ import { wrapTime } from "hono/timing";
 import type { AppContext } from "../core/hono-types";
 import { adminOnly } from "../core/route-boundaries";
 import { setAIConfig, getAIConfig } from "../utils/db-config";
-import { runAIPipelineProcess, testAIModel } from "../utils/ai";
+import { executeAIChat, runAIPipelineProcess, testAIModel } from "../utils/ai";
 import { notify } from "../utils/webhook";
 import {
     buildCombinedConfigResponse,
@@ -78,6 +78,23 @@ export function ConfigService(): Hono {
             c,
             'ai_pipeline_process',
             runAIPipelineProcess(env, serverConfig, content, body.stages)
+        );
+        return c.json(result);
+    }));
+
+    // AI Interactive Chat Assistant (admin only)
+    app.post('/ai/chat', adminOnly(async (c: AppContext) => {
+        const env = c.get('env');
+        const serverConfig = c.get('serverConfig');
+        const body = await c.req.json<{ messages: { role: "system" | "user" | "assistant"; content: string }[] }>().catch(() => ({ messages: [] }));
+        if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
+            return c.json({ success: false, reply: "", error: "消息列表不能为空" }, 400);
+        }
+
+        const result = await wrapTime(
+            c,
+            'ai_chat_process',
+            executeAIChat(env, serverConfig, body.messages)
         );
         return c.json(result);
     }));

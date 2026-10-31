@@ -22,6 +22,7 @@ body {
   background-attachment: fixed;
   color: rgb(var(--rin-text-rgb));
   font-family: Cantarell, "Source Han Serif CN VF", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif !important;
+  font-size: var(--rin-font-size, 16px);
   min-height: 100vh;
 }
 
@@ -251,37 +252,37 @@ a.toc-link {
 
 /* 1. 彩虹极光流光 (Aurora Flow) */
 .art-title-aurora_flow {
-  background: linear-gradient(135deg, rgb(var(--theme-rgb)) 0%, #38bdf8 30%, #ec4899 60%, rgb(var(--theme-rgb)) 100%);
+  background: linear-gradient(135deg, rgb(var(--art-title-rgb, var(--theme-rgb))) 0%, #38bdf8 30%, #ec4899 60%, rgb(var(--art-title-rgb, var(--theme-rgb))) 100%);
   background-size: 250% 250%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: auroraFlowAnimation 6s ease infinite;
-  filter: drop-shadow(0 4px 12px rgb(var(--theme-rgb) / 0.25));
+  filter: drop-shadow(0 4px 12px rgb(var(--art-title-rgb, var(--theme-rgb)) / 0.25));
   letter-spacing: -0.02em;
 }
 
 /* 2. 琉璃晶透微光 (Glass Crystal) */
 .art-title-glass_glow {
-  background: linear-gradient(180deg, #ffffff 10%, rgb(var(--theme-rgb)) 100%);
+  background: linear-gradient(180deg, #ffffff 10%, rgb(var(--art-title-rgb, var(--theme-rgb))) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 20px rgb(var(--theme-rgb) / 0.4), 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-shadow: 0 0 20px rgb(var(--art-title-rgb, var(--theme-rgb)) / 0.4), 0 2px 4px rgba(0, 0, 0, 0.1);
   letter-spacing: 0.02em;
 }
 [data-color-mode="dark"] .art-title-glass_glow {
-  background: linear-gradient(180deg, #f8fafc 20%, rgb(var(--theme-rgb)) 100%);
+  background: linear-gradient(180deg, #f8fafc 20%, rgb(var(--art-title-rgb, var(--theme-rgb))) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 25px rgb(var(--theme-rgb) / 0.6);
+  text-shadow: 0 0 25px rgb(var(--art-title-rgb, var(--theme-rgb)) / 0.6);
 }
 
 /* 3. 赛博电光霓虹 (Cyberpunk Neon) */
 .art-title-cyber_neon {
-  color: #00f2fe;
+  color: rgb(var(--art-title-rgb, 0 242 254));
   text-shadow:
-    0 0 5px #00f2fe,
-    0 0 12px #00c4ff,
-    0 0 24px rgb(var(--theme-rgb) / 0.6);
+    0 0 5px rgb(var(--art-title-rgb, 0 242 254)),
+    0 0 12px rgb(var(--art-title-rgb, 0 196 255)),
+    0 0 24px rgb(var(--art-title-rgb, var(--theme-rgb)) / 0.6);
   letter-spacing: 0.04em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
 }

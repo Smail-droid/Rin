@@ -145,6 +145,24 @@ export function applyThemeOpacity(value: unknown) {
   root.style.setProperty("--rin-glass-border-alpha", opacity >= 100 ? "0.1" : `${(0.1 + (1 - alpha) * 0.15).toFixed(2)}`);
 }
 
+export function applyArtTitleColor(value: string | undefined | null) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (!value || value.trim().length === 0) {
+    root.style.removeProperty("--art-title-rgb");
+    return;
+  }
+  const color = normalizeHex(value);
+  root.style.setProperty("--art-title-rgb", toCssRgb(hexToRgb(color)));
+}
+
+export function applyThemeFontSize(value: unknown) {
+  if (typeof document === "undefined") return;
+  const parsed = Number.parseInt(String(value ?? 16), 10);
+  const size = Math.min(22, Math.max(13, Number.isNaN(parsed) ? 16 : parsed));
+  document.documentElement.style.setProperty("--rin-font-size", `${size}px`);
+}
+
 export function applyFullTheme(color?: string | null, opacity?: unknown) {
   applyThemeColor(color);
   applyThemeOpacity(opacity);
