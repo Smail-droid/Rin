@@ -9,19 +9,24 @@ This file contains **detailed** changelog information for each release.
 For a quick overview of changes, see the [GitHub Releases](https://github.com/openRin/Rin/releases) page
 which automatically generates release notes from commit messages.
 
-## [Unreleased]
+## [v1.0.0] - 2026-11-01
+
+### Overview
+First official release of the Rin Fork edition: dramatic frontend bundle reduction via code splitting, 12 artistic title styles, collapsible accordion settings cards, anime gallery comments with Markdown toolbar, Mac terminal-styled moments with mood states, and draggable AI copilot window.
 
 ### Added
+- **Front-end Extreme Code Splitting**: Reduced entry chunk size from 5.68 MB to 131.42 kB (97.7% reduction, 38 kB gzip).
+- **Decoupled Heavy Dependencies**: Monaco Editor (3.88MB) and Mermaid/Cytoscape (3.07MB) are now 100% on-demand dynamically loaded.
+- **12 Artistic Title Typographies**: 4x3 symmetrical layout covering arcade pixel, anime candy, gothic metal, vaporwave, and cosmic starlight.
+- **Collapsible Sticky Notes Configuration**: Accordion card layout saves over 2000px vertical space with auto-anchor expansion.
+- **Smart Placement Select**: Auto-flip dropdown menu avoiding sticky footer overlap with z-50 elevation.
+- **Mac Terminal Moments**: Moments cards redesigned with Mac traffic-light dots and terminal paths; lightweight publishing editor with 8 mood states and Markdown tools.
+- **Draggable AI Copilot**: Window relocated to right workspace with mouse/touch drag support and double-click reset.
+- **Docker & VPS Deployment**: Added production Dockerfile, docker-compose.yml, and comprehensive deployment documentation.
+- **Comprehensive Test Suite**: 54 suites, 484 unit/integration tests passing (100% green).
 
-### Changed
-
-### Deprecated
-
-### Removed
-
-### Fixed
-
-### Security
+### 中文版
+详见 [更新日志.md](./更新日志.md)。
 
 ## [v0.3.0] - 2026-03-12
 

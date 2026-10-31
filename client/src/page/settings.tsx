@@ -30,7 +30,7 @@ import {
 } from "../utils/theme-color";
 import { getStoredThemeMode, setThemeMode, type ThemeMode } from "../utils/darkModeUtils";
 import { AISummarySettings } from "./settings-ai";
-import { ItemButton, ItemEmojiInput, ItemImageInput, ItemInput, ItemSwitch, ItemTitle, ItemWithUpload } from "./settings-items";
+import { CollapsibleStickyCard, ItemButton, ItemEmojiInput, ItemImageInput, ItemInput, ItemSwitch, ItemTitle, ItemWithUpload } from "./settings-items";
 import {
   areSettingsDraftsEqual,
   buildAIConfigDraftValue,
@@ -51,12 +51,12 @@ const WEBHOOK_METHOD_OPTIONS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD",
   value,
 }));
 
-const ABOUT_PRESET_EMOJIS = ["🐾", "🐱", "🐶", "🦊", "🐼", "🐨", "🦁", "🐯", "🦄", "☕", "🍵", "🍀", "🌿", "🌸", "🎧", "🎮", "💻", "🎨", "🪄", "👑", "✨", "🌻", "🐣", "🍧"];
+const ABOUT_PRESET_EMOJIS = ["🐾", "🐱", "🐶", "🦊", "🐼", "🐨", "🦁", "🐯", "🦄", "☕", "🍵", "🍀", "🌿", "🌸", "🎧", "🎮", "💻", "🎨", "🌟", "👑", "✨", "🌻", "🐣", "🍧"];
 const TIMELINE_PRESET_EMOJIS = ["⏳", "⌛", "⏰", "⏱️", "🕰️", "📅", "📆", "🗓️", "📜", "🧭", "⚓", "🏹", "🛸", "🚀", "🌠", "🌌", "🪐", "🍂", "🍁", "🌊", "🏛️", "⛩️", "🕯️", "🔮"];
 const MOMENTS_PRESET_EMOJIS = ["💭", "💬", "🫧", "💡", "☕", "🍃", "🌤️", "🌈", "🎈", "🎵", "📖", "📝", "📮", "💌", "🍺", "🥂", "🥐", "🍰", "🧁", "🌻", "🧸", "🪁", "🎐", "🍬"];
 const FRIENDS_PRESET_EMOJIS = ["🌸", "🌺", "🌷", "🌹", "💐", "🏡", "🏠", "🏘️", "🏰", "🤝", "👫", "👭", "👬", "💌", "🌐", "🛸", "🪴", "🍄", "🎁", "🎉", "🎈", "🍭", "🌟", "✨"];
 const SEARCH_PRESET_EMOJIS = ["🔍", "🔎", "🧭", "🔭", "🔬", "🗺️", "🗝️", "🔮", "🎯", "🏹", "💡", "⚡", "📡", "🛸", "🕵️‍♂️", "🕵️‍♀️", "🧠", "📚", "🔖", "💎", "🛰️", "🚀", "💫", "🧐"];
-const DECK_PRESET_EMOJIS = ["🎴", "🃏", "📸", "📷", "🎞️", "🖼️", "🎨", "🖌️", "🎬", "🎭", "🎪", "🎡", "🎠", "🎆", "🎇", "🌠", "🌅", "🌄", "🎑", "📽️", "📼", "🔮", "🪩", "✨"];
+const DECK_PRESET_EMOJIS = ["🎴", "🃏", "📸", "📷", "🎞️", "🖼️", "🎨", "🖌️", "🎬", "🎭", "🎪", "🎡", "🎠", "🎆", "🎇", "🌠", "🌅", "🌄", "🎑", "📽️", "📼", "🔮", "💎", "✨"];
 
 const ATELIER_TITLE_STYLES = [
   { id: "aurora_flow", name: "彩虹极光流光", desc: "随主题流动平滑渐变流光，灵动惊艳" },
@@ -66,6 +66,11 @@ const ATELIER_TITLE_STYLES = [
   { id: "golden_sunset", name: "落日熔金流光", desc: "晚霞熔金渐变，治愈温暖暮色" },
   { id: "emboss_3d", name: "现代立体浮雕", desc: "极简光影立体凹凸，干净利落" },
   { id: "classic_clean", name: "经典纯净黑体", desc: "质朴沉稳，高对比极简纯色" },
+  { id: "pixel_arcade", name: "复古像素街机", desc: "8-bit经典红白机街机，极客点阵情怀" },
+  { id: "candy_dream", name: "二次元梦幻软糖", desc: "萌系晶莹圆体，梦幻Q弹粉紫泡泡" },
+  { id: "gothic_metal", name: "暗夜哥特金属", desc: "冷冽银白暗夜流光，古典典雅风度" },
+  { id: "vaporwave_80s", name: "蒸汽波复古浪潮", desc: "80s复古霓虹与青粉色差分离美学" },
+  { id: "starlight_cosmic", name: "星空极夜璀璨", desc: "深邃蓝紫星河粒子光晕，浩瀚神秘" },
 ];
 
 export function Settings() {
@@ -95,6 +100,25 @@ export function Settings() {
       : "general"
   );
   const [activeThemeMode, setActiveThemeMode] = useState<ThemeMode>(getStoredThemeMode());
+
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    about: false,
+    timeline: false,
+    moments: false,
+    friends: false,
+    search: false,
+    deck: false,
+  });
+
+  const toggleSection = (key: string) => {
+    setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  useEffect(() => {
+    if (focusTarget && ["about", "timeline", "moments", "friends", "search", "deck"].includes(focusTarget)) {
+      setExpandedSections((prev) => ({ ...prev, [focusTarget]: true }));
+    }
+  }, [focusTarget]);
 
   // URL tab change synchronizer
   useEffect(() => {
@@ -246,7 +270,7 @@ export function Settings() {
       <Helmet>
         <title>{`${t("settings.title")} - ${siteConfig.name}`}</title>
       </Helmet>
-      <main className="w-full rounded-2xl bg-w" aria-label={t("main_content")}>
+      <main className="w-full rounded-2xl bg-w pb-32" aria-label={t("main_content")}>
         <div className="flex flex-col items-start space-y-4 w-full">
           {(loading || saving) && <ReactLoading width="1em" height="1em" type="spin" color="#FC466B" />}
 
@@ -1080,8 +1104,8 @@ export function Settings() {
                     </div>
                   </div>
 
-                  {/* Preset Style Buttons Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
+                  {/* Preset Style Buttons Grid (4列3行完美对称布局) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 pt-1">
                     {ATELIER_TITLE_STYLES.map((style) => {
                       const currentStyle = String(clientConfig.get("atelier.title_style") ?? "aurora_flow");
                       const isSelected = currentStyle === style.id;
@@ -1200,11 +1224,18 @@ export function Settings() {
             </SettingsCard>
           </div>
 
-          <div id="setting-atelier-about" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
-            <ItemTitle title="1. “关于我”便签设置" />
+          {/* 便签卡片折叠手风琴布局（清爽节省篇幅，点击展开） */}
+          <CollapsibleStickyCard
+            id="setting-atelier-about"
+            title="1. “关于我”便签设置"
+            icon={String(clientConfig.get("atelier.about_icon") ?? "🐾")}
+            badgeText={String(clientConfig.get("atelier.about_url") ?? "/about")}
+            isOpen={expandedSections.about}
+            onToggle={() => toggleSection("about")}
+          >
             <ItemEmojiInput
               title="“关于我”便签图标 (Emoji / 符号)"
-              description="便签左上角个性符号（博主/身份专属推荐：🐾 🐱 🐶 🦊 🐼 🐨 🦁 🐯 🦄 ☕ 🍵 🍀 🌿 🌸 🎧 🎮 💻 🎨 🪄 👑 ✨ 🌻 🐣 🍧 等，可点击快速填入或自行输入）"
+              description="便签左上角个性符号（博主/身份专属推荐：🐾 🐱 🐶 🦊 🐼 🐨 🦁 🐯 🦄 ☕ 🍵 🍀 🌿 🌸 🎧 🎮 💻 🎨 🌟 👑 ✨ 🌻 🐣 🍧 等，可点击快速填入或自行输入）"
               configKeyTitle="atelier.about_icon"
               value={String(clientConfig.get("atelier.about_icon") ?? "🐾")}
               placeholder="🐾"
@@ -1244,10 +1275,16 @@ export function Settings() {
               }}
               onError={showAlert}
             />
-          </div>
+          </CollapsibleStickyCard>
 
-          <div id="setting-atelier-timeline" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
-            <ItemTitle title="2. “岁月轨迹”便签设置" />
+          <CollapsibleStickyCard
+            id="setting-atelier-timeline"
+            title="2. “岁月轨迹”便签设置"
+            icon={String(clientConfig.get("atelier.timeline_icon") ?? "⏳")}
+            badgeText={String(clientConfig.get("atelier.timeline_url") ?? "/timeline")}
+            isOpen={expandedSections.timeline}
+            onToggle={() => toggleSection("timeline")}
+          >
             <ItemEmojiInput
               title="“岁月轨迹”便签图标 (Emoji / 符号)"
               description="便签左上角个性符号（岁月/刻度专属推荐：⏳ ⌛ ⏰ ⏱️ 🕰️ 📅 📆 🗓️ 📜 🧭 ⚓ 🏹 🛸 🚀 🌠 🌌 🪐 🍂 🍁 🌊 🏛️ ⛩️ 🕯️ 🔮 等，可点击快速填入或自行输入）"
@@ -1290,10 +1327,16 @@ export function Settings() {
               }}
               onError={showAlert}
             />
-          </div>
+          </CollapsibleStickyCard>
 
-          <div id="setting-atelier-moments" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
-            <ItemTitle title="3. “日常随想”便签设置" />
+          <CollapsibleStickyCard
+            id="setting-atelier-moments"
+            title="3. “日常随想”便签设置"
+            icon={String(clientConfig.get("atelier.moments_icon") ?? "💭")}
+            badgeText={String(clientConfig.get("atelier.moments_url") ?? "/moments")}
+            isOpen={expandedSections.moments}
+            onToggle={() => toggleSection("moments")}
+          >
             <ItemEmojiInput
               title="“日常随想”便签图标 (Emoji / 符号)"
               description="便签左上角个性符号（灵感/随笔专属推荐：💭 💬 🫧 💡 ☕ 🍃 🌤️ 🌈 🎈 🎵 📖 📝 📮 💌 🍺 🥂 🥐 🍰 🧁 🌻 🧸 🪁 🎐 🍬 等，可点击快速填入或自行输入）"
@@ -1336,10 +1379,16 @@ export function Settings() {
               }}
               onError={showAlert}
             />
-          </div>
+          </CollapsibleStickyCard>
 
-          <div id="setting-atelier-friends" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
-            <ItemTitle title="4. “邻家友链”便签设置" />
+          <CollapsibleStickyCard
+            id="setting-atelier-friends"
+            title="4. “邻家友链”便签设置"
+            icon={String(clientConfig.get("atelier.friends_icon") ?? "🌸")}
+            badgeText={String(clientConfig.get("atelier.friends_url") ?? "/friends")}
+            isOpen={expandedSections.friends}
+            onToggle={() => toggleSection("friends")}
+          >
             <ItemEmojiInput
               title="“邻家友链”便签图标 (Emoji / 符号)"
               description="便签左上角个性符号（邻里/友谊专属推荐：🌸 🌺 🌷 🌹 💐 🏡 🏠 🏘️ 🏰 🤝 👫 👭 👬 💌 🌐 🛸 🪴 🍄 🎁 🎉 🎈 🍭 🌟 ✨ 等，可点击快速填入或自行输入）"
@@ -1382,10 +1431,16 @@ export function Settings() {
               }}
               onError={showAlert}
             />
-          </div>
+          </CollapsibleStickyCard>
 
-          <div id="setting-atelier-search" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
-            <ItemTitle title="5. “随心探索”便签设置" />
+          <CollapsibleStickyCard
+            id="setting-atelier-search"
+            title="5. “随心探索”便签设置"
+            icon={String(clientConfig.get("atelier.search_icon") ?? "🔍")}
+            badgeText={String(clientConfig.get("atelier.search_url") ?? "/search")}
+            isOpen={expandedSections.search}
+            onToggle={() => toggleSection("search")}
+          >
             <ItemEmojiInput
               title="“随心探索”便签图标 (Emoji / 符号)"
               description="便签左上角个性符号（探索/检索专属推荐：🔍 🔎 🧭 🔭 🔬 🗺️ 🗝️ 🔮 🎯 🏹 💡 ⚡ 📡 🛸 🕵️‍♂️ 🕵️‍♀️ 🧠 📚 🔖 💎 🛰️ 🚀 💫 🧐 等，可点击快速填入或自行输入）"
@@ -1428,13 +1483,19 @@ export function Settings() {
               }}
               onError={showAlert}
             />
-          </div>
+          </CollapsibleStickyCard>
 
-          <div id="setting-atelier-deck" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
-            <ItemTitle title="6. “记忆翻动”卡片设置" />
+          <CollapsibleStickyCard
+            id="setting-atelier-deck"
+            title="6. “记忆翻动”卡片设置"
+            icon={String(clientConfig.get("atelier.deck_icon") ?? "🎴")}
+            badgeText={String(clientConfig.get("atelier.deck_url") ?? "/gallery")}
+            isOpen={expandedSections.deck}
+            onToggle={() => toggleSection("deck")}
+          >
             <ItemEmojiInput
               title="“记忆翻动”卡片图标 (Emoji / 符号)"
-              description="卡片翻转个性符号（图床/画廊专属推荐：🎴 🃏 📸 📷 🎞️ 🖼️ 🎨 🖌️ 🎬 🎭 🎪 🎡 🎠 🎆 🎇 🌠 🌅 🌄 🎑 📽️ 📼 🔮 🪩 ✨ 等，可点击快速填入或自行输入）"
+              description="卡片翻转个性符号（图床/画廊专属推荐：🎴 🃏 📸 📷 🎞️ 🖼️ 🎨 🖌️ 🎬 🎭 🎪 🎡 🎠 🎆 🎇 🌠 🌅 🌄 🎑 📽️ 📼 🔮 💎 ✨ 等，可点击快速填入或自行输入）"
               configKeyTitle="atelier.deck_icon"
               value={String(clientConfig.get("atelier.deck_icon") ?? "🎴")}
               placeholder="🎴"
@@ -1474,7 +1535,7 @@ export function Settings() {
               }}
               onError={showAlert}
             />
-          </div>
+          </CollapsibleStickyCard>
         </div>
       )}
 

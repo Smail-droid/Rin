@@ -114,6 +114,74 @@ export function WritingAICopilotDrawer({
   const [chatLoading, setChatLoading] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  // 自由拖拽移动位置状态 (默认右侧)
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number }>({
+    startX: 0,
+    startY: 0,
+    initX: 0,
+    initY: 0,
+  });
+
+  // 首次打开或屏幕尺寸变化时，默认停靠在右侧推荐工作区
+  useEffect(() => {
+    if (isOpen && position === null && typeof window !== "undefined") {
+      const defaultWidth = Math.min(480, window.innerWidth * 0.94);
+      const defaultX = Math.max(20, window.innerWidth - defaultWidth - 36);
+      const defaultY = Math.max(64, Math.min(84, window.innerHeight * 0.08));
+      setPosition({ x: defaultX, y: defaultY });
+    }
+  }, [isOpen, position]);
+
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("input")) return;
+
+    isDraggingRef.current = true;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+
+    const currentPos = position || {
+      x: typeof window !== "undefined" ? window.innerWidth - 500 : 200,
+      y: 80,
+    };
+
+    dragStartRef.current = {
+      startX: clientX,
+      startY: clientY,
+      initX: currentPos.x,
+      initY: currentPos.y,
+    };
+
+    const handleDragMove = (moveEvent: MouseEvent | TouchEvent) => {
+      if (!isDraggingRef.current) return;
+      const curX = "touches" in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const curY = "touches" in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const deltaX = curX - dragStartRef.current.startX;
+      const deltaY = curY - dragStartRef.current.startY;
+
+      const newX = Math.max(10, Math.min(window.innerWidth - 320, dragStartRef.current.initX + deltaX));
+      const newY = Math.max(10, Math.min(window.innerHeight - 150, dragStartRef.current.initY + deltaY));
+
+      setPosition({ x: newX, y: newY });
+    };
+
+    const handleDragEnd = () => {
+      isDraggingRef.current = false;
+      window.removeEventListener("mousemove", handleDragMove);
+      window.removeEventListener("mouseup", handleDragEnd);
+      window.removeEventListener("touchmove", handleDragMove);
+      window.removeEventListener("touchend", handleDragEnd);
+    };
+
+    window.addEventListener("mousemove", handleDragMove);
+    window.addEventListener("mouseup", handleDragEnd);
+    window.addEventListener("touchmove", handleDragMove);
+    window.addEventListener("touchend", handleDragEnd);
+  };
+
   // Pipeline State
   const [pipelineStages, setPipelineStages] = useState<string[]>([]);
   const [pipelineLoading, setPipelineLoading] = useState(false);
@@ -259,13 +327,34 @@ export function WritingAICopilotDrawer({
         )}
       </div>
 
-      {/* 2. 左侧侧边栏旁的现代化二次元画廊风浮窗 (支持最小化收回，不挡右侧编辑) */}
+      {/* 2. 可自由拖拽移动的二次元画廊风浮窗 (默认停靠右侧，可随心拖放，双击重置) */}
       {isOpen && (
         <aside
-          className="fixed left-4 sm:left-6 lg:left-72 xl:left-80 top-16 sm:top-20 z-50 flex w-[440px] max-w-[94vw] h-[620px] max-h-[85vh] flex-col rounded-3xl border border-black/10 bg-w/98 shadow-2xl backdrop-blur-2xl transition-all duration-300 dark:border-white/10 ani-show overflow-hidden"
+          style={
+            position
+              ? {
+                  left: `${position.x}px`,
+                  top: `${position.y}px`,
+                }
+              : undefined
+          }
+          className={`fixed z-50 flex w-[480px] max-w-[94vw] h-[680px] max-h-[86vh] flex-col rounded-3xl border border-black/10 bg-w/98 shadow-2xl backdrop-blur-2xl dark:border-white/10 ani-show overflow-hidden ${
+            !position ? "right-4 sm:right-8 top-16 sm:top-20" : ""
+          }`}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-black/5 px-4 py-3 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.015]">
+          {/* Draggable Header (按住可自由拖拽窗口) */}
+          <div
+            onMouseDown={handleDragStart}
+            onTouchStart={handleDragStart}
+            onDoubleClick={() => {
+              if (typeof window !== "undefined") {
+                const defaultWidth = Math.min(480, window.innerWidth * 0.94);
+                setPosition({ x: window.innerWidth - defaultWidth - 36, y: 80 });
+              }
+            }}
+            className="flex items-center justify-between border-b border-black/5 px-4 py-3 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] cursor-move select-none"
+            title="按住鼠标可自由拖拽移动窗口位置 · 双击重置到右侧"
+          >
             <div className="flex items-center gap-2.5">
               <AnimeChibiAvatar size="sm" />
               <div>
@@ -273,6 +362,9 @@ export function WritingAICopilotDrawer({
                   <p className="text-xs font-extrabold t-primary">{activePersona.name}</p>
                   <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold">
                     在线
+                  </span>
+                  <span className="text-[10px] text-neutral-400 font-normal hidden sm:inline">
+                    (可拖拽)
                   </span>
                 </div>
                 <p className="text-[11px] text-neutral-400">{activePersona.tagline}</p>

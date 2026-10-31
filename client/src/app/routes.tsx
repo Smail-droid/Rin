@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useContext } from "react";
+import { lazy, Suspense, useContext } from "react";
 import type { DefaultParams, PathPattern } from "wouter";
 import { Route, Switch } from "wouter";
 import { AdminLayout } from "../components/admin-layout";
@@ -8,31 +8,44 @@ import { Header } from "../components/header";
 import { Padding } from "../components/padding";
 import { getHeaderLayoutDefinition } from "../components/site-header/layout-registry";
 import { Tips, TipsPage } from "../components/tips";
+import { TOCHeader } from "../components/toc-header";
 import useTableOfContents from "../hooks/useTableOfContents";
 import { useSiteConfig } from "../hooks/useSiteConfig";
-import { AdminFilesPage } from "../page/admin-files";
-import { AdminTagsPage } from "../page/admin-tags";
-import { AdminAIPage } from "../page/admin-ai";
-import { CallbackPage } from "../page/callback";
-import { CompatTasksPage } from "../page/compat-tasks";
 import { ErrorPage } from "../page/error";
-import { FeedPage, TOCHeader } from "../page/feed";
-import { FeedsPage } from "../page/feeds";
-import { FriendsPage } from "../page/friends";
-import { HealthPage } from "../page/health";
-import { HashtagPage } from "../page/hashtag";
-import { HashtagsPage } from "../page/hashtags";
-import { LoginPage } from "../page/login";
-import { MomentsPage } from "../page/moments";
-import { ProfilePage } from "../page/profile";
-import { QueueStatusPage } from "../page/queue-status";
-import { SearchPage } from "../page/search";
-import { Settings } from "../page/settings";
-import { TimelinePage } from "../page/timeline";
-import { WritingPage } from "../page/writing";
 import { ProfileContext } from "../state/profile";
 import { tryInt } from "../utils/int";
 import { useTranslation } from "react-i18next";
+
+// Route-level code splitting & lazy loading
+const FeedsPage = lazy(() => import("../page/feeds").then((m) => ({ default: m.FeedsPage })));
+const TimelinePage = lazy(() => import("../page/timeline").then((m) => ({ default: m.TimelinePage })));
+const MomentsPage = lazy(() => import("../page/moments").then((m) => ({ default: m.MomentsPage })));
+const FriendsPage = lazy(() => import("../page/friends").then((m) => ({ default: m.FriendsPage })));
+const HashtagsPage = lazy(() => import("../page/hashtags").then((m) => ({ default: m.HashtagsPage })));
+const HashtagPage = lazy(() => import("../page/hashtag").then((m) => ({ default: m.HashtagPage })));
+const SearchPage = lazy(() => import("../page/search").then((m) => ({ default: m.SearchPage })));
+const FeedPage = lazy(() => import("../page/feed").then((m) => ({ default: m.FeedPage })));
+const LoginPage = lazy(() => import("../page/login").then((m) => ({ default: m.LoginPage })));
+const ProfilePage = lazy(() => import("../page/profile").then((m) => ({ default: m.ProfilePage })));
+const CallbackPage = lazy(() => import("../page/callback").then((m) => ({ default: m.CallbackPage })));
+
+// Admin routes lazy loading (monaco editor, charts & management utilities decoupled)
+const Settings = lazy(() => import("../page/settings").then((m) => ({ default: m.Settings })));
+const AdminTagsPage = lazy(() => import("../page/admin-tags").then((m) => ({ default: m.AdminTagsPage })));
+const HealthPage = lazy(() => import("../page/health").then((m) => ({ default: m.HealthPage })));
+const AdminAIPage = lazy(() => import("../page/admin-ai").then((m) => ({ default: m.AdminAIPage })));
+const QueueStatusPage = lazy(() => import("../page/queue-status").then((m) => ({ default: m.QueueStatusPage })));
+const CompatTasksPage = lazy(() => import("../page/compat-tasks").then((m) => ({ default: m.CompatTasksPage })));
+const WritingPage = lazy(() => import("../page/writing").then((m) => ({ default: m.WritingPage })));
+const AdminFilesPage = lazy(() => import("../page/admin-files").then((m) => ({ default: m.AdminFilesPage })));
+
+function RouteLoadingFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 ani-show min-h-[300px]" role="status" aria-label="Loading page">
+      <i className="ri-loader-4-line animate-spin text-3xl text-theme mb-3" />
+    </div>
+  );
+}
 
 export function AppRoutes() {
   const { t } = useTranslation();
@@ -189,7 +202,13 @@ function AppRoute({
 
         return layoutDefinition.renderRouteShell({
           header: <Header>{headerComponent}</Header>,
-          content: <Padding className={paddingClassName}>{resolvedContent}</Padding>,
+          content: (
+            <Padding className={paddingClassName}>
+              <Suspense fallback={<RouteLoadingFallback />}>
+                {resolvedContent}
+              </Suspense>
+            </Padding>
+          ),
           footer: <Footer />,
           paddingClassName,
         });
@@ -238,7 +257,9 @@ function AdminRoute({
         const resolvedContent = typeof children === "function" ? children(params) : children;
         return (
           <AdminLayout title={title} description={description}>
-            {resolvedContent}
+            <Suspense fallback={<RouteLoadingFallback />}>
+              {resolvedContent}
+            </Suspense>
           </AdminLayout>
         );
       }}

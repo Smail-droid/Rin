@@ -336,3 +336,71 @@ export function ItemImageInput({
     </div>
   );
 }
+
+export function CollapsibleStickyCard({
+  id,
+  title,
+  icon,
+  badgeText,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  id: string;
+  title: string;
+  icon: string;
+  badgeText: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      id={id}
+      className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
+        isOpen
+          ? "border-theme/40 bg-w shadow-sm ring-1 ring-theme/20 dark:border-theme/40 dark:bg-white/[0.03]"
+          : "border-black/10 bg-w hover:border-black/20 dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-white/20"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-4 text-left transition select-none"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-theme/10 text-theme text-base shadow-2xs">
+            {icon}
+          </span>
+          <div className="min-w-0">
+            <h3 className="font-bold text-sm sm:text-base t-primary flex items-center gap-2 truncate">
+              <span>{title}</span>
+              {badgeText && (
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-black/5 text-neutral-500 dark:bg-white/10 dark:text-neutral-400 font-normal truncate max-w-[120px] sm:max-w-[200px]">
+                  {badgeText}
+                </span>
+              )}
+            </h3>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 ml-3 text-neutral-400">
+          <span className="text-xs hidden sm:inline-block">
+            {isOpen ? "收起" : "点击展开配置"}
+          </span>
+          <i
+            className={`ri-arrow-down-s-line text-lg transition-transform duration-200 ${
+              isOpen ? "rotate-180 text-theme" : ""
+            }`}
+          />
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="border-t border-black/5 dark:border-white/5 p-4 sm:p-5 space-y-3 bg-black/[0.015] dark:bg-white/[0.01] ani-show">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { client } from "../app/runtime";
 import { useAlert, useConfirm } from "./dialog";
 import { timeago } from "../utils/timeago";
@@ -40,38 +40,50 @@ export type CommentData = {
   guestWebsite?: string;
 };
 
-// 5 大二次元精致分类 Emoji 面板 (拒绝常见老土符号)
+// 5 大二次元精致萌系分类 Emoji 面板 (全平台高兼容，杜绝空白方框)
 const EMOJI_CATEGORIES = [
   {
-    id: "default",
-    name: "默认",
+    id: "sweet",
+    name: "傲娇软萌",
     icon: "🌸",
-    emojis: ["🌸", "✨", "🎀", "🪄", "💌", "💖", "🧸", "🍭", "🎈", "🎐", "🫧", "💫", "🧁", "🍡", "🍧"],
+    emojis: ["🌸", "✨", "🎀", "💖", "💌", "🧸", "🍭", "🎈", "🎐", "🫧", "💫", "🧁", "🍡", "🍧", "🍬"],
   },
   {
     id: "food",
-    name: "食材",
+    name: "摸鱼干饭",
     icon: "🍰",
     emojis: ["🍰", "🥐", "🍮", "🍧", "🍡", "🍵", "☕", "🍓", "🥞", "🍩", "🍦", "🍕", "🍙", "🍣", "🍟"],
   },
   {
-    id: "items",
-    name: "道具",
+    id: "battle",
+    name: "宅家战斗",
     icon: "🎮",
-    emojis: ["🎮", "🎧", "📸", "🎴", "🏹", "🗝️", "🔮", "🎨", "🎬", "🛸", "🚀", "🎪", "🎭", "🎻", "🎸"],
+    emojis: ["🎮", "🎧", "📸", "🎴", "🎯", "🗝️", "🔮", "🎨", "🎬", "🛸", "🚀", "🎪", "🎭", "🎻", "🎸"],
   },
   {
-    id: "cats",
-    name: "猫咪",
+    id: "pets",
+    name: "萌宠治愈",
     icon: "🐾",
     emojis: ["🐾", "🐱", "🐶", "🦊", "🐰", "🐼", "🐨", "🐯", "🦁", "🦄", "🐣", "🐧", "🐬", "🦋", "🐿️"],
   },
   {
-    id: "symbols",
-    name: "符号",
-    icon: "⚡",
-    emojis: ["⚡", "💎", "🌟", "🍀", "🌈", "🎯", "💡", "🪐", "🌌", "💠", "🔷", "💜", "🌠", "🛰️", "💫"],
+    id: "magic",
+    name: "奇迹魔法",
+    icon: "✨",
+    emojis: ["💎", "🌟", "🍀", "🌈", "⚡", "💡", "🪐", "🌌", "💠", "🔷", "💜", "🌠", "🛰️", "💫", "🎉"],
   },
+];
+
+const KAOMOJI_MOODS = [
+  "(*/ω＼*)",
+  "(=^･ω･^=)",
+  "੭ ᐕ)੭",
+  "φ(>ω<*)",
+  "ヾ(≧▽≦*)o",
+  "(っ˘ڡ˘ς)",
+  "(o゜▽゜)o☆",
+  "(ง •_•)ง",
+  "(´▽`ʃ♡ƪ)",
 ];
 
 export function GalleryComments({
@@ -226,7 +238,27 @@ function GalleryCommentInput({
   const siteConfig = useSiteConfig();
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [activeEmojiCategory, setActiveEmojiCategory] = useState("default");
+  const [activeEmojiCategory, setActiveEmojiCategory] = useState("sweet");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertFormat = (before: string, after: string = "", placeholder: string = "") => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setContent((prev) => `${prev}${before}${placeholder}${after}`);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = content.slice(start, end);
+    const insertText = selected || placeholder;
+    const nextContent = content.slice(0, start) + before + insertText + after + content.slice(end);
+    setContent(nextContent);
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = selected ? start + before.length + selected.length + after.length : start + before.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos + (selected ? 0 : placeholder.length));
+    }, 0);
+  };
 
   // 随机二次元昵称
   const [nickname, setNickname] = useState(() => {
@@ -346,14 +378,77 @@ function GalleryCommentInput({
           </div>
         </div>
 
-        {/* Content Textarea */}
-        <div className="relative">
+        {/* Content Textarea with Format Toolbar */}
+        <div className="flex flex-col rounded-2xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] overflow-hidden focus-within:border-theme focus-within:ring-2 focus-within:ring-theme/15 transition-all">
+          {/* Lightweight Format Toolbar (粗体/斜体/引用/行内代码/Bash代码块/颜文字) */}
+          <div className="flex flex-wrap items-center gap-1 px-3 py-1.5 text-xs text-neutral-500 border-b border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]">
+            <button
+              type="button"
+              onClick={() => insertFormat("**", "**", "加粗文字")}
+              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+              title="加粗 (**)"
+            >
+              <i className="ri-bold font-bold" />
+            </button>
+            <button
+              type="button"
+              onClick={() => insertFormat("*", "*", "斜体文字")}
+              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+              title="斜体 (*)"
+            >
+              <i className="ri-italic" />
+            </button>
+            <button
+              type="button"
+              onClick={() => insertFormat("> ", "", "引用文段")}
+              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+              title="引用文段 (>)"
+            >
+              <i className="ri-double-quotes-l" />
+            </button>
+            <button
+              type="button"
+              onClick={() => insertFormat("`", "`", "code")}
+              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+              title="行内代码 (`)"
+            >
+              <i className="ri-code-s-slash-line" />
+            </button>
+            <button
+              type="button"
+              onClick={() => insertFormat("```bash\n", "\n```", "#!/bin/bash\necho 'Hello gallery'")}
+              className="flex h-7 items-center gap-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition text-[11px] font-mono"
+              title="Mac终端 Bash 代码块"
+            >
+              <i className="ri-terminal-box-line" />
+              <span>Bash</span>
+            </button>
+
+            <div className="h-3 w-[1px] bg-black/10 dark:bg-white/10 mx-1" />
+
+            {/* 颜文字心情快捷胶囊 */}
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
+              {KAOMOJI_MOODS.map((mood) => (
+                <button
+                  key={mood}
+                  type="button"
+                  onClick={() => insertFormat(` ${mood} `)}
+                  className="px-2 py-0.5 rounded-full bg-theme/5 hover:bg-theme/15 text-theme text-[11px] transition select-none shrink-0"
+                  title="插入颜文字"
+                >
+                  {mood}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <textarea
+            ref={textareaRef}
             rows={3}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="在画廊留言板写下你的想法、提问或共鸣吧...（文明交流，言简意赅）"
-            className="w-full resize-none rounded-2xl border border-black/10 bg-black/[0.015] p-3.5 text-xs sm:text-sm leading-relaxed t-primary placeholder-neutral-400 outline-none transition-colors focus:border-theme focus:ring-2 focus:ring-theme/15 dark:border-white/10 dark:bg-white/[0.02]"
+            className="w-full resize-none border-0 bg-transparent p-3.5 text-xs sm:text-sm leading-relaxed t-primary placeholder-neutral-400 outline-none transition-colors"
           />
         </div>
 
@@ -418,6 +513,52 @@ function GalleryCommentInput({
         </div>
       </form>
       <AlertUI />
+    </div>
+  );
+}
+
+function CommentContentRenderer({ content }: { content: string }) {
+  if (!content.includes("```")) {
+    return (
+      <p className="text-xs sm:text-sm text-neutral-700 dark:text-neutral-200 leading-relaxed break-words py-1 whitespace-pre-wrap">
+        {content}
+      </p>
+    );
+  }
+
+  const parts = content.split(/(```[\s\S]*?```)/g);
+  return (
+    <div className="text-xs sm:text-sm text-neutral-700 dark:text-neutral-200 leading-relaxed break-words py-1 space-y-2">
+      {parts.map((part, index) => {
+        if (part.startsWith("```") && part.endsWith("```")) {
+          const lines = part.slice(3, -3).trim().split("\n");
+          let lang = "";
+          let codeLines = lines;
+          if (lines.length > 0 && /^[a-zA-Z0-9_-]+$/.test(lines[0].trim())) {
+            lang = lines[0].trim();
+            codeLines = lines.slice(1);
+          }
+          const codeText = codeLines.join("\n");
+          return (
+            <div key={index} className="my-2 rounded-xl border border-black/10 dark:border-white/10 overflow-hidden bg-[#1e1e1e] text-[#d4d4d4] font-mono text-xs shadow-xs">
+              <div className="flex items-center justify-between px-3 py-1.5 bg-black/30 border-b border-white/5 select-none">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-rose-500/80 inline-block" />
+                  <span className="h-2 w-2 rounded-full bg-amber-500/80 inline-block" />
+                  <span className="h-2 w-2 rounded-full bg-emerald-500/80 inline-block" />
+                  {lang && <span className="ml-2 text-[10px] uppercase font-bold text-neutral-400">{lang}</span>}
+                </div>
+              </div>
+              <pre className="p-3 overflow-x-auto text-[11px] leading-relaxed">
+                <code>{codeText}</code>
+              </pre>
+            </div>
+          );
+        }
+        return part ? (
+          <p key={index} className="whitespace-pre-wrap">{part}</p>
+        ) : null;
+      })}
     </div>
   );
 }
@@ -501,10 +642,8 @@ function GalleryCommentItem({
         )}
       </div>
 
-      {/* Body Content */}
-      <p className="text-xs sm:text-sm text-neutral-700 dark:text-neutral-200 leading-relaxed break-words py-1">
-        {comment.content}
-      </p>
+      {/* Body Content with Mac code block support */}
+      <CommentContentRenderer content={comment.content} />
 
       {/* Footer: Like Heart & Order badge */}
       <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[11px] text-neutral-400">

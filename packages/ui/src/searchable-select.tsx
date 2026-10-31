@@ -15,6 +15,7 @@ export function SearchableSelect({
   customValueLabel,
   allowCustomValue = false,
   searchable = true,
+  placement = "auto",
   className,
 }: {
   value: string;
@@ -26,11 +27,30 @@ export function SearchableSelect({
   customValueLabel?: (value: string) => string;
   allowCustomValue?: boolean;
   searchable?: boolean;
+  placement?: "auto" | "top" | "bottom";
   className?: string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const [query, setQuery] = useState("");
+
+  const handleToggle = () => {
+    if (!isOpen && rootRef.current) {
+      if (placement === "top") {
+        setOpenUpward(true);
+      } else if (placement === "bottom") {
+        setOpenUpward(false);
+      } else {
+        const rect = rootRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        setOpenUpward(spaceBelow < 280 && spaceAbove > 200);
+      }
+    }
+    setIsOpen((current) => !current);
+    setQuery(value);
+  };
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -70,14 +90,11 @@ export function SearchableSelect({
   const buttonLabel = selectedOption?.label ?? value ?? placeholder ?? "";
 
   return (
-    <div ref={rootRef} className={`relative w-full min-w-0 sm:min-w-[15rem] ${className ?? ""}`}>
+    <div ref={rootRef} className={`relative w-full min-w-0 sm:min-w-[15rem] ${isOpen ? "z-50" : "z-10"} ${className ?? ""}`}>
       <button
         type="button"
         className="flex w-full items-center justify-between gap-3 rounded-xl border border-black/10 bg-w px-4 py-3 text-left text-sm t-primary transition-colors hover:border-black/20 focus:outline-none focus:ring-2 focus:ring-theme/20 dark:border-white/10 dark:hover:border-white/20"
-        onClick={() => {
-          setIsOpen((current) => !current);
-          setQuery(value);
-        }}
+        onClick={handleToggle}
       >
         <span className={`min-w-0 truncate ${buttonLabel ? "t-primary" : "text-neutral-400 dark:text-neutral-500"}`}>
           {buttonLabel || placeholder}
@@ -86,7 +103,11 @@ export function SearchableSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-xl border border-black/10 bg-w p-3 shadow-lg dark:border-white/10">
+        <div
+          className={`absolute left-0 right-0 z-50 rounded-xl border border-black/10 bg-w p-3 shadow-2xl backdrop-blur-md dark:border-white/10 ${
+            openUpward ? "bottom-[calc(100%+0.5rem)]" : "top-[calc(100%+0.5rem)]"
+          }`}
+        >
           {searchable ? (
             <input
               autoFocus

@@ -326,6 +326,62 @@ a.toc-link {
   letter-spacing: -0.03em;
 }
 
+/* 8. 复古像素街机 (Pixel Arcade) */
+.art-title-pixel_arcade {
+  font-family: "Courier New", "Lucida Console", monospace !important;
+  color: rgb(var(--art-title-rgb, 234 88 12));
+  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.35), 3px 3px 0px rgba(var(--art-title-rgb, var(--theme-rgb)) / 0.4);
+  letter-spacing: 0.12em;
+  font-weight: 900;
+}
+[data-color-mode="dark"] .art-title-pixel_arcade {
+  text-shadow: 2px 2px 0px rgba(255, 255, 255, 0.2), 3px 3px 0px rgba(var(--art-title-rgb, var(--theme-rgb)) / 0.5);
+}
+
+/* 9. 二次元梦幻软糖 (Candy Dream) */
+.art-title-candy_dream {
+  font-family: "Comic Sans MS", "Quicksand", "YouYuan", cursive, sans-serif !important;
+  background: linear-gradient(135deg, #f472b6 0%, #c084fc 50%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 3px 8px rgba(244, 114, 182, 0.4));
+  letter-spacing: 0.04em;
+}
+
+/* 10. 暗夜哥特金属 (Gothic Metal) */
+.art-title-gothic_metal {
+  font-family: "Palatino", "Georgia", "Times New Roman", serif !important;
+  background: linear-gradient(180deg, #1e293b 0%, #475569 50%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 10px rgba(148, 163, 184, 0.4);
+  letter-spacing: 0.1em;
+}
+[data-color-mode="dark"] .art-title-gothic_metal {
+  background: linear-gradient(180deg, #ffffff 0%, #94a3b8 50%, #334155 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 11. 蒸汽波复古浪潮 (Vaporwave 80s) */
+.art-title-vaporwave_80s {
+  font-family: "Impact", "Arial Black", sans-serif !important;
+  color: #ff71ce;
+  text-shadow: -2px -2px 0 #01cdfe, 2px 2px 0 #05ffa1;
+  letter-spacing: 0.06em;
+  font-style: italic;
+}
+
+/* 12. 星空极夜璀璨 (Starlight Cosmic) */
+.art-title-starlight_cosmic {
+  font-family: "Century Gothic", "Futura", sans-serif !important;
+  background: linear-gradient(135deg, #60a5fa 0%, #a855f7 50%, #f43f5e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.45));
+  letter-spacing: 0.14em;
+}
+
 /* ==========================================================================
    Danmaku Floating Stream (画廊弹幕飘窗流动动画)
    ========================================================================== */
