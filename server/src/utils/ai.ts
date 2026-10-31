@@ -310,7 +310,12 @@ export async function executeAIChat(
         const cleaned = stripReasoningTags(result);
         return { success: true, reply: cleaned.trim() };
     } catch (err: any) {
-        return { success: false, reply: "", error: err.message || String(err) };
+        const processed = processAIError(err, model, provider);
+        return {
+            success: false,
+            reply: "",
+            error: `${processed.error}: ${processed.details || err.message || String(err)}`,
+        };
     }
 }
 
@@ -435,7 +440,10 @@ function processAIError(
     let errorMessage = originalMessage;
     let errorDetails = '';
 
-    if (originalMessage.includes('fetch failed') || originalMessage.includes('NetworkError')) {
+    if (originalMessage.includes('User location is not supported') || originalMessage.includes('FAILED_PRECONDITION')) {
+        errorMessage = 'Google Gemini 地区限制 (User location is not supported)';
+        errorDetails = 'Google Gemini 官方接口在当前网络区域不可用。解决办法：1. 在后台【AI 助手】中将 API URL 改为反向代理/中转网关地址；或 2. 切换为 DeepSeek、OpenAI 或内置免费的 Cloudflare Worker AI 模型。';
+    } else if (originalMessage.includes('fetch failed') || originalMessage.includes('NetworkError')) {
         errorMessage = 'Network error: Unable to connect to AI service';
         errorDetails = 'Please check your API URL and network connection.';
     } else if (originalMessage.includes('Workers AI binding is not configured')) {

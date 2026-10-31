@@ -259,10 +259,10 @@ export function WritingAICopilotDrawer({
         )}
       </div>
 
-      {/* 2. 左下角现代化二次元画廊风浮窗 (支持最小化收回，不挡右侧编辑) */}
+      {/* 2. 左侧侧边栏旁的现代化二次元画廊风浮窗 (支持最小化收回，不挡右侧编辑) */}
       {isOpen && (
         <aside
-          className="fixed left-4 sm:left-6 bottom-20 z-50 flex w-[430px] max-w-[94vw] h-[600px] max-h-[82vh] flex-col rounded-3xl border border-black/10 bg-w/98 shadow-2xl backdrop-blur-2xl transition-all duration-300 dark:border-white/10 ani-show overflow-hidden"
+          className="fixed left-4 sm:left-6 lg:left-72 xl:left-80 top-16 sm:top-20 z-50 flex w-[440px] max-w-[94vw] h-[620px] max-h-[85vh] flex-col rounded-3xl border border-black/10 bg-w/98 shadow-2xl backdrop-blur-2xl transition-all duration-300 dark:border-white/10 ani-show overflow-hidden"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-black/5 px-4 py-3 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.015]">

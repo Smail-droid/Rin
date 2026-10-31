@@ -134,6 +134,29 @@ export function AdminLayout({
                 })}
               </div>
             </div>
+
+            {/* AI Assistant Quick Trigger in Sidebar */}
+            <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/5">
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(new Event("toggle-ai-copilot"));
+                }}
+                className="w-full group flex items-center gap-2.5 p-2 rounded-xl bg-theme/5 hover:bg-theme/10 border border-theme/20 hover:border-theme/40 transition-all text-left shadow-2xs"
+                title="点击呼出/收回 AI 萌娘伴侣"
+              >
+                <div className="h-8 w-8 rounded-lg bg-theme/15 flex items-center justify-center text-theme shrink-0 group-hover:scale-110 transition-transform">
+                  <i className="ri-sparkling-fill text-base" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-theme flex items-center gap-1">
+                    <span>AI 萌娘伴侣</span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  </p>
+                  <p className="text-[10px] text-neutral-400 truncate">点击展开/收回助手 (-)</p>
+                </div>
+              </button>
+            </div>
           </div>
         </aside>
 

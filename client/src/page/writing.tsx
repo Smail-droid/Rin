@@ -140,6 +140,12 @@ export function WritingPage({ id }: { id?: number }) {
   const [pipelinePreviewData, setPipelinePreviewData] = useState<{ result: string; summary?: string } | null>(null);
   const { showAlert, AlertUI } = useAlert();
 
+  useEffect(() => {
+    const handleToggle = () => setCopilotOpen((p) => !p);
+    window.addEventListener("toggle-ai-copilot", handleToggle);
+    return () => window.removeEventListener("toggle-ai-copilot", handleToggle);
+  }, []);
+
   const togglePipelineStage = (stage: string) => {
     setPipelineStages((prev) =>
       prev.includes(stage) ? prev.filter((s) => s !== stage) : [...prev, stage]
