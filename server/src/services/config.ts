@@ -3,7 +3,7 @@ import { wrapTime } from "hono/timing";
 import type { AppContext } from "../core/hono-types";
 import { adminOnly } from "../core/route-boundaries";
 import { setAIConfig, getAIConfig } from "../utils/db-config";
-import { testAIModel } from "../utils/ai";
+import { runAIPipelineProcess, testAIModel } from "../utils/ai";
 import { notify } from "../utils/webhook";
 import {
     buildCombinedConfigResponse,
@@ -63,6 +63,24 @@ export function ConfigService(): Hono {
         const result = await wrapTime(c, 'ai_test', testAIModel(env, testConfig, testPrompt));
         return c.json(result);
     }, { format: 'json' }));
+
+    // Run AI multi-stage pipeline on article content (admin only)
+    app.post('/ai/pipeline', adminOnly(async (c: AppContext) => {
+        const env = c.get('env');
+        const serverConfig = c.get('serverConfig');
+        const body = await c.req.json<{ content?: string; stages?: string[] }>().catch(() => ({ content: "", stages: undefined }));
+        const content = body.content || "";
+        if (!content.trim()) {
+            return c.json({ success: false, result: "", error: "文章内容不能为空" }, 400);
+        }
+
+        const result = await wrapTime(
+            c,
+            'ai_pipeline_process',
+            runAIPipelineProcess(env, serverConfig, content, body.stages)
+        );
+        return c.json(result);
+    }));
 
     app.post('/test-webhook', adminOnly(async (c: AppContext) => {
         const env = c.get('env');

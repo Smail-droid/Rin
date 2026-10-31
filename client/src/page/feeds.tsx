@@ -602,7 +602,9 @@ export function FeedsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-2 border-b border-black/5 dark:border-white/5">
                     <div className="flex items-center gap-3">
                         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight t-primary flex items-center gap-2">
-                            <span>{listState === "draft" ? t("draft_bin") : listState === "unlisted" ? t("unlisted") : siteConfig.atelierTitle || "画廊随想"}</span>
+                            <span className={`transition-all duration-300 art-title-${siteConfig.atelierTitleStyle || "aurora_flow"}`}>
+                                {listState === "draft" ? t("draft_bin") : listState === "unlisted" ? t("unlisted") : siteConfig.atelierTitle || "画廊随想"}
+                            </span>
                             <span className="text-base font-normal text-neutral-400 dark:text-neutral-500 font-mono">
                                 ({currentFeeds.size})
                             </span>

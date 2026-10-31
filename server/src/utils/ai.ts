@@ -1,3 +1,9 @@
+import type { AIConfig } from "@rin/api";
+import {
+    DEFAULT_PROMPT_FORMAT,
+    DEFAULT_PROMPT_SUMMARY,
+    DEFAULT_PROMPT_TECH,
+} from "@rin/config";
 import { getAIConfig } from "./db-config";
 
 type ConfigReader = {
@@ -274,6 +280,100 @@ export async function generateAISummaryResult(
             error: error instanceof Error ? error.message : String(error),
         };
     }
+}
+
+/**
+ * Execute a single prompt call with the configured AI provider
+ */
+async function callAIOnce(
+    env: Env,
+    config: AIConfig,
+    systemPrompt: string,
+    userText: string
+): Promise<string | null> {
+    const { provider, model } = config;
+    const maxContentLength = 8000;
+    const truncatedContent = userText.length > maxContentLength
+        ? userText.slice(0, maxContentLength) + "..."
+        : userText;
+    const messages = [
+        { role: "system" as const, content: systemPrompt },
+        { role: "user" as const, content: truncatedContent },
+    ];
+    let result: string | null = null;
+    if (provider === "worker-ai") {
+        const fullModelName = getWorkerAIModelId(model);
+        result = await executeWorkerAI(env, fullModelName, messages);
+    } else {
+        result = await executeExternalAI(config, messages);
+    }
+    if (!result) return null;
+    const cleaned = stripReasoningTags(result);
+    return cleaned.trim() || null;
+}
+
+/**
+ * Run multi-stage AI Pipeline process on article content
+ * Stages in order: 1. tech -> 2. format -> 3. summary
+ */
+export async function runAIPipelineProcess(
+    env: Env,
+    serverConfig: ConfigReader,
+    content: string,
+    requestedStages?: string[]
+): Promise<{ success: boolean; result: string; summary?: string; error?: string }> {
+    const config = await getAIConfig(serverConfig);
+    if (!config.enabled) {
+        return { success: false, result: content, error: "AI 服务尚未开启，请先在后台 AI 助手开启并配置" };
+    }
+
+    const stages = requestedStages && requestedStages.length > 0
+        ? requestedStages
+        : (config.pipeline_stages || "tech,format,summary").split(",").map((s) => s.trim()).filter(Boolean);
+
+    let processedContent = content;
+    let summaryText = "";
+
+    // 阶段 1: 技术教程与命令提炼
+    if (stages.includes("tech")) {
+        const prompt = (config.prompt_tech && config.prompt_tech.trim().length > 0)
+            ? config.prompt_tech.trim()
+            : (DEFAULT_PROMPT_TECH as string);
+        const res = await callAIOnce(env, config, prompt, processedContent);
+        if (res) processedContent = res;
+    }
+
+    // 阶段 2: 文章内容直接排版整理
+    if (stages.includes("format")) {
+        const prompt = (config.prompt_format && config.prompt_format.trim().length > 0)
+            ? config.prompt_format.trim()
+            : (DEFAULT_PROMPT_FORMAT as string);
+        const res = await callAIOnce(env, config, prompt, processedContent);
+        if (res) processedContent = res;
+    }
+
+    // 阶段 3: 精炼置顶摘要生成
+    if (stages.includes("summary")) {
+        const prompt = (config.prompt_summary && config.prompt_summary.trim().length > 0)
+            ? config.prompt_summary.trim()
+            : (config.system_prompt && config.system_prompt.trim().length > 0)
+                ? config.system_prompt.trim()
+                : (DEFAULT_PROMPT_SUMMARY as string);
+        const res = await callAIOnce(env, config, prompt, processedContent);
+        if (res) {
+            summaryText = res.trim();
+            const summaryBadge = `> [!NOTE]\n> **AI 摘要**：${summaryText}\n\n`;
+            // 若文章开头已经有旧的 AI 摘要，先替换掉避免重复堆叠
+            const cleaned = processedContent.replace(/^>\s*\[!NOTE\]\s*\n>\s*\*\*AI\s*摘要\*\*：[^\n]*\n\n/, "");
+            processedContent = summaryBadge + cleaned;
+        }
+    }
+
+    return {
+        success: true,
+        result: processedContent,
+        summary: summaryText,
+    };
 }
 
 export function stripReasoningTags(text: string): string {

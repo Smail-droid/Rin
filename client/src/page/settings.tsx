@@ -56,6 +56,16 @@ const FRIENDS_PRESET_EMOJIS = ["🌸", "🌺", "🌷", "🌹", "💐", "🏡", "
 const SEARCH_PRESET_EMOJIS = ["🔍", "🔎", "🧭", "🔭", "🔬", "🗺️", "🗝️", "🔮", "🎯", "🏹", "💡", "⚡", "📡", "🛸", "🕵️‍♂️", "🕵️‍♀️", "🧠", "📚", "🔖", "💎", "🛰️", "🚀", "💫", "🧐"];
 const DECK_PRESET_EMOJIS = ["🎴", "🃏", "📸", "📷", "🎞️", "🖼️", "🎨", "🖌️", "🎬", "🎭", "🎪", "🎡", "🎠", "🎆", "🎇", "🌠", "🌅", "🌄", "🎑", "📽️", "📼", "🔮", "🪩", "✨"];
 
+const ATELIER_TITLE_STYLES = [
+  { id: "aurora_flow", name: "彩虹极光流光", desc: "随主题流动平滑渐变流光，灵动惊艳" },
+  { id: "glass_glow", name: "琉璃晶透微光", desc: "半透悬浮晶体，泛出柔和呼吸微光" },
+  { id: "cyber_neon", name: "赛博电光霓虹", desc: "极客双色电光，未来感霓虹光束" },
+  { id: "ink_calligraphy", name: "水墨宣纸书卷", desc: "东方传统宣纸水墨渐变，诗意毛笔风骨" },
+  { id: "golden_sunset", name: "落日熔金流光", desc: "晚霞熔金渐变，治愈温暖暮色" },
+  { id: "emboss_3d", name: "现代立体浮雕", desc: "极简光影立体凹凸，干净利落" },
+  { id: "classic_clean", name: "经典纯净黑体", desc: "质朴沉稳，高对比极简纯色" },
+];
+
 export function Settings() {
   const { t } = useTranslation();
   const siteConfig = useSiteConfig();
@@ -964,6 +974,68 @@ export function Settings() {
               setConfigValue("client", "atelier.title", value);
             }}
           />
+
+          {/* Artistic Gallery Title Customizer */}
+          <div className="w-full">
+            <SettingsCard>
+              <SettingsCardRow
+                header={
+                  <SettingsCardHeader
+                    title="画廊主标题艺术效果定制"
+                    description="纯代码实现多种惊艳的艺术标题字效（流光、琉璃、水墨、霓虹等），让首页标题对得起艺术之美"
+                  />
+                }
+                action={
+                  <div className="text-xs font-semibold text-theme">
+                    {ATELIER_TITLE_STYLES.find((s) => s.id === String(clientConfig.get("atelier.title_style") ?? "aurora_flow"))?.name || "彩虹极光流光"}
+                  </div>
+                }
+              />
+              <SettingsCardBody>
+                <div className="flex flex-col gap-3">
+                  {/* Real-time live preview */}
+                  <div className="p-4 rounded-xl border border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] text-neutral-400 mb-1">当前选中的实时艺术字效预览：</p>
+                      <span className={`text-2xl sm:text-3xl font-extrabold art-title-${String(clientConfig.get("atelier.title_style") ?? "aurora_flow")}`}>
+                        {String(clientConfig.get("atelier.title") || "画廊随想")}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Preset Style Buttons Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
+                    {ATELIER_TITLE_STYLES.map((style) => {
+                      const currentStyle = String(clientConfig.get("atelier.title_style") ?? "aurora_flow");
+                      const isSelected = currentStyle === style.id;
+                      return (
+                        <button
+                          key={style.id}
+                          type="button"
+                          onClick={() => setConfigValue("client", "atelier.title_style", style.id)}
+                          className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                            isSelected
+                              ? "border-theme bg-theme/5 shadow-2xs ring-1 ring-theme"
+                              : "border-black/10 bg-w hover:border-black/20 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className={`font-bold text-sm art-title-${style.id}`}>
+                              {style.name}
+                            </span>
+                            {isSelected && <i className="ri-check-line text-theme text-sm" />}
+                          </div>
+                          <span className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-1">
+                            {style.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </SettingsCardBody>
+            </SettingsCard>
+          </div>
 
           <div id="setting-atelier-about" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
             <ItemTitle title="1. “关于我”便签设置" />

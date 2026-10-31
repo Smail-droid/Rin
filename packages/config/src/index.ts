@@ -16,6 +16,7 @@ export const CLIENT_CONFIG_DEFAULTS = new Map(
     "theme.preset": "sakura",
     "theme.custom_color_enabled": false,
     "atelier.about_icon": "🐾",
+    "atelier.title_style": "aurora_flow",
     "atelier.timeline_icon": "⏳",
     "atelier.moments_icon": "💭",
     "atelier.friends_icon": "🌸",

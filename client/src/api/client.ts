@@ -555,6 +555,14 @@ class ConfigAPI {
     return this.http.post<any>("/api/config/test-ai", body);
   }
 
+  // POST /api/config/ai/pipeline - Run multi-stage AI pipeline on article
+  async runAIPipeline(body: {
+    content: string;
+    stages?: string[];
+  }): Promise<ApiResponse<{ success: boolean; result: string; summary?: string; error?: string }>> {
+    return this.http.post<any>("/api/config/ai/pipeline", body);
+  }
+
   async testWebhook(body: {
     webhook_url?: string;
     "webhook.method"?: string;

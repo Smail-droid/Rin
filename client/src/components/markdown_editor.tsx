@@ -76,6 +76,9 @@ export function MarkdownEditor({
   const { t } = useTranslation();
   const colorMode = useColorMode();
   const editorRef = useRef<editor.IStandaloneCodeEditor>();
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+  const isSyncingFromEditorRef = useRef(false);
+  const isSyncingFromPreviewRef = useRef(false);
   const isComposingRef = useRef(false);
   const [preview, setPreview] = useState<'edit' | 'preview' | 'comparison'>(defaultPreview);
   const [uploading, setUploading] = useState(false);
@@ -467,6 +470,44 @@ async function insertImage(
     editor.onDidBlurEditorText(() => {
       setContent(editor.getValue());
     });
+
+    // 双向同步滚动：左侧滚动/Minimap画中画拖拽滑动时，右侧预览容器实时定位
+    editor.onDidScrollChange((e) => {
+      if (isSyncingFromPreviewRef.current) return;
+      const previewEl = previewContainerRef.current;
+      if (!previewEl) return;
+
+      const editorScrollHeight = editor.getScrollHeight();
+      const editorClientHeight = editor.getLayoutInfo().height;
+      const maxEditorScrollTop = editorScrollHeight - editorClientHeight;
+      if (maxEditorScrollTop <= 0) return;
+
+      const ratio = e.scrollTop / maxEditorScrollTop;
+      const maxPreviewScroll = previewEl.scrollHeight - previewEl.clientHeight;
+      if (maxPreviewScroll > 0) {
+        isSyncingFromEditorRef.current = true;
+        previewEl.scrollTop = ratio * maxPreviewScroll;
+        requestAnimationFrame(() => {
+          isSyncingFromEditorRef.current = false;
+        });
+      }
+    });
+
+    // 点击行/光标移动时，右侧预览联动平滑定位
+    editor.onDidChangeCursorPosition((e) => {
+      const previewEl = previewContainerRef.current;
+      if (!previewEl) return;
+      const model = editor.getModel();
+      if (!model) return;
+      const totalLines = model.getLineCount();
+      if (totalLines <= 1) return;
+
+      const lineRatio = (e.position.lineNumber - 1) / (totalLines - 1);
+      const maxPreviewScroll = previewEl.scrollHeight - previewEl.clientHeight;
+      if (maxPreviewScroll > 0) {
+        previewEl.scrollTo({ top: lineRatio * maxPreviewScroll, behavior: "smooth" });
+      }
+    });
   };
 
   /* ---------------- synchronization ---------------- */
@@ -566,11 +607,31 @@ async function insertImage(
 
                 dragAndDrop: true,
                 pasteAs: { enabled: false },
+                minimap: { enabled: true, side: "right", showSlider: "always" },
               }}
             />
           </div>
         </div>
         <div
+          ref={previewContainerRef}
+          onScroll={(e) => {
+            if (isSyncingFromEditorRef.current) return;
+            const editor = editorRef.current;
+            if (!editor) return;
+            const previewEl = e.currentTarget;
+            const maxPreviewScroll = previewEl.scrollHeight - previewEl.clientHeight;
+            if (maxPreviewScroll <= 0) return;
+
+            const ratio = previewEl.scrollTop / maxPreviewScroll;
+            const maxEditorScrollTop = editor.getScrollHeight() - editor.getLayoutInfo().height;
+            if (maxEditorScrollTop > 0) {
+              isSyncingFromPreviewRef.current = true;
+              editor.setScrollTop(ratio * maxEditorScrollTop);
+              requestAnimationFrame(() => {
+                isSyncingFromPreviewRef.current = false;
+              });
+            }
+          }}
           className={"min-h-0 overflow-y-auto rounded-none border-0 bg-w px-4 py-4 border-t sm:border-none " + (preview === 'edit' ? "hidden" : "")}
           style={{ height: height }}
         >

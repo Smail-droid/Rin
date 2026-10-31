@@ -129,55 +129,120 @@ export function WritingPage({ id }: { id?: number }) {
   const [listed, setListed] = useState(true);
   const [content, setContent] = cache.useCache("content", "");
   const [createdAt, setCreatedAt] = useState<Date | undefined>(new Date());
-  const [publishing, setPublishing] = useState(false)
-  const { showAlert, AlertUI } = useAlert()
-  function publishButton() {
+  const [publishing, setPublishing] = useState(false);
+  const [pipelineStages, setPipelineStages] = useState<string[]>(["tech", "format", "summary"]);
+  const [autoRunOnPublish, setAutoRunOnPublish] = useState(false);
+  const [runningPipeline, setRunningPipeline] = useState(false);
+  const { showAlert, AlertUI } = useAlert();
+
+  const togglePipelineStage = (stage: string) => {
+    setPipelineStages((prev) =>
+      prev.includes(stage) ? prev.filter((s) => s !== stage) : [...prev, stage]
+    );
+  };
+
+  const handleRunPipeline = async () => {
+    if (!content.trim()) {
+      showAlert("请先在编辑器中输入需要梳理的文章内容");
+      return;
+    }
+    if (pipelineStages.length === 0) {
+      showAlert("请至少勾选一个需要执行的 AI 阶段流程");
+      return;
+    }
+
+    setRunningPipeline(true);
+    try {
+      const { data, error } = await client.config.runAIPipeline({
+        content,
+        stages: pipelineStages,
+      });
+      if (data?.success && data.result) {
+        setContent(data.result);
+        if (data.summary && (!summary || summary.trim().length === 0)) {
+          setSummary(data.summary);
+        }
+        showAlert("✨ AI 流水线梳理完成！已按选中的流程优化文章排版与命令，并更新至编辑器。");
+      } else {
+        showAlert(data?.error || String(error?.value || "AI 流水线处理失败"));
+      }
+    } catch (err: any) {
+      showAlert(err.message || "AI 处理异常");
+    } finally {
+      setRunningPipeline(false);
+    }
+  };
+  async function publishButton() {
     if (publishing) return;
+    if (!title && id === undefined) {
+      showAlert(t("title_empty"));
+      return;
+    }
+    if (!content && id === undefined) {
+      showAlert(t("content.empty"));
+      return;
+    }
+
+    let finalContent = content;
+    let finalSummary = summary;
+
+    if (autoRunOnPublish && pipelineStages.length > 0) {
+      setPublishing(true);
+      try {
+        const { data } = await client.config.runAIPipeline({
+          content,
+          stages: pipelineStages,
+        });
+        if (data?.success && data.result) {
+          finalContent = data.result;
+          setContent(data.result);
+          if (data.summary && (!summary || summary.trim().length === 0)) {
+            finalSummary = data.summary;
+            setSummary(data.summary);
+          }
+        }
+      } catch {
+        // Fallback to original content if pipeline fails
+      }
+    }
+
     const tagsplit =
       tags
         .split("#")
         .filter((tag) => tag !== "")
         .map((tag) => tag.trim()) || [];
+
+    setPublishing(true);
     if (id !== undefined) {
-      setPublishing(true)
       update({
         id,
         title,
-        content,
-        summary,
+        content: finalContent,
+        summary: finalSummary,
         alias,
         tags: tagsplit,
         draft,
         listed,
         createdAt,
         onCompleted: () => {
-          setPublishing(false)
+          setPublishing(false);
         },
-        showAlert
+        showAlert,
       });
     } else {
-      if (!title) {
-        showAlert(t("title_empty"))
-        return;
-      }
-      if (!content) {
-        showAlert(t("content.empty"))
-        return;
-      }
-      setPublishing(true)
       publish({
         title,
-        content,
-        summary,
+        content: finalContent,
+        summary: finalSummary,
         tags: tagsplit,
         draft,
         alias,
         listed,
         createdAt,
         onCompleted: () => {
-          setPublishing(false)
+          setPublishing(false);
         },
-        showAlert
+        showAlert,
       });
     }
   }
@@ -335,6 +400,79 @@ export function WritingPage({ id }: { id?: number }) {
       </Helmet>
       <div className="mt-2 flex flex-col gap-4 t-primary sm:gap-6">
         {MetaInput({ className: "relative z-20 p-4 sm:p-5 md:p-6" })}
+
+        {/* AI Intelligent Pipeline Control Bar for Article Authoring */}
+        <div className="rounded-2xl border border-black/10 bg-w p-3.5 sm:p-4 shadow-2xs dark:border-white/10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-black/5 dark:border-white/5">
+            <div>
+              <div className="text-sm font-bold t-primary flex items-center gap-2">
+                <i className="ri-sparkling-2-line text-theme" />
+                <span>AI 智能流水线梳理（按需开关流程与一键整理）</span>
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                支持针对当前文章自由开关 3 大阶段；点击立即梳理，或在发布时按需自动执行
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-neutral-600 dark:text-neutral-300 select-none">
+                <input
+                  type="checkbox"
+                  checked={autoRunOnPublish}
+                  onChange={(e) => setAutoRunOnPublish(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded accent-theme cursor-pointer"
+                />
+                <span>发布时自动执行</span>
+              </label>
+
+              <button
+                type="button"
+                onClick={handleRunPipeline}
+                disabled={runningPipeline || !content.trim()}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-theme/10 hover:bg-theme/20 text-theme px-3.5 py-1.5 text-xs font-bold transition disabled:opacity-50"
+              >
+                {runningPipeline ? (
+                  <>
+                    <i className="ri-loader-4-line animate-spin" />
+                    <span>AI 正在梳理中…</span>
+                  </>
+                ) : (
+                  <>
+                    <i className="ri-magic-line" />
+                    <span>立即一键梳理文章</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 pt-2.5">
+            <span className="text-xs font-semibold text-neutral-400 mr-1">执行阶段勾选：</span>
+            {[
+              { id: "tech", label: "1. 教程与命令提炼", desc: "重点排查命令与配置代码块" },
+              { id: "format", label: "2. 内容排版整理", desc: "规范标题层级与中英空格留白" },
+              { id: "summary", label: "3. 顶部 AI 摘要", desc: "在最顶部插入精炼卡片摘要" },
+            ].map((stage) => {
+              const isChecked = pipelineStages.includes(stage.id);
+              return (
+                <button
+                  key={stage.id}
+                  type="button"
+                  onClick={() => togglePipelineStage(stage.id)}
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border transition select-none ${
+                    isChecked
+                      ? "border-theme bg-theme/10 text-theme shadow-2xs"
+                      : "border-black/10 bg-black/[0.02] text-neutral-500 hover:bg-black/5 dark:border-white/10 dark:bg-white/5"
+                  }`}
+                  title={stage.desc}
+                >
+                  <i className={isChecked ? "ri-checkbox-circle-fill" : "ri-checkbox-blank-circle-line"} />
+                  <span>{stage.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <FlatPanel className="relative z-10 overflow-hidden p-0">
           <MarkdownEditor content={content} setContent={setContent} height='680px' defaultPreview="comparison" />
