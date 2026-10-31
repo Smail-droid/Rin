@@ -31,8 +31,7 @@ export const WORKER_AI_MODELS: Record<string, string> = {
     "qwen-7b": "@cf/qwen/qwen1.5-7b-chat-awq",
 };
 
-export const AI_SUMMARY_SYSTEM_PROMPT =
-    "你是一位资深博客内容提炼助手。请用凝练、自然、通顺的中文提炼文章核心内容，严格控制在50~100字之间且仅输出单段纯文本，严禁包含标题、序号或项目符号；首句禁止出现“本文介绍了”、“作者阐述了”等套话，直接切入核心背景或问题，提炼具体方案与最终结论，严格忠于原文且不添加未提及的信息。";
+export const AI_SUMMARY_SYSTEM_PROMPT = DEFAULT_PROMPT_SUMMARY;
 
 /**
  * Get full Worker AI model ID from short name
@@ -403,7 +402,7 @@ export async function runAIPipelineProcess(
     }
 
     // 清理掉之前可能残留在正文顶部的任何硬插标记，确保正文纯净不与系统卡片冲突
-    processedContent = processedContent.replace(/^>\s*\[!NOTE\]\s*\n>\s*\*\*AI\s*摘要\*\*：[^\n]*\n+/g, "").trimStart();
+    processedContent = processedContent.replace(/^>\s*\[!NOTE\]\s*\n>\s*\*\*(?:AI\s*摘要|导读)\*\*：[^\n]*\n+/g, "").trimStart();
 
     return {
         success: true,

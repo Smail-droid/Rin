@@ -43,11 +43,11 @@
   },
   "ai_summary": {
     "message": {
-      "completed": "AI 摘要已生成。",
-      "failed": "AI 摘要生成失败。",
-      "idle": "AI 摘要任务当前未运行。",
-      "pending": "AI 摘要任务已进入队列。",
-      "processing": "AI 摘要正在生成中。"
+      "completed": "导读已生成。",
+      "failed": "导读生成失败。",
+      "idle": "导读任务当前未运行。",
+      "pending": "导读任务已进入队列。",
+      "processing": "导读正在生成中。"
     },
     "status": {
       "completed": "已完成",
@@ -56,7 +56,7 @@
       "pending": "排队中",
       "processing": "生成中"
     },
-    "title": "AI 总结"
+    "title": "导读"
   },
   "alert": "提示",
   "alias": "别名",

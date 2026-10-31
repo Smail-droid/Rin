@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useLocation, useSearch } from "wouter";
 import { client } from "../app/runtime";
@@ -6,6 +6,8 @@ import { ProfileContext } from "../state/profile";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { siteName } from "../utils/constants";
 import { useTranslation } from "react-i18next";
+import { useAlert } from "../components/dialog";
+import { AtelierQuickDrawer } from "../components/atelier-quick-drawer";
 
 type FeedsData = {
     size: number;
@@ -399,6 +401,7 @@ function StickyNoteItem({
 
 /**
  * 🃏 Interactive Flip / Gallery Deck Card
+ * 支持管理员直接拖拽图片上传至 R2 图床，并提供快速复制直链
  */
 function NextDeckFlipCard({
     totalCount,
@@ -412,11 +415,57 @@ function NextDeckFlipCard({
     const bgImage = siteConfig?.atelierDeckBg;
     const deckUrl = siteConfig?.atelierDeckUrl || "/gallery";
     const deckDesc = siteConfig?.atelierDeckDesc || `共 ${totalCount} 张记忆相片已收录`;
+    const [isDragging, setIsDragging] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { showAlert, AlertUI } = useAlert();
+
+    const handleUpload = async (file: File) => {
+        if (!file.type.startsWith("image/")) {
+            showAlert("请上传图片格式文件（jpg、png、webp 等）哦~");
+            return;
+        }
+        setUploading(true);
+        try {
+            const { data, error } = await client.storage.upload(file);
+            if (data?.url) {
+                showAlert(`✨ 图片上传成功！直链已自动生成并复制到剪贴板：\n${data.url}`);
+                try {
+                    await navigator.clipboard.writeText(data.url);
+                } catch {}
+            } else {
+                showAlert(`上传失败：${error?.value || "网络错误"}`);
+            }
+        } catch (err: any) {
+            showAlert(`上传发生异常：${err.message}`);
+        } finally {
+            setUploading(false);
+        }
+    };
+
     return (
         <div
+            onDragOver={(e) => {
+                if (!canManage) return;
+                e.preventDefault();
+                setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => {
+                if (!canManage) return;
+                e.preventDefault();
+                setIsDragging(false);
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    void handleUpload(e.dataTransfer.files[0]);
+                }
+            }}
             style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-            className={`group relative break-inside-avoid block w-full rounded-3xl p-6 text-center select-none shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-[1.03] hover:rotate-0 rotate-1 overflow-hidden border border-black/10 dark:border-white/10 ${
-                bgImage ? "bg-cover bg-center" : "bg-theme/5 border-2 border-dashed border-theme/40"
+            className={`group relative break-inside-avoid block w-full rounded-3xl p-6 text-center select-none shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-[1.03] hover:rotate-0 rotate-1 overflow-hidden border ${
+                isDragging
+                    ? "border-theme ring-4 ring-theme/30 bg-theme/10 scale-105"
+                    : bgImage
+                    ? "bg-cover bg-center border-black/10 dark:border-white/10"
+                    : "bg-theme/5 border-2 border-dashed border-theme/40"
             }`}
         >
             {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
@@ -433,21 +482,65 @@ function NextDeckFlipCard({
             )}
 
             <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                <span className="text-4xl block mb-2">🃏</span>
-                <p className={`font-extrabold text-base ${bgImage ? "text-white" : "t-primary"}`}>记忆翻动</p>
-                <p className={`text-xs mt-1 ${bgImage ? "text-neutral-200" : "text-neutral-500 dark:text-neutral-400"}`}>
-                    {deckDesc}
+                <span className="text-4xl block mb-2">{isDragging ? "📥" : "🃏"}</span>
+                <p className={`font-extrabold text-base ${bgImage ? "text-white" : "t-primary"}`}>
+                    {isDragging ? "松开即刻上传至 R2" : "记忆翻动"}
                 </p>
-                <div className="mt-4">
+                <p className={`text-xs mt-1 ${bgImage ? "text-neutral-200" : "text-neutral-500 dark:text-neutral-400"}`}>
+                    {canManage ? "拖入图片直接极速上传到 R2 图床" : deckDesc}
+                </p>
+
+                {/* 隐藏的上传选择 input */}
+                {canManage && (
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                                void handleUpload(e.target.files[0]);
+                            }
+                        }}
+                    />
+                )}
+
+                <div className="mt-4 flex flex-col gap-2">
+                    {canManage && (
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploading}
+                            className="w-full inline-flex items-center justify-center gap-1.5 rounded-2xl bg-theme px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-theme-hover active:scale-95 disabled:opacity-50"
+                        >
+                            {uploading ? (
+                                <>
+                                    <i className="ri-loader-4-line animate-spin text-sm" />
+                                    <span>正在上传图片至 R2...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <i className="ri-upload-cloud-2-line text-sm" />
+                                    <span>拖入或点击上传相片</span>
+                                </>
+                            )}
+                        </button>
+                    )}
+
                     <Link
                         href={deckUrl}
-                        className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-theme px-4 py-3 text-sm font-bold text-white shadow-md transition hover:opacity-90 active:scale-95"
+                        className={`w-full inline-flex items-center justify-center gap-1.5 rounded-2xl px-4 py-2 text-xs font-bold transition active:scale-95 ${
+                            canManage
+                                ? "bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-neutral-700 dark:text-neutral-200"
+                                : "bg-theme text-white shadow-md hover:opacity-90 py-3 text-sm"
+                        }`}
                     >
-                        <i className="ri-folder-image-line text-base" />
-                        <span>漫游图床画廊 (仅浏览)</span>
+                        <i className="ri-folder-image-line text-sm" />
+                        <span>漫游图床画廊 {canManage ? "" : "(仅浏览)"}</span>
                     </Link>
                 </div>
             </div>
+            <AlertUI />
         </div>
     );
 }
@@ -461,6 +554,7 @@ export function FeedsPage() {
     const [listState, _setListState] = useState<FeedType>((query.get("type") as FeedType) || "normal");
     const [status, setStatus] = useState<"loading" | "idle">("loading");
     const [tags, setTags] = useState<{ id: number; name: string }[]>([]);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [feeds, setFeeds] = useState<FeedsMap>({
         draft: { size: 0, data: [], hasNext: false },
         unlisted: { size: 0, data: [], hasNext: false },
@@ -563,21 +657,68 @@ export function FeedsPage() {
             "search",
         ];
 
-        let noteIndex = 0;
-        currentFeedData.forEach((feed, i) => {
+        // 仅在 normal 模式展示便签；非 normal 模式（草稿/未列出）100% 纯文章展示
+        if (listState !== "normal" || currentFeedData.length === 0) {
+            return currentFeedData.map((feed) => ({ type: "photo" as const, data: feed }));
+        }
+
+        // 核心边界：以第一页上限为分界线，无论后续加载更多追加了多少篇，便签坚决只排在第一页！
+        const firstPageLimit = Math.max(1, siteConfig.pageSize || 12);
+        const firstPageFeeds = currentFeedData.slice(0, firstPageLimit);
+        const subsequentFeeds = currentFeedData.slice(firstPageLimit);
+
+        const layoutMode = siteConfig.atelierNotesLayout || "grid";
+
+        let orderedNotes = [...noteTypes];
+        if (layoutMode === "random") {
+            orderedNotes = orderedNotes.sort(() => Math.sin(firstPageFeeds.length) - 0.5);
+        }
+
+        let noteIdx = 0;
+        const totalNotes = orderedNotes.length;
+
+        // 计算便签在首屏文章间的插入槽位索引
+        const insertionSlots = new Set<number>();
+        if (firstPageFeeds.length <= 2) {
+            insertionSlots.add(0);
+            insertionSlots.add(1);
+        } else if (layoutMode === "grid") {
+            // 九宫格分布：均衡挑选首屏文章前段、中段、后段槽位
+            const step = Math.max(1, Math.floor(firstPageFeeds.length / (totalNotes + 1)));
+            for (let i = 1; i <= totalNotes; i++) {
+                insertionSlots.add(Math.min(firstPageFeeds.length - 1, i * step));
+            }
+        } else {
+            [1, 4, 7, 11, 15].forEach((slot) => {
+                if (slot < firstPageFeeds.length) insertionSlots.add(slot);
+            });
+        }
+
+        // 将首屏文章与便签交错混合
+        firstPageFeeds.forEach((feed, i) => {
             items.push({ type: "photo", data: feed });
-            if (listState === "normal" && (i === 1 || i === 4 || i === 7 || i === 11 || i === 15)) {
-                if (noteIndex < noteTypes.length) {
-                    items.push({ type: "note", noteType: noteTypes[noteIndex] });
-                    noteIndex++;
-                }
+            if (insertionSlots.has(i) && noteIdx < totalNotes) {
+                items.push({ type: "note", noteType: orderedNotes[noteIdx] });
+                noteIdx++;
             }
         });
 
+        // 如果首屏文章太少没放完所有便签，在首屏末尾一次性补充完毕
+        while (noteIdx < totalNotes) {
+            items.push({ type: "note", noteType: orderedNotes[noteIdx] });
+            noteIdx++;
+        }
+
+        // 记忆翻动卡片（仅限首屏末尾展示一次，绝不翻到第二页！）
         items.push({ type: "deck" });
 
+        // 第一页之后（翻页/加载更多追加进来的所有文章）：100% 纯照片文章卡片，绝无任何便签污染！
+        subsequentFeeds.forEach((feed) => {
+            items.push({ type: "photo", data: feed });
+        });
+
         return items;
-    }, [currentFeedData, listState]);
+    }, [currentFeedData, listState, siteConfig.pageSize, siteConfig.atelierNotesLayout]);
 
     return (
         <>
@@ -740,7 +881,54 @@ export function FeedsPage() {
                         })}
                     </div>
                 )}
+
+                {/* 加载更多 / 浏览更多相片 */}
+                {currentFeeds.hasNext && (
+                    <div className="flex justify-center items-center py-8 w-full">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const nextPage = Math.floor(currentFeedData.length / limit) + 1;
+                                fetchFeeds(listState, nextPage, true);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-w px-6 py-2.5 text-xs font-bold t-primary shadow-xs hover:border-theme hover:text-theme hover:scale-105 active:scale-95 transition-all dark:border-white/10 select-none"
+                        >
+                            <i className="ri-arrow-down-line text-theme text-sm" />
+                            <span>浏览下一页画廊相片</span>
+                        </button>
+                    </div>
+                )}
             </main>
+
+            {/* 管理员首页常驻快捷控制台：创作画笔 + 就地抽屉配置 */}
+            {profile?.permission && (
+                <>
+                    <div className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5">
+                        <Link
+                            href="/admin/writing"
+                            className="flex h-12 w-12 items-center justify-center rounded-full bg-theme text-white shadow-xl hover:bg-theme-hover hover:scale-110 active:scale-95 transition-all select-none group"
+                            title="快速写文章 (进入写作模式)"
+                        >
+                            <i className="ri-quill-pen-line text-xl group-hover:rotate-12 transition-transform" />
+                        </Link>
+
+                        <button
+                            type="button"
+                            onClick={() => setIsDrawerOpen(true)}
+                            className="flex h-12 w-12 items-center justify-center rounded-full bg-w/95 text-neutral-700 dark:text-neutral-200 border border-black/10 dark:border-white/10 shadow-xl backdrop-blur-md hover:border-theme hover:text-theme hover:scale-110 active:scale-95 transition-all select-none"
+                            title="画廊就地抽屉设置"
+                        >
+                            <i className="ri-settings-4-line text-xl" />
+                        </button>
+                    </div>
+
+                    <AtelierQuickDrawer
+                        isOpen={isDrawerOpen}
+                        onClose={() => setIsDrawerOpen(false)}
+                        siteConfig={siteConfig}
+                    />
+                </>
+            )}
         </>
     );
 }

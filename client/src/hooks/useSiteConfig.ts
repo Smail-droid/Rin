@@ -57,6 +57,7 @@ export const SITE_CONFIG_KEYS = {
     atelierDeckDesc: "atelier.deck_desc",
     atelierDeckBg: "atelier.deck_bg",
     atelierDeckIcon: "atelier.deck_icon",
+    atelierNotesLayout: "atelier.notes_layout",
 
     galleryPadding: "gallery.padding",
     galleryColumns: "gallery.columns",
@@ -132,6 +133,7 @@ export function useSiteConfig() {
         atelierDeckDesc: config.get<string>(SITE_CONFIG_KEYS.atelierDeckDesc) || "漫游图床画廊，浏览大图并复制链接。",
         atelierDeckBg: config.get<string>(SITE_CONFIG_KEYS.atelierDeckBg) || "",
         atelierDeckIcon: config.get<string>(SITE_CONFIG_KEYS.atelierDeckIcon) || "🎴",
+        atelierNotesLayout: config.get<string>(SITE_CONFIG_KEYS.atelierNotesLayout) || "grid",
 
         galleryPadding: Number.parseInt(String(config.get(SITE_CONFIG_KEYS.galleryPadding) ?? 24), 10) || 24,
         galleryColumns: String(config.get(SITE_CONFIG_KEYS.galleryColumns) ?? "auto"),
