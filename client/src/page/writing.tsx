@@ -6,13 +6,14 @@ import {useTranslation} from "react-i18next";
 import Loading from 'react-loading';
 import {ShowAlertType, useAlert} from '../components/dialog';
 import {Checkbox, Input} from "../components/input";
-import { DateTimeInput, FlatMetaRow, FlatPanel } from "@rin/ui";
+import { DateTimeInput, FlatMetaRow, FlatPanel, Modal } from "@rin/ui";
 import { client } from "../app/runtime";
 import {Cache} from '../utils/cache';
 import {useSiteConfig} from "../hooks/useSiteConfig";
 import {siteName} from "../utils/constants";
 import mermaid from 'mermaid';
 import { MarkdownEditor } from '../components/markdown_editor';
+import { Markdown } from "../components/markdown";
 
 async function publish({
   title,
@@ -130,9 +131,11 @@ export function WritingPage({ id }: { id?: number }) {
   const [content, setContent] = cache.useCache("content", "");
   const [createdAt, setCreatedAt] = useState<Date | undefined>(new Date());
   const [publishing, setPublishing] = useState(false);
-  const [pipelineStages, setPipelineStages] = useState<string[]>(["tech", "format", "summary"]);
+  const [pipelineStages, setPipelineStages] = useState<string[]>([]);
   const [autoRunOnPublish, setAutoRunOnPublish] = useState(false);
   const [runningPipeline, setRunningPipeline] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [pipelinePreviewData, setPipelinePreviewData] = useState<{ result: string; summary?: string } | null>(null);
   const { showAlert, AlertUI } = useAlert();
 
   const togglePipelineStage = (stage: string) => {
@@ -158,11 +161,11 @@ export function WritingPage({ id }: { id?: number }) {
         stages: pipelineStages,
       });
       if (data?.success && data.result) {
-        setContent(data.result);
-        if (data.summary && (!summary || summary.trim().length === 0)) {
-          setSummary(data.summary);
-        }
-        showAlert("✨ AI 流水线梳理完成！已按选中的流程优化文章排版与命令，并更新至编辑器。");
+        setPipelinePreviewData({
+          result: data.result,
+          summary: data.summary,
+        });
+        setPreviewModalOpen(true);
       } else {
         showAlert(data?.error || String(error?.value || "AI 流水线处理失败"));
       }
@@ -253,19 +256,21 @@ export function WritingPage({ id }: { id?: number }) {
         .get(id)
         .then(({ data }) => {
           if (data) {
-            if (title == "" && data.title) setTitle(data.title);
-            if (tags == "" && Array.isArray(data.hashtags))
-              setTags(data.hashtags.map(({ name }: {name: string}) => `#${name}`).join(" "));
-            if (alias == "" && (data as any).alias) setAlias((data as any).alias);
-            if (content == "") setContent(data.content);
-            if (summary == "") setSummary((data as any).summary || "");
+            // 编辑已有文章时，权威覆盖并更新为服务端最新文章内容，杜绝被本地陈旧缓存覆盖
+            setTitle(data.title || "");
+            if (Array.isArray(data.hashtags)) {
+              setTags(data.hashtags.map(({ name }: { name: string }) => `#${name}`).join(" "));
+            }
+            setAlias((data as any).alias || "");
+            setContent(data.content || "");
+            setSummary((data as any).summary || "");
             setListed((data as any).listed === 1);
             setDraft((data as any).draft === 1);
             setCreatedAt(new Date(data.createdAt));
           }
         });
     }
-  }, []);
+  }, [id]);
   const debouncedUpdate = useCallback(
     _.debounce(() => {
       mermaid.initialize({
@@ -478,6 +483,96 @@ export function WritingPage({ id }: { id?: number }) {
           <MarkdownEditor content={content} setContent={setContent} height='680px' defaultPreview="comparison" />
         </FlatPanel>
       </div>
+
+      {/* AI Pipeline Result Preview Modal (供博主决定是否应用替换、复制或仅作参考) */}
+      <Modal
+        isOpen={previewModalOpen}
+        onRequestClose={() => setPreviewModalOpen(false)}
+        size="lg"
+        contentLabel="AI 流水线梳理建议与结果预览"
+        panelClassName="p-5 sm:p-6"
+      >
+        <div className="flex flex-col gap-4 max-h-[82vh]">
+          <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
+            <div>
+              <h2 className="text-lg font-bold t-primary flex items-center gap-2">
+                <i className="ri-sparkling-fill text-theme" />
+                <span>AI 流水线梳理建议与结果预览</span>
+              </h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                AI 梳理结果仅供参考对比，您可以复制、确认替换当前编辑器，或直接关闭保留原稿
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPreviewModalOpen(false)}
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 dark:hover:bg-white/5"
+            >
+              <i className="ri-close-line text-lg" />
+            </button>
+          </div>
+
+          {/* 生成的 AI 摘要卡片预览 */}
+          {pipelinePreviewData?.summary && (
+            <div className="p-3.5 rounded-xl bg-theme/5 border border-theme/20 text-xs">
+              <span className="font-bold text-theme flex items-center gap-1 mb-1">
+                <i className="ri-file-text-line" />
+                <span>AI 提炼摘要 (将作为文章独立摘要卡片展示)：</span>
+              </span>
+              <p className="t-primary leading-relaxed">{pipelinePreviewData.summary}</p>
+            </div>
+          )}
+
+          {/* 梳理后的文章内容预览 */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 rounded-xl border border-black/10 bg-neutral-50/70 dark:border-white/10 dark:bg-neutral-900/40 text-sm">
+            <Markdown content={pipelinePreviewData?.result || ""} />
+          </div>
+
+          {/* 底部操作栏 */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-black/5 dark:border-white/5">
+            <button
+              type="button"
+              onClick={() => {
+                if (pipelinePreviewData?.result) {
+                  navigator.clipboard.writeText(pipelinePreviewData.result);
+                  showAlert("已成功复制梳理后的文章内容到剪贴板！");
+                }
+              }}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-black/10 bg-w px-4 py-2 text-xs font-semibold t-primary hover:bg-neutral-100 dark:border-white/10 dark:hover:bg-white/5 transition"
+            >
+              <i className="ri-file-copy-line text-sm" />
+              <span>复制梳理结果</span>
+            </button>
+
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setPreviewModalOpen(false)}
+                className="rounded-xl px-4 py-2 text-xs font-semibold text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/5 transition"
+              >
+                仅作参考 · 保留原稿
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (pipelinePreviewData?.result) {
+                    setContent(pipelinePreviewData.result);
+                    if (pipelinePreviewData.summary && (!summary || summary.trim().length === 0)) {
+                      setSummary(pipelinePreviewData.summary);
+                    }
+                    setPreviewModalOpen(false);
+                    showAlert("已成功应用 AI 梳理结果并更新到编辑器中！如需撤销可按 Ctrl+Z。");
+                  }
+                }}
+                className="rounded-xl bg-theme px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-theme-hover transition"
+              >
+                ✍️ 确认应用并替换当前编辑器
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
       <AlertUI />
     </>
   );

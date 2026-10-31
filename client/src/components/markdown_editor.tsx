@@ -471,7 +471,7 @@ async function insertImage(
       setContent(editor.getValue());
     });
 
-    // 双向同步滚动：左侧滚动/Minimap画中画拖拽滑动时，右侧预览容器实时定位
+    // 双向同步滚动：仅在用户主动滚动或拖拽Minimap画中画时触发，避免光标移动/选字时冲突
     editor.onDidScrollChange((e) => {
       if (isSyncingFromPreviewRef.current) return;
       const previewEl = previewContainerRef.current;
@@ -482,7 +482,19 @@ async function insertImage(
       const maxEditorScrollTop = editorScrollHeight - editorClientHeight;
       if (maxEditorScrollTop <= 0) return;
 
-      const ratio = e.scrollTop / maxEditorScrollTop;
+      // 结合可见行首行与像素滚动比率，大幅提升定位精准度
+      const visibleRanges = editor.getVisibleRanges();
+      const model = editor.getModel();
+      const totalLines = model?.getLineCount() || 1;
+
+      let ratio = e.scrollTop / maxEditorScrollTop;
+      if (visibleRanges.length > 0 && totalLines > 1) {
+        const topVisibleLine = visibleRanges[0].startLineNumber;
+        const lineRatio = (topVisibleLine - 1) / (totalLines - 1);
+        // 加权融合，使长文章与包含大图排版时的定位更精准自然
+        ratio = lineRatio * 0.7 + ratio * 0.3;
+      }
+
       const maxPreviewScroll = previewEl.scrollHeight - previewEl.clientHeight;
       if (maxPreviewScroll > 0) {
         isSyncingFromEditorRef.current = true;
@@ -490,22 +502,6 @@ async function insertImage(
         requestAnimationFrame(() => {
           isSyncingFromEditorRef.current = false;
         });
-      }
-    });
-
-    // 点击行/光标移动时，右侧预览联动平滑定位
-    editor.onDidChangeCursorPosition((e) => {
-      const previewEl = previewContainerRef.current;
-      if (!previewEl) return;
-      const model = editor.getModel();
-      if (!model) return;
-      const totalLines = model.getLineCount();
-      if (totalLines <= 1) return;
-
-      const lineRatio = (e.position.lineNumber - 1) / (totalLines - 1);
-      const maxPreviewScroll = previewEl.scrollHeight - previewEl.clientHeight;
-      if (maxPreviewScroll > 0) {
-        previewEl.scrollTo({ top: lineRatio * maxPreviewScroll, behavior: "smooth" });
       }
     });
   };
@@ -596,7 +592,10 @@ async function insertImage(
                 letterSpacing: 0,
 
                 fontSize: 14,
-                lineNumbers: "off",
+                lineNumbers: "on",
+                lineNumbersMinChars: 3,
+                renderLineHighlight: "all",
+                folding: true,
 
                 accessibilitySupport: "off",
                 unicodeHighlight: { ambiguousCharacters: false },

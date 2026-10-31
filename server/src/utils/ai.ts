@@ -352,7 +352,7 @@ export async function runAIPipelineProcess(
         if (res) processedContent = res;
     }
 
-    // 阶段 3: 精炼置顶摘要生成
+    // 阶段 3: 精炼置顶摘要生成（生成纯净摘要文本，供系统 AI Summary 卡片展示，正文保持纯净，绝不强插重复内容）
     if (stages.includes("summary")) {
         const prompt = (config.prompt_summary && config.prompt_summary.trim().length > 0)
             ? config.prompt_summary.trim()
@@ -362,12 +362,11 @@ export async function runAIPipelineProcess(
         const res = await callAIOnce(env, config, prompt, processedContent);
         if (res) {
             summaryText = res.trim();
-            const summaryBadge = `> [!NOTE]\n> **AI 摘要**：${summaryText}\n\n`;
-            // 若文章开头已经有旧的 AI 摘要，先替换掉避免重复堆叠
-            const cleaned = processedContent.replace(/^>\s*\[!NOTE\]\s*\n>\s*\*\*AI\s*摘要\*\*：[^\n]*\n\n/, "");
-            processedContent = summaryBadge + cleaned;
         }
     }
+
+    // 清理掉之前可能残留在正文顶部的任何硬插标记，确保正文纯净不与系统卡片冲突
+    processedContent = processedContent.replace(/^>\s*\[!NOTE\]\s*\n>\s*\*\*AI\s*摘要\*\*：[^\n]*\n+/g, "").trimStart();
 
     return {
         success: true,
