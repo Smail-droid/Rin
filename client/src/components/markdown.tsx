@@ -269,30 +269,60 @@ export function Markdown({ content }: { content: string }) {
 
           if (isCodeBlock) {
             return (
-              <div className="relative group">
-                <SyntaxHighlighter
-                  PreTag="div"
-                  className="rounded"
-                  language={language}
-                  style={
-                    colorMode === "dark"
-                      ? vscDarkPlus
-                      : base16AteliersulphurpoolLight
-                  }
-                  wrapLongLines={true}
-                  codeTagProps={{ style: codeBlockStyle }}
-                >
-                  {String(children).replace(/\n$/, "")}
-                </SyntaxHighlighter>
-                <button className="absolute top-1 right-1 px-2 py-1 bg-w rounded-md text-sm bg-hover select-none invisible group-hover:visible"
-                  onClick={() => {
-                    navigator.clipboard.writeText(String(children));
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                >
-                  {copied ? "Copied!" : "Copy"}
-                </button>
+              <div className="relative group my-4 rounded-2xl border border-black/10 dark:border-white/10 overflow-hidden shadow-xs bg-[#f8fafc] dark:bg-[#1e1e1e]">
+                {/* Mac Code Header Bar */}
+                <div className="flex items-center justify-between px-3.5 py-2 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] select-none">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-full bg-rose-400/80 inline-block" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80 inline-block" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80 inline-block" />
+                    </div>
+                    {language && (
+                      <span className="ml-2 font-mono text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                        {language}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(String(children));
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-neutral-500 hover:text-neutral-800 hover:bg-black/5 dark:hover:bg-white/10 dark:text-neutral-400 dark:hover:text-white transition"
+                    title="一键复制完整代码"
+                  >
+                    {copied ? (
+                      <>
+                        <i className="ri-check-line text-emerald-500" />
+                        <span className="text-emerald-500">已复制!</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="ri-file-copy-line" />
+                        <span>复制</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="p-1">
+                  <SyntaxHighlighter
+                    PreTag="div"
+                    className="!bg-transparent !p-3.5 !m-0"
+                    language={language}
+                    style={
+                      colorMode === "dark"
+                        ? vscDarkPlus
+                        : base16AteliersulphurpoolLight
+                    }
+                    wrapLongLines={true}
+                    codeTagProps={{ style: codeBlockStyle }}
+                  >
+                    {String(children).replace(/\n$/, "")}
+                  </SyntaxHighlighter>
+                </div>
               </div>
             );
           } else {

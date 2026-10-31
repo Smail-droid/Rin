@@ -1,6 +1,6 @@
 import type { Feed } from "@rin/api";
 import { Modal } from "@rin/ui";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
@@ -43,11 +43,30 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
   const { showAlert, AlertUI } = useAlert();
   const { showConfirm, ConfirmUI } = useConfirm();
   const [top, setTop] = useState<number>(0);
+  const [readingProgress, setReadingProgress] = useState<number>(0);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const config = useContext(ClientConfigContext);
   const counterEnabled = config.getBoolean('counter.enabled');
   const hasAISummary = Boolean(feed?.ai_summary?.trim());
   const showAISummaryState = feed?.ai_summary_status === "pending" || feed?.ai_summary_status === "processing" || feed?.ai_summary_status === "failed";
   const hashtags = Array.isArray(feed?.hashtags) ? feed.hashtags : [];
+
+  const wordCount = useMemo(() => {
+    return feed?.content?.replace(/\s+/g, "").length || 0;
+  }, [feed?.content]);
+  const readingMinutes = Math.max(1, Math.ceil(wordCount / 400));
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
+      if (totalScroll > 0) {
+        const current = (window.scrollY / totalScroll) * 100;
+        setReadingProgress(Math.min(100, Math.max(0, current)));
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
   function deleteFeed() {
     // Confirm
     showConfirm(
@@ -165,6 +184,12 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
           />
         </Helmet>
       )}
+      {/* 顶部微光极光渐变阅读进度条 */}
+      <div
+        className="fixed top-0 left-0 h-1 z-50 bg-gradient-to-r from-theme via-sky-400 to-purple-500 transition-all duration-150 pointer-events-none shadow-xs"
+        style={{ width: `${readingProgress}%` }}
+      />
+
       <div className="w-full flex flex-row justify-center ani-show">
         {error && (
           <>
@@ -208,7 +233,11 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                   const coverImage = (feed as any).avatar || (feed.content ? extractFirstMarkdownImageUrl(feed.content) : undefined);
                   if (!coverImage) return null;
                   return (
-                    <div className="relative mb-6 -mx-6 -mt-6 sm:-mx-8 sm:-mt-8 h-64 sm:h-80 md:h-96 overflow-hidden border-b border-black/10 dark:border-white/10 group">
+                    <div
+                      onClick={() => setLightboxImage(coverImage)}
+                      className="relative mb-6 -mx-6 -mt-6 sm:-mx-8 sm:-mt-8 h-64 sm:h-80 md:h-96 overflow-hidden border-b border-black/10 dark:border-white/10 group cursor-zoom-in"
+                      title="点击展开全屏画廊大图预览"
+                    >
                       <img
                         src={coverImage}
                         alt={feed.title || "Cover"}
@@ -216,7 +245,19 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         loading="lazy"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pointer-events-none" />
+                      <div className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <i className="ri-fullscreen-line" />
+                        <span>全屏欣赏原图</span>
+                      </div>
                       <div className="absolute bottom-6 left-6 right-6 z-10 text-white">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <span className="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold text-white">
+                            EXHIBIT #{String(feed.id).padStart(4, "0")}
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-xs font-medium text-neutral-200">
+                            ☕ 约 {readingMinutes} 分钟阅读 · {wordCount} 字
+                          </span>
+                        </div>
                         <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white drop-shadow-md">
                           {feed.title}
                         </h1>
@@ -233,6 +274,15 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                       </h1>
                     )}
                     <div className="mt-1 mb-2 flex flex-wrap items-center gap-3 text-xs text-neutral-400">
+                      <span className="inline-flex items-center gap-1 font-mono font-bold text-theme">
+                        #{String(feed.id).padStart(4, "0")}
+                      </span>
+                      <span>·</span>
+                      <span className="inline-flex items-center gap-1">
+                        <i className="ri-time-line text-theme" />
+                        <span>约 {readingMinutes} 分钟 ({wordCount} 字)</span>
+                      </span>
+                      <span>·</span>
                       <span
                         className="inline-flex items-center gap-1"
                         title={new Date(feed.createdAt).toLocaleString()}
@@ -356,6 +406,29 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
           </>
         )}
       </div>
+      {/* Lightbox 大图全屏画廊预览 */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl p-4 ani-show cursor-zoom-out"
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-5 right-5 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xl transition"
+            title="关闭大图预览"
+          >
+            <i className="ri-close-line" />
+          </button>
+          <img
+            src={lightboxImage}
+            alt="Enlarged Cover"
+            className="max-h-[90vh] max-w-[92vw] object-contain rounded-2xl shadow-2xl border border-white/20"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
       <AlertUI />
       <ConfirmUI />
     </Waiting>

@@ -20,7 +20,7 @@ export function AdjacentSection({id, setError}: { id: string, setError: (error: 
             });
     }, [id, setError]);
     return (
-        <div className="rounded-2xl bg-w m-2 grid grid-cols-1 sm:grid-cols-2">
+        <div className="rounded-3xl bg-w m-2 grid grid-cols-1 sm:grid-cols-2 border border-black/5 dark:border-white/5 overflow-hidden shadow-xs">
             <AdjacentCard data={adjacentFeeds?.previousFeed} type="previous"/>
             <AdjacentCard data={adjacentFeeds?.nextFeed} type="next"/>
         </div>
@@ -28,38 +28,39 @@ export function AdjacentSection({id, setError}: { id: string, setError: (error: 
 }
 
 export function AdjacentCard({data, type}: { data: AdjacentFeed | null | undefined, type: "previous" | "next" }) {
-    const direction = type === "previous" ? "text-start" : "text-end"
-    const radius = type === "previous" ? "rounded-t-2xl sm:rounded-none sm:rounded-l-2xl" : "rounded-b-2xl sm:rounded-none sm:rounded-r-2xl"
-    const {t} = useTranslation()
+    const isPrev = type === "previous";
+    const direction = isPrev ? "text-start" : "text-end";
+    const {t} = useTranslation();
+
     if (!data) {
-        return (<div className="w-full p-6 duration-300">
-            <p className={`t-secondary w-full ${direction}`}>
-                {type === "previous" ? "Previous" : "Next"}
-            </p>
-            <h1 className={`text-xl text-gray-700 dark:text-white text-pretty truncate ${direction}`}>
-                {t('no_more')}
-            </h1>
-        </div>);
+        return (
+            <div className={`w-full p-5 sm:p-6 duration-300 opacity-40 select-none ${direction}`}>
+                <p className="text-xs text-neutral-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                    {isPrev && <i className="ri-arrow-left-line" />}
+                    <span>{isPrev ? "前一幅展出" : "后一幅展出"}</span>
+                    {!isPrev && <i className="ri-arrow-right-line ml-auto" />}
+                </p>
+                <p className="text-sm font-semibold t-primary mt-2">{t('no_more')}</p>
+            </div>
+        );
     }
+
     return (
-        <Link href={`/feed/${data.id}`} target="_blank"
-              className={`w-full p-6 duration-300 bg-button ${radius}`}>
-            <p className={`t-secondary w-full ${direction}`}>
-                {type === "previous" ? "Previous" : "Next"}
+        <Link
+            href={`/feed/${data.id}`}
+            className={`group w-full p-5 sm:p-6 transition-all duration-300 hover:bg-black/[0.02] dark:hover:bg-white/[0.03] ${direction}`}
+        >
+            <p className={`text-xs text-neutral-400 font-bold uppercase tracking-wider flex items-center gap-1 group-hover:text-theme transition ${isPrev ? "justify-start" : "justify-end"}`}>
+                {isPrev && <i className="ri-arrow-left-line transition-transform group-hover:-translate-x-1" />}
+                <span>{isPrev ? "前一幅展出" : "后一幅展出"}</span>
+                {!isPrev && <i className="ri-arrow-right-line transition-transform group-hover:translate-x-1" />}
             </p>
-            <h1 className={`text-xl font-bold text-gray-700 dark:text-white text-pretty truncate ${direction}`}>
+            <h3 className="mt-2 text-base font-extrabold t-primary group-hover:text-theme transition truncate">
                 {data.title}
-            </h1>
-            <p className={`space-x-2 ${direction}`}>
-                <span className="text-gray-400 text-sm" title={new Date(data.createdAt).toLocaleString()}>
-                    {data.createdAt === data.updatedAt ? timeago(data.createdAt) : t('feed_card.published$time', {time: timeago(data.createdAt)})}
-                </span>
-                {data.createdAt !== data.updatedAt &&
-                    <span className="text-gray-400 text-sm" title={new Date(data.updatedAt).toLocaleString()}>
-                        {t('feed_card.updated$time', {time: timeago(data.updatedAt)})}
-                    </span>
-                }
+            </h3>
+            <p className="text-[11px] text-neutral-400 mt-1">
+                {data.createdAt === data.updatedAt ? timeago(data.createdAt) : t('feed_card.published$time', {time: timeago(data.createdAt)})}
             </p>
         </Link>
-    )
+    );
 }
