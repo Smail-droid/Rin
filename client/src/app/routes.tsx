@@ -79,7 +79,7 @@ export function AppRoutes() {
         <HealthPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/ai" requirePermission title="AI 智能配置" description="配置大模型提供商与核心系统指令提示词">
+      <AdminRoute path="/admin/ai" requirePermission title="AI 助手" description="配置大模型提供商与核心系统指令提示词">
         <AdminAIPage />
       </AdminRoute>
 

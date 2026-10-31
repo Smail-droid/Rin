@@ -1,4 +1,8 @@
-import { DEFAULT_AI_PROMPT_PRESETS, DEFAULT_AI_SYSTEM_PROMPT } from "@rin/config";
+import {
+  DEFAULT_PROMPT_FORMAT,
+  DEFAULT_PROMPT_SUMMARY,
+  DEFAULT_PROMPT_TECH,
+} from "@rin/config";
 import {
   SearchableSelect,
   SettingsBadge,
@@ -8,7 +12,7 @@ import {
   SettingsCardRow,
 } from "@rin/ui";
 import * as Switch from "@radix-ui/react-switch";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import ReactLoading from "react-loading";
 import { client } from "../app/runtime";
@@ -31,20 +35,64 @@ export type AISettingsValue = {
   apiKeySet: boolean;
   apiUrl: string;
   systemPrompt?: string;
+  pipelineStages?: string;
+  promptTech?: string;
+  promptFormat?: string;
+  promptSummary?: string;
 };
 
 export function AISummarySettings({
   value,
   onChange,
+  onSave,
 }: {
   value: AISettingsValue;
   onChange: (updates: Partial<AISettingsValue>) => void;
+  onSave?: () => void;
 }) {
   const { t } = useTranslation();
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [testResult, setTestResult] = useState<{ success?: boolean; response?: string; error?: string; details?: string } | null>(null);
-  const { AlertUI } = useAlert();
+  const [activeStage, setActiveStage] = useState<"tech" | "format" | "summary">("tech");
+  const { showAlert, AlertUI } = useAlert();
   const providerFields = getAIProviderFields(value.provider);
+
+  const enabledStages = useMemo(() => {
+    const raw = value.pipelineStages || "tech,format,summary";
+    return raw.split(",").map((s) => s.trim()).filter(Boolean);
+  }, [value.pipelineStages]);
+
+  const toggleStage = (stageId: "tech" | "format" | "summary") => {
+    const current = new Set(enabledStages);
+    if (current.has(stageId)) {
+      current.delete(stageId);
+    } else {
+      current.add(stageId);
+    }
+    const order: ("tech" | "format" | "summary")[] = ["tech", "format", "summary"];
+    const sorted = order.filter((s) => current.has(s));
+    onChange({ pipelineStages: sorted.join(",") });
+  };
+
+  const getCurrentStagePrompt = () => {
+    if (activeStage === "tech") return value.promptTech ?? DEFAULT_PROMPT_TECH;
+    if (activeStage === "format") return value.promptFormat ?? DEFAULT_PROMPT_FORMAT;
+    return value.promptSummary || value.systemPrompt || DEFAULT_PROMPT_SUMMARY;
+  };
+
+  const handleCurrentStagePromptChange = (newPrompt: string) => {
+    if (activeStage === "tech") onChange({ promptTech: newPrompt });
+    else if (activeStage === "format") onChange({ promptFormat: newPrompt });
+    else {
+      onChange({ promptSummary: newPrompt, systemPrompt: newPrompt });
+    }
+  };
+
+  const handleResetCurrentStagePrompt = () => {
+    if (activeStage === "tech") onChange({ promptTech: DEFAULT_PROMPT_TECH });
+    else if (activeStage === "format") onChange({ promptFormat: DEFAULT_PROMPT_FORMAT });
+    else onChange({ promptSummary: DEFAULT_PROMPT_SUMMARY, systemPrompt: DEFAULT_PROMPT_SUMMARY });
+  };
 
   const handleProviderChange = (nextProvider: string) => {
     const preset = getAIProviderPreset(nextProvider);
@@ -204,63 +252,197 @@ export function AISummarySettings({
             </SettingsCardBody>
           </SettingsCard>
 
-          {/* AI System Prompt & Functional Presets Customization */}
+          {/* AI Multi-Stage Pipeline Workflow & Prompts Customization */}
           <SettingsCard>
             <SettingsCardRow
               header={
                 <SettingsCardHeader
-                  title="AI 核心提示词与功能预设"
-                  description="支持自定义系统提示词，解耦硬编码；不仅能用于精炼总结，更可扩展至文章排版与结构化整理"
+                  title="AI 智能流水线多阶段处理流程（Pipeline）"
+                  description="支持复选开启 3 大处理流程，发布或梳理时按严格顺序自动执行：1. 提炼教程命令 ➔ 2. 正文结构排版 ➔ 3. 顶部输出精炼摘要"
                 />
               }
               action={<div />}
             />
             <SettingsCardBody>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
+                {/* 3 Steps Multi-select Pipeline Grid */}
                 <div>
-                  <p className="text-xs font-semibold t-primary mb-1.5">快捷预设模板（点击一键应用）：</p>
-                  <div className="flex flex-wrap gap-2">
-                    {DEFAULT_AI_PROMPT_PRESETS.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => {
-                          onChange({ systemPrompt: preset.prompt });
-                        }}
-                        className={`rounded-xl px-3 py-2 text-xs font-semibold border transition text-left ${
-                          (value.systemPrompt || DEFAULT_AI_SYSTEM_PROMPT).trim() === preset.prompt.trim()
-                            ? "bg-theme/10 border-theme text-theme shadow-2xs"
-                            : "border-black/10 bg-black/[0.02] hover:bg-black/5 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300"
-                        }`}
-                        title={preset.description}
-                      >
-                        <div className="font-bold">{preset.name}</div>
-                        <div className="text-[11px] opacity-75 mt-0.5">{preset.description}</div>
-                      </button>
-                    ))}
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold t-primary">流水线阶段勾选（支持复选多选，点击卡片切换查看与编辑该阶段提示词）：</p>
+                    <span className="text-[11px] text-theme font-medium">
+                      已启用 {enabledStages.length} / 3 个流水线阶段
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Step 1: Tech Tutorial Extraction */}
+                    <div
+                      onClick={() => setActiveStage("tech")}
+                      className={`cursor-pointer rounded-2xl border p-3.5 transition-all flex flex-col justify-between ${
+                        activeStage === "tech"
+                          ? "border-theme bg-theme/5 shadow-xs ring-1 ring-theme"
+                          : "border-black/10 bg-black/[0.015] hover:border-black/20 dark:border-white/10 dark:bg-white/[0.02]"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/10 text-[11px]">1</span>
+                            <span>教程与命令提炼</span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={enabledStages.includes("tech")}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              toggleStage("tech");
+                            }}
+                            className="h-4 w-4 cursor-pointer rounded accent-theme"
+                            title="勾选此阶段"
+                          />
+                        </div>
+                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-snug">
+                          优先提取命令核心步骤、环境配置与避坑排查，规范代码块包裹
+                        </p>
+                      </div>
+                      <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[11px]">
+                        <span className={enabledStages.includes("tech") ? "text-theme font-semibold" : "text-neutral-400"}>
+                          {enabledStages.includes("tech") ? "✓ 已加入流水线" : "未开启"}
+                        </span>
+                        {activeStage === "tech" && (
+                          <span className="text-neutral-400 font-mono text-[10px]">正在编辑 ✍️</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Step 2: Content Formatting */}
+                    <div
+                      onClick={() => setActiveStage("format")}
+                      className={`cursor-pointer rounded-2xl border p-3.5 transition-all flex flex-col justify-between ${
+                        activeStage === "format"
+                          ? "border-theme bg-theme/5 shadow-xs ring-1 ring-theme"
+                          : "border-black/10 bg-black/[0.015] hover:border-black/20 dark:border-white/10 dark:bg-white/[0.02]"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/10 text-[11px]">2</span>
+                            <span>内容直接排版整理</span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={enabledStages.includes("format")}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              toggleStage("format");
+                            }}
+                            className="h-4 w-4 cursor-pointer rounded accent-theme"
+                            title="勾选此阶段"
+                          />
+                        </div>
+                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-snug">
+                          梳理多级标题架构、盘古之白空格、修正所有未闭合代码块
+                        </p>
+                      </div>
+                      <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[11px]">
+                        <span className={enabledStages.includes("format") ? "text-theme font-semibold" : "text-neutral-400"}>
+                          {enabledStages.includes("format") ? "✓ 已加入流水线" : "未开启"}
+                        </span>
+                        {activeStage === "format" && (
+                          <span className="text-neutral-400 font-mono text-[10px]">正在编辑 ✍️</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Step 3: Executive Summary */}
+                    <div
+                      onClick={() => setActiveStage("summary")}
+                      className={`cursor-pointer rounded-2xl border p-3.5 transition-all flex flex-col justify-between ${
+                        activeStage === "summary"
+                          ? "border-theme bg-theme/5 shadow-xs ring-1 ring-theme"
+                          : "border-black/10 bg-black/[0.015] hover:border-black/20 dark:border-white/10 dark:bg-white/[0.02]"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-purple-600 dark:text-purple-400">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-500/10 text-[11px]">3</span>
+                            <span>精炼置顶摘要生成</span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={enabledStages.includes("summary")}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              toggleStage("summary");
+                            }}
+                            className="h-4 w-4 cursor-pointer rounded accent-theme"
+                            title="勾选此阶段"
+                          />
+                        </div>
+                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-snug">
+                          在文章修正完毕后，在最顶部输出 50~100 字凝练的 AI 摘要
+                        </p>
+                      </div>
+                      <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[11px]">
+                        <span className={enabledStages.includes("summary") ? "text-theme font-semibold" : "text-neutral-400"}>
+                          {enabledStages.includes("summary") ? "✓ 已加入流水线" : "未开启"}
+                        </span>
+                        {activeStage === "summary" && (
+                          <span className="text-neutral-400 font-mono text-[10px]">正在编辑 ✍️</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-1.5 pt-2 border-t border-black/5 dark:border-white/5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold t-primary">当前生效的系统提示词 (System Prompt)</p>
-                    <button
-                      type="button"
-                      onClick={() => onChange({ systemPrompt: DEFAULT_AI_SYSTEM_PROMPT })}
-                      className="text-xs text-theme hover:underline"
-                    >
-                      恢复默认总结提示词
-                    </button>
+                {/* Prompt Editor for Selected Stage */}
+                <div className="space-y-2 pt-3 border-t border-black/5 dark:border-white/5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold t-primary">
+                        正在编辑：
+                        {activeStage === "tech"
+                          ? "【阶段 1: 技术教程与命令提炼】系统提示词"
+                          : activeStage === "format"
+                          ? "【阶段 2: 文章内容直接排版整理】系统提示词"
+                          : "【阶段 3: 精炼置顶摘要生成】系统提示词"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleResetCurrentStagePrompt}
+                        className="text-xs text-neutral-500 hover:text-theme transition"
+                      >
+                        恢复此阶段默认提示词
+                      </button>
+                      {onSave && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSave();
+                            showAlert("当前阶段提示词已成功保存！");
+                          }}
+                          className="rounded-lg bg-theme px-3 py-1 text-xs font-semibold text-white shadow-2xs hover:bg-theme-hover transition"
+                        >
+                          保存提示词
+                        </button>
+                      )}
+                    </div>
                   </div>
+
                   <textarea
                     rows={6}
-                    value={value.systemPrompt ?? ""}
-                    placeholder={DEFAULT_AI_SYSTEM_PROMPT}
-                    onChange={(e) => onChange({ systemPrompt: e.target.value })}
+                    value={getCurrentStagePrompt()}
+                    onChange={(e) => handleCurrentStagePromptChange(e.target.value)}
+                    placeholder="在此输入专属提示词指令..."
                     className="w-full rounded-xl border border-black/10 bg-w px-4 py-3 text-sm leading-relaxed t-primary outline-none transition-colors placeholder:text-neutral-400 focus:border-theme focus:ring-2 focus:ring-theme/10 dark:border-white/10"
                   />
                   <p className="text-[11px] text-neutral-400">
-                    💡 提示：在此处输入的提示词将直接作为 AI 任务的系统指令；您可以随时在此定制文章排版、润色、提取技术干货等任意高级指令。
+                    💡 提示：您可以为每个阶段单独存放专属的提示词；当发布或梳理文章时，系统会按 1 ➔ 2 ➔ 3 的顺序将文章流经已勾选的阶段进行处理。
                   </p>
                 </div>
               </div>

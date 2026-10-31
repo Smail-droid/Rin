@@ -223,12 +223,14 @@ export async function generateAISummaryResult(
     const truncatedContent = content.length > maxContentLength
         ? content.slice(0, maxContentLength) + "..."
         : content;
-    const customPrompt = config.system_prompt && config.system_prompt.trim().length > 0
-        ? config.system_prompt.trim()
-        : AI_SUMMARY_SYSTEM_PROMPT;
+    const summaryPrompt = (config.prompt_summary && config.prompt_summary.trim().length > 0)
+        ? config.prompt_summary.trim()
+        : (config.system_prompt && config.system_prompt.trim().length > 0)
+            ? config.system_prompt.trim()
+            : AI_SUMMARY_SYSTEM_PROMPT;
 
     const summaryMessages = [
-        { role: "system" as const, content: customPrompt },
+        { role: "system" as const, content: summaryPrompt },
         { role: "user" as const, content: truncatedContent },
     ];
 

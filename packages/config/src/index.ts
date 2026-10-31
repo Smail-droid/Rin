@@ -57,6 +57,21 @@ export const CLIENT_CONFIG_ENV_DEFAULTS: Record<string, string> = {
 
 export const AI_CONFIG_PREFIX = "ai_summary.";
 
+export const DEFAULT_PROMPT_TECH =
+  "你是一位资深技术架构师与教程提炼专家。请对输入的笔记或教程内容进行技术提炼：\n1. 提炼核心执行命令与配置文件（关键代码必须使用 ```bash 或对应语言代码块完整包裹）；\n2. 提炼环境依赖与关键避坑要点；\n3. 输出逻辑严密、排版规整的技术实操指南，保持原文核心语义。";
+
+export const DEFAULT_PROMPT_FORMAT =
+  "你是一位资深博客排版与内容编辑专家。请对输入文章进行内容排版与结构化梳理：\n1. 规范标题层级结构（从二级标题 ## 开始，层级清晰递进）；\n2. 规范中英文混排空格（盘古之白）、标点符号及专有名词大小写；\n3. 提炼核心技术要点，保持段落呼吸留白；\n4. 重点检查并修复所有 ```bash 或其它语言代码块的开闭包裹，杜绝溢出与未闭合；\n5. 输出格式规整、阅读体验极佳的完整 Markdown 正文。";
+
+export const DEFAULT_AI_SYSTEM_PROMPT =
+  "你是一位资深博客内容提炼助手。请用凝练、自然、通顺的中文提炼文章核心内容，严格控制在50~100字之间且仅输出单段纯文本，严禁包含标题、序号或项目符号；首句禁止出现“本文介绍了”、“作者阐述了”等套话，直接切入核心背景或问题，提炼具体方案与最终结论，严格忠于原文且不添加未提及的信息。";
+
+export const DEFAULT_PROMPT_SUMMARY = DEFAULT_AI_SYSTEM_PROMPT;
+
+export const DEFAULT_PIPELINE_STAGES = ["tech", "format", "summary"] as const;
+
+export const SENSITIVE_SERVER_CONFIG_FIELDS = [`${AI_CONFIG_PREFIX}api_key`] as const;
+
 export const AI_CONFIG_KEYS = [
   `${AI_CONFIG_PREFIX}enabled`,
   `${AI_CONFIG_PREFIX}provider`,
@@ -64,12 +79,11 @@ export const AI_CONFIG_KEYS = [
   `${AI_CONFIG_PREFIX}api_key`,
   `${AI_CONFIG_PREFIX}api_url`,
   `${AI_CONFIG_PREFIX}system_prompt`,
+  `${AI_CONFIG_PREFIX}pipeline_stages`,
+  `${AI_CONFIG_PREFIX}prompt_tech`,
+  `${AI_CONFIG_PREFIX}prompt_format`,
+  `${AI_CONFIG_PREFIX}prompt_summary`,
 ] as const;
-
-export const SENSITIVE_SERVER_CONFIG_FIELDS = [`${AI_CONFIG_PREFIX}api_key`] as const;
-
-export const DEFAULT_AI_SYSTEM_PROMPT =
-  "你是一位资深博客内容提炼助手。请用凝练、自然、通顺的中文提炼文章核心内容，严格控制在50~100字之间且仅输出单段纯文本，严禁包含标题、序号或项目符号；首句禁止出现“本文介绍了”、“作者阐述了”等套话，直接切入核心背景或问题，提炼具体方案与最终结论，严格忠于原文且不添加未提及的信息。";
 
 export const DEFAULT_AI_PROMPT_PRESETS = [
   {
@@ -101,6 +115,10 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
   api_key: "",
   api_url: "https://api.openai.com/v1",
   system_prompt: "",
+  pipeline_stages: "tech,format,summary",
+  prompt_tech: DEFAULT_PROMPT_TECH,
+  prompt_format: DEFAULT_PROMPT_FORMAT,
+  prompt_summary: DEFAULT_PROMPT_SUMMARY,
 };
 
 export class ConfigWrapper {

@@ -10,7 +10,18 @@ type ConfigWriter = ConfigReader & {
     save(): Promise<void>;
 };
 
-const AI_CONFIG_FIELDS = ["enabled", "provider", "model", "api_key", "api_url", "system_prompt"] as const;
+const AI_CONFIG_FIELDS = [
+    "enabled",
+    "provider",
+    "model",
+    "api_key",
+    "api_url",
+    "system_prompt",
+    "pipeline_stages",
+    "prompt_tech",
+    "prompt_format",
+    "prompt_summary",
+] as const;
 
 export function readAIConfigFromValues(values: Record<string, unknown>): AIConfig {
     const config: AIConfig = { ...DEFAULT_AI_CONFIG };
@@ -43,6 +54,26 @@ export function readAIConfigFromValues(values: Record<string, unknown>): AIConfi
     const systemPrompt = values[AI_CONFIG_PREFIX + "system_prompt"];
     if (typeof systemPrompt === "string") {
         config.system_prompt = systemPrompt;
+    }
+
+    const pipelineStages = values[AI_CONFIG_PREFIX + "pipeline_stages"];
+    if (typeof pipelineStages === "string") {
+        config.pipeline_stages = pipelineStages;
+    }
+
+    const promptTech = values[AI_CONFIG_PREFIX + "prompt_tech"];
+    if (typeof promptTech === "string") {
+        config.prompt_tech = promptTech;
+    }
+
+    const promptFormat = values[AI_CONFIG_PREFIX + "prompt_format"];
+    if (typeof promptFormat === "string") {
+        config.prompt_format = promptFormat;
+    }
+
+    const promptSummary = values[AI_CONFIG_PREFIX + "prompt_summary"];
+    if (typeof promptSummary === "string") {
+        config.prompt_summary = promptSummary;
     }
 
     return config;

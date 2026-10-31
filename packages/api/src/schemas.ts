@@ -110,6 +110,10 @@ export const aiConfigUpdateSchema = t.Object({
   api_key: t.String({ optional: true }),
   api_url: t.String({ optional: true }),
   system_prompt: t.String({ optional: true }),
+  pipeline_stages: t.String({ optional: true }),
+  prompt_tech: t.String({ optional: true }),
+  prompt_format: t.String({ optional: true }),
+  prompt_summary: t.String({ optional: true }),
 });
 
 // ============================================================================

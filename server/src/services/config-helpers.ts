@@ -220,6 +220,10 @@ export async function buildServerConfigResponse(
   configObj["ai_summary.api_url"] = aiConfig.api_url;
   configObj["ai_summary.api_key"] = aiConfig.api_key.length > 0 ? "••••••••" : "";
   configObj["ai_summary.system_prompt"] = aiConfig.system_prompt || "";
+  configObj["ai_summary.pipeline_stages"] = aiConfig.pipeline_stages || "tech,format,summary";
+  configObj["ai_summary.prompt_tech"] = aiConfig.prompt_tech || "";
+  configObj["ai_summary.prompt_format"] = aiConfig.prompt_format || "";
+  configObj["ai_summary.prompt_summary"] = aiConfig.prompt_summary || "";
 
   return maskSensitiveFields(configObj);
 }

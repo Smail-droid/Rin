@@ -118,6 +118,10 @@ export function buildAIConfigUpdates(updates: Record<string, unknown>) {
   if (updates.api_url !== undefined) flatUpdates["ai_summary.api_url"] = updates.api_url;
   if (updates.api_key !== undefined) flatUpdates["ai_summary.api_key"] = updates.api_key;
   if (updates.system_prompt !== undefined) flatUpdates["ai_summary.system_prompt"] = updates.system_prompt;
+  if (updates.pipeline_stages !== undefined) flatUpdates["ai_summary.pipeline_stages"] = updates.pipeline_stages;
+  if (updates.prompt_tech !== undefined) flatUpdates["ai_summary.prompt_tech"] = updates.prompt_tech;
+  if (updates.prompt_format !== undefined) flatUpdates["ai_summary.prompt_format"] = updates.prompt_format;
+  if (updates.prompt_summary !== undefined) flatUpdates["ai_summary.prompt_summary"] = updates.prompt_summary;
   return flatUpdates;
 }
 
@@ -130,6 +134,10 @@ export async function loadAIConfigState() {
     apiKeySet: data?.["ai_summary.api_key"] === "••••••••",
     apiUrl: data?.["ai_summary.api_url"] ?? "",
     systemPrompt: String(data?.["ai_summary.system_prompt"] ?? ""),
+    pipelineStages: String(data?.["ai_summary.pipeline_stages"] ?? "tech,format,summary"),
+    promptTech: String(data?.["ai_summary.prompt_tech"] ?? ""),
+    promptFormat: String(data?.["ai_summary.prompt_format"] ?? ""),
+    promptSummary: String(data?.["ai_summary.prompt_summary"] ?? ""),
   };
 }
 
@@ -199,6 +207,10 @@ export function buildAIConfigDraftValue(
     apiKeySet: hasStoredAiApiKey || String(serverConfig["ai_summary.api_key"] ?? "").trim().length > 0,
     apiUrl: String(serverConfig["ai_summary.api_url"] ?? ""),
     systemPrompt: String(serverConfig["ai_summary.system_prompt"] ?? ""),
+    pipelineStages: String(serverConfig["ai_summary.pipeline_stages"] ?? "tech,format,summary"),
+    promptTech: String(serverConfig["ai_summary.prompt_tech"] ?? ""),
+    promptFormat: String(serverConfig["ai_summary.prompt_format"] ?? ""),
+    promptSummary: String(serverConfig["ai_summary.prompt_summary"] ?? ""),
   };
 }
 

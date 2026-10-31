@@ -97,7 +97,7 @@ export function AdminAIPage() {
           </div>
         ) : (
           <div className="flex flex-col space-y-4">
-            <AISummarySettings value={aiValue} onChange={handleAIChange} />
+            <AISummarySettings value={aiValue} onChange={handleAIChange} onSave={handleSave} />
           </div>
         )}
       </div>

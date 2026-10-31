@@ -1,5 +1,5 @@
 import { Modal } from "@rin/ui";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, ButtonWithLoading } from "./button";
 
@@ -24,13 +24,13 @@ export function useAlert() {
         setIsOpen(false)
         setAlert(null)
     }
-    const showAlert = (alert: string, onConfirm?: () => void) => {
+    const showAlert = useCallback((alert: string, onConfirm?: () => void) => {
         setAlert({
             message: alert,
             onConfirm: onConfirm ?? (() => { })
         })
         setIsOpen(true)
-    }
+    }, [])
     const { t } = useTranslation()
     const AlertUI = () => (
         <Modal
@@ -66,14 +66,14 @@ export function useConfirm() {
         setConfirm(null)
         setIsOpen(false)
     }
-    const showConfirm = (title: string, message: string, onConfirm?: () => Promise<void> | void) => {
+    const showConfirm = useCallback((title: string, message: string, onConfirm?: () => Promise<void> | void) => {
         setConfirm({
             title,
             message,
             onConfirm: onConfirm ?? (() => { })
         })
         setIsOpen(true)
-    }
+    }, [])
     const { t } = useTranslation()
     const ConfirmUI = () => (
         <Modal

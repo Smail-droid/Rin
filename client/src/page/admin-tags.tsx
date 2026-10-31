@@ -1,5 +1,5 @@
 import { SettingsBadge, SettingsCard, SettingsCardBody, SettingsCardHeader, Spinner } from "@rin/ui";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link } from "wouter";
 import type { Tag } from "../api/client";
@@ -21,6 +21,7 @@ export function AdminTagsPage() {
   const [savingId, setSavingId] = useState<number | null>(null);
   const [newTagName, setNewTagName] = useState("");
   const [creating, setCreating] = useState(false);
+  const isLoadedRef = useRef(false);
 
   const fetchTags = useCallback(() => {
     setLoading(true);
@@ -38,6 +39,8 @@ export function AdminTagsPage() {
   }, [showAlert]);
 
   useEffect(() => {
+    if (isLoadedRef.current) return;
+    isLoadedRef.current = true;
     fetchTags();
   }, [fetchTags]);
 

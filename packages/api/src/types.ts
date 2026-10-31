@@ -277,6 +277,10 @@ export interface AIConfig {
   api_key: string;
   api_url: string;
   system_prompt?: string;
+  pipeline_stages?: string;
+  prompt_tech?: string;
+  prompt_format?: string;
+  prompt_summary?: string;
 }
 
 // ============================================================================
