@@ -631,6 +631,7 @@ export function WritingPage({ id }: { id?: number }) {
       <WritingAICopilotDrawer
         isOpen={copilotOpen}
         onClose={() => setCopilotOpen(false)}
+        onToggle={() => setCopilotOpen((p) => !p)}
         articleContent={content}
         onInsertText={(text) => {
           setContent(content ? `${content}\n\n${text}` : text);

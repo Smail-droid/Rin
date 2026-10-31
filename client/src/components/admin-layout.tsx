@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
 import { useSiteConfig } from "../hooks/useSiteConfig";
@@ -42,11 +43,28 @@ export function AdminLayout({
 }) {
   const { t } = useTranslation();
   const siteConfig = useSiteConfig();
+  const [adminZoom, setAdminZoom] = useState<number>(() => {
+    if (typeof localStorage === "undefined") return 100;
+    const stored = localStorage.getItem("rin_admin_zoom");
+    const parsed = Number.parseInt(stored || "100", 10);
+    return Number.isNaN(parsed) ? 100 : Math.min(100, Math.max(50, parsed));
+  });
+
+  const handleSetZoom = (val: number) => {
+    const clamped = Math.min(100, Math.max(50, val));
+    setAdminZoom(clamped);
+    try {
+      localStorage.setItem("rin_admin_zoom", String(clamped));
+    } catch {}
+  };
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
+    <div
+      style={{ zoom: `${adminZoom}%` }}
+      className="min-h-screen bg-neutral-50 dark:bg-neutral-950 transition-all duration-200"
+    >
       <div className="mx-auto flex w-full max-w-[1780px] 2xl:max-w-[1920px] flex-col gap-6 px-3 sm:px-6 py-6 lg:flex-row">
-        <aside className="w-full shrink-0 lg:sticky lg:top-6 lg:w-60 xl:w-64 lg:self-start">
+        <aside className="w-full shrink-0 lg:sticky lg:top-6 lg:w-60 xl:w-64 lg:self-start flex flex-col gap-3">
           <div className="rounded-2xl border border-black/10 bg-w p-4 sm:p-5 dark:border-white/10">
             <Link href="/" className="flex items-center gap-4 rounded-xl px-2 py-2 transition-colors hover:bg-neutral-50 dark:hover:bg-white/5">
               {siteConfig.avatar ? (
@@ -71,6 +89,49 @@ export function AdminLayout({
                 <AdminNavItem href="/admin/ai" icon="ri-sparkling-fill" label="AI 助手" />
                 <AdminNavItem href="/admin/queue-status" icon="ri-todo-line" label={t("queue_status.title")} />
                 <AdminNavItem href="/admin/compat-tasks" icon="ri-history-line" label={t("compat_tasks.title")} />
+              </div>
+            </div>
+
+            {/* Admin Zoom / Viewport Scaling Controller (后台缩放微调与记忆保存) */}
+            <div className="mt-5 pt-3 border-t border-black/5 dark:border-white/5 flex flex-col gap-2">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+                  <i className="ri-zoom-in-line" />
+                  <span>后台界面缩放</span>
+                </span>
+                <span className="font-mono text-xs font-bold text-theme">{adminZoom}%</span>
+              </div>
+
+              <div className="flex items-center gap-2 px-1">
+                <input
+                  type="range"
+                  min={50}
+                  max={100}
+                  step={5}
+                  value={adminZoom}
+                  onChange={(e) => handleSetZoom(Number.parseInt(e.target.value, 10))}
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-theme dark:bg-white/10"
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-1 pt-0.5">
+                {[50, 70, 85, 100].map((scale) => {
+                  const isSelected = adminZoom === scale;
+                  return (
+                    <button
+                      key={scale}
+                      type="button"
+                      onClick={() => handleSetZoom(scale)}
+                      className={`flex-1 rounded-md py-1 text-[10px] font-semibold transition text-center select-none ${
+                        isSelected
+                          ? "bg-theme text-white shadow-2xs font-bold"
+                          : "bg-black/5 text-neutral-500 hover:bg-black/10 dark:bg-white/5 dark:text-neutral-400"
+                      }`}
+                    >
+                      {scale === 100 ? "100%" : `${scale}%`}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
