@@ -334,10 +334,10 @@ export function WritingPage({ id }: { id?: number }) {
         <meta property="og:url" content={document.URL} />
       </Helmet>
       <div className="mt-2 flex flex-col gap-4 t-primary sm:gap-6">
-        {MetaInput({ className: "p-4 sm:p-5 md:p-6" })}
+        {MetaInput({ className: "relative z-20 p-4 sm:p-5 md:p-6" })}
 
-        <FlatPanel className="overflow-hidden p-0">
-          <MarkdownEditor content={content} setContent={setContent} height='680px' />
+        <FlatPanel className="relative z-10 overflow-hidden p-0">
+          <MarkdownEditor content={content} setContent={setContent} height='680px' defaultPreview="comparison" />
         </FlatPanel>
       </div>
       <AlertUI />

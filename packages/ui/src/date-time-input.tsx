@@ -148,7 +148,7 @@ export function DateTimeInput({
       </button>
 
       {isOpen ? (
-        <div className="absolute right-0 top-[calc(100%+0.5rem)] z-30 w-[20rem] rounded-2xl border border-black/10 bg-w p-4 shadow-lg dark:border-white/10">
+        <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[20rem] rounded-2xl border border-black/10 bg-w p-4 shadow-2xl backdrop-blur-md dark:border-white/10">
           <div className="flex items-center justify-between">
             <button
               type="button"

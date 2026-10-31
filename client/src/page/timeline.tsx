@@ -43,22 +43,31 @@ export function TimelinePage() {
             });
     }, []);
 
-    // Group items by Year
-    const yearGroups = useMemo(() => {
-        const groups: Record<number, FeedItem[]> = {};
+    // Group items by Year-Month (e.g. 2026-10)
+    const monthGroups = useMemo(() => {
+        const groups: Record<string, { year: number; month: number; label: string; items: FeedItem[] }> = {};
         timelineItems.forEach((item) => {
-            const yr = new Date(item.createdAt).getFullYear();
-            if (!groups[yr]) groups[yr] = [];
-            groups[yr].push(item);
+            const d = new Date(item.createdAt);
+            const yr = d.getFullYear();
+            const mo = d.getMonth() + 1;
+            const moStr = String(mo).padStart(2, "0");
+            const key = `${yr}-${moStr}`;
+            if (!groups[key]) {
+                groups[key] = {
+                    year: yr,
+                    month: mo,
+                    label: key, // e.g. 2026-10
+                    items: [],
+                };
+            }
+            groups[key].items.push(item);
         });
         return groups;
     }, [timelineItems]);
 
-    const sortedYears = useMemo(() => {
-        return Object.keys(yearGroups)
-            .map(Number)
-            .sort((a, b) => b - a);
-    }, [yearGroups]);
+    const sortedMonthKeys = useMemo(() => {
+        return Object.keys(monthGroups).sort((a, b) => b.localeCompare(a));
+    }, [monthGroups]);
 
     // Natural alternating tilt angles
     const rotations = ["-rotate-1", "rotate-1", "-rotate-1.5", "rotate-1.5", "-rotate-0.5", "rotate-0.5"];
@@ -95,26 +104,27 @@ export function TimelinePage() {
                         {/* Central River Beam */}
                         <div className="hidden sm:block absolute left-1/2 -translate-x-1/2 top-4 bottom-6 w-0.5 bg-gradient-to-b from-theme via-theme/40 to-theme/10 dark:from-theme dark:via-theme/30 dark:to-transparent pointer-events-none" />
 
-                        {sortedYears.map((year) => {
-                            const yearItems = yearGroups[year] || [];
+                        {sortedMonthKeys.map((key) => {
+                            const group = monthGroups[key];
+                            const monthItems = group.items;
                             return (
-                                <div key={year} className="mb-10 relative">
-                                    {/* Year Milestone Dial */}
+                                <div key={key} className="mb-12 relative">
+                                    {/* Year-Month Milestone Dial (e.g. 2026-10) */}
                                     <div className="flex items-center justify-center mb-6 relative z-10">
-                                        <div className="inline-flex items-center gap-2 rounded-2xl bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 px-5 py-1.5 shadow-sm">
+                                        <div className="inline-flex items-center gap-2 rounded-2xl bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 px-5 py-2 shadow-sm hover:shadow-md transition">
                                             <span className="text-base">⏳</span>
                                             <span className="text-lg font-extrabold t-primary font-mono tracking-wider">
-                                                {year}
+                                                {group.label}
                                             </span>
                                             <span className="text-xs text-neutral-400 font-medium">
-                                                ({yearItems.length} 篇记事)
+                                                ({group.month}月份 · {monthItems.length} 篇记事)
                                             </span>
                                         </div>
                                     </div>
 
                                     {/* Compact, Staggered 2-Column Interlocking Cards */}
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-5 relative z-10">
-                                        {yearItems.map((item, idx) => {
+                                        {monthItems.map((item, idx) => {
                                             const rot = rotations[idx % rotations.length];
                                             const exactDate = formatExactDate(item.createdAt);
 

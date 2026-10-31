@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Markdown } from "./markdown";
 import { timeago } from "../utils/timeago";
 import { ImageWithFallback } from "./image-with-fallback";
+import { useSiteConfig } from "../hooks/useSiteConfig";
 
 interface Moment {
     id: number;
@@ -28,9 +29,14 @@ export function MomentItem({
     canManage: boolean
 }) {
     const { t } = useTranslation();
+    const siteConfig = useSiteConfig();
     const { createdAt, updatedAt } = moment;
     const [liked, setLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(0);
+
+    const authorAvatar = (moment.user.avatar && moment.user.avatar.trim().length > 0)
+        ? moment.user.avatar
+        : siteConfig.avatar || "/avatar.png";
 
     const toggleLike = () => {
         setLiked((prev) => !prev);
@@ -39,10 +45,10 @@ export function MomentItem({
 
     return (
         <div className="flex gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 shadow-2xs hover:shadow-md transition duration-300">
-            {/* Left: Square-rounded avatar like WeChat */}
+            {/* Left: Square-rounded avatar like WeChat (fallback to site avatar) */}
             <div className="shrink-0">
                 <ImageWithFallback
-                    src={moment.user.avatar}
+                    src={authorAvatar}
                     alt={moment.user.username}
                     className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl object-cover shadow-xs border border-black/5 dark:border-white/10"
                 />

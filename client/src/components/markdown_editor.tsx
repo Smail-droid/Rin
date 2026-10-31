@@ -15,6 +15,7 @@ interface MarkdownEditorProps {
   setContent: (content: string) => void;
   placeholder?: string;
   height?: string;
+  defaultPreview?: 'edit' | 'preview' | 'comparison';
 }
 
 type EditorPosition = {
@@ -65,12 +66,18 @@ function MarkdownToolButton({
   );
 }
 
-export function MarkdownEditor({ content, setContent, placeholder = "> Write your content here...", height = "400px" }: MarkdownEditorProps) {
+export function MarkdownEditor({
+  content,
+  setContent,
+  placeholder = "> Write your content here...",
+  height = "400px",
+  defaultPreview = "comparison",
+}: MarkdownEditorProps) {
   const { t } = useTranslation();
   const colorMode = useColorMode();
   const editorRef = useRef<editor.IStandaloneCodeEditor>();
   const isComposingRef = useRef(false);
-  const [preview, setPreview] = useState<'edit' | 'preview' | 'comparison'>('edit');
+  const [preview, setPreview] = useState<'edit' | 'preview' | 'comparison'>(defaultPreview);
   const [uploading, setUploading] = useState(false);
   const { showAlert, AlertUI } = useAlert();
 
@@ -300,6 +307,57 @@ async function insertImage(
     );
   };
 
+  const insertAlert = (type: "TIP" | "NOTE" | "WARNING" | "IMPORTANT") => {
+    const editorState = getEditorAndSelection();
+    if (!editorState) return;
+    const { model, selection } = editorState;
+    const selected = model.getValueInRange(selection);
+    const inner = selected || "在此输入提示说明内容...";
+    const text = `> [!${type}]\n> ${inner}\n`;
+    replaceSelection(selection, text);
+  };
+
+  const insertBashBlock = () => {
+    const editorState = getEditorAndSelection();
+    if (!editorState) return;
+    const { model, selection } = editorState;
+    const selected = model.getValueInRange(selection);
+    const inner = selected || "# 在此输入命令行指令\n";
+    const text = `\`\`\`bash\n${inner}\n\`\`\`\n`;
+    replaceSelection(selection, text);
+  };
+
+  const insertTaskList = () => {
+    formatSelectedLines(
+      (line) => line.match(/^\s*-\s*\[[ x]\]\s/) ? line : `- [ ] ${line}`,
+      `- [ ] 待办任务清单`,
+    );
+  };
+
+  const insertTable = () => {
+    const editorState = getEditorAndSelection();
+    if (!editorState) return;
+    const table = `| 列 1 | 列 2 | 列 3 |\n| :--- | :--- | :--- |\n| 内容 1 | 内容 2 | 内容 3 |\n`;
+    replaceSelection(editorState.selection, table);
+  };
+
+  const insertDetails = () => {
+    const editorState = getEditorAndSelection();
+    if (!editorState) return;
+    const { model, selection } = editorState;
+    const selected = model.getValueInRange(selection) || "折叠隐藏的详细内容...";
+    const details = `<details>\n<summary>点击展开详细信息</summary>\n\n${selected}\n</details>\n`;
+    replaceSelection(selection, details);
+  };
+
+  const insertMathFormula = () => {
+    const editorState = getEditorAndSelection();
+    if (!editorState) return;
+    const { model, selection } = editorState;
+    const selected = model.getValueInRange(selection) || "E = mc^2";
+    replaceSelection(selection, `$$\n${selected}\n$$\n`);
+  };
+
   const markdownActions = [
     { key: "heading", icon: "ri-heading", label: t("markdown_editor.toolbar.heading"), onClick: formatHeading },
     { key: "bold", icon: "ri-bold", label: t("markdown_editor.toolbar.bold"), onClick: () => wrapSelection("**", "**", t("markdown_editor.placeholder.bold")) },
@@ -310,8 +368,16 @@ async function insertImage(
     { key: "quote", icon: "ri-double-quotes-l", label: t("markdown_editor.toolbar.quote"), onClick: formatQuote },
     { key: "unordered-list", icon: "ri-list-unordered", label: t("markdown_editor.toolbar.unordered_list"), onClick: formatUnorderedList },
     { key: "ordered-list", icon: "ri-list-ordered", label: t("markdown_editor.toolbar.ordered_list"), onClick: formatOrderedList },
+    { key: "task-list", icon: "ri-checkbox-line", label: "待办任务清单 (- [ ] )", onClick: insertTaskList },
+    { key: "tip", icon: "ri-lightbulb-line", label: "提示块 (> [!TIP])", onClick: () => insertAlert("TIP") },
+    { key: "note", icon: "ri-information-line", label: "说明块 (> [!NOTE])", onClick: () => insertAlert("NOTE") },
+    { key: "warning", icon: "ri-alert-line", label: "警告块 (> [!WARNING])", onClick: () => insertAlert("WARNING") },
     { key: "inline-code", icon: "ri-code-s-slash-line", label: t("markdown_editor.toolbar.inline_code"), onClick: () => wrapSelection("`", "`", t("markdown_editor.placeholder.code")) },
     { key: "code-block", icon: "ri-code-box-line", label: t("markdown_editor.toolbar.code_block"), onClick: insertCodeBlock },
+    { key: "bash-code", icon: "ri-terminal-box-line", label: "终端指令代码块 (```bash)", onClick: insertBashBlock },
+    { key: "table", icon: "ri-table-line", label: "插入表格", onClick: insertTable },
+    { key: "details", icon: "ri-folder-open-line", label: "折叠详情 (<details>)", onClick: insertDetails },
+    { key: "math", icon: "ri-functions", label: "数学公式 ($$)", onClick: insertMathFormula },
     { key: "horizontal-rule", icon: "ri-separator", label: t("markdown_editor.toolbar.horizontal_rule"), onClick: insertHorizontalRule },
   ];
 
