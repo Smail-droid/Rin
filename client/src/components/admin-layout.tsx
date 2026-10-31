@@ -66,7 +66,9 @@ export function AdminLayout({
                 <AdminNavItem href="/admin/writing" icon="ri-quill-pen-line" label={t("writing")} />
                 <AdminNavItem href="/admin/files" icon="ri-folder-image-line" label={t("admin_files.title")} />
                 <AdminNavItem href="/admin/settings" icon="ri-settings-3-line" label={t("settings.title")} />
+                <AdminNavItem href="/admin/tags" icon="ri-price-tag-3-line" label="标签管理" />
                 <AdminNavItem href="/admin/health" icon="ri-heart-pulse-line" label={t("health.title")} />
+                <AdminNavItem href="/admin/ai" icon="ri-sparkling-fill" label="AI 智能配置" />
                 <AdminNavItem href="/admin/queue-status" icon="ri-todo-line" label={t("queue_status.title")} />
                 <AdminNavItem href="/admin/compat-tasks" icon="ri-history-line" label={t("compat_tasks.title")} />
               </div>

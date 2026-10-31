@@ -117,6 +117,7 @@ export function buildAIConfigUpdates(updates: Record<string, unknown>) {
   if (updates.model !== undefined) flatUpdates["ai_summary.model"] = updates.model;
   if (updates.api_url !== undefined) flatUpdates["ai_summary.api_url"] = updates.api_url;
   if (updates.api_key !== undefined) flatUpdates["ai_summary.api_key"] = updates.api_key;
+  if (updates.system_prompt !== undefined) flatUpdates["ai_summary.system_prompt"] = updates.system_prompt;
   return flatUpdates;
 }
 
@@ -128,6 +129,7 @@ export async function loadAIConfigState() {
     model: data?.["ai_summary.model"] ?? "gpt-4o-mini",
     apiKeySet: data?.["ai_summary.api_key"] === "••••••••",
     apiUrl: data?.["ai_summary.api_url"] ?? "",
+    systemPrompt: String(data?.["ai_summary.system_prompt"] ?? ""),
   };
 }
 
@@ -196,6 +198,7 @@ export function buildAIConfigDraftValue(
     apiKey: String(serverConfig["ai_summary.api_key"] ?? ""),
     apiKeySet: hasStoredAiApiKey || String(serverConfig["ai_summary.api_key"] ?? "").trim().length > 0,
     apiUrl: String(serverConfig["ai_summary.api_url"] ?? ""),
+    systemPrompt: String(serverConfig["ai_summary.system_prompt"] ?? ""),
   };
 }
 

@@ -28,7 +28,7 @@ import {
 } from "../utils/theme-color";
 import { getStoredThemeMode, setThemeMode, type ThemeMode } from "../utils/darkModeUtils";
 import { AISummarySettings } from "./settings-ai";
-import { ItemButton, ItemImageInput, ItemInput, ItemSwitch, ItemTitle, ItemWithUpload } from "./settings-items";
+import { ItemButton, ItemEmojiInput, ItemImageInput, ItemInput, ItemSwitch, ItemTitle, ItemWithUpload } from "./settings-items";
 import {
   areSettingsDraftsEqual,
   buildAIConfigDraftValue,
@@ -48,6 +48,13 @@ const WEBHOOK_METHOD_OPTIONS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD",
   label: value,
   value,
 }));
+
+const ABOUT_PRESET_EMOJIS = ["🐾", "🐱", "🐶", "🦊", "🐼", "🐨", "🦁", "🐯", "🦄", "☕", "🍵", "🍀", "🌿", "🌸", "🎧", "🎮", "💻", "🎨", "🪄", "👑", "✨", "🌻", "🐣", "🍧"];
+const TIMELINE_PRESET_EMOJIS = ["⏳", "⌛", "⏰", "⏱️", "🕰️", "📅", "📆", "🗓️", "📜", "🧭", "⚓", "🏹", "🛸", "🚀", "🌠", "🌌", "🪐", "🍂", "🍁", "🌊", "🏛️", "⛩️", "🕯️", "🔮"];
+const MOMENTS_PRESET_EMOJIS = ["💭", "💬", "🫧", "💡", "☕", "🍃", "🌤️", "🌈", "🎈", "🎵", "📖", "📝", "📮", "💌", "🍺", "🥂", "🥐", "🍰", "🧁", "🌻", "🧸", "🪁", "🎐", "🍬"];
+const FRIENDS_PRESET_EMOJIS = ["🌸", "🌺", "🌷", "🌹", "💐", "🏡", "🏠", "🏘️", "🏰", "🤝", "👫", "👭", "👬", "💌", "🌐", "🛸", "🪴", "🍄", "🎁", "🎉", "🎈", "🍭", "🌟", "✨"];
+const SEARCH_PRESET_EMOJIS = ["🔍", "🔎", "🧭", "🔭", "🔬", "🗺️", "🗝️", "🔮", "🎯", "🏹", "💡", "⚡", "📡", "🛸", "🕵️‍♂️", "🕵️‍♀️", "🧠", "📚", "🔖", "💎", "🛰️", "🚀", "💫", "🧐"];
+const DECK_PRESET_EMOJIS = ["🎴", "🃏", "📸", "📷", "🎞️", "🖼️", "🎨", "🖌️", "🎬", "🎭", "🎪", "🎡", "🎠", "🎆", "🎇", "🌠", "🌅", "🌄", "🎑", "📽️", "📼", "🔮", "🪩", "✨"];
 
 export function Settings() {
   const { t } = useTranslation();
@@ -335,8 +342,8 @@ export function Settings() {
                 onFileChange={handleFaviconChange}
               />
               <ItemSwitch
-                title="显示顶部导航栏"
-                description="开启后在首页显示顶部导航栏；关闭后首页将隐藏顶部导航栏，呈现完全沉浸式画廊视觉"
+                title="显示顶部站点导航栏"
+                description="开启后在全站页面顶部显示导航栏；关闭后前台将完全隐藏顶部导航条，提供极致纯净沉浸视觉（子页面均配备返回按钮）"
                 checked={clientConfig.get("header.show_nav") === true || clientConfig.get("header.show_nav") === "true"}
                 onChange={(checked) => {
                   setConfigValue("client", "header.show_nav", checked);
@@ -633,7 +640,7 @@ export function Settings() {
                   }
                 />
                 <SettingsCardBody>
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
                     {FEED_CARD_VARIANTS.map((value) => (
                       <FeedCardPreview
                         key={value}
@@ -960,12 +967,13 @@ export function Settings() {
 
           <div id="setting-atelier-about" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
             <ItemTitle title="1. “关于我”便签设置" />
-            <ItemInput
+            <ItemEmojiInput
               title="“关于我”便签图标 (Emoji / 符号)"
-              description="便签卡片左上角显示的符号图标（支持输入任意 Emoji，如 🐾、🐱、🍀 等）"
+              description="便签左上角个性符号（博主/身份专属推荐：🐾 🐱 🐶 🦊 🐼 🐨 🦁 🐯 🦄 ☕ 🍵 🍀 🌿 🌸 🎧 🎮 💻 🎨 🪄 👑 ✨ 🌻 🐣 🍧 等，可点击快速填入或自行输入）"
               configKeyTitle="atelier.about_icon"
               value={String(clientConfig.get("atelier.about_icon") ?? "🐾")}
               placeholder="🐾"
+              presetEmojis={ABOUT_PRESET_EMOJIS}
               onChange={(value) => {
                 setConfigValue("client", "atelier.about_icon", value);
               }}
@@ -1005,12 +1013,13 @@ export function Settings() {
 
           <div id="setting-atelier-timeline" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
             <ItemTitle title="2. “岁月轨迹”便签设置" />
-            <ItemInput
+            <ItemEmojiInput
               title="“岁月轨迹”便签图标 (Emoji / 符号)"
-              description="便签卡片左上角显示的符号图标（如 ⏳、⏰、📜 等）"
+              description="便签左上角个性符号（岁月/刻度专属推荐：⏳ ⌛ ⏰ ⏱️ 🕰️ 📅 📆 🗓️ 📜 🧭 ⚓ 🏹 🛸 🚀 🌠 🌌 🪐 🍂 🍁 🌊 🏛️ ⛩️ 🕯️ 🔮 等，可点击快速填入或自行输入）"
               configKeyTitle="atelier.timeline_icon"
               value={String(clientConfig.get("atelier.timeline_icon") ?? "⏳")}
               placeholder="⏳"
+              presetEmojis={TIMELINE_PRESET_EMOJIS}
               onChange={(value) => {
                 setConfigValue("client", "atelier.timeline_icon", value);
               }}
@@ -1050,12 +1059,13 @@ export function Settings() {
 
           <div id="setting-atelier-moments" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
             <ItemTitle title="3. “日常随想”便签设置" />
-            <ItemInput
+            <ItemEmojiInput
               title="“日常随想”便签图标 (Emoji / 符号)"
-              description="便签卡片左上角显示的符号图标（如 💭、💬、🫧 等）"
+              description="便签左上角个性符号（灵感/随笔专属推荐：💭 💬 🫧 💡 ☕ 🍃 🌤️ 🌈 🎈 🎵 📖 📝 📮 💌 🍺 🥂 🥐 🍰 🧁 🌻 🧸 🪁 🎐 🍬 等，可点击快速填入或自行输入）"
               configKeyTitle="atelier.moments_icon"
               value={String(clientConfig.get("atelier.moments_icon") ?? "💭")}
               placeholder="💭"
+              presetEmojis={MOMENTS_PRESET_EMOJIS}
               onChange={(value) => {
                 setConfigValue("client", "atelier.moments_icon", value);
               }}
@@ -1095,12 +1105,13 @@ export function Settings() {
 
           <div id="setting-atelier-friends" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
             <ItemTitle title="4. “邻家友链”便签设置" />
-            <ItemInput
+            <ItemEmojiInput
               title="“邻家友链”便签图标 (Emoji / 符号)"
-              description="便签卡片左上角显示的符号图标（如 🌸、🏡、🤝 等）"
+              description="便签左上角个性符号（邻里/友谊专属推荐：🌸 🌺 🌷 🌹 💐 🏡 🏠 🏘️ 🏰 🤝 👫 👭 👬 💌 🌐 🛸 🪴 🍄 🎁 🎉 🎈 🍭 🌟 ✨ 等，可点击快速填入或自行输入）"
               configKeyTitle="atelier.friends_icon"
               value={String(clientConfig.get("atelier.friends_icon") ?? "🌸")}
               placeholder="🌸"
+              presetEmojis={FRIENDS_PRESET_EMOJIS}
               onChange={(value) => {
                 setConfigValue("client", "atelier.friends_icon", value);
               }}
@@ -1140,12 +1151,13 @@ export function Settings() {
 
           <div id="setting-atelier-search" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
             <ItemTitle title="5. “随心探索”便签设置" />
-            <ItemInput
+            <ItemEmojiInput
               title="“随心探索”便签图标 (Emoji / 符号)"
-              description="便签卡片左上角显示的符号图标（如 🔍、🧭、🔎 等）"
+              description="便签左上角个性符号（探索/检索专属推荐：🔍 🔎 🧭 🔭 🔬 🗺️ 🗝️ 🔮 🎯 🏹 💡 ⚡ 📡 🛸 🕵️‍♂️ 🕵️‍♀️ 🧠 📚 🔖 💎 🛰️ 🚀 💫 🧐 等，可点击快速填入或自行输入）"
               configKeyTitle="atelier.search_icon"
               value={String(clientConfig.get("atelier.search_icon") ?? "🔍")}
               placeholder="🔍"
+              presetEmojis={SEARCH_PRESET_EMOJIS}
               onChange={(value) => {
                 setConfigValue("client", "atelier.search_icon", value);
               }}
@@ -1185,12 +1197,13 @@ export function Settings() {
 
           <div id="setting-atelier-deck" className="space-y-3 p-3.5 rounded-2xl border border-black/5 bg-black/[0.015] dark:border-white/5 dark:bg-white/[0.02]">
             <ItemTitle title="6. “记忆翻动”卡片设置" />
-            <ItemInput
+            <ItemEmojiInput
               title="“记忆翻动”卡片图标 (Emoji / 符号)"
-              description="卡片上显示的翻动符号图标（如 🎴、🖼️、📸 等）"
+              description="卡片翻转个性符号（图床/画廊专属推荐：🎴 🃏 📸 📷 🎞️ 🖼️ 🎨 🖌️ 🎬 🎭 🎪 🎡 🎠 🎆 🎇 🌠 🌅 🌄 🎑 📽️ 📼 🔮 🪩 ✨ 等，可点击快速填入或自行输入）"
               configKeyTitle="atelier.deck_icon"
               value={String(clientConfig.get("atelier.deck_icon") ?? "🎴")}
               placeholder="🎴"
+              presetEmojis={DECK_PRESET_EMOJIS}
               onChange={(value) => {
                 setConfigValue("client", "atelier.deck_icon", value);
               }}

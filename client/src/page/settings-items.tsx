@@ -106,6 +106,84 @@ export function ItemInput({
   );
 }
 
+export function ItemEmojiInput({
+  title,
+  description,
+  configKeyTitle,
+  value,
+  placeholder,
+  presetEmojis,
+  onChange,
+}: {
+  title: string;
+  description: string;
+  configKeyTitle: string;
+  value: string;
+  placeholder?: string;
+  presetEmojis: string[];
+  onChange: (value: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="w-full">
+      <SettingsCard>
+        <button
+          type="button"
+          className="block w-full text-left"
+          onClick={() => setIsOpen((c) => !c)}
+        >
+          <SettingsCardRow
+            header={<SettingsCardHeader title={title} description={description} />}
+            action={
+              <div className="flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-100 text-lg shadow-2xs dark:bg-white/10">
+                  {value || placeholder || "🐾"}
+                </span>
+                <i
+                  className={`ri-arrow-down-s-line text-lg text-neutral-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                />
+              </div>
+            }
+          />
+        </button>
+        {isOpen ? (
+          <SettingsCardBody>
+            <div className="flex flex-col gap-3">
+              <input
+                type="text"
+                placeholder={placeholder || configKeyTitle}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full rounded-xl border border-black/10 bg-w px-4 py-2.5 text-base font-bold t-primary outline-none transition-colors focus:border-theme focus:ring-2 focus:ring-theme/20 dark:border-white/10"
+              />
+              <div>
+                <p className="text-xs text-neutral-400 mb-1.5">点击下方专属适配符号快速填入：</p>
+                <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/5 dark:border-white/5">
+                  {presetEmojis.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => onChange(emoji)}
+                      className={`h-8 w-8 rounded-lg flex items-center justify-center text-base hover:scale-125 transition-transform hover:bg-white dark:hover:bg-neutral-800 shadow-2xs ${
+                        value === emoji ? "bg-theme/15 ring-1 ring-theme scale-110" : ""
+                      }`}
+                      title={`填入 ${emoji}`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </SettingsCardBody>
+        ) : null}
+      </SettingsCard>
+    </div>
+  );
+}
+
 export function ItemButton({
   title,
   description,

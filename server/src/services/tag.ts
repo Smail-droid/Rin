@@ -71,6 +71,54 @@ export function TagService(): Hono {
         return c.json({ ...tag, feeds: tagFeeds });
     });
 
+    // POST /tag - Create a new tag (admin only)
+    app.post('/', async (c: AppContext) => {
+        const admin = c.get('admin');
+        if (!admin) return c.text('Permission denied', 403);
+        const db = c.get('db');
+        const body = await c.req.json<{ name: string }>().catch(() => ({ name: "" }));
+        const name = (body.name || "").trim();
+        if (!name) return c.text('Tag name cannot be empty', 400);
+
+        const existing = await db.query.hashtags.findFirst({ where: eq(hashtags.name, name) });
+        if (existing) return c.json(existing);
+
+        const inserted = await db.insert(hashtags).values({ name }).returning();
+        return c.json(inserted[0]);
+    });
+
+    // PUT /tag/:id - Rename a tag (admin only)
+    app.put('/:id', async (c: AppContext) => {
+        const admin = c.get('admin');
+        if (!admin) return c.text('Permission denied', 403);
+        const db = c.get('db');
+        const id_num = parseInt(c.req.param('id'), 10);
+        if (Number.isNaN(id_num) || id_num <= 0) return c.text('Invalid tag ID', 400);
+
+        const body = await c.req.json<{ name: string }>().catch(() => ({ name: "" }));
+        const newName = (body.name || "").trim();
+        if (!newName) return c.text('Tag name cannot be empty', 400);
+
+        const exist = await db.query.hashtags.findFirst({ where: eq(hashtags.id, id_num) });
+        if (!exist) return c.text('Tag not found', 404);
+
+        await db.update(hashtags).set({ name: newName, updatedAt: new Date() }).where(eq(hashtags.id, id_num));
+        return c.json({ id: id_num, name: newName });
+    });
+
+    // DELETE /tag/:id - Delete a tag (admin only)
+    app.delete('/:id', async (c: AppContext) => {
+        const admin = c.get('admin');
+        if (!admin) return c.text('Permission denied', 403);
+        const db = c.get('db');
+        const id_num = parseInt(c.req.param('id'), 10);
+        if (Number.isNaN(id_num) || id_num <= 0) return c.text('Invalid tag ID', 400);
+
+        await db.delete(feedHashtags).where(eq(feedHashtags.hashtagId, id_num));
+        await db.delete(hashtags).where(eq(hashtags.id, id_num));
+        return c.text('Deleted');
+    });
+
     return app;
 }
 

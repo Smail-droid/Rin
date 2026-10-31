@@ -39,16 +39,63 @@ export function HashtagPage({ name }: { name: string }) {
     const siteConfig = useSiteConfig();
     const [status, setStatus] = useState<'loading' | 'idle'>('idle')
     const [hashtag, setHashtag] = useState<FeedsData>()
+    const [isSmartSearch, setIsSmartSearch] = useState(false)
     const feedListClass = siteConfig.feedLayout === "masonry" ? "wauto columns-1 gap-5 md:columns-2" : "wauto flex flex-col";
     const hashtagFeeds = Array.isArray(hashtag?.feeds) ? hashtag.feeds : [];
     const ref = useRef("")
+
     function fetchFeeds() {
-        const nameDecoded = decodeURI(name)
-        client.tag.get(nameDecoded).then(({ data }) => {
-            if (data) {
+        const nameDecoded = decodeURI(name).trim()
+        setIsSmartSearch(false)
+
+        client.tag.get(nameDecoded).then(async ({ data }) => {
+            if (data && Array.isArray(data.feeds) && data.feeds.length > 0) {
                 setHashtag(data as any)
                 setStatus('idle')
+                return
             }
+
+            // 智能多词关联聚合：当精确标签没有直接匹配到文章，或属于复合标签时，智能拆词联合检索相关内容
+            const tokens = nameDecoded
+                .split(/[、,，\s+]+/)
+                .map((s) => s.trim().replace(/^#+/, ""))
+                .filter((s) => s.length > 0)
+
+            if (tokens.length > 0) {
+                try {
+                    const searchResults = await Promise.all(
+                        tokens.map((token) => client.search.search(token, { page: 1, limit: 20 }))
+                    )
+
+                    const feedMap = new Map<number, any>()
+                    for (const res of searchResults) {
+                        if (res.data?.data && Array.isArray(res.data.data)) {
+                            for (const feed of res.data.data) {
+                                if (!feedMap.has(feed.id)) {
+                                    feedMap.set(feed.id, feed)
+                                }
+                            }
+                        }
+                    }
+
+                    const combinedFeeds = Array.from(feedMap.values())
+                    setHashtag({
+                        name: nameDecoded,
+                        id: 0,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        feeds: combinedFeeds as any,
+                    })
+                    setIsSmartSearch(combinedFeeds.length > 0)
+                } catch {
+                    setHashtag(data as any || { name: nameDecoded, id: 0, createdAt: new Date(), updatedAt: new Date(), feeds: [] })
+                }
+            } else {
+                setHashtag(data as any)
+            }
+            setStatus('idle')
+        }).catch(() => {
+            setStatus('idle')
         })
     }
     useEffect(() => {
@@ -78,8 +125,14 @@ export function HashtagPage({ name }: { name: string }) {
                             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight t-primary">
                                 #{hashtag?.name}
                             </h1>
-                            <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                                {t('article.total$count', { count: hashtagFeeds.length })}
+                            <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1 flex items-center gap-2">
+                                <span>{t('article.total$count', { count: hashtagFeeds.length })}</span>
+                                {isSmartSearch && (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-theme/10 text-theme px-2.5 py-0.5 text-xs font-semibold">
+                                        <i className="ri-sparkling-fill" />
+                                        <span>已智能关联匹配复合标签内容</span>
+                                    </span>
+                                )}
                             </p>
                         </div>
                         <Link

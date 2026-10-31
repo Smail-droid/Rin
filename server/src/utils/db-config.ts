@@ -10,7 +10,7 @@ type ConfigWriter = ConfigReader & {
     save(): Promise<void>;
 };
 
-const AI_CONFIG_FIELDS = ["enabled", "provider", "model", "api_key", "api_url"] as const;
+const AI_CONFIG_FIELDS = ["enabled", "provider", "model", "api_key", "api_url", "system_prompt"] as const;
 
 export function readAIConfigFromValues(values: Record<string, unknown>): AIConfig {
     const config: AIConfig = { ...DEFAULT_AI_CONFIG };
@@ -38,6 +38,11 @@ export function readAIConfigFromValues(values: Record<string, unknown>): AIConfi
     const apiUrl = values[AI_CONFIG_PREFIX + "api_url"];
     if (typeof apiUrl === "string") {
         config.api_url = apiUrl;
+    }
+
+    const systemPrompt = values[AI_CONFIG_PREFIX + "system_prompt"];
+    if (typeof systemPrompt === "string") {
+        config.system_prompt = systemPrompt;
     }
 
     return config;

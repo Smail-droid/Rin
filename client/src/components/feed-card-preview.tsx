@@ -48,6 +48,7 @@ export function FeedCardPreview({
       description={description}
       selected={selected}
       onClick={onClick}
+      compact={true}
       preview={<FeedCard {...PREVIEW_PROPS} preview variant={variant} />}
     />
   );

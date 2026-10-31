@@ -1,3 +1,4 @@
+import { DEFAULT_AI_PROMPT_PRESETS, DEFAULT_AI_SYSTEM_PROMPT } from "@rin/config";
 import {
   SearchableSelect,
   SettingsBadge,
@@ -29,6 +30,7 @@ export type AISettingsValue = {
   apiKey: string;
   apiKeySet: boolean;
   apiUrl: string;
+  systemPrompt?: string;
 };
 
 export function AISummarySettings({
@@ -198,6 +200,69 @@ export function AISummarySettings({
                     />
                   </div>
                 ) : null}
+              </div>
+            </SettingsCardBody>
+          </SettingsCard>
+
+          {/* AI System Prompt & Functional Presets Customization */}
+          <SettingsCard>
+            <SettingsCardRow
+              header={
+                <SettingsCardHeader
+                  title="AI 核心提示词与功能预设"
+                  description="支持自定义系统提示词，解耦硬编码；不仅能用于精炼总结，更可扩展至文章排版与结构化整理"
+                />
+              }
+              action={<div />}
+            />
+            <SettingsCardBody>
+              <div className="flex flex-col gap-3">
+                <div>
+                  <p className="text-xs font-semibold t-primary mb-1.5">快捷预设模板（点击一键应用）：</p>
+                  <div className="flex flex-wrap gap-2">
+                    {DEFAULT_AI_PROMPT_PRESETS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => {
+                          onChange({ systemPrompt: preset.prompt });
+                        }}
+                        className={`rounded-xl px-3 py-2 text-xs font-semibold border transition text-left ${
+                          (value.systemPrompt || DEFAULT_AI_SYSTEM_PROMPT).trim() === preset.prompt.trim()
+                            ? "bg-theme/10 border-theme text-theme shadow-2xs"
+                            : "border-black/10 bg-black/[0.02] hover:bg-black/5 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300"
+                        }`}
+                        title={preset.description}
+                      >
+                        <div className="font-bold">{preset.name}</div>
+                        <div className="text-[11px] opacity-75 mt-0.5">{preset.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 pt-2 border-t border-black/5 dark:border-white/5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold t-primary">当前生效的系统提示词 (System Prompt)</p>
+                    <button
+                      type="button"
+                      onClick={() => onChange({ systemPrompt: DEFAULT_AI_SYSTEM_PROMPT })}
+                      className="text-xs text-theme hover:underline"
+                    >
+                      恢复默认总结提示词
+                    </button>
+                  </div>
+                  <textarea
+                    rows={6}
+                    value={value.systemPrompt ?? ""}
+                    placeholder={DEFAULT_AI_SYSTEM_PROMPT}
+                    onChange={(e) => onChange({ systemPrompt: e.target.value })}
+                    className="w-full rounded-xl border border-black/10 bg-w px-4 py-3 text-sm leading-relaxed t-primary outline-none transition-colors placeholder:text-neutral-400 focus:border-theme focus:ring-2 focus:ring-theme/10 dark:border-white/10"
+                  />
+                  <p className="text-[11px] text-neutral-400">
+                    💡 提示：在此处输入的提示词将直接作为 AI 任务的系统指令；您可以随时在此定制文章排版、润色、提取技术干货等任意高级指令。
+                  </p>
+                </div>
               </div>
             </SettingsCardBody>
           </SettingsCard>

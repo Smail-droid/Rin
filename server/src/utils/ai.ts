@@ -223,8 +223,12 @@ export async function generateAISummaryResult(
     const truncatedContent = content.length > maxContentLength
         ? content.slice(0, maxContentLength) + "..."
         : content;
+    const customPrompt = config.system_prompt && config.system_prompt.trim().length > 0
+        ? config.system_prompt.trim()
+        : AI_SUMMARY_SYSTEM_PROMPT;
+
     const summaryMessages = [
-        { role: "system" as const, content: AI_SUMMARY_SYSTEM_PROMPT },
+        { role: "system" as const, content: customPrompt },
         { role: "user" as const, content: truncatedContent },
     ];
 

@@ -11,6 +11,8 @@ import { Tips, TipsPage } from "../components/tips";
 import useTableOfContents from "../hooks/useTableOfContents";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { AdminFilesPage } from "../page/admin-files";
+import { AdminTagsPage } from "../page/admin-tags";
+import { AdminAIPage } from "../page/admin-ai";
 import { CallbackPage } from "../page/callback";
 import { CompatTasksPage } from "../page/compat-tasks";
 import { ErrorPage } from "../page/error";
@@ -69,8 +71,16 @@ export function AppRoutes() {
         <Settings />
       </AdminRoute>
 
+      <AdminRoute path="/admin/tags" requirePermission title="标签分类管理" description="管理与重命名全站标签体系">
+        <AdminTagsPage />
+      </AdminRoute>
+
       <AdminRoute path="/admin/health" requirePermission title={t("health.title")} description={t("admin.health_description")}>
         <HealthPage />
+      </AdminRoute>
+
+      <AdminRoute path="/admin/ai" requirePermission title="AI 智能配置" description="配置大模型提供商与核心系统指令提示词">
+        <AdminAIPage />
       </AdminRoute>
 
       <AdminRoute path="/admin/queue-status" requirePermission title={t("queue_status.title")} description={t("admin.queue_status_description")}>

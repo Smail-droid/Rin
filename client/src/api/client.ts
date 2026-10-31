@@ -354,6 +354,21 @@ class TagAPI {
   async get(name: string): Promise<ApiResponse<TagDetail>> {
     return this.http.get<TagDetail>(`/api/tag/${encodeURIComponent(name)}`);
   }
+
+  // POST /api/tag
+  async create(name: string): Promise<ApiResponse<Tag>> {
+    return this.http.post<Tag>("/api/tag", { name });
+  }
+
+  // PUT /api/tag/:id
+  async update(id: number, name: string): Promise<ApiResponse<Tag>> {
+    return this.http.put<Tag>(`/api/tag/${id}`, { name });
+  }
+
+  // DELETE /api/tag/:id
+  async delete(id: number): Promise<ApiResponse<string>> {
+    return this.http.delete<string>(`/api/tag/${id}`);
+  }
 }
 
 /**

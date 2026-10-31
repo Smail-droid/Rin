@@ -109,6 +109,7 @@ export const aiConfigUpdateSchema = t.Object({
   model: t.String({ optional: true }),
   api_key: t.String({ optional: true }),
   api_url: t.String({ optional: true }),
+  system_prompt: t.String({ optional: true }),
 });
 
 // ============================================================================

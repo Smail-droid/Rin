@@ -63,12 +63,12 @@ export function Header({ children }: { children?: React.ReactNode }) {
   }, [headerBehavior, headerLayout]);
 
   // ALL HOOKS ARE CALLED UNCONDITIONALLY ABOVE (prevents React Error #310)
-  const isHome = location === "/";
-  const showNavOnHome = profile?.permission
+  // 当配置隐藏导航栏时，前台页面统一保持隐藏，彻底杜绝进入子页面重新浮出的问题
+  const shouldShowNav = profile?.permission
     ? siteConfig.headerShowNav !== false
-    : Boolean(siteConfig.headerShowNav);
+    : siteConfig.headerShowNav === true;
 
-  if (isHome && !showNavOnHome) {
+  if (!shouldShowNav && !location.startsWith("/admin")) {
     return null;
   }
 

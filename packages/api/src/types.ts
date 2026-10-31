@@ -276,6 +276,7 @@ export interface AIConfig {
   model: string;
   api_key: string;
   api_url: string;
+  system_prompt?: string;
 }
 
 // ============================================================================
