@@ -1,36 +1,27 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useSiteConfig } from "../hooks/useSiteConfig";
-import { ImageWithFallback } from "./image-with-fallback";
+import { client } from "../app/runtime";
+import { getStoredThemeMode, setThemeMode, useColorMode, type ThemeMode } from "../utils/darkModeUtils";
 
-function AdminNavItem({
-  href,
-  icon,
-  label,
-}: {
+type NavItem = {
   href: string;
   icon: string;
   label: string;
-}) {
-  const [location] = useLocation();
-  const active = location === href || location.startsWith(`${href}/`);
+  tag?: string;
+};
 
-  return (
-    <Link
-      href={href}
-      className={`shrink-0 flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors ${
-        active
-          ? "bg-theme text-white"
-          : "t-primary hover:bg-neutral-100 dark:hover:bg-white/5"
-      }`}
-    >
-      <i className={`${icon} text-base`} />
-      <span>{label}</span>
-    </Link>
-  );
-}
+const ADMIN_NAV_ITEMS: NavItem[] = [
+  { href: "/admin/writing", icon: "ri-quill-pen-line", label: "写作发布", tag: "Editor" },
+  { href: "/admin/files", icon: "ri-folder-image-line", label: "图床文件", tag: "R2" },
+  { href: "/admin/settings", icon: "ri-settings-3-line", label: "系统设置", tag: "Config" },
+  { href: "/admin/tags", icon: "ri-price-tag-3-line", label: "标签分类", tag: "Tags" },
+  { href: "/admin/health", icon: "ri-heart-pulse-line", label: "健康检查", tag: "Health" },
+  { href: "/admin/ai", icon: "ri-sparkling-fill", label: "AI 助手", tag: "AI" },
+  { href: "/admin/queue-status", icon: "ri-todo-line", label: "队列监控", tag: "Queue" },
+  { href: "/admin/compat-tasks", icon: "ri-history-line", label: "兼容任务", tag: "Tasks" },
+];
 
 export function AdminLayout({
   title,
@@ -41,8 +32,25 @@ export function AdminLayout({
   description: string;
   children: ReactNode;
 }) {
-  const { t } = useTranslation();
   const siteConfig = useSiteConfig();
+  const [location] = useLocation();
+  const colorMode = useColorMode();
+
+  // 侧边栏固定锁定状态 (Pin)
+  const [isPinned, setIsPinned] = useState<boolean>(() => {
+    if (typeof localStorage === "undefined") return false;
+    return localStorage.getItem("rin_admin_sidebar_pinned") === "true";
+  });
+
+  // 鼠标悬停展开状态
+  const [isHovered, setIsHovered] = useState(false);
+  const isExpanded = isPinned || isHovered;
+
+  // 快捷搜索菜单
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // 界面缩放状态
   const [adminZoom, setAdminZoom] = useState<number>(() => {
     if (typeof localStorage === "undefined") return 100;
     const stored = localStorage.getItem("rin_admin_zoom");
@@ -58,116 +66,350 @@ export function AdminLayout({
     } catch {}
   };
 
+  const togglePin = () => {
+    const next = !isPinned;
+    setIsPinned(next);
+    try {
+      localStorage.setItem("rin_admin_sidebar_pinned", String(next));
+    } catch {}
+  };
+
+  const toggleTheme = () => {
+    const current = getStoredThemeMode();
+    const next: ThemeMode = current === "dark" ? "light" : "dark";
+    setThemeMode(next);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await client.user.logout();
+    } finally {
+      window.location.href = "/";
+    }
+  };
+
+  // 支持键盘快捷键 Ctrl+K 聚焦搜索
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsHovered(true);
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // 过滤后的导航菜单
+  const filteredNavItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return ADMIN_NAV_ITEMS;
+    return ADMIN_NAV_ITEMS.filter(
+      (item) => item.label.toLowerCase().includes(q) || item.href.toLowerCase().includes(q) || item.tag?.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
+
   return (
     <div
       style={{ zoom: `${adminZoom}%` }}
-      className="min-h-screen bg-neutral-50 dark:bg-neutral-950 transition-all duration-200"
+      className="min-h-screen bg-[#f8fafc] text-neutral-800 dark:bg-[#12161f] dark:text-[#d1d5db] flex transition-colors duration-200"
     >
-      <div className="mx-auto flex w-full max-w-[1780px] 2xl:max-w-[1920px] flex-col gap-6 px-3 sm:px-6 py-6 lg:flex-row">
-        <aside className="w-full shrink-0 lg:sticky lg:top-6 lg:w-60 xl:w-64 lg:self-start flex flex-col gap-3">
-          <div className="rounded-2xl border border-black/10 bg-w p-4 sm:p-5 dark:border-white/10">
-            <Link href="/" className="flex items-center gap-4 rounded-xl px-2 py-2 transition-colors hover:bg-neutral-50 dark:hover:bg-white/5">
-              {siteConfig.avatar ? (
-                <ImageWithFallback src={siteConfig.avatar} alt={siteConfig.name} className="h-12 w-12 rounded-2xl border border-black/10 dark:border-white/10" />
-              ) : null}
-              <div className="min-w-0">
-                <p className="truncate text-base font-semibold t-primary">{siteConfig.name}</p>
-                <p className="truncate text-sm text-neutral-500 dark:text-neutral-400">{t("admin.back_to_site")}</p>
-              </div>
+      {/* ====================================================================
+          1. 3X-UI 风格迷你图标可折叠侧边栏 (默认收起，Hover/Pin 展开)
+          ==================================================================== */}
+      <aside
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between border-r border-black/10 bg-white/95 backdrop-blur-2xl dark:border-white/10 dark:bg-[#161b26]/95 shadow-2xl transition-all duration-300 ease-in-out select-none ${
+          isExpanded ? "w-64" : "w-[68px]"
+        }`}
+      >
+        {/* Top Area: Logo, Title, Pin, Theme Toggle */}
+        <div className="flex flex-col">
+          {/* Logo Header Bar */}
+          <div className="flex h-16 items-center justify-between px-3.5 border-b border-black/5 dark:border-white/5">
+            <Link href="/" className="flex items-center gap-3 min-w-0" title="返回画廊前台">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-theme to-pink-500 text-white font-extrabold text-sm shadow-md">
+                3X
+              </span>
+              {isExpanded && (
+                <div className="min-w-0 truncate ani-show">
+                  <p className="font-extrabold text-sm tracking-tight t-primary truncate">
+                    {siteConfig.name || "Rin Admin"}
+                  </p>
+                  <p className="text-[10px] text-neutral-400 font-mono flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                    <span>v1.0.0 · 运行中</span>
+                  </p>
+                </div>
+              )}
             </Link>
 
-            <div className="mt-6">
-              <p className="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400 dark:text-neutral-500">
-                {t("admin.title")}
-              </p>
-              <div className="mt-3 flex flex-row lg:flex-col gap-2 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
-                <AdminNavItem href="/admin/writing" icon="ri-quill-pen-line" label={t("writing")} />
-                <AdminNavItem href="/admin/files" icon="ri-folder-image-line" label={t("admin_files.title")} />
-                <AdminNavItem href="/admin/settings" icon="ri-settings-3-line" label={t("settings.title")} />
-                <AdminNavItem href="/admin/tags" icon="ri-price-tag-3-line" label="标签管理" />
-                <AdminNavItem href="/admin/health" icon="ri-heart-pulse-line" label={t("health.title")} />
-                <AdminNavItem href="/admin/ai" icon="ri-sparkling-fill" label="AI 助手" />
-                <AdminNavItem href="/admin/queue-status" icon="ri-todo-line" label={t("queue_status.title")} />
-                <AdminNavItem href="/admin/compat-tasks" icon="ri-history-line" label={t("compat_tasks.title")} />
+            {/* Expanded Header Control Icons (Pin, Theme, Front) */}
+            {isExpanded && (
+              <div className="flex items-center gap-1 ani-show">
+                <button
+                  type="button"
+                  onClick={togglePin}
+                  className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${
+                    isPinned
+                      ? "bg-theme/10 text-theme"
+                      : "text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-neutral-700 dark:hover:text-neutral-200"
+                  }`}
+                  title={isPinned ? "取消固定侧边栏 (点击恢复迷你模式)" : "固定侧边栏 (锁定展开宽度)"}
+                >
+                  <i className={`ri-pushpin-${isPinned ? "fill" : "line"} text-sm ${isPinned ? "text-theme" : ""}`} />
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-neutral-700 dark:hover:text-neutral-200 transition"
+                  title="切换浅色 / 深色主题模式"
+                >
+                  <i className={colorMode === "dark" ? "ri-sun-line text-amber-400 text-sm" : "ri-moon-line text-sm"} />
+                </button>
               </div>
-            </div>
+            )}
+          </div>
 
-            {/* Admin Zoom / Viewport Scaling Controller (后台缩放微调与记忆保存) */}
-            <div className="mt-5 pt-3 border-t border-black/5 dark:border-white/5 flex flex-col gap-2">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-[11px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider flex items-center gap-1">
-                  <i className="ri-zoom-in-line" />
-                  <span>后台界面缩放</span>
-                </span>
-                <span className="font-mono text-xs font-bold text-theme">{adminZoom}%</span>
-              </div>
-
-              <div className="flex items-center gap-2 px-1">
+          {/* Quick Search Bar (Ctrl+K) */}
+          <div className="p-2 border-b border-black/5 dark:border-white/5">
+            {isExpanded ? (
+              <div className="relative flex items-center ani-show">
+                <i className="ri-search-line absolute left-3 text-neutral-400 text-xs" />
                 <input
-                  type="range"
-                  min={50}
-                  max={100}
-                  step={5}
-                  value={adminZoom}
-                  onChange={(e) => handleSetZoom(Number.parseInt(e.target.value, 10))}
-                  className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-theme dark:bg-white/10"
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="搜索管理功能..."
+                  className="w-full rounded-xl border border-black/10 bg-black/[0.02] py-2 pl-8 pr-12 text-xs t-primary placeholder-neutral-400 outline-none focus:border-theme dark:border-white/10 dark:bg-white/[0.03]"
                 />
+                <span className="absolute right-2.5 rounded border border-black/10 bg-white/80 px-1 py-0.2 text-[9px] font-mono font-bold text-neutral-400 dark:border-white/10 dark:bg-neutral-800">
+                  Ctrl K
+                </span>
               </div>
-
-              <div className="flex items-center justify-between gap-1 pt-0.5">
-                {[50, 70, 85, 100].map((scale) => {
-                  const isSelected = adminZoom === scale;
-                  return (
-                    <button
-                      key={scale}
-                      type="button"
-                      onClick={() => handleSetZoom(scale)}
-                      className={`flex-1 rounded-md py-1 text-[10px] font-semibold transition text-center select-none ${
-                        isSelected
-                          ? "bg-theme text-white shadow-2xs font-bold"
-                          : "bg-black/5 text-neutral-500 hover:bg-black/10 dark:bg-white/5 dark:text-neutral-400"
-                      }`}
-                    >
-                      {scale === 100 ? "100%" : `${scale}%`}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* AI Assistant Quick Trigger in Sidebar */}
-            <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/5">
+            ) : (
               <button
                 type="button"
                 onClick={() => {
-                  window.dispatchEvent(new Event("toggle-ai-copilot"));
+                  setIsHovered(true);
+                  setTimeout(() => searchInputRef.current?.focus(), 50);
                 }}
-                className="w-full group flex items-center gap-2.5 p-2 rounded-xl bg-theme/5 hover:bg-theme/10 border border-theme/20 hover:border-theme/40 transition-all text-left shadow-2xs"
-                title="点击呼出/收回 AI 萌娘伴侣"
+                className="flex h-10 w-full items-center justify-center rounded-xl text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5 transition"
+                title="搜索菜单 (Ctrl + K)"
               >
-                <div className="h-8 w-8 rounded-lg bg-theme/15 flex items-center justify-center text-theme shrink-0 group-hover:scale-110 transition-transform">
-                  <i className="ri-sparkling-fill text-base" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-theme flex items-center gap-1">
-                    <span>AI 萌娘伴侣</span>
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  </p>
-                  <p className="text-[10px] text-neutral-400 truncate">点击展开/收回助手 (-)</p>
-                </div>
+                <i className="ri-search-line text-base" />
               </button>
-            </div>
+            )}
           </div>
-        </aside>
 
-        <main className="min-w-0 flex-1">
-          <div className="rounded-2xl border border-black/10 bg-w p-6 dark:border-white/10">
-            <div className="border-b border-black/5 pb-5 dark:border-white/5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-theme/70">{t("admin.title")}</p>
-              <h1 className="mt-2 break-words text-3xl font-semibold tracking-[-0.03em] t-primary [overflow-wrap:anywhere]">{title}</h1>
-              <p className="mt-2 max-w-2xl break-words text-sm leading-6 text-neutral-500 dark:text-neutral-400 [overflow-wrap:anywhere]">{description}</p>
+          {/* Nav Items List */}
+          <nav className="flex flex-col gap-1 p-2 overflow-y-auto max-h-[calc(100vh-280px)] scrollbar-none">
+            {filteredNavItems.map((item) => {
+              const isActive = location === item.href || location.startsWith(`${item.href}/`);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`group relative flex items-center rounded-xl transition-all duration-200 ${
+                    isExpanded ? "gap-3 px-3 py-2.5" : "h-11 w-full justify-center"
+                  } ${
+                    isActive
+                      ? "bg-theme text-white shadow-md font-semibold"
+                      : "text-neutral-600 hover:bg-black/[0.04] dark:text-neutral-400 dark:hover:bg-white/[0.04] dark:hover:text-neutral-200"
+                  }`}
+                  title={!isExpanded ? item.label : undefined}
+                >
+                  <i
+                    className={`${item.icon} text-lg shrink-0 transition-transform ${
+                      isActive ? "scale-110" : "group-hover:scale-110"
+                    }`}
+                  />
+
+                  {isExpanded && (
+                    <div className="flex flex-1 items-center justify-between min-w-0 ani-show">
+                      <span className="truncate text-xs font-medium">{item.label}</span>
+                      {item.tag && (
+                        <span
+                          className={`rounded-md px-1.5 py-0.2 text-[9px] font-mono uppercase ${
+                            isActive ? "bg-white/20 text-white" : "bg-black/5 text-neutral-400 dark:bg-white/10"
+                          }`}
+                        >
+                          {item.tag}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Active Indicator Bar on Collapsed Mode */}
+                  {isActive && !isExpanded && (
+                    <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r bg-white" />
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Bottom Area: AI Drawer, Zoom Controller, Logout, Version */}
+        <div className="flex flex-col border-t border-black/5 p-2 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] gap-1">
+          {/* AI Copilot Quick Trigger */}
+          <button
+            type="button"
+            onClick={() => {
+              window.dispatchEvent(new Event("toggle-ai-copilot"));
+            }}
+            className={`flex items-center rounded-xl bg-theme/5 hover:bg-theme/15 border border-theme/20 transition-all text-theme ${
+              isExpanded ? "gap-2.5 px-3 py-2" : "h-10 w-full justify-center"
+            }`}
+            title="呼出 / 收回 AI 萌娘伴侣"
+          >
+            <i className="ri-sparkling-fill text-base shrink-0 animate-pulse text-theme" />
+            {isExpanded && (
+              <div className="flex flex-1 items-center justify-between min-w-0 ani-show">
+                <span className="truncate text-xs font-bold">AI 萌娘伴侣</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+              </div>
+            )}
+          </button>
+
+          {/* Zoom Slider Control (Expanded only) */}
+          {isExpanded && (
+            <div className="mt-1 flex flex-col gap-1 rounded-xl bg-black/[0.02] p-2 dark:bg-white/[0.02] ani-show">
+              <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400">
+                <span>界面缩放</span>
+                <span className="text-theme font-bold">{adminZoom}%</span>
+              </div>
+              <input
+                type="range"
+                min={50}
+                max={100}
+                step={5}
+                value={adminZoom}
+                onChange={(e) => handleSetZoom(Number.parseInt(e.target.value, 10))}
+                className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-theme dark:bg-white/10"
+              />
+              <div className="flex items-center justify-between gap-1 pt-0.5">
+                {[50, 75, 100].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => handleSetZoom(s)}
+                    className={`flex-1 rounded py-0.5 text-[9px] font-mono transition select-none ${
+                      adminZoom === s
+                        ? "bg-theme text-white font-bold"
+                        : "text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5"
+                    }`}
+                  >
+                    {s}%
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="mt-6">{children}</div>
+          )}
+
+          {/* Logout Button */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className={`flex items-center rounded-xl text-neutral-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 transition ${
+              isExpanded ? "gap-3 px-3 py-2" : "h-10 w-full justify-center"
+            }`}
+            title="退出登录"
+          >
+            <i className="ri-logout-box-r-line text-base shrink-0" />
+            {isExpanded && <span className="text-xs truncate ani-show font-medium">退出登录</span>}
+          </button>
+
+          {/* GitHub Repo & Version Info */}
+          <a
+            href="https://github.com/Smail-droid/Rin"
+            target="_blank"
+            rel="noreferrer"
+            className={`flex items-center rounded-xl text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition ${
+              isExpanded ? "gap-2.5 px-3 py-1.5" : "h-9 w-full justify-center"
+            }`}
+            title="查看 GitHub 仓库 (Rin Fork v1.0.0)"
+          >
+            <i className="ri-github-fill text-base shrink-0" />
+            {isExpanded && <span className="font-mono text-[10px] opacity-80 ani-show">Rin Fork v1.0.0</span>}
+          </a>
+        </div>
+      </aside>
+
+      {/* ====================================================================
+          2. 主工作区与顶部 3X-UI 风格仪表盘控制栏
+          ==================================================================== */}
+      <div
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${
+          isPinned ? "pl-64" : "pl-[68px]"
+        }`}
+      >
+        {/* Top 3X-UI Header Bar */}
+        <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-black/5 bg-white/80 px-4 sm:px-6 backdrop-blur-xl dark:border-white/5 dark:bg-[#161b26]/80 select-none">
+          {/* Left: Breadcrumbs & Status Tag */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2 rounded-full border border-black/10 bg-black/[0.02] px-3 py-1 text-xs dark:border-white/10 dark:bg-white/[0.02]">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-medium t-primary">Rin 后台系统</span>
+              <span className="text-neutral-400">/</span>
+              <span className="font-bold text-theme truncate">{title}</span>
+            </div>
+            <span className="hidden md:inline-block font-mono text-[11px] text-neutral-400">
+              v1.0.0 · 边缘原生
+            </span>
+          </div>
+
+          {/* Right: Quick Action Buttons Group */}
+          <div className="flex items-center gap-2">
+            <Link
+              href="/admin/writing"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-theme px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-theme-hover active:scale-95 transition"
+              title="写文章"
+            >
+              <i className="ri-quill-pen-line text-sm" />
+              <span className="hidden sm:inline">写文章</span>
+            </Link>
+
+            <Link
+              href="/admin/files"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 bg-w px-3 py-1.5 text-xs font-semibold t-primary shadow-2xs hover:border-theme hover:text-theme dark:border-white/10 transition"
+              title="管理 R2 图床相册"
+            >
+              <i className="ri-folder-image-line text-sm" />
+              <span className="hidden sm:inline">图床画廊</span>
+            </Link>
+
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 bg-w px-3 py-1.5 text-xs font-semibold t-primary shadow-2xs hover:border-theme hover:text-theme dark:border-white/10 transition"
+              title="回到前台画廊随想"
+            >
+              <i className="ri-external-link-line text-sm" />
+              <span className="hidden sm:inline">前台画廊</span>
+            </Link>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <main className="flex-1 w-full p-4 sm:p-6 lg:p-8">
+          <div className="w-full max-w-[1680px] mx-auto flex flex-col gap-6">
+            {/* Page Header Card */}
+            <div className="rounded-2xl border border-black/10 bg-w p-5 sm:p-6 shadow-sm dark:border-white/10">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-black/5 pb-4 dark:border-white/5">
+                <div>
+                  <h1 className="text-xl sm:text-2xl font-bold t-primary tracking-tight">{title}</h1>
+                  <p className="mt-1 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                    {description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Children Content */}
+              <div className="mt-5">{children}</div>
+            </div>
           </div>
         </main>
       </div>

@@ -7,7 +7,6 @@ import { useSiteConfig } from "../hooks/useSiteConfig";
 import { siteName } from "../utils/constants";
 import { useTranslation } from "react-i18next";
 import { useAlert } from "../components/dialog";
-import { AtelierQuickDrawer } from "../components/atelier-quick-drawer";
 
 type FeedsData = {
     size: number;
@@ -554,7 +553,6 @@ export function FeedsPage() {
     const [listState, _setListState] = useState<FeedType>((query.get("type") as FeedType) || "normal");
     const [status, setStatus] = useState<"loading" | "idle">("loading");
     const [tags, setTags] = useState<{ id: number; name: string }[]>([]);
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [feeds, setFeeds] = useState<FeedsMap>({
         draft: { size: 0, data: [], hasNext: false },
         unlisted: { size: 0, data: [], hasNext: false },
@@ -900,34 +898,17 @@ export function FeedsPage() {
                 )}
             </main>
 
-            {/* 管理员首页常驻快捷控制台：创作画笔 + 就地抽屉配置 */}
+            {/* 管理员首页常驻快捷创作画笔 */}
             {profile?.permission && (
-                <>
-                    <div className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5">
-                        <Link
-                            href="/admin/writing"
-                            className="flex h-12 w-12 items-center justify-center rounded-full bg-theme text-white shadow-xl hover:bg-theme-hover hover:scale-110 active:scale-95 transition-all select-none group"
-                            title="快速写文章 (进入写作模式)"
-                        >
-                            <i className="ri-quill-pen-line text-xl group-hover:rotate-12 transition-transform" />
-                        </Link>
-
-                        <button
-                            type="button"
-                            onClick={() => setIsDrawerOpen(true)}
-                            className="flex h-12 w-12 items-center justify-center rounded-full bg-w/95 text-neutral-700 dark:text-neutral-200 border border-black/10 dark:border-white/10 shadow-xl backdrop-blur-md hover:border-theme hover:text-theme hover:scale-110 active:scale-95 transition-all select-none"
-                            title="画廊就地抽屉设置"
-                        >
-                            <i className="ri-settings-4-line text-xl" />
-                        </button>
-                    </div>
-
-                    <AtelierQuickDrawer
-                        isOpen={isDrawerOpen}
-                        onClose={() => setIsDrawerOpen(false)}
-                        siteConfig={siteConfig}
-                    />
-                </>
+                <div className="fixed bottom-6 right-6 z-40 flex items-center">
+                    <Link
+                        href="/admin/writing"
+                        className="flex h-12 w-12 items-center justify-center rounded-full bg-theme text-white shadow-xl hover:bg-theme-hover hover:scale-110 active:scale-95 transition-all select-none group"
+                        title="开始创作 (进入写作模式)"
+                    >
+                        <i className="ri-quill-pen-line text-xl group-hover:rotate-12 transition-transform" />
+                    </Link>
+                </div>
             )}
         </>
     );
