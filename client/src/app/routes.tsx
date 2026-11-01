@@ -96,7 +96,7 @@ export function AppRoutes() {
         <AdminAIPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/queue-status" requirePermission title={t("queue_status.title")} description={t("admin.queue_status_description")}>
+      <AdminRoute path="/admin/queue-status" requirePermission title="队列与任务监控" description="Cloudflare 边缘分布式队列总线 · 实时探针指标 · 异步任务调度与错误自愈治理">
         <QueueStatusPage />
       </AdminRoute>
 

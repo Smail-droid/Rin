@@ -1,81 +1,52 @@
-import { SettingsBadge, SettingsCard, SettingsCardBody, SettingsCardHeader, Spinner } from "@rin/ui";
+import { SettingsBadge, Spinner } from "@rin/ui";
 import { useCallback, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import type { QueueStatusItem, QueueStatusResponse } from "../api/client";
 import { client } from "../app/runtime";
-import { Button } from "../components/button";
 import { useAlert, useConfirm } from "../components/dialog";
 import { useApiResource } from "../hooks/use-api-resource";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 
-function getQueueTone(status: QueueStatusItem["aiSummaryStatus"]) {
-  if (status === "failed") return "danger";
-  if (status === "completed") return "success";
-  if (status === "pending" || status === "processing") return "warning";
-  return "default";
-}
-
-function QueueStatusEntry({
-  item,
-  loadingAction,
-  onRetry,
-  onDelete,
+// 探针微波动 SVG 折线组件
+function ProbeSparkline({
+  tone = "success",
+  active = false,
 }: {
-  item: QueueStatusItem;
-  loadingAction?: "retry" | "delete";
-  onRetry: (item: QueueStatusItem) => void;
-  onDelete: (item: QueueStatusItem) => void;
+  tone?: "success" | "warning" | "danger" | "neutral";
+  active?: boolean;
 }) {
-  const { t } = useTranslation();
-  // 所有状态均允许重新生成和删除
-  const canRetry = true;
-  const canDelete = true;
-
-  // 已完成状态显示“重新生成”，失败状态显示“重试”
-  const retryBtnText =
-    loadingAction === "retry"
-      ? t("queue_status.retrying")
-      : item.aiSummaryStatus === "completed"
-        ? "重新生成"
-        : t("queue_status.retry");
+  const strokeColor =
+    tone === "success"
+      ? "#10b981"
+      : tone === "warning"
+      ? "#f59e0b"
+      : tone === "danger"
+      ? "#f43f5e"
+      : "#6366f1";
 
   return (
-    <SettingsCard tone={getQueueTone(item.aiSummaryStatus)}>
-      <SettingsCardHeader
-        title={item.title || t("queue_status.untitled")}
-        description={t(`queue_status.status.${item.aiSummaryStatus}`)}
-        badge={<SettingsBadge tone={item.aiSummaryStatus === "completed" ? "success" : item.aiSummaryStatus === "failed" ? "neutral" : "warning"}>{t(`queue_status.status.${item.aiSummaryStatus}`)}</SettingsBadge>}
-      />
-      <SettingsCardBody>
-        <div className="space-y-2 text-sm text-neutral-600 dark:text-neutral-300">
-          <p>{t("queue_status.feed_id", { id: item.id })}</p>
-          <p>{t("queue_status.updated_at", { date: new Date(item.updatedAt).toLocaleString() })}</p>
-          {item.aiSummaryError ? (
-            <p className="whitespace-pre-wrap text-rose-600 dark:text-rose-300">{item.aiSummaryError}</p>
-          ) : null}
-          {canRetry || canDelete ? (
-            <div className="flex flex-wrap gap-2 pt-2">
-              {canRetry ? (
-                <Button
-                  title={retryBtnText}
-                  disabled={loadingAction !== undefined}
-                  onClick={() => onRetry(item)}
-                />
-              ) : null}
-              {canDelete ? (
-                <Button
-                  secondary
-                  title={loadingAction === "delete" ? t("queue_status.deleting") : t("queue_status.delete")}
-                  disabled={loadingAction !== undefined}
-                  onClick={() => onDelete(item)}
-                />
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      </SettingsCardBody>
-    </SettingsCard>
+    <div className="relative w-full h-8 overflow-hidden select-none">
+      <svg viewBox="0 0 100 24" className="w-full h-full preserve-3d" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id={`grad-${tone}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={strokeColor} stopOpacity="0.3" />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M0,18 Q15,4 30,16 T60,8 T85,14 L100,10 L100,24 L0,24 Z"
+          fill={`url(#grad-${tone})`}
+        />
+        <path
+          d="M0,18 Q15,4 30,16 T60,8 T85,14 L100,10"
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="1.5"
+          className={active ? "animate-pulse" : ""}
+        />
+      </svg>
+    </div>
   );
 }
 
@@ -89,122 +60,519 @@ export function QueueStatusPage() {
     completed: 0,
     failed: 0,
   };
+
   const loadQueueStatus = useCallback(() => client.config.getQueueStatus(), []);
-  const { data, loading, error, reload } = useApiResource<QueueStatusResponse>(loadQueueStatus);
+  const { data, loading, reload } = useApiResource<QueueStatusResponse>(loadQueueStatus);
   const queueConfigured = data?.queueConfigured ?? false;
   const generatedAt = data?.generatedAt ?? "";
   const summary = data?.summary ?? emptySummary;
   const items = Array.isArray(data?.items) ? data.items : [];
+
   const [actingId, setActingId] = useState<number | null>(null);
   const [actingType, setActingType] = useState<"retry" | "delete" | null>(null);
+  const [batchLoading, setBatchLoading] = useState(false);
+
+  // 状态筛选与排序状态 (Excel 级数据表格支持)
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
   const { showAlert, AlertUI } = useAlert();
   const { showConfirm, ConfirmUI } = useConfirm();
 
-  const orderedItems = useMemo(() => {
-    const score = { failed: 0, processing: 1, pending: 2, completed: 3, idle: 4 } as const;
-    return [...items].sort((left, right) => score[left.aiSummaryStatus] - score[right.aiSummaryStatus]);
-  }, [items]);
+  // 筛选与排序
+  const filteredItems = useMemo(() => {
+    let result = [...items];
+
+    // 状态筛选
+    if (statusFilter !== "all") {
+      result = result.filter((it) => it.aiSummaryStatus === statusFilter);
+    }
+
+    // 关键词搜索
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      result = result.filter(
+        (it) =>
+          it.title?.toLowerCase().includes(q) ||
+          String(it.id).includes(q) ||
+          it.aiSummaryError?.toLowerCase().includes(q)
+      );
+    }
+
+    // 时间排序
+    result.sort((a, b) => {
+      const timeA = new Date(a.updatedAt).getTime();
+      const timeB = new Date(b.updatedAt).getTime();
+      return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
+    });
+
+    return result;
+  }, [items, statusFilter, searchQuery, sortOrder]);
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredItems.length && filteredItems.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredItems.map((it) => it.id)));
+    }
+  };
+
+  const toggleSelectOne = (id: number) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedIds(next);
+  };
+
+  // 单条重试
+  const handleSingleRetry = async (entry: QueueStatusItem) => {
+    setActingId(entry.id);
+    setActingType("retry");
+    try {
+      const { error: err } = await client.config.retryQueueTask(entry.id);
+      if (err) {
+        showAlert(String(err.value));
+        return;
+      }
+      showAlert(t("queue_status.retry_success") || "已重新加入处理队列！");
+      void reload();
+    } finally {
+      setActingId(null);
+      setActingType(null);
+    }
+  };
+
+  // 单条删除
+  const handleSingleDelete = (entry: QueueStatusItem) => {
+    showConfirm(
+      t("queue_status.delete_confirm_title") || "删除确认",
+      t("queue_status.delete_confirm_description", { id: entry.id }) || `确定要删除任务 #${entry.id} 吗？`,
+      async () => {
+        setActingId(entry.id);
+        setActingType("delete");
+        try {
+          const { error: err } = await client.config.deleteQueueTask(entry.id);
+          if (err) {
+            showAlert(String(err.value));
+            return;
+          }
+          showAlert(t("queue_status.delete_success") || "删除成功");
+          void reload();
+        } finally {
+          setActingId(null);
+          setActingType(null);
+        }
+      }
+    );
+  };
+
+  // 批量重新生成
+  const handleBatchRetry = async () => {
+    if (selectedIds.size === 0) return;
+    setBatchLoading(true);
+    let successCount = 0;
+    try {
+      for (const id of Array.from(selectedIds)) {
+        const { error: err } = await client.config.retryQueueTask(id);
+        if (!err) successCount++;
+      }
+      showAlert(`批量重试完成：成功加入队列 ${successCount} 个任务！`);
+      setSelectedIds(new Set());
+      void reload();
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  // 批量删除
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    showConfirm(
+      "批量删除确认",
+      `确定要从队列监控中批量删除选中的 ${selectedIds.size} 个任务吗？`,
+      async () => {
+        setBatchLoading(true);
+        let count = 0;
+        try {
+          for (const id of Array.from(selectedIds)) {
+            const { error: err } = await client.config.deleteQueueTask(id);
+            if (!err) count++;
+          }
+          showAlert(`批量删除完成，已移除 ${count} 个任务！`);
+          setSelectedIds(new Set());
+          void reload();
+        } finally {
+          setBatchLoading(false);
+        }
+      }
+    );
+  };
 
   return (
-    <div className="flex w-full flex-col gap-4">
+    <div className="flex w-full flex-col gap-5 ani-show">
       <Helmet>
-        <title>{`${t("queue_status.title")} - ${siteConfig.name}`}</title>
+        <title>{`队列与任务监控 - ${siteConfig.name}`}</title>
       </Helmet>
 
       <AlertUI />
       <ConfirmUI />
 
-      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
-        <SettingsCard tone={queueConfigured ? "success" : "danger"}>
-          <SettingsCardHeader title={queueConfigured ? t("queue_status.configured") : t("queue_status.not_configured")} description={t("queue_status.binding")} />
-        </SettingsCard>
-        <SettingsCard tone="warning">
-          <SettingsCardHeader title={String(summary.pending)} description={t("queue_status.summary.pending")} />
-        </SettingsCard>
-        <SettingsCard tone="warning">
-          <SettingsCardHeader title={String(summary.processing)} description={t("queue_status.summary.processing")} />
-        </SettingsCard>
-        <SettingsCard tone="success">
-          <SettingsCardHeader title={String(summary.completed)} description={t("queue_status.summary.completed")} />
-        </SettingsCard>
-        <SettingsCard tone="danger">
-          <SettingsCardHeader title={String(summary.failed)} description={t("queue_status.summary.failed")} />
-        </SettingsCard>
+      {/* ====================================================================
+          1. 顶部 5 大探针监控状态卡片 (带实时微折线与 Mac 终端指示)
+          ==================================================================== */}
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 select-none">
+        {/* 卡片 1: 队列绑定状态 */}
+        <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-black/10 bg-w shadow-xs dark:border-white/10 overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+              <span className={`h-2 w-2 rounded-full ${queueConfigured ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+              <span>队列绑定</span>
+            </span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/10 font-mono text-neutral-500">
+              ENV
+            </span>
+          </div>
+          <div className="my-2">
+            <span className="text-2xl font-extrabold t-primary font-mono">
+              {queueConfigured ? "已绑定" : "未配置"}
+            </span>
+            <p className="text-[11px] text-neutral-400 mt-0.5">
+              {queueConfigured ? "Cloudflare Queue 正常" : "请在 Worker 绑定队列"}
+            </p>
+          </div>
+          <ProbeSparkline tone={queueConfigured ? "success" : "danger"} active={queueConfigured} />
+        </div>
+
+        {/* 卡片 2: 排队中任务 */}
+        <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-black/10 bg-w shadow-xs dark:border-white/10 overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              <span>排队任务</span>
+            </span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono">
+              PENDING
+            </span>
+          </div>
+          <div className="my-2">
+            <span className="text-2xl font-extrabold t-primary font-mono text-amber-500">
+              {summary.pending}
+            </span>
+            <p className="text-[11px] text-neutral-400 mt-0.5">等待 Worker 调度</p>
+          </div>
+          <ProbeSparkline tone="warning" active={summary.pending > 0} />
+        </div>
+
+        {/* 卡片 3: 处理中任务 */}
+        <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-black/10 bg-w shadow-xs dark:border-white/10 overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-sky-500 animate-spin" />
+              <span>处理中任务</span>
+            </span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 font-mono">
+              RUNNING
+            </span>
+          </div>
+          <div className="my-2">
+            <span className="text-2xl font-extrabold t-primary font-mono text-sky-500">
+              {summary.processing}
+            </span>
+            <p className="text-[11px] text-neutral-400 mt-0.5">AI 正在深度分析中</p>
+          </div>
+          <ProbeSparkline tone="neutral" active={summary.processing > 0} />
+        </div>
+
+        {/* 卡片 4: 已完成任务 */}
+        <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-black/10 bg-w shadow-xs dark:border-white/10 overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span>已完成任务</span>
+            </span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono">
+              DONE
+            </span>
+          </div>
+          <div className="my-2">
+            <span className="text-2xl font-extrabold t-primary font-mono text-emerald-500">
+              {summary.completed}
+            </span>
+            <p className="text-[11px] text-neutral-400 mt-0.5">导读与流水线正常交付</p>
+          </div>
+          <ProbeSparkline tone="success" active={false} />
+        </div>
+
+        {/* 卡片 5: 失败任务 */}
+        <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-black/10 bg-w shadow-xs dark:border-white/10 overflow-hidden col-span-2 sm:col-span-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+              <span className={`h-2 w-2 rounded-full ${summary.failed > 0 ? "bg-rose-500 animate-ping" : "bg-neutral-400"}`} />
+              <span>失败任务</span>
+            </span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 font-mono">
+              FAILED
+            </span>
+          </div>
+          <div className="my-2">
+            <span className={`text-2xl font-extrabold font-mono ${summary.failed > 0 ? "text-rose-500" : "t-primary"}`}>
+              {summary.failed}
+            </span>
+            <p className="text-[11px] text-neutral-400 mt-0.5">
+              {summary.failed > 0 ? "需要人工排查或重试" : "无异常报错"}
+            </p>
+          </div>
+          <ProbeSparkline tone={summary.failed > 0 ? "danger" : "neutral"} active={summary.failed > 0} />
+        </div>
       </div>
 
-      {generatedAt ? (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          {t("queue_status.generated_at", { date: new Date(generatedAt).toLocaleString() })}
-        </p>
-      ) : null}
-
-      {loading ? (
-        <div className="flex items-center gap-3 py-8 text-sm text-neutral-500 dark:text-neutral-400">
-          <Spinner label={t("queue_status.loading")} />
-          <span>{t("queue_status.loading")}</span>
-        </div>
-      ) : null}
-
-      {error ? (
-        <SettingsCard tone="danger">
-          <SettingsCardHeader title={t("queue_status.load_failed")} description={error} />
-        </SettingsCard>
-      ) : null}
-
-      {!loading && !error && orderedItems.length === 0 ? (
-        <SettingsCard>
-          <SettingsCardHeader title={t("queue_status.empty_title")} description={t("queue_status.empty_description")} />
-        </SettingsCard>
-      ) : null}
-
-      {!loading && !error && orderedItems.length > 0 ? (
-        <div className="space-y-4">
-          {orderedItems.map((item) => (
-            <QueueStatusEntry
-              key={`${item.id}-${item.updatedAt}`}
-              item={item}
-              loadingAction={actingId === item.id ? actingType ?? undefined : undefined}
-              onRetry={(entry) => {
-                setActingId(entry.id);
-                setActingType("retry");
-                client.config.retryQueueTask(entry.id).then(({ error }) => {
-                  if (error) {
-                    showAlert(error.value);
-                    return;
-                  }
-                  showAlert(t("queue_status.retry_success"));
-                  void reload();
-                }).finally(() => {
-                  setActingId(null);
-                  setActingType(null);
-                });
-              }}
-              onDelete={(entry) => {
-                showConfirm(
-                  t("queue_status.delete_confirm_title"),
-                  t("queue_status.delete_confirm_description", { id: entry.id }),
-                  async () => {
-                    setActingId(entry.id);
-                    setActingType("delete");
-                    try {
-                      const { error } = await client.config.deleteQueueTask(entry.id);
-                      if (error) {
-                        showAlert(error.value);
-                        return;
-                      }
-                      showAlert(t("queue_status.delete_success"));
-                      void reload();
-                    } finally {
-                      setActingId(null);
-                      setActingType(null);
-                    }
-                  },
-                );
-              }}
-            />
+      {/* ====================================================================
+          2. 控制工具栏 (状态筛选胶囊、搜索、排序、批量操作)
+          ==================================================================== */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 select-none">
+        {/* 左侧状态过滤胶囊 */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          {[
+            { id: "all", label: `全部 (${items.length})` },
+            { id: "completed", label: `已完成 (${summary.completed})` },
+            { id: "processing", label: `处理中 (${summary.processing})` },
+            { id: "pending", label: `排队中 (${summary.pending})` },
+            { id: "failed", label: `失败 (${summary.failed})` },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setStatusFilter(tab.id)}
+              className={`px-3 py-1.5 rounded-xl font-semibold transition ${
+                statusFilter === tab.id
+                  ? "bg-theme text-white shadow-xs"
+                  : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-400 hover:bg-black/10"
+              }`}
+            >
+              {tab.label}
+            </button>
           ))}
         </div>
-      ) : null}
+
+        {/* 右侧搜索与排序 */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex items-center">
+            <i className="ri-search-line absolute left-2.5 text-neutral-400 text-xs" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜索文章或ID..."
+              className="rounded-xl border border-black/10 bg-transparent py-1.5 pl-8 pr-3 text-xs t-primary outline-none focus:border-theme dark:border-white/10 w-36 sm:w-44"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))}
+            className="flex h-8 items-center gap-1 px-2.5 rounded-xl border border-black/10 bg-transparent text-xs font-semibold t-primary hover:border-theme transition dark:border-white/10"
+            title="切换更新时间升降序"
+          >
+            <i className={sortOrder === "desc" ? "ri-sort-desc text-theme" : "ri-sort-asc text-theme"} />
+            <span className="hidden sm:inline">{sortOrder === "desc" ? "最新" : "最早"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => reload()}
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-black/10 bg-transparent text-neutral-500 hover:text-theme hover:border-theme transition dark:border-white/10"
+            title="手动刷新队列数据"
+          >
+            <i className={`ri-refresh-line text-sm ${loading ? "animate-spin text-theme" : ""}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* 批量操作提示条 (当勾选项目时呼出) */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-theme/10 border border-theme/20 text-xs text-theme ani-show">
+          <div className="flex items-center gap-2 font-semibold">
+            <i className="ri-checkbox-circle-fill text-base" />
+            <span>已选中 {selectedIds.size} 项任务</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleBatchRetry}
+              disabled={batchLoading}
+              className="px-3 py-1.5 rounded-xl bg-theme text-white font-bold hover:bg-theme-hover transition disabled:opacity-50"
+            >
+              {batchLoading ? "处理中..." : "批量重新生成"}
+            </button>
+            <button
+              type="button"
+              onClick={handleBatchDelete}
+              disabled={batchLoading}
+              className="px-3 py-1.5 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 transition disabled:opacity-50"
+            >
+              批量删除
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================================
+          3. Excel 级超级多列数据表格 (告别空旷、单屏容纳数十条高效处理)
+          ==================================================================== */}
+      <div className="rounded-2xl border border-black/10 bg-w dark:border-white/10 overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-400 font-mono">
+                <th className="py-3 px-4 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.size === filteredItems.length && filteredItems.length > 0}
+                    onChange={toggleSelectAll}
+                    className="h-3.5 w-3.5 rounded accent-theme cursor-pointer"
+                  />
+                </th>
+                <th className="py-3 px-3 w-16">ID</th>
+                <th className="py-3 px-3">文章标题与别名</th>
+                <th className="py-3 px-3 w-28 text-center">当前状态</th>
+                <th className="py-3 px-3 w-44">最后更新时间</th>
+                <th className="py-3 px-3 w-36 text-right pr-5">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-black/5 dark:divide-white/5 t-primary">
+              {loading && items.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-neutral-400">
+                    <Spinner label="正在读取队列..." />
+                    <span className="ml-2">正在从边缘加载任务队列…</span>
+                  </td>
+                </tr>
+              ) : filteredItems.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-neutral-400">
+                    <i className="ri-inbox-line text-2xl block mb-1 opacity-50" />
+                    <span>暂无符合条件的队列任务</span>
+                  </td>
+                </tr>
+              ) : (
+                filteredItems.map((item) => {
+                  const isSelected = selectedIds.has(item.id);
+                  const isActing = actingId === item.id;
+                  const statusTone =
+                    item.aiSummaryStatus === "completed"
+                      ? "success"
+                      : item.aiSummaryStatus === "failed"
+                      ? "danger"
+                      : item.aiSummaryStatus === "processing"
+                      ? "neutral"
+                      : "warning";
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors ${
+                        isSelected ? "bg-theme/[0.04]" : ""
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <td className="py-3.5 px-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectOne(item.id)}
+                          className="h-3.5 w-3.5 rounded accent-theme cursor-pointer"
+                        />
+                      </td>
+
+                      {/* ID */}
+                      <td className="py-3.5 px-3 font-mono font-bold text-neutral-400">
+                        #{item.id}
+                      </td>
+
+                      {/* Title & Alias */}
+                      <td className="py-3.5 px-3 max-w-[280px] sm:max-w-[360px]">
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold truncate t-primary hover:text-theme cursor-pointer" title={item.title || ""}>
+                            {item.title || "无标题文章"}
+                          </span>
+                          {item.aiSummaryError ? (
+                            <span className="text-[10px] text-rose-500 truncate mt-0.5" title={item.aiSummaryError || ""}>
+                              ⚠ 错误: {item.aiSummaryError}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-neutral-400 font-mono truncate mt-0.5">
+                              ID: {item.id} · 导读任务就绪
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Status Badge */}
+                      <td className="py-3.5 px-3 text-center">
+                        <SettingsBadge tone={statusTone}>
+                          {item.aiSummaryStatus === "completed"
+                            ? "已完成"
+                            : item.aiSummaryStatus === "processing"
+                            ? "处理中"
+                            : item.aiSummaryStatus === "pending"
+                            ? "排队中"
+                            : item.aiSummaryStatus === "failed"
+                            ? "失败"
+                            : "空闲"}
+                        </SettingsBadge>
+                      </td>
+
+                      {/* Updated Time */}
+                      <td className="py-3.5 px-3 font-mono text-[11px] text-neutral-400 whitespace-nowrap">
+                        {new Date(item.updatedAt).toLocaleString()}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 px-3 text-right pr-5 whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleSingleRetry(item)}
+                            disabled={isActing || batchLoading}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-theme/10 hover:bg-theme/20 text-theme font-semibold transition disabled:opacity-50 text-[11px]"
+                            title="重新生成导读"
+                          >
+                            <i className={`ri-refresh-line ${isActing && actingType === "retry" ? "animate-spin" : ""}`} />
+                            <span>{item.aiSummaryStatus === "completed" ? "重新生成" : "重试"}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSingleDelete(item)}
+                            disabled={isActing || batchLoading}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition disabled:opacity-50"
+                            title="删除此任务记录"
+                          >
+                            <i className="ri-delete-bin-line text-xs" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 表格底部汇总信息 */}
+        {generatedAt && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] text-[11px] font-mono text-neutral-400 select-none">
+            <span>显示 {filteredItems.length} / 共 {items.length} 条任务记录</span>
+            <span>最近快照同步时间: {new Date(generatedAt).toLocaleString()}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

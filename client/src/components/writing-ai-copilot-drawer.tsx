@@ -124,14 +124,29 @@ export function WritingAICopilotDrawer({
     initY: 0,
   });
 
-  // 首次打开或屏幕尺寸变化时，默认停靠在右侧推荐工作区
+  // 首次打开或屏幕尺寸变化时，默认停靠在右侧推荐工作区，并进行严格边界保护防出界
   useEffect(() => {
-    if (isOpen && position === null && typeof window !== "undefined") {
-      const defaultWidth = Math.min(480, window.innerWidth * 0.94);
-      const defaultX = Math.max(20, window.innerWidth - defaultWidth - 36);
-      const defaultY = Math.max(64, Math.min(84, window.innerHeight * 0.08));
-      setPosition({ x: defaultX, y: defaultY });
+    if (typeof window === "undefined") return;
+    const handleResize = () => {
+      const winW = window.innerWidth;
+      const winH = window.innerHeight;
+      const drawerW = Math.min(480, winW * 0.94);
+      const drawerH = Math.min(680, winH * 0.86);
+
+      setPosition((prev) => {
+        if (!prev) return { x: Math.max(16, winW - drawerW - 32), y: 70 };
+        const safeX = Math.max(12, Math.min(winW - drawerW - 12, prev.x));
+        const safeY = Math.max(60, Math.min(winH - drawerH - 12, prev.y));
+        return { x: safeX, y: safeY };
+      });
+    };
+
+    if (isOpen && position === null) {
+      handleResize();
     }
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, [isOpen, position]);
 
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
@@ -142,9 +157,10 @@ export function WritingAICopilotDrawer({
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
 
+    const drawerW = typeof window !== "undefined" ? Math.min(480, window.innerWidth * 0.94) : 480;
     const currentPos = position || {
-      x: typeof window !== "undefined" ? window.innerWidth - 500 : 200,
-      y: 80,
+      x: typeof window !== "undefined" ? Math.max(20, window.innerWidth - drawerW - 32) : 200,
+      y: 70,
     };
 
     dragStartRef.current = {
@@ -162,10 +178,10 @@ export function WritingAICopilotDrawer({
       const deltaX = curX - dragStartRef.current.startX;
       const deltaY = curY - dragStartRef.current.startY;
 
-      const newX = Math.max(10, Math.min(window.innerWidth - 320, dragStartRef.current.initX + deltaX));
-      const newY = Math.max(10, Math.min(window.innerHeight - 150, dragStartRef.current.initY + deltaY));
+      const safeX = Math.max(10, Math.min(window.innerWidth - drawerW - 10, dragStartRef.current.initX + deltaX));
+      const safeY = Math.max(50, Math.min(window.innerHeight - 150, dragStartRef.current.initY + deltaY));
 
-      setPosition({ x: newX, y: newY });
+      setPosition({ x: safeX, y: safeY });
     };
 
     const handleDragEnd = () => {

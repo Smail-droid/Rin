@@ -40,39 +40,6 @@ export type CommentData = {
   guestWebsite?: string;
 };
 
-// 5 大二次元精致萌系分类 Emoji 面板 (全平台高兼容，杜绝空白方框)
-const EMOJI_CATEGORIES = [
-  {
-    id: "sweet",
-    name: "傲娇软萌",
-    icon: "🌸",
-    emojis: ["🌸", "✨", "🎀", "💖", "💌", "🧸", "🍭", "🎈", "🎐", "🫧", "💫", "🧁", "🍡", "🍧", "🍬"],
-  },
-  {
-    id: "food",
-    name: "摸鱼干饭",
-    icon: "🍰",
-    emojis: ["🍰", "🥐", "🍮", "🍧", "🍡", "🍵", "☕", "🍓", "🥞", "🍩", "🍦", "🍕", "🍙", "🍣", "🍟"],
-  },
-  {
-    id: "battle",
-    name: "宅家战斗",
-    icon: "🎮",
-    emojis: ["🎮", "🎧", "📸", "🎴", "🎯", "🗝️", "🔮", "🎨", "🎬", "🛸", "🚀", "🎪", "🎭", "🎻", "🎸"],
-  },
-  {
-    id: "pets",
-    name: "萌宠治愈",
-    icon: "🐾",
-    emojis: ["🐾", "🐱", "🐶", "🦊", "🐰", "🐼", "🐨", "🐯", "🦁", "🦄", "🐣", "🐧", "🐬", "🦋", "🐿️"],
-  },
-  {
-    id: "magic",
-    name: "奇迹魔法",
-    icon: "✨",
-    emojis: ["💎", "🌟", "🍀", "🌈", "⚡", "💡", "🪐", "🌌", "💠", "🔷", "💜", "🌠", "🛰️", "💫", "🎉"],
-  },
-];
 
 const KAOMOJI_MOODS = [
   "(*/ω＼*)",
@@ -238,8 +205,21 @@ function GalleryCommentInput({
   const siteConfig = useSiteConfig();
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [activeEmojiCategory, setActiveEmojiCategory] = useState("sweet");
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setIsEmojiPickerOpen(false);
+      }
+    }
+    if (isEmojiPickerOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isEmojiPickerOpen]);
 
   const insertFormat = (before: string, after: string = "", placeholder: string = "") => {
     const textarea = textareaRef.current;
@@ -284,9 +264,6 @@ function GalleryCommentInput({
     }
     return getDicebearLoreleiAvatar(nickname);
   }, [profile, siteConfig.avatar, nickname]);
-
-  const currentEmojis =
-    EMOJI_CATEGORIES.find((c) => c.id === activeEmojiCategory)?.emojis || EMOJI_CATEGORIES[0].emojis;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -378,68 +355,156 @@ function GalleryCommentInput({
           </div>
         </div>
 
-        {/* Content Textarea with Format Toolbar */}
-        <div className="flex flex-col rounded-2xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] overflow-hidden focus-within:border-theme focus-within:ring-2 focus-within:ring-theme/15 transition-all">
-          {/* Lightweight Format Toolbar (粗体/斜体/引用/行内代码/Bash代码块/颜文字) */}
-          <div className="flex flex-wrap items-center gap-1 px-3 py-1.5 text-xs text-neutral-500 border-b border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]">
-            <button
-              type="button"
-              onClick={() => insertFormat("**", "**", "加粗文字")}
-              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
-              title="加粗 (**)"
-            >
-              <i className="ri-bold font-bold" />
-            </button>
-            <button
-              type="button"
-              onClick={() => insertFormat("*", "*", "斜体文字")}
-              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
-              title="斜体 (*)"
-            >
-              <i className="ri-italic" />
-            </button>
-            <button
-              type="button"
-              onClick={() => insertFormat("> ", "", "引用文段")}
-              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
-              title="引用文段 (>)"
-            >
-              <i className="ri-double-quotes-l" />
-            </button>
-            <button
-              type="button"
-              onClick={() => insertFormat("`", "`", "code")}
-              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
-              title="行内代码 (`)"
-            >
-              <i className="ri-code-s-slash-line" />
-            </button>
-            <button
-              type="button"
-              onClick={() => insertFormat("```bash\n", "\n```", "#!/bin/bash\necho 'Hello gallery'")}
-              className="flex h-7 items-center gap-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition text-[11px] font-mono"
-              title="Mac终端 Bash 代码块"
-            >
-              <i className="ri-terminal-box-line" />
-              <span>Bash</span>
-            </button>
+        {/* GitHub 风格极简一体化 Markdown 编辑器 */}
+        <div className="flex flex-col rounded-2xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] overflow-visible focus-within:border-theme focus-within:ring-2 focus-within:ring-theme/15 transition-all">
+          {/* GitHub 风格扁平工具栏: [ H | B | I | 引用 | 链接 | 行内代码 | Bash | 图片 | 😀表情 ] */}
+          <div className="relative flex flex-wrap items-center justify-between gap-1 px-3 py-1.5 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] text-neutral-500">
+            <div className="flex flex-wrap items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => insertFormat("### ", "\n", "标题文字")}
+                className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+                title="标题 (###)"
+              >
+                <i className="ri-heading font-bold text-xs" />
+              </button>
+              <button
+                type="button"
+                onClick={() => insertFormat("**", "**", "加粗文字")}
+                className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+                title="加粗 (**)"
+              >
+                <i className="ri-bold font-bold text-xs" />
+              </button>
+              <button
+                type="button"
+                onClick={() => insertFormat("*", "*", "斜体文字")}
+                className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+                title="斜体 (*)"
+              >
+                <i className="ri-italic text-xs" />
+              </button>
+              <button
+                type="button"
+                onClick={() => insertFormat("> ", "\n", "引用文段")}
+                className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+                title="引用 (>)"
+              >
+                <i className="ri-double-quotes-l text-xs" />
+              </button>
+              <button
+                type="button"
+                onClick={() => insertFormat("[", "](https://)", "链接文字")}
+                className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+                title="插入链接"
+              >
+                <i className="ri-link text-xs" />
+              </button>
+              <button
+                type="button"
+                onClick={() => insertFormat("`", "`", "code")}
+                className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+                title="行内代码 (`)"
+              >
+                <i className="ri-code-s-slash-line text-xs" />
+              </button>
+              <button
+                type="button"
+                onClick={() => insertFormat("```bash\n", "\n```", "#!/bin/bash\necho 'Hello Gallery'")}
+                className="flex h-7 items-center gap-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition text-[11px] font-mono"
+                title="Mac终端 Bash 代码块"
+              >
+                <i className="ri-terminal-box-line text-xs" />
+                <span>Bash</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => insertFormat("![图片描述](", ")", "https://")}
+                className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+                title="插入图片链接"
+              >
+                <i className="ri-image-line text-xs" />
+              </button>
 
-            <div className="h-3 w-[1px] bg-black/10 dark:bg-white/10 mx-1" />
+              <div className="h-3 w-[1px] bg-black/10 dark:bg-white/10 mx-1" />
 
-            {/* 颜文字心情快捷胶囊 */}
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
-              {KAOMOJI_MOODS.map((mood) => (
+              {/* 扁平整合的表情/颜文字按钮 */}
+              <div ref={emojiPickerRef} className="relative">
                 <button
-                  key={mood}
                   type="button"
-                  onClick={() => insertFormat(` ${mood} `)}
-                  className="px-2 py-0.5 rounded-full bg-theme/5 hover:bg-theme/15 text-theme text-[11px] transition select-none shrink-0"
-                  title="插入颜文字"
+                  onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
+                  className={`flex h-7 items-center gap-1 px-2 rounded-lg transition select-none text-xs ${
+                    isEmojiPickerOpen
+                      ? "bg-theme text-white font-bold shadow-2xs"
+                      : "hover:bg-black/5 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300"
+                  }`}
+                  title="插入 Emoji / 颜文字表情"
                 >
-                  {mood}
+                  <span>😀</span>
+                  <span className="text-[11px] font-medium hidden sm:inline">表情</span>
+                  <i className={`ri-arrow-down-s-line text-xs transition-transform ${isEmojiPickerOpen ? "rotate-180" : ""}`} />
                 </button>
-              ))}
+
+                {/* 悬浮轻量表情与颜文字面板 (Popover) */}
+                {isEmojiPickerOpen && (
+                  <div className="absolute left-0 top-9 z-50 w-72 sm:w-80 rounded-2xl border border-black/10 bg-w p-3 shadow-2xl dark:border-white/10 backdrop-blur-2xl ani-show">
+                    <div className="mb-2">
+                      <p className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider mb-1">
+                        常用二次元 Emoji
+                      </p>
+                      <div className="grid grid-cols-8 gap-1">
+                        {[
+                          "🌸", "✨", "🎀", "💖", "💌", "🧸", "🍭", "🎈",
+                          "🎐", "🫧", "💫", "🧁", "🍡", "🍧", "🍰", "🍵",
+                          "☕", "🍓", "🥞", "🍩", "🍕", "🍙", "🍣", "🎮",
+                          "🎧", "📸", "🎴", "🎯", "🗝️", "🔮", "🎨", "🎬",
+                          "🐾", "🐱", "🐶", "🦊", "🐰", "🐼", "🐨", "🦄",
+                          "💎", "🌟", "🍀", "🌈", "⚡", "💡", "🪐", "🎉"
+                        ].map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              insertFormat(emoji);
+                              setIsEmojiPickerOpen(false);
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg text-sm hover:scale-125 transition-transform hover:bg-black/5 dark:hover:bg-white/10 select-none"
+                            title={`插入 ${emoji}`}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-black/5 dark:border-white/5">
+                      <p className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider mb-1">
+                        萌系颜文字心情
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {KAOMOJI_MOODS.map((mood) => (
+                          <button
+                            key={mood}
+                            type="button"
+                            onClick={() => {
+                              insertFormat(` ${mood} `);
+                              setIsEmojiPickerOpen(false);
+                            }}
+                            className="px-2 py-0.5 rounded-full bg-theme/5 hover:bg-theme/15 text-theme text-[11px] transition select-none"
+                          >
+                            {mood}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+
+            <span className="text-[10px] font-mono text-neutral-400 hidden sm:inline-block">
+              Markdown Supported
+            </span>
           </div>
 
           <textarea
@@ -447,69 +512,34 @@ function GalleryCommentInput({
             rows={3}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="在画廊留言板写下你的想法、提问或共鸣吧...（文明交流，言简意赅）"
-            className="w-full resize-none border-0 bg-transparent p-3.5 text-xs sm:text-sm leading-relaxed t-primary placeholder-neutral-400 outline-none transition-colors"
+            placeholder="写下你想在留言板交流的想法、提问或灵感...（支持 Markdown 与 Mac 终端 Bash 代码块）"
+            className="w-full resize-none border-0 bg-transparent p-3.5 text-xs sm:text-sm leading-relaxed t-primary placeholder-neutral-400 outline-none transition-colors min-h-[90px]"
           />
         </div>
 
-        {/* Categorized Emoji Selection Bar & Submit Button */}
-        <div className="flex flex-col gap-2 pt-1 border-t border-black/5 dark:border-white/5">
-          {/* Emoji Category Tabs (默认/食材/道具/猫咪/符号) */}
-          <div className="flex items-center gap-1 text-[11px] font-semibold">
-            {EMOJI_CATEGORIES.map((cat) => {
-              const isActive = activeEmojiCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setActiveEmojiCategory(cat.id)}
-                  className={`px-2.5 py-0.5 rounded-lg transition select-none flex items-center gap-1 ${
-                    isActive
-                      ? "bg-theme text-white shadow-2xs font-bold"
-                      : "bg-black/5 text-neutral-500 hover:bg-black/10 dark:bg-white/5 dark:text-neutral-400"
-                  }`}
-                >
-                  <span>{cat.icon}</span>
-                  <span>{cat.name}</span>
-                </button>
-              );
-            })}
-          </div>
+        {/* 底部提交动作栏 */}
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-[11px] text-neutral-400 font-mono">
+            {content.length > 0 ? `${content.length} 字符` : "文明交流 · 善意沟通"}
+          </span>
 
-          {/* Current Category Emojis Grid & Submit */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <div className="flex flex-wrap items-center gap-1.5 py-1">
-              {currentEmojis.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setContent((prev) => `${prev}${emoji}`)}
-                  className="h-7 w-7 rounded-lg flex items-center justify-center text-sm hover:scale-125 transition-transform hover:bg-black/5 dark:hover:bg-white/10 select-none shadow-2xs"
-                  title={`插入 ${emoji}`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting || !content.trim()}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-theme px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition shrink-0 ml-auto"
-            >
-              {submitting ? (
-                <>
-                  <i className="ri-loader-4-line animate-spin" />
-                  <span>正在贴便签…</span>
-                </>
-              ) : (
-                <>
-                  <i className="ri-send-plane-fill" />
-                  <span>贴上画廊留言</span>
-                </>
-              )}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={submitting || !content.trim()}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-theme px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition"
+          >
+            {submitting ? (
+              <>
+                <i className="ri-loader-4-line animate-spin" />
+                <span>正在贴便签…</span>
+              </>
+            ) : (
+              <>
+                <i className="ri-send-plane-fill" />
+                <span>贴上画廊留言</span>
+              </>
+            )}
+          </button>
         </div>
       </form>
       <AlertUI />

@@ -130,13 +130,21 @@ export function AdminLayout({
           {/* Logo Header Bar */}
           <div className="flex h-16 items-center justify-between px-3.5 border-b border-black/5 dark:border-white/5">
             <Link href="/" className="flex items-center gap-3 min-w-0" title="返回画廊前台">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-theme to-pink-500 text-white font-extrabold text-sm shadow-md">
-                3X
-              </span>
+              {siteConfig.avatar ? (
+                <img
+                  src={siteConfig.avatar}
+                  alt={siteConfig.name || "80Hou"}
+                  className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-md ring-2 ring-theme/20"
+                />
+              ) : (
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-theme to-pink-500 text-white font-extrabold text-xs shadow-md">
+                  80H
+                </span>
+              )}
               {isExpanded && (
                 <div className="min-w-0 truncate ani-show">
                   <p className="font-extrabold text-sm tracking-tight t-primary truncate">
-                    {siteConfig.name || "Rin Admin"}
+                    {siteConfig.name || "80Hou's Home"}
                   </p>
                   <p className="text-[10px] text-neutral-400 font-mono flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />

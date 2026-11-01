@@ -138,6 +138,7 @@ export function WritingPage({ id }: { id?: number }) {
   const [runningPipeline, setRunningPipeline] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [pipelinePreviewData, setPipelinePreviewData] = useState<{ result: string; summary?: string } | null>(null);
+  const [isMetaExpanded, setIsMetaExpanded] = useState(false);
   const { showAlert, AlertUI } = useAlert();
 
   useEffect(() => {
@@ -304,83 +305,98 @@ export function WritingPage({ id }: { id?: number }) {
   function MetaInput({ className }: { className?: string }) {
     return (
         <FlatPanel className={className}>
-          <div className="flex flex-row gap-4 border-b border-black/5 pb-5 dark:border-white/5 items-start justify-between">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-theme/70">{t('writing')}</p>
-              <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-                {id !== undefined ? t("update.title") : t("publish.title")}
-              </p>
-            </div>
-            <PublishButton className="w-auto" />
-          </div>
-
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            <div className="lg:col-span-2">
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+            <div className="flex-1 w-full min-w-0">
               <Input
                 id={id}
                 value={title}
                 setValue={setTitle}
-                placeholder={t("title")}
+                placeholder={t("title") || "在此输入文章标题..."}
                 variant="flat"
-                className="text-base"
+                className="text-base font-bold w-full"
               />
             </div>
-            <Input
-              id={id}
-              value={summary}
-              setValue={setSummary}
-              placeholder={t("summary")}
-              variant="flat"
-            />
-            <Input
-              id={id}
-              value={alias}
-              setValue={setAlias}
-              placeholder={t("alias")}
-              variant="flat"
-            />
-            <Input
-              id={id}
-              value={tags}
-              setValue={setTags}
-              placeholder={t("tags")}
-              variant="flat"
-              className="lg:col-span-2"
-            />
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setIsMetaExpanded((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition select-none ${
+                  isMetaExpanded
+                    ? "border-theme bg-theme/10 text-theme shadow-2xs"
+                    : "border-black/10 bg-w text-neutral-600 hover:border-theme hover:text-theme dark:border-white/10 dark:text-neutral-300"
+                }`}
+                title={isMetaExpanded ? "收起文章属性面板" : "展开文章属性设置 (简介、别名、标签、可见性)"}
+              >
+                <i className="ri-settings-4-line text-sm" />
+                <span className="hidden sm:inline">{isMetaExpanded ? "收起属性" : "属性设置"}</span>
+                <i className={`ri-arrow-down-s-line text-xs transition-transform ${isMetaExpanded ? "rotate-180" : ""}`} />
+              </button>
+              <PublishButton className="w-auto" />
+            </div>
           </div>
 
-          <div className="mt-5 grid gap-2 sm:gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(18rem,2fr)]">
-            <FlatMetaRow
-              className="cursor-pointer rounded-none border-0 bg-transparent px-0 py-2 sm:rounded-2xl sm:border sm:bg-secondary sm:px-4 sm:py-3"
-              onClick={() => setDraft(!draft)}
-            >
-              <p>{t('visible.self_only')}</p>
-              <Checkbox
-                id="draft"
-                value={draft}
-                setValue={setDraft}
-                placeholder={t('draft')}
-              />
-            </FlatMetaRow>
-            <FlatMetaRow
-              className="cursor-pointer rounded-none border-0 bg-transparent px-0 py-2 sm:rounded-2xl sm:border sm:bg-secondary sm:px-4 sm:py-3"
-              onClick={() => setListed(!listed)}
-            >
-              <p>{t('listed')}</p>
-              <Checkbox
-                id="listed"
-                value={listed}
-                setValue={setListed}
-                placeholder={t('listed')}
-              />
-            </FlatMetaRow>
-            <FlatMetaRow className="gap-3 rounded-none border-0 bg-transparent px-0 py-2 sm:rounded-2xl sm:border sm:bg-secondary sm:px-4 sm:py-3 xl:col-span-1">
-              <p className="mr-2 whitespace-nowrap">
-                {t('created_at')}
-              </p>
-              <DateTimeInput value={createdAt} onChange={setCreatedAt} className="w-full max-w-[16rem]" />
-            </FlatMetaRow>
-          </div>
+          {/* 可折叠的文章属性面板 (默认收起，点击展开) */}
+          {isMetaExpanded && (
+            <div className="mt-4 pt-4 border-t border-black/5 dark:border-white/5 ani-show">
+              <div className="grid gap-3 lg:grid-cols-2">
+                <Input
+                  id={id}
+                  value={summary}
+                  setValue={setSummary}
+                  placeholder={t("summary") || "文章简介 / 导读摘要"}
+                  variant="flat"
+                />
+                <Input
+                  id={id}
+                  value={alias}
+                  setValue={setAlias}
+                  placeholder={t("alias") || "文章自定义别名 (如 /about)"}
+                  variant="flat"
+                />
+                <Input
+                  id={id}
+                  value={tags}
+                  setValue={setTags}
+                  placeholder={t("tags") || "文章标签 (空格或逗号分隔，如 #React #Vite)"}
+                  variant="flat"
+                  className="lg:col-span-2"
+                />
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(18rem,2fr)]">
+                <FlatMetaRow
+                  className="cursor-pointer rounded-none border-0 bg-transparent px-0 py-2 sm:rounded-2xl sm:border sm:bg-secondary sm:px-4 sm:py-3"
+                  onClick={() => setDraft(!draft)}
+                >
+                  <p>{t('visible.self_only')}</p>
+                  <Checkbox
+                    id="draft"
+                    value={draft}
+                    setValue={setDraft}
+                    placeholder={t('draft')}
+                  />
+                </FlatMetaRow>
+                <FlatMetaRow
+                  className="cursor-pointer rounded-none border-0 bg-transparent px-0 py-2 sm:rounded-2xl sm:border sm:bg-secondary sm:px-4 sm:py-3"
+                  onClick={() => setListed(!listed)}
+                >
+                  <p>{t('listed')}</p>
+                  <Checkbox
+                    id="listed"
+                    value={listed}
+                    setValue={setListed}
+                    placeholder={t('listed')}
+                  />
+                </FlatMetaRow>
+                <FlatMetaRow className="gap-3 rounded-none border-0 bg-transparent px-0 py-2 sm:rounded-2xl sm:border sm:bg-secondary sm:px-4 sm:py-3 xl:col-span-1">
+                  <p className="mr-2 whitespace-nowrap">
+                    {t('created_at')}
+                  </p>
+                  <DateTimeInput value={createdAt} onChange={setCreatedAt} className="w-full max-w-[16rem]" />
+                </FlatMetaRow>
+              </div>
+            </div>
+          )}
         </FlatPanel>
     )
   }
@@ -398,57 +414,27 @@ export function WritingPage({ id }: { id?: number }) {
       <div className="mt-2 flex flex-col gap-4 t-primary sm:gap-6">
         {MetaInput({ className: "relative z-20 p-4 sm:p-5 md:p-6" })}
 
-        {/* AI Intelligent Pipeline Control Bar for Article Authoring */}
-        <div className="rounded-2xl border border-black/10 bg-w p-3.5 sm:p-4 shadow-2xs dark:border-white/10">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-black/5 dark:border-white/5">
-            <div>
-              <div className="text-sm font-bold t-primary flex items-center gap-2">
-                <i className="ri-sparkling-2-line text-theme" />
-                <span>AI 智能流水线梳理（按需开关流程与一键整理）</span>
-              </div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                支持针对当前文章自由开关 3 大阶段；点击立即梳理，或在发布时按需自动执行
-              </p>
+        {/* Mac 终端 Bash 风格单行 AI 智能流水线工具条 */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-2 rounded-2xl border border-black/10 bg-[#f8fafc] dark:bg-[#161b26] dark:border-white/10 text-xs shadow-2xs select-none">
+          {/* 左侧 Mac Traffic Light 圆点与终端路径 */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f56]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#27c93f]" />
             </div>
-
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-neutral-600 dark:text-neutral-300 select-none">
-                <input
-                  type="checkbox"
-                  checked={autoRunOnPublish}
-                  onChange={(e) => setAutoRunOnPublish(e.target.checked)}
-                  className="h-3.5 w-3.5 rounded accent-theme cursor-pointer"
-                />
-                <span>发布时自动执行</span>
-              </label>
-
-              <button
-                type="button"
-                onClick={handleRunPipeline}
-                disabled={runningPipeline || !content.trim()}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-theme/10 hover:bg-theme/20 text-theme px-3.5 py-1.5 text-xs font-bold transition disabled:opacity-50"
-              >
-                {runningPipeline ? (
-                  <>
-                    <i className="ri-loader-4-line animate-spin" />
-                    <span>AI 正在梳理中…</span>
-                  </>
-                ) : (
-                  <>
-                    <i className="ri-magic-line" />
-                    <span>立即一键梳理文章</span>
-                  </>
-                )}
-              </button>
-            </div>
+            <span className="font-mono text-[11px] font-bold text-neutral-400 flex items-center gap-1">
+              <i className="ri-terminal-box-line text-theme" />
+              <span>bash ~ ai-pipeline</span>
+            </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 pt-2.5">
-            <span className="text-xs font-semibold text-neutral-400 mr-1">执行阶段勾选：</span>
+          {/* 中间 3 阶段勾选胶囊 */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
             {[
-              { id: "tech", label: "1. 教程与命令提炼", desc: "重点排查命令与配置代码块" },
-              { id: "format", label: "2. 内容排版整理", desc: "规范标题层级与中英空格留白" },
-              { id: "summary", label: "3. 顶部 AI 摘要", desc: "在最顶部插入精炼卡片摘要" },
+              { id: "tech", label: "1. 教程提炼" },
+              { id: "format", label: "2. 正文排版" },
+              { id: "summary", label: "3. 导读生成" },
             ].map((stage) => {
               const isChecked = pipelineStages.includes(stage.id);
               return (
@@ -456,23 +442,54 @@ export function WritingPage({ id }: { id?: number }) {
                   key={stage.id}
                   type="button"
                   onClick={() => togglePipelineStage(stage.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border transition select-none ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
                     isChecked
-                      ? "border-theme bg-theme/10 text-theme shadow-2xs"
-                      : "border-black/10 bg-black/[0.02] text-neutral-500 hover:bg-black/5 dark:border-white/10 dark:bg-white/5"
+                      ? "bg-theme text-white shadow-2xs"
+                      : "bg-black/5 dark:bg-white/5 text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
                   }`}
-                  title={stage.desc}
                 >
-                  <i className={isChecked ? "ri-checkbox-circle-fill" : "ri-checkbox-blank-circle-line"} />
+                  <i className={isChecked ? "ri-check-line text-xs" : "ri-add-line text-xs"} />
                   <span>{stage.label}</span>
                 </button>
               );
             })}
           </div>
+
+          {/* 右侧自动执行开关与立即梳理按钮 */}
+          <div className="flex items-center gap-3 shrink-0">
+            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-neutral-600 dark:text-neutral-300">
+              <input
+                type="checkbox"
+                checked={autoRunOnPublish}
+                onChange={(e) => setAutoRunOnPublish(e.target.checked)}
+                className="h-3.5 w-3.5 rounded accent-theme cursor-pointer"
+              />
+              <span>发布时自动执行</span>
+            </label>
+
+            <button
+              type="button"
+              onClick={handleRunPipeline}
+              disabled={runningPipeline || !content.trim()}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-theme/10 hover:bg-theme/20 text-theme px-3 py-1.5 text-xs font-bold transition disabled:opacity-50"
+            >
+              {runningPipeline ? (
+                <>
+                  <i className="ri-loader-4-line animate-spin text-xs" />
+                  <span>梳理中…</span>
+                </>
+              ) : (
+                <>
+                  <i className="ri-magic-line text-xs" />
+                  <span>立即梳理</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
-        <FlatPanel className="relative z-10 overflow-hidden p-0">
-          <MarkdownEditor content={content} setContent={setContent} height='680px' defaultPreview="comparison" />
+        <FlatPanel className="relative z-10 overflow-hidden p-0 border border-black/10 dark:border-white/10 rounded-2xl shadow-sm">
+          <MarkdownEditor content={content} setContent={setContent} height="calc(100vh - 240px)" defaultPreview="comparison" />
         </FlatPanel>
       </div>
 

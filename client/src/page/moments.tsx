@@ -67,7 +67,7 @@ export function MomentsPage() {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const limit = tryInt(siteConfig.pageSize, query.get("limit"));
+  const limit = Math.max(10, tryInt(siteConfig.pageSize, query.get("limit")));
 
   function fetchMoments(page = 1, append = false) {
     if (loadingMore) return;
@@ -85,15 +85,20 @@ export function MomentsPage() {
         limit: limit,
       })
       .then(({ data }) => {
-        if (data && Array.isArray(data)) {
+        if (data) {
+          const list: Moment[] = Array.isArray((data as any).data)
+            ? (data as any).data
+            : Array.isArray(data)
+            ? (data as any)
+            : [];
           if (append) {
-            setMoments((prev) => [...prev, ...(data as any)]);
+            setMoments((prev) => [...prev, ...list]);
           } else {
-            setMoments(data as any);
+            setMoments(list);
           }
-          setLength(data.length);
+          setLength((data as any).size ?? list.length);
           setCurrentPage(page);
-          setHasNextPage(data.length === limit);
+          setHasNextPage(Boolean((data as any).hasNext ?? (list.length >= limit)));
         }
       })
       .finally(() => {
