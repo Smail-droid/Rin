@@ -1218,6 +1218,40 @@ export function Settings() {
             isOpen={expandedSections.about}
             onToggle={() => toggleSection("about")}
           >
+            <ItemSwitch
+              title="在画廊首页展示此便签"
+              description="控制该便签是否在画廊前台首屏文章间呈现"
+              checked={clientConfig.get("atelier.about_show") !== false && clientConfig.get("atelier.about_show") !== "false"}
+              onChange={(checked) => {
+                setConfigValue("client", "atelier.about_show", checked);
+              }}
+            />
+            <div className="w-full p-4 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="text-sm font-semibold t-primary block">便签展示风格形态</span>
+                <span className="text-xs text-neutral-400">选择便签在首页文章流中的视觉呈现形式</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {[
+                  { id: "card", label: "拍立得长条" },
+                  { id: "circle", label: "精致小圆盘" },
+                  { id: "capsule", label: "极简小胶囊" },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setConfigValue("client", "atelier.about_style", st.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition select-none ${
+                      (String(clientConfig.get("atelier.about_style") || "card")) === st.id
+                        ? "bg-theme text-white shadow-2xs font-bold"
+                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <ItemEmojiInput
               title="“关于我”便签图标 (Emoji / 符号)"
               description="便签左上角个性符号（博主/身份专属推荐：🐾 🐱 🐶 🦊 🐼 🐨 🦁 🐯 🦄 ☕ 🍵 🍀 🌿 🌸 🎧 🎮 💻 🎨 🌟 👑 ✨ 🌻 🐣 🍧 等，可点击快速填入或自行输入）"
@@ -1270,6 +1304,40 @@ export function Settings() {
             isOpen={expandedSections.timeline}
             onToggle={() => toggleSection("timeline")}
           >
+            <ItemSwitch
+              title="在画廊首页展示此便签"
+              description="控制该便签是否在画廊前台首屏文章间呈现"
+              checked={clientConfig.get("atelier.timeline_show") !== false && clientConfig.get("atelier.timeline_show") !== "false"}
+              onChange={(checked) => {
+                setConfigValue("client", "atelier.timeline_show", checked);
+              }}
+            />
+            <div className="w-full p-4 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="text-sm font-semibold t-primary block">便签展示风格形态</span>
+                <span className="text-xs text-neutral-400">选择便签在首页文章流中的视觉呈现形式</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {[
+                  { id: "card", label: "拍立得长条" },
+                  { id: "circle", label: "精致小圆盘" },
+                  { id: "capsule", label: "极简小胶囊" },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setConfigValue("client", "atelier.timeline_style", st.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition select-none ${
+                      (String(clientConfig.get("atelier.timeline_style") || "card")) === st.id
+                        ? "bg-theme text-white shadow-2xs font-bold"
+                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <ItemEmojiInput
               title="“岁月轨迹”便签图标 (Emoji / 符号)"
               description="便签左上角个性符号（岁月/刻度专属推荐：⏳ ⌛ ⏰ ⏱️ 🕰️ 📅 📆 🗓️ 📜 🧭 ⚓ 🏹 🛸 🚀 🌠 🌌 🪐 🍂 🍁 🌊 🏛️ ⛩️ 🕯️ 🔮 等，可点击快速填入或自行输入）"
@@ -1322,6 +1390,40 @@ export function Settings() {
             isOpen={expandedSections.moments}
             onToggle={() => toggleSection("moments")}
           >
+            <ItemSwitch
+              title="在画廊首页展示此便签"
+              description="控制该便签是否在画廊前台首屏文章间呈现"
+              checked={clientConfig.get("atelier.moments_show") !== false && clientConfig.get("atelier.moments_show") !== "false"}
+              onChange={(checked) => {
+                setConfigValue("client", "atelier.moments_show", checked);
+              }}
+            />
+            <div className="w-full p-4 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="text-sm font-semibold t-primary block">便签展示风格形态</span>
+                <span className="text-xs text-neutral-400">选择便签在首页文章流中的视觉呈现形式</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {[
+                  { id: "card", label: "拍立得长条" },
+                  { id: "circle", label: "精致小圆盘" },
+                  { id: "capsule", label: "极简小胶囊" },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setConfigValue("client", "atelier.moments_style", st.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition select-none ${
+                      (String(clientConfig.get("atelier.moments_style") || "card")) === st.id
+                        ? "bg-theme text-white shadow-2xs font-bold"
+                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <ItemEmojiInput
               title="“日常随想”便签图标 (Emoji / 符号)"
               description="便签左上角个性符号（灵感/随笔专属推荐：💭 💬 🫧 💡 ☕ 🍃 🌤️ 🌈 🎈 🎵 📖 📝 📮 💌 🍺 🥂 🥐 🍰 🧁 🌻 🧸 🪁 🎐 🍬 等，可点击快速填入或自行输入）"
@@ -1374,6 +1476,40 @@ export function Settings() {
             isOpen={expandedSections.friends}
             onToggle={() => toggleSection("friends")}
           >
+            <ItemSwitch
+              title="在画廊首页展示此便签"
+              description="控制该便签是否在画廊前台首屏文章间呈现"
+              checked={clientConfig.get("atelier.friends_show") !== false && clientConfig.get("atelier.friends_show") !== "false"}
+              onChange={(checked) => {
+                setConfigValue("client", "atelier.friends_show", checked);
+              }}
+            />
+            <div className="w-full p-4 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="text-sm font-semibold t-primary block">便签展示风格形态</span>
+                <span className="text-xs text-neutral-400">选择便签在首页文章流中的视觉呈现形式</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {[
+                  { id: "card", label: "拍立得长条" },
+                  { id: "circle", label: "精致小圆盘" },
+                  { id: "capsule", label: "极简小胶囊" },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setConfigValue("client", "atelier.friends_style", st.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition select-none ${
+                      (String(clientConfig.get("atelier.friends_style") || "card")) === st.id
+                        ? "bg-theme text-white shadow-2xs font-bold"
+                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <ItemEmojiInput
               title="“邻家友链”便签图标 (Emoji / 符号)"
               description="便签左上角个性符号（邻里/友谊专属推荐：🌸 🌺 🌷 🌹 💐 🏡 🏠 🏘️ 🏰 🤝 👫 👭 👬 💌 🌐 🛸 🪴 🍄 🎁 🎉 🎈 🍭 🌟 ✨ 等，可点击快速填入或自行输入）"
@@ -1426,6 +1562,40 @@ export function Settings() {
             isOpen={expandedSections.search}
             onToggle={() => toggleSection("search")}
           >
+            <ItemSwitch
+              title="在画廊首页展示此便签"
+              description="控制该便签是否在画廊前台首屏文章间呈现"
+              checked={clientConfig.get("atelier.search_show") !== false && clientConfig.get("atelier.search_show") !== "false"}
+              onChange={(checked) => {
+                setConfigValue("client", "atelier.search_show", checked);
+              }}
+            />
+            <div className="w-full p-4 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="text-sm font-semibold t-primary block">便签展示风格形态</span>
+                <span className="text-xs text-neutral-400">选择便签在首页文章流中的视觉呈现形式</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {[
+                  { id: "card", label: "拍立得长条" },
+                  { id: "circle", label: "精致小圆盘" },
+                  { id: "capsule", label: "极简小胶囊" },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setConfigValue("client", "atelier.search_style", st.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition select-none ${
+                      (String(clientConfig.get("atelier.search_style") || "card")) === st.id
+                        ? "bg-theme text-white shadow-2xs font-bold"
+                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <ItemEmojiInput
               title="“随心探索”便签图标 (Emoji / 符号)"
               description="便签左上角个性符号（探索/检索专属推荐：🔍 🔎 🧭 🔭 🔬 🗺️ 🗝️ 🔮 🎯 🏹 💡 ⚡ 📡 🛸 🕵️‍♂️ 🕵️‍♀️ 🧠 📚 🔖 💎 🛰️ 🚀 💫 🧐 等，可点击快速填入或自行输入）"
@@ -1478,6 +1648,14 @@ export function Settings() {
             isOpen={expandedSections.deck}
             onToggle={() => toggleSection("deck")}
           >
+            <ItemSwitch
+              title="在画廊首页展示此卡片"
+              description="控制记忆翻动卡片是否在首屏相册末尾呈现"
+              checked={clientConfig.get("atelier.deck_show") !== false && clientConfig.get("atelier.deck_show") !== "false"}
+              onChange={(checked) => {
+                setConfigValue("client", "atelier.deck_show", checked);
+              }}
+            />
             <ItemEmojiInput
               title="“记忆翻动”卡片图标 (Emoji / 符号)"
               description="卡片翻转个性符号（图床/画廊专属推荐：🎴 🃏 📸 📷 🎞️ 🖼️ 🎨 🖌️ 🎬 🎭 🎪 🎡 🎠 🎆 🎇 🌠 🌅 🌄 🎑 📽️ 📼 🔮 💎 ✨ 等，可点击快速填入或自行输入）"

@@ -150,32 +150,25 @@ export function GalleryComments({
         </div>
       )}
 
-      {/* 3. 二次元留言板风格输入卡片 (Message Board Form) */}
-      <GalleryCommentInput
-        feedId={feedIdNum}
-        profile={profile}
-        onRefresh={loadComments}
-      />
-
-      {/* 4. 留言列表卡片流 (Message Wall Cards) */}
+      {/* 3. 留言列表卡片流 (移至输入框上方，留言即刻映入眼帘) */}
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-xs text-neutral-400">
+        <div className="flex items-center justify-center py-8 text-xs text-neutral-400">
           <i className="ri-loader-4-line animate-spin text-theme text-xl mr-2" />
           <span>正在漫游留言板数据…</span>
         </div>
       ) : error ? (
-        <div className="p-6 rounded-2xl bg-rose-50/50 border border-rose-200 text-center text-xs text-rose-500 my-4">
+        <div className="p-4 rounded-2xl bg-rose-50/50 border border-rose-200 text-center text-xs text-rose-500 my-3">
           <p>{error}</p>
-          <button onClick={loadComments} className="mt-2 text-theme underline font-bold">点击重试</button>
+          <button onClick={loadComments} className="mt-1 text-theme underline font-bold">点击重试</button>
         </div>
       ) : comments.length === 0 ? (
-        <div className="p-10 rounded-3xl border border-dashed border-black/10 dark:border-white/10 text-center my-6">
-          <p className="text-3xl mb-2">🍃</p>
-          <p className="text-sm font-bold t-primary">展厅长廊静悄悄的</p>
-          <p className="text-xs text-neutral-400 mt-1">成为第一个在画廊留言板贴上便签的人吧~</p>
+        <div className="p-8 rounded-2xl border border-dashed border-black/10 dark:border-white/10 text-center my-4">
+          <p className="text-2xl mb-1">🍃</p>
+          <p className="text-xs font-bold t-primary">展厅长廊静悄悄的</p>
+          <p className="text-[11px] text-neutral-400 mt-0.5">在下方留言板写下你的灵感或问候吧~</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 my-4">
           {comments.map((comment, index) => (
             <GalleryCommentItem
               key={comment.id}
@@ -187,6 +180,13 @@ export function GalleryComments({
           ))}
         </div>
       )}
+
+      {/* 4. 二次元留言板风格输入卡片 (Message Board Form) */}
+      <GalleryCommentInput
+        feedId={feedIdNum}
+        profile={profile}
+        onRefresh={loadComments}
+      />
     </div>
   );
 }
@@ -205,6 +205,7 @@ function GalleryCommentInput({
   const siteConfig = useSiteConfig();
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -290,7 +291,9 @@ function GalleryCommentInput({
         showAlert(String(error.value || "发表留言失败"));
       } else {
         setContent("");
-        showAlert("✨ 留言已成功贴在画廊留言板上！");
+        // 采用轻量静默 Toast 提示，彻底移除打断视线的强弹窗确认框
+        setToastMsg("✨ 留言已成功贴上画廊！");
+        setTimeout(() => setToastMsg(null), 3000);
         onRefresh();
       }
     } catch (err: any) {
@@ -445,9 +448,9 @@ function GalleryCommentInput({
                   <i className={`ri-arrow-down-s-line text-xs transition-transform ${isEmojiPickerOpen ? "rotate-180" : ""}`} />
                 </button>
 
-                {/* 悬浮轻量表情与颜文字面板 (Popover) */}
+                {/* 悬浮轻量表情与颜文字面板 (改用 bottom-9 向上展开，彻底杜绝遮挡文本输入框) */}
                 {isEmojiPickerOpen && (
-                  <div className="absolute left-0 top-9 z-50 w-72 sm:w-80 rounded-2xl border border-black/10 bg-w p-3 shadow-2xl dark:border-white/10 backdrop-blur-2xl ani-show">
+                  <div className="absolute left-0 bottom-9 z-50 w-72 sm:w-80 rounded-2xl border border-black/10 bg-w p-3 shadow-2xl dark:border-white/10 backdrop-blur-2xl ani-show">
                     <div className="mb-2">
                       <p className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider mb-1">
                         常用二次元 Emoji
@@ -519,9 +522,16 @@ function GalleryCommentInput({
 
         {/* 底部提交动作栏 */}
         <div className="flex items-center justify-between pt-1">
-          <span className="text-[11px] text-neutral-400 font-mono">
-            {content.length > 0 ? `${content.length} 字符` : "文明交流 · 善意沟通"}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-neutral-400 font-mono">
+              {content.length > 0 ? `${content.length} 字符` : "文明交流 · 善意沟通"}
+            </span>
+            {toastMsg && (
+              <span className="text-xs font-semibold text-emerald-500 animate-pulse">
+                {toastMsg}
+              </span>
+            )}
+          </div>
 
           <button
             type="submit"
@@ -629,7 +639,7 @@ function GalleryCommentItem({
 
   return (
     <div
-      className={`group relative flex flex-col justify-between rounded-2xl border border-black/10 bg-w p-4 shadow-2xs hover:shadow-xl hover:border-theme/40 transition-all duration-300 transform ${tiltClass} hover:rotate-0 hover:scale-[1.02] dark:border-white/10`}
+      className={`group relative flex flex-col justify-between rounded-xl border border-black/10 bg-w p-3 sm:p-3.5 shadow-2xs hover:shadow-md hover:border-theme/40 transition-all duration-200 transform ${tiltClass} hover:rotate-0 dark:border-white/10`}
     >
       {/* Tape decoration */}
       <div className="absolute -top-2 left-6 w-8 h-3 bg-theme/15 dark:bg-theme/25 rounded-xs rotate-[-2deg] pointer-events-none" />

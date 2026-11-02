@@ -176,6 +176,46 @@ function StickyNoteItem({
     if (type === "about") {
         const aboutUrl = siteConfig.atelierAboutUrl || "/about";
         const bgImage = siteConfig.atelierAboutBg;
+        const noteStyle = siteConfig.atelierAboutStyle || "card";
+
+        // 精致小圆盘样式 (Circle Widget)
+        if (noteStyle === "circle") {
+            return (
+                <div
+                    onClick={() => setLocation(aboutUrl)}
+                    className="group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-amber-300/80 bg-gradient-to-tr from-amber-100 to-amber-50 dark:from-amber-950/60 dark:to-neutral-900 text-center"
+                >
+                    <span className="text-3xl mb-1">{siteConfig.atelierAboutIcon || "🐾"}</span>
+                    <p className="font-bold text-sm text-amber-900 dark:text-amber-200 truncate w-32">
+                        {siteConfig.name || "80hou"}
+                    </p>
+                    <span className="text-[11px] text-amber-700/80 dark:text-amber-300/80 mt-1 font-semibold group-hover:underline">
+                        关于我 &rarr;
+                    </span>
+                </div>
+            );
+        }
+
+        // 极简小胶囊样式 (Capsule Widget)
+        if (noteStyle === "capsule") {
+            return (
+                <div
+                    onClick={() => setLocation(aboutUrl)}
+                    className="group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-amber-300/80 bg-amber-50 dark:bg-amber-950/40"
+                >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-xl">{siteConfig.atelierAboutIcon || "🐾"}</span>
+                        <div className="min-w-0 truncate">
+                            <p className="font-bold text-xs text-amber-900 dark:text-amber-200 truncate">关于我</p>
+                            <p className="text-[10px] text-neutral-400 truncate">{siteConfig.name || "80hou's Home"}</p>
+                        </div>
+                    </div>
+                    <span className="text-xs text-amber-800 dark:text-amber-300 group-hover:translate-x-1 transition-transform font-bold">&rarr;</span>
+                </div>
+            );
+        }
+
+        // 默认拍立得长条便签样式 (带背景图高清自适应及居中)
         return (
             <div
                 onClick={() => setLocation(aboutUrl)}
@@ -647,13 +687,16 @@ export function FeedsPage() {
 
     const interleavedItems = useMemo(() => {
         const items: Array<{ type: "photo" | "note" | "deck"; data?: any; noteType?: any }> = [];
-        const noteTypes: Array<"about" | "timeline" | "moments" | "friends" | "search"> = [
-            "about",
-            "timeline",
-            "moments",
-            "friends",
-            "search",
+        const allNoteTypes: Array<{ id: "about" | "timeline" | "moments" | "friends" | "search"; show: boolean }> = [
+            { id: "about", show: siteConfig.atelierAboutShow !== false },
+            { id: "timeline", show: siteConfig.atelierTimelineShow !== false },
+            { id: "moments", show: siteConfig.atelierMomentsShow !== false },
+            { id: "friends", show: siteConfig.atelierFriendsShow !== false },
+            { id: "search", show: siteConfig.atelierSearchShow !== false },
         ];
+
+        // 仅筛选出用户在后台设置为【在画廊首页展示】的便签！
+        const activeNoteTypes = allNoteTypes.filter((n) => n.show).map((n) => n.id);
 
         // 仅在 normal 模式展示便签；非 normal 模式（草稿/未列出）100% 纯文章展示
         if (listState !== "normal" || currentFeedData.length === 0) {
@@ -667,7 +710,7 @@ export function FeedsPage() {
 
         const layoutMode = siteConfig.atelierNotesLayout || "grid";
 
-        let orderedNotes = [...noteTypes];
+        let orderedNotes = [...activeNoteTypes];
         if (layoutMode === "random") {
             orderedNotes = orderedNotes.sort(() => Math.sin(firstPageFeeds.length) - 0.5);
         }
@@ -707,8 +750,10 @@ export function FeedsPage() {
             noteIdx++;
         }
 
-        // 记忆翻动卡片（仅限首屏末尾展示一次，绝不翻到第二页！）
-        items.push({ type: "deck" });
+        // 记忆翻动卡片（仅当后台开启展示时，在首屏末尾呈现一次）
+        if (siteConfig.atelierDeckShow !== false) {
+            items.push({ type: "deck" });
+        }
 
         // 第一页之后（翻页/加载更多追加进来的所有文章）：100% 纯照片文章卡片，绝无任何便签污染！
         subsequentFeeds.forEach((feed) => {
@@ -716,7 +761,18 @@ export function FeedsPage() {
         });
 
         return items;
-    }, [currentFeedData, listState, siteConfig.pageSize, siteConfig.atelierNotesLayout]);
+    }, [
+        currentFeedData,
+        listState,
+        siteConfig.pageSize,
+        siteConfig.atelierNotesLayout,
+        siteConfig.atelierAboutShow,
+        siteConfig.atelierTimelineShow,
+        siteConfig.atelierMomentsShow,
+        siteConfig.atelierFriendsShow,
+        siteConfig.atelierSearchShow,
+        siteConfig.atelierDeckShow,
+    ]);
 
     return (
         <>
