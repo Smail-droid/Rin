@@ -385,34 +385,9 @@ export function AdminLayout({
             </span>
           </div>
 
-          {/* Right: Quick Action Buttons Group */}
-          <div className="flex items-center gap-2">
-            <Link
-              href="/admin/writing"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-theme px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-theme-hover active:scale-95 transition"
-              title="写文章"
-            >
-              <i className="ri-quill-pen-line text-sm" />
-              <span className="hidden sm:inline">写文章</span>
-            </Link>
-
-            <Link
-              href="/admin/files"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 bg-w px-3 py-1.5 text-xs font-semibold t-primary shadow-2xs hover:border-theme hover:text-theme dark:border-white/10 transition"
-              title="管理 R2 图床相册"
-            >
-              <i className="ri-folder-image-line text-sm" />
-              <span className="hidden sm:inline">图床画廊</span>
-            </Link>
-
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 bg-w px-3 py-1.5 text-xs font-semibold t-primary shadow-2xs hover:border-theme hover:text-theme dark:border-white/10 transition"
-              title="回到前台画廊随想"
-            >
-              <i className="ri-external-link-line text-sm" />
-              <span className="hidden sm:inline">前台画廊</span>
-            </Link>
+          {/* Right: 极客运行状态胶囊 (已移除重复操作按钮，左侧与左上角头像已提供入口) */}
+          <div className="flex items-center gap-2 text-xs font-mono text-neutral-400">
+            <span className="hidden sm:inline-block">点击左上角头像可直接返回画廊主页</span>
           </div>
         </header>
 

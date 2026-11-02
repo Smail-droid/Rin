@@ -1,10 +1,9 @@
-import { SettingsBadge, SettingsCard, SettingsCardBody, SettingsCardHeader, Spinner } from "@rin/ui";
+import { Spinner } from "@rin/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link } from "wouter";
 import type { Tag } from "../api/client";
 import { client } from "../app/runtime";
-import { Button } from "../components/button";
 import { useAlert, useConfirm } from "../components/dialog";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 
@@ -16,11 +15,22 @@ export function AdminTagsPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // 新建与编辑状态
+  const [newTagName, setNewTagName] = useState("");
+  const [creating, setCreating] = useState(false);
   const [editingTag, setEditingTag] = useState<{ id: number; name: string } | null>(null);
   const [editingName, setEditingName] = useState("");
   const [savingId, setSavingId] = useState<number | null>(null);
-  const [newTagName, setNewTagName] = useState("");
-  const [creating, setCreating] = useState(false);
+
+  // 排序与选择状态 (iKuai 风格超级数据表格)
+  const [sortField, setSortField] = useState<"id" | "name" | "feeds">("id");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // 紧凑分页状态
+  const [pageSize, setPageSize] = useState<number>(20);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const isLoadedRef = useRef(false);
 
   const fetchTags = useCallback(() => {
@@ -44,21 +54,105 @@ export function AdminTagsPage() {
     fetchTags();
   }, [fetchTags]);
 
-  const filteredTags = useMemo(() => {
+  // 搜索与排序
+  const sortedAndFilteredTags = useMemo(() => {
+    let result = [...tags];
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return tags;
-    return tags.filter((tag) => tag.name.toLowerCase().includes(q));
-  }, [tags, searchQuery]);
+    if (q) {
+      result = result.filter(
+        (t) => t.name.toLowerCase().includes(q) || String(t.id).includes(q)
+      );
+    }
+
+    result.sort((a, b) => {
+      if (sortField === "id") {
+        return sortOrder === "asc" ? a.id - b.id : b.id - a.id;
+      }
+      if (sortField === "feeds") {
+        const feedsA = (a as any).feeds || 0;
+        const feedsB = (b as any).feeds || 0;
+        return sortOrder === "asc" ? feedsA - feedsB : feedsB - feedsA;
+      }
+      return sortOrder === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+    });
+
+    return result;
+  }, [tags, searchQuery, sortField, sortOrder]);
+
+  // 分页切片
+  const totalItems = sortedAndFilteredTags.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const paginatedTags = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedAndFilteredTags.slice(start, start + pageSize);
+  }, [sortedAndFilteredTags, currentPage, pageSize]);
 
   const totalFeeds = useMemo(() => {
     return tags.reduce((acc, tag) => acc + ((tag as any).feeds || 0), 0);
   }, [tags]);
 
+  // 表格全选与单选
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginatedTags.length && paginatedTags.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedTags.map((t) => t.id)));
+    }
+  };
+
+  const toggleSelectOne = (id: number) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedIds(next);
+  };
+
+  // 排序切换辅助函数
+  const handleSort = (field: "id" | "name" | "feeds") => {
+    if (sortField === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortOrder(field === "feeds" ? "desc" : "asc");
+    }
+  };
+
+  // 创建新标签
+  const handleCreateTag = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = newTagName.trim();
+    if (!trimmed) {
+      showAlert("请输入想要添加的标签名称~");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const { data, error } = await client.tag.create(trimmed);
+      if (data) {
+        setNewTagName("");
+        fetchTags();
+        showAlert(`✨ 标签 “#${trimmed}” 添加成功！`);
+      } else if (error) {
+        showAlert(String(error.value || "创建标签失败"));
+      }
+    } catch (err: any) {
+      showAlert(err.message || "创建标签失败");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // 开始编辑标签
   const handleStartEdit = (tag: Tag) => {
     setEditingTag({ id: tag.id, name: tag.name });
     setEditingName(tag.name);
   };
 
+  // 保存重命名
   const handleSaveEdit = async () => {
     if (!editingTag) return;
     const trimmed = editingName.trim();
@@ -90,6 +184,7 @@ export function AdminTagsPage() {
     }
   };
 
+  // 单条删除
   const handleDeleteTag = (tag: Tag) => {
     showConfirm(
       "删除标签确认",
@@ -100,6 +195,11 @@ export function AdminTagsPage() {
           const { error } = await client.tag.delete(tag.id);
           if (!error) {
             setTags((prev) => prev.filter((item) => item.id !== tag.id));
+            setSelectedIds((prev) => {
+              const next = new Set(prev);
+              next.delete(tag.id);
+              return next;
+            });
             showAlert("标签删除成功");
           } else {
             showAlert(String(error.value || "删除标签失败"));
@@ -113,205 +213,441 @@ export function AdminTagsPage() {
     );
   };
 
-  const handleCreateTag = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = newTagName.trim();
-    if (!trimmed) return;
-
-    setCreating(true);
-    try {
-      const { data, error } = await client.tag.create(trimmed);
-      if (data) {
-        setNewTagName("");
-        fetchTags();
-        showAlert(`标签 “#${trimmed}” 创建成功！`);
-      } else if (error) {
-        showAlert(String(error.value || "创建标签失败"));
+  // 批量删除
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    showConfirm(
+      "批量删除确认",
+      `确定要删除选中的 ${selectedIds.size} 个标签吗？\n关联文章中的对应标签将一并解除。`,
+      async () => {
+        setLoading(true);
+        let count = 0;
+        try {
+          for (const id of Array.from(selectedIds)) {
+            const { error } = await client.tag.delete(id);
+            if (!error) count++;
+          }
+          showAlert(`批量操作完成：成功删除 ${count} 个标签！`);
+          setSelectedIds(new Set());
+          fetchTags();
+        } finally {
+          setLoading(false);
+        }
       }
-    } catch (err: any) {
-      showAlert(err.message || "创建标签失败");
-    } finally {
-      setCreating(false);
-    }
+    );
   };
 
   return (
-    <>
+    <div className="flex w-full flex-col gap-4 ani-show select-none">
       <Helmet>
-        <title>{`标签分类管理 - ${siteConfig.name}`}</title>
+        <title>{`分类标签管理 - ${siteConfig.name}`}</title>
       </Helmet>
-
-      <div className="flex flex-col gap-6">
-        {/* Header Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <SettingsCard tone="default">
-            <SettingsCardHeader
-              title={String(tags.length)}
-              description="全站标签分类总数"
-              badge={<SettingsBadge tone="neutral">分类字典</SettingsBadge>}
-            />
-          </SettingsCard>
-          <SettingsCard tone="success">
-            <SettingsCardHeader
-              title={String(totalFeeds)}
-              description="标签文章引用关联总量"
-              badge={<SettingsBadge tone="success">有效关联</SettingsBadge>}
-            />
-          </SettingsCard>
-        </div>
-
-        {/* Toolbar: Create New Tag & Search */}
-        <SettingsCard>
-          <SettingsCardBody>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-              {/* Create Tag Form */}
-              <form onSubmit={handleCreateTag} className="flex items-center gap-2 flex-1 max-w-md">
-                <input
-                  type="text"
-                  placeholder="新建标签名称 (如: Linux / AI / 随笔)..."
-                  value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
-                  className="w-full rounded-xl border border-black/10 bg-w px-3.5 py-2 text-sm t-primary placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-theme/20 dark:border-white/10"
-                />
-                <Button
-                  title={creating ? "创建中…" : "添加标签"}
-                  onClick={() => {}}
-                  disabled={creating || !newTagName.trim()}
-                  className="shrink-0 text-xs py-2 px-4"
-                />
-              </form>
-
-              {/* Search input */}
-              <div className="relative w-full sm:w-64">
-                <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm" />
-                <input
-                  type="text"
-                  placeholder="搜索过滤标签..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-xl border border-black/10 bg-w pl-9 pr-3.5 py-2 text-sm t-primary placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-theme/20 dark:border-white/10"
-                />
-              </div>
-            </div>
-          </SettingsCardBody>
-        </SettingsCard>
-
-        {/* Tags List */}
-        <div className="flex flex-col gap-3">
-          {loading ? (
-            <div className="flex items-center justify-center p-12">
-              <Spinner size="2rem" label="加载标签列表中…" />
-            </div>
-          ) : filteredTags.length === 0 ? (
-            <SettingsCard>
-              <SettingsCardBody>
-                <div className="flex flex-col items-center justify-center p-8 text-neutral-400">
-                  <i className="ri-price-tag-3-line text-4xl mb-2" />
-                  <p className="text-sm font-medium">未找到任何匹配的标签</p>
-                </div>
-              </SettingsCardBody>
-            </SettingsCard>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredTags.map((tag) => {
-                const isEditing = editingTag?.id === tag.id;
-                const isSaving = savingId === tag.id;
-                const feedCount = (tag as any).feeds || 0;
-
-                return (
-                  <div
-                    key={tag.id}
-                    className="flex flex-col justify-between rounded-2xl border border-black/10 bg-w p-4 shadow-2xs hover:shadow-md transition-all dark:border-white/10"
-                  >
-                    {isEditing ? (
-                      <div className="flex flex-col gap-2">
-                        <input
-                          type="text"
-                          value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          className="w-full rounded-xl border border-theme bg-w px-3 py-1.5 text-sm font-bold t-primary focus:outline-none ring-2 ring-theme/20"
-                          placeholder="输入修正后的标签名..."
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSaveEdit();
-                            if (e.key === "Escape") setEditingTag(null);
-                          }}
-                        />
-                        <div className="flex items-center gap-1.5 justify-end">
-                          <button
-                            type="button"
-                            onClick={() => setEditingTag(null)}
-                            className="rounded-lg px-2.5 py-1 text-xs text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/5"
-                          >
-                            取消
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleSaveEdit}
-                            disabled={isSaving}
-                            className="rounded-lg bg-theme px-3 py-1 text-xs font-semibold text-white shadow-2xs hover:bg-theme-hover disabled:opacity-50"
-                          >
-                            {isSaving ? "保存中…" : "确认修改"}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <span className="font-bold text-sm t-primary break-words flex items-center gap-1.5">
-                              <i className="ri-hashtag text-theme text-sm shrink-0" />
-                              <span>{tag.name}</span>
-                            </span>
-                            <p className="mt-1 text-xs text-neutral-400 font-medium">
-                              关联 {feedCount} 篇文章
-                            </p>
-                          </div>
-                          <Link
-                            href={`/hashtag/${encodeURIComponent(tag.name)}`}
-                            target="_blank"
-                            className="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-neutral-400 hover:text-theme hover:bg-theme/10 transition"
-                            title="前台查看此标签"
-                          >
-                            <i className="ri-external-link-line text-sm" />
-                          </Link>
-                        </div>
-
-                        <div className="mt-4 pt-3 flex items-center justify-between border-t border-black/5 dark:border-white/5">
-                          <span className="text-[11px] text-neutral-400 font-mono">
-                            ID: {tag.id}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleStartEdit(tag)}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 dark:hover:bg-white/5 transition"
-                              title="重命名 / 修正标签"
-                            >
-                              <i className="ri-edit-2-line text-xs" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteTag(tag)}
-                              disabled={isSaving}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition disabled:opacity-50"
-                              title="删除此标签"
-                            >
-                              <i className="ri-delete-bin-line text-xs" />
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
       <AlertUI />
       <ConfirmUI />
-    </>
+
+      {/* ====================================================================
+          1. 顶部 iKuai 风格操作与批量工具栏
+          ==================================================================== */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs">
+        {/* 左侧动作组: [添加] [批量删除] [统计信息] */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 添加标签输入组 */}
+          <form onSubmit={handleCreateTag} className="flex items-center gap-1.5">
+            <input
+              type="text"
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              placeholder="输入新标签名 (如: Linux / AI / 随笔)..."
+              className="rounded-xl border border-black/10 bg-black/[0.02] px-3 py-1.5 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-white/[0.03] w-48 sm:w-64"
+            />
+            <button
+              type="submit"
+              disabled={creating || !newTagName.trim()}
+              className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover active:scale-95 transition disabled:opacity-50"
+            >
+              <i className="ri-add-line text-sm" />
+              <span>{creating ? "添加中…" : "添加"}</span>
+            </button>
+          </form>
+
+          {/* 批量删除按钮 (选中有高亮) */}
+          {selectedIds.size > 0 && (
+            <button
+              type="button"
+              onClick={handleBatchDelete}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-500 text-white text-xs font-bold hover:bg-rose-600 active:scale-95 transition"
+            >
+              <i className="ri-delete-bin-line text-xs" />
+              <span>删除选中 ({selectedIds.size})</span>
+            </button>
+          )}
+
+          {/* 总体统计徽章 */}
+          <div className="hidden lg:flex items-center gap-2 text-xs font-mono pl-2 text-neutral-400">
+            <span>共 {tags.length} 个标签</span>
+            <span>·</span>
+            <span>关联 {totalFeeds} 篇内容</span>
+          </div>
+        </div>
+
+        {/* 右侧搜索过滤与刷新 */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex items-center">
+            <i className="ri-search-line absolute left-2.5 text-neutral-400 text-xs" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="请输入搜索内容..."
+              className="rounded-xl border border-black/10 bg-transparent py-1.5 pl-8 pr-3 text-xs t-primary outline-none focus:border-theme dark:border-white/10 w-40 sm:w-52"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 text-neutral-400 hover:text-neutral-600 text-xs"
+              >
+                <i className="ri-close-line" />
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={fetchTags}
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-black/10 bg-transparent text-neutral-500 hover:text-theme hover:border-theme transition dark:border-white/10"
+            title="刷新标签列表"
+          >
+            <i className={`ri-refresh-line text-sm ${loading ? "animate-spin text-theme" : ""}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* ====================================================================
+          2. iKuai 风格超级数据表格 (Dense DataGrid)
+          ==================================================================== */}
+      <div className="rounded-2xl border border-black/10 bg-w dark:border-white/10 overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-500 dark:text-neutral-400 font-mono">
+                {/* Checkbox 全选 */}
+                <th className="py-3 px-4 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.size === paginatedTags.length && paginatedTags.length > 0}
+                    onChange={toggleSelectAll}
+                    className="h-3.5 w-3.5 rounded accent-theme cursor-pointer"
+                  />
+                </th>
+
+                {/* 序号 / ID (支持点击排序) */}
+                <th
+                  onClick={() => handleSort("id")}
+                  className="py-3 px-3 w-20 cursor-pointer hover:text-theme transition"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>序号</span>
+                    <i
+                      className={`text-xs ${
+                        sortField === "id"
+                          ? sortOrder === "asc"
+                            ? "ri-arrow-up-s-line text-theme"
+                            : "ri-arrow-down-s-line text-theme"
+                          : "ri-arrow-up-down-line opacity-40"
+                      }`}
+                    />
+                  </div>
+                </th>
+
+                {/* 名称 (支持点击排序) */}
+                <th
+                  onClick={() => handleSort("name")}
+                  className="py-3 px-3 cursor-pointer hover:text-theme transition"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>名称</span>
+                    <i
+                      className={`text-xs ${
+                        sortField === "name"
+                          ? sortOrder === "asc"
+                            ? "ri-arrow-up-s-line text-theme"
+                            : "ri-arrow-down-s-line text-theme"
+                          : "ri-arrow-up-down-line opacity-40"
+                      }`}
+                    />
+                  </div>
+                </th>
+
+                {/* 分流/分类方式 */}
+                <th className="py-3 px-3 w-32">分类模式</th>
+
+                {/* 关联文章数 (支持点击排序) */}
+                <th
+                  onClick={() => handleSort("feeds")}
+                  className="py-3 px-3 w-32 cursor-pointer hover:text-theme transition"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>关联文章</span>
+                    <i
+                      className={`text-xs ${
+                        sortField === "feeds"
+                          ? sortOrder === "asc"
+                            ? "ri-arrow-up-s-line text-theme"
+                            : "ri-arrow-down-s-line text-theme"
+                          : "ri-arrow-up-down-line opacity-40"
+                      }`}
+                    />
+                  </div>
+                </th>
+
+                {/* 前台直达预览 */}
+                <th className="py-3 px-3 w-28 text-center">前台直达</th>
+
+                {/* 操作列 (固定右侧) */}
+                <th className="py-3 px-4 w-36 text-right pr-6">操作</th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-black/5 dark:divide-white/5 t-primary">
+              {loading && tags.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-neutral-400">
+                    <Spinner size="1.5rem" label="正在读取标签列表中…" />
+                    <span className="ml-2">正在从 D1 边缘数据库拉取标签…</span>
+                  </td>
+                </tr>
+              ) : paginatedTags.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-neutral-400">
+                    <i className="ri-price-tag-3-line text-3xl block mb-1 opacity-50" />
+                    <span>未找到任何匹配的标签分类</span>
+                  </td>
+                </tr>
+              ) : (
+                paginatedTags.map((tag, idx) => {
+                  const isSelected = selectedIds.has(tag.id);
+                  const isEditing = editingTag?.id === tag.id;
+                  const isSaving = savingId === tag.id;
+                  const feedCount = (tag as any).feeds || 0;
+                  const rowNumber = (currentPage - 1) * pageSize + idx + 1;
+
+                  return (
+                    <tr
+                      key={tag.id}
+                      className={`h-11 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors ${
+                        isSelected ? "bg-theme/[0.04]" : ""
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <td className="py-2.5 px-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectOne(tag.id)}
+                          className="h-3.5 w-3.5 rounded accent-theme cursor-pointer"
+                        />
+                      </td>
+
+                      {/* 序号 / ID */}
+                      <td className="py-2.5 px-3 font-mono text-neutral-400">
+                        {rowNumber}
+                      </td>
+
+                      {/* 标签名称 (支持行内就地重命名编辑) */}
+                      <td className="py-2.5 px-3">
+                        {isEditing ? (
+                          <div className="flex items-center gap-1.5 max-w-sm">
+                            <input
+                              type="text"
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              className="w-full rounded-lg border border-theme bg-w px-2.5 py-1 text-xs font-bold t-primary focus:outline-none ring-1 ring-theme"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveEdit();
+                                if (e.key === "Escape") setEditingTag(null);
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleSaveEdit}
+                              disabled={isSaving}
+                              className="px-2 py-1 rounded bg-theme text-white font-semibold text-[11px] shrink-0"
+                            >
+                              {isSaving ? "…" : "保存"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingTag(null)}
+                              className="px-2 py-1 rounded bg-black/5 dark:bg-white/5 text-neutral-500 text-[11px] shrink-0"
+                            >
+                              取消
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 text-xs">
+                              <i className="ri-play-fill text-[10px]" />
+                            </span>
+                            <span
+                              onClick={() => handleStartEdit(tag)}
+                              className="font-bold text-xs t-primary hover:text-theme cursor-pointer"
+                              title="点击可直接编辑重命名"
+                            >
+                              {tag.name}
+                            </span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* 分流/模式 */}
+                      <td className="py-2.5 px-3 text-neutral-400 font-mono text-[11px]">
+                        公共分类
+                      </td>
+
+                      {/* 关联文章数量 */}
+                      <td className="py-2.5 px-3">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold ${
+                            feedCount > 0
+                              ? "bg-theme/10 text-theme"
+                              : "bg-black/5 text-neutral-400 dark:bg-white/5"
+                          }`}
+                        >
+                          <i className="ri-article-line text-[10px]" />
+                          <span>{feedCount} 篇</span>
+                        </span>
+                      </td>
+
+                      {/* 前台直达 */}
+                      <td className="py-2.5 px-3 text-center">
+                        <Link
+                          href={`/hashtag/${encodeURIComponent(tag.name)}`}
+                          target="_blank"
+                          className="inline-flex items-center gap-1 text-[11px] text-neutral-400 hover:text-theme transition"
+                          title="在画廊前台查看包含该标签的所有文章"
+                        >
+                          <i className="ri-external-link-line" />
+                          <span>查看</span>
+                        </Link>
+                      </td>
+
+                      {/* 操作列: [编辑] [删除] */}
+                      <td className="py-2.5 px-4 text-right pr-6 whitespace-nowrap">
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEdit(tag)}
+                            className="text-theme hover:underline font-semibold text-xs"
+                          >
+                            编辑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTag(tag)}
+                            disabled={isSaving}
+                            className="text-rose-500 hover:underline font-semibold text-xs disabled:opacity-50"
+                          >
+                            删除
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ====================================================================
+            3. iKuai 风格紧凑底部数据分页栏 (共X条 / 20条/页 / 数字翻页器)
+            ==================================================================== */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] text-xs select-none">
+          {/* 左侧总数统计 */}
+          <div className="text-neutral-500 dark:text-neutral-400 font-mono">
+            共 <span className="font-bold text-theme">{totalItems}</span> 条记录
+          </div>
+
+          {/* 右侧密度与翻页器 */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* 每页条数下拉选择 */}
+            <div className="flex items-center gap-1">
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number.parseInt(e.target.value, 10));
+                  setCurrentPage(1);
+                }}
+                className="rounded-lg border border-black/10 bg-w px-2 py-1 text-xs t-primary outline-none dark:border-white/10 dark:bg-neutral-900 cursor-pointer"
+              >
+                <option value={10}>10 条/页</option>
+                <option value={20}>20 条/页</option>
+                <option value={50}>50 条/页</option>
+                <option value={100}>100 条/页</option>
+              </select>
+            </div>
+
+            {/* 数字翻页按钮组 */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-black/10 hover:border-theme text-neutral-600 dark:text-neutral-300 dark:border-white/10 disabled:opacity-40 transition"
+                title="上一页"
+              >
+                <i className="ri-arrow-left-s-line" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                if (
+                  page === 1 ||
+                  page === totalPages ||
+                  (page >= currentPage - 2 && page <= currentPage + 2)
+                ) {
+                  return (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      className={`flex h-7 w-7 items-center justify-center rounded-lg font-mono text-xs font-bold transition ${
+                        currentPage === page
+                          ? "bg-theme text-white shadow-2xs"
+                          : "border border-black/10 hover:border-theme text-neutral-600 dark:text-neutral-300 dark:border-white/10"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                }
+                if (page === currentPage - 3 || page === currentPage + 3) {
+                  return (
+                    <span key={page} className="px-1 text-neutral-400">
+                      …
+                    </span>
+                  );
+                }
+                return null;
+              })}
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-black/10 hover:border-theme text-neutral-600 dark:text-neutral-300 dark:border-white/10 disabled:opacity-40 transition"
+                title="下一页"
+              >
+                <i className="ri-arrow-right-s-line" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
