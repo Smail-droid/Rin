@@ -7,14 +7,30 @@ import { useSiteConfig } from "../hooks/useSiteConfig";
 import { siteName } from "../utils/constants";
 import { useTranslation } from "react-i18next";
 
-interface FeedItem {
-    id: number;
-    createdAt: Date;
-    title: string | null;
+interface TimelineUnifiedItem {
+    id: number | string;
+    type: "feed" | "moment";
+    title?: string | null;
+    content?: string;
+    createdAt: any;
 }
 
-function formatExactDate(date: Date) {
-    const d = new Date(date);
+function parseSafeDate(val: any): Date {
+    if (!val) return new Date();
+    if (val instanceof Date) return val;
+    if (typeof val === "number") {
+        return new Date(val < 10000000000 ? val * 1000 : val);
+    }
+    if (typeof val === "string" && /^\d+$/.test(val)) {
+        const num = parseInt(val, 10);
+        return new Date(num < 10000000000 ? num * 1000 : num);
+    }
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? new Date() : d;
+}
+
+function formatExactDate(date: any) {
+    const d = parseSafeDate(date);
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
@@ -22,7 +38,7 @@ function formatExactDate(date: Date) {
 }
 
 export function TimelinePage() {
-    const [timelineItems, setTimelineItems] = useState<FeedItem[]>([]);
+    const [timelineItems, setTimelineItems] = useState<TimelineUnifiedItem[]>([]);
     const [loading, setLoading] = useState(true);
     const { t } = useTranslation();
     const siteConfig = useSiteConfig();
@@ -38,12 +54,35 @@ export function TimelinePage() {
     };
 
     useEffect(() => {
-        client.feed
-            .timeline()
-            .then(({ data }) => {
-                if (data && Array.isArray(data)) {
-                    setTimelineItems(data as any);
+        // 聚合全站文章与朋友圈记事动态，完整还原岁月长河刻度
+        Promise.all([
+            client.feed.timeline(),
+            client.moments.list({ limit: 60 }).catch(() => ({ data: [] })),
+        ])
+            .then(([feedRes, momentRes]) => {
+                const combined: TimelineUnifiedItem[] = [];
+                if (feedRes.data && Array.isArray(feedRes.data)) {
+                    feedRes.data.forEach((f: any) => {
+                        combined.push({
+                            id: f.id,
+                            type: "feed",
+                            title: f.title,
+                            createdAt: f.createdAt,
+                        });
+                    });
                 }
+                if (momentRes.data && Array.isArray(momentRes.data)) {
+                    momentRes.data.forEach((m: any) => {
+                        combined.push({
+                            id: `m_${m.id}`,
+                            type: "moment",
+                            title: m.content?.slice(0, 36) || "生活记事",
+                            content: m.content,
+                            createdAt: m.createdAt,
+                        });
+                    });
+                }
+                setTimelineItems(combined);
             })
             .catch((err) => {
                 console.error("fetch timeline error:", err);
@@ -53,11 +92,11 @@ export function TimelinePage() {
             });
     }, []);
 
-    // Group items by Year-Month (e.g. 2026-10)
+    // Group items by Year-Month (e.g. 2026-11, 2026-10)
     const monthGroups = useMemo(() => {
-        const groups: Record<string, { year: number; month: number; label: string; items: FeedItem[] }> = {};
+        const groups: Record<string, { year: number; month: number; label: string; items: TimelineUnifiedItem[] }> = {};
         timelineItems.forEach((item) => {
-            const d = new Date(item.createdAt);
+            const d = parseSafeDate(item.createdAt);
             const yr = d.getFullYear();
             const mo = d.getMonth() + 1;
             const moStr = String(mo).padStart(2, "0");
@@ -66,12 +105,18 @@ export function TimelinePage() {
                 groups[key] = {
                     year: yr,
                     month: mo,
-                    label: key, // e.g. 2026-10
+                    label: key,
                     items: [],
                 };
             }
             groups[key].items.push(item);
         });
+
+        // 组内按最新时间倒序排列
+        Object.values(groups).forEach((g) => {
+            g.items.sort((a, b) => parseSafeDate(b.createdAt).getTime() - parseSafeDate(a.createdAt).getTime());
+        });
+
         return groups;
     }, [timelineItems]);
 
@@ -163,28 +208,31 @@ export function TimelinePage() {
                                             {monthItems.map((item, idx) => {
                                                 const rot = rotations[idx % rotations.length];
                                                 const exactDate = formatExactDate(item.createdAt);
+                                                const isFeed = item.type === "feed";
 
                                                 return (
                                                     <Link
                                                         key={item.id}
-                                                        href={`/feed/${item.id}`}
-                                                        className={`group block rounded-2xl border border-black/10 bg-white p-3.5 shadow-2xs hover:shadow-xl transition-all duration-300 transform ${rot} hover:rotate-0 hover:scale-[1.02] hover:z-20 dark:border-white/10 dark:bg-neutral-900`}
+                                                        href={isFeed ? `/feed/${item.id}` : "/moments"}
+                                                        className={`group block rounded-2xl border border-black/10 bg-white p-3.5 shadow-2xs hover:shadow-xl transition-all duration-300 transform ${rot} hover:rotate-0 hover:scale-[1.02] hover:z-20 dark:border-white/10 dark:bg-neutral-900 select-none`}
                                                     >
                                                         {/* Top Date & ID Header */}
                                                         <div className="flex items-center justify-between text-xs text-neutral-400 dark:text-neutral-500 mb-1.5">
                                                             <div className="inline-flex items-center gap-1.5 font-mono font-semibold text-theme">
-                                                                <i className="ri-calendar-line text-xs" />
+                                                                <i className={isFeed ? "ri-article-line text-xs" : "ri-chat-smile-2-line text-xs text-emerald-500"} />
                                                                 <span>{exactDate}</span>
                                                             </div>
-                                                            <span className="text-[11px] font-mono opacity-60">
-                                                                #{item.id}
+                                                            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold ${
+                                                                isFeed ? "bg-theme/10 text-theme" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                                            }`}>
+                                                                {isFeed ? `文章 #${item.id}` : "岁月记事"}
                                                             </span>
                                                         </div>
 
-                                                        {/* Article Title With Inline Arrow (移除底部占高度行，箭头与标题共存同行) */}
+                                                        {/* Article / Moment Title With Inline Arrow */}
                                                         <div className="flex items-start justify-between gap-2">
                                                             <h2 className="text-sm font-bold t-primary group-hover:text-theme transition-colors line-clamp-2 leading-snug flex-1">
-                                                                {item.title || t("unlisted")}
+                                                                {item.title || (isFeed ? t("unlisted") : "生活随笔记录")}
                                                             </h2>
                                                             <span className="text-neutral-400 group-hover:text-theme group-hover:translate-x-1 transition-all shrink-0 text-base font-bold leading-snug">
                                                                 &rarr;

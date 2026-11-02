@@ -406,22 +406,28 @@ a.toc-link {
   animation: danmakuMarquee 35s linear infinite;
 }
 
-/* 视频级海报横向飞过弹幕动画 (从视口右侧横穿至左侧完全离开) */
-@keyframes poster-danmaku-fly {
+/* 电影级海报字幕流动画 (平缓滑入、从容停驻、优雅淡出) */
+@keyframes cinematic-caption-flow {
   0% {
-    transform: translateX(110vw);
     opacity: 0;
+    transform: translateY(8px) scale(0.97);
   }
-  5% {
-    opacity: 0.95;
+  12% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
-  92% {
-    opacity: 0.95;
+  85% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
   100% {
-    transform: translateX(-150vw);
     opacity: 0;
+    transform: translateY(-8px) scale(0.98);
   }
+}
+
+.animate-cinematic-caption {
+  animation: cinematic-caption-flow 6.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
 /* 全站主题日夜切换平滑过渡 */

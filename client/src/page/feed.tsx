@@ -30,6 +30,21 @@ function extractFirstMarkdownImageUrl(content: string) {
   return stripImageUrlMetadata(match[1]);
 }
 
+// 弹幕与诗意字幕纯文本清洗函数（彻底去除 Emoji、漫游精选/访客等前缀、URL链接）
+function cleanCaptionText(raw: string): string {
+  if (!raw) return "";
+  let text = raw;
+  // 1. 去除 URL 链接
+  text = text.replace(/https?:\/\/[^\s]+/gi, "");
+  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+  // 2. 去除所有 Emoji 与特殊字符
+  text = text.replace(/[\u{1F300}-\u{1FAD6}\u{1F600}-\u{1F64F}\u{2600}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}]/gu, "");
+  // 3. 去除额外前缀与标签
+  text = text.replace(/^(漫游精选|精选|访客|留言|评论|文章|随想)[:：\s]*/gi, "");
+  text = text.replace(/^[\s#*~-]+/, "");
+  return text.trim();
+}
+
 export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Element, clean: (id: string) => void }) {
   const { t } = useTranslation();
   const siteConfig = useSiteConfig();
@@ -65,8 +80,10 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
     }
   });
 
-  // 动态聚合真实全站文章名与读者留言弹幕池
-  const [dynamicDanmakuItems, setDynamicDanmakuItems] = useState<Array<{ text: string; top: string; delay: string; duration: string; color: string; size: string; rot: string }>>([]);
+  // 动态聚合真实全站文章名与读者留言弹幕池 (纯净无重叠，大字体诗意字幕流)
+  const [captionList, setCaptionList] = useState<string[]>([]);
+  const [activeCaptionIdx, setActiveCaptionIdx] = useState<number>(0);
+  const [isCaptionHovered, setIsCaptionHovered] = useState<boolean>(false);
 
   const toggleDanmaku = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -122,51 +139,52 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
           client.comment.list(feed.id),
         ]);
 
-        const pool: string[] = [];
-        // 1. 优先加入真实读者留言
+        const rawPool: string[] = [];
+        // 1. 开场白：当前文章核心标题
+        if (feed.title?.trim()) {
+          rawPool.push(feed.title.trim());
+        }
+        // 2. 真实读者纯文字留言（已清洗）
         if (commentRes.data && Array.isArray(commentRes.data)) {
           commentRes.data.forEach((c: any) => {
-            const name = c.user?.username || c.guestName || "访客";
-            if (c.content?.trim()) {
-              pool.push(`💬 ${name}: ${c.content.trim().slice(0, 36)}`);
+            const clean = cleanCaptionText(c.content || "");
+            if (clean && clean.length > 2) {
+              rawPool.push(clean.slice(0, 48));
             }
           });
         }
-        // 2. 加入全站真实文章标题
+        // 3. 全站真实文章纯标题（已清洗）
         if (feedRes.data?.data && Array.isArray(feedRes.data.data)) {
           feedRes.data.data.forEach((f: any) => {
-            if (f.title?.trim() && f.id !== feed.id) {
-              pool.push(`📖 漫游精选: ${f.title.trim().slice(0, 30)}`);
+            if (f.id !== feed.id && f.title?.trim()) {
+              const clean = cleanCaptionText(f.title.trim());
+              if (clean) {
+                rawPool.push(clean.slice(0, 36));
+              }
             }
           });
         }
-        // 3. 美学随想寄语补充
-        pool.push("✨ 这里的画幅排版太有艺术感了！");
-        pool.push("🌸 记录每一次灵感火花");
-        pool.push("🚀 边缘原生全栈 Serverless 架构极致优雅");
-        pool.push("💻 Mac 终端代码块高亮排版真舒服");
+        // 4. 优雅随笔短语兜底
+        rawPool.push("漫步在数字记忆工坊与随笔空间");
+        rawPool.push("岁月不语 惟石能言 记录每一次灵感火花");
 
-        const colorPalette = ["#ffffff", "#38bdf8", "#f472b6", "#facc15", "#4ade80", "#c084fc", "#e2e8f0"];
-        const tracks = ["12%", "26%", "42%", "58%", "72%", "85%"];
-        const rots = ["rotate-[-1deg]", "rotate-[1deg]", "rotate-0", "rotate-[1.5deg]", "rotate-[-1.5deg]"];
-        const sizes = ["text-xs", "text-sm", "text-xs", "text-xs font-semibold"];
-
-        const items = pool.slice(0, 16).map((text, idx) => ({
-          text,
-          top: tracks[idx % tracks.length],
-          delay: `${(idx * 2.8).toFixed(1)}s`,
-          duration: `${(20 + (idx % 5) * 2.5).toFixed(1)}s`,
-          color: colorPalette[idx % colorPalette.length],
-          size: sizes[idx % sizes.length],
-          rot: rots[idx % rots.length],
-        }));
-
-        setDynamicDanmakuItems(items);
+        const filtered = Array.from(new Set(rawPool.map(cleanCaptionText).filter(Boolean)));
+        setCaptionList(filtered);
+        setActiveCaptionIdx(0);
       } catch {}
     };
 
     void fetchDanmakuData();
   }, [feed?.id]);
+
+  // 优雅单条开场流转定时器：每 6.5 秒从容衔接下一条，绝不撞车挤压，鼠标悬停时暂停
+  useEffect(() => {
+    if (!isDanmakuEnabled || captionList.length <= 1 || isCaptionHovered) return;
+    const timer = setInterval(() => {
+      setActiveCaptionIdx((prev) => (prev + 1) % captionList.length);
+    }, 6500);
+    return () => clearInterval(timer);
+  }, [isDanmakuEnabled, captionList.length, isCaptionHovered]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -353,25 +371,23 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         />
                       </div>
 
-                      {/* 视频级海报文字流动弹幕层 (放缓流速至 20s~32s，动态聚合真实文章名与留言，支持鼠标移入悬停) */}
-                      {isDanmakuEnabled && dynamicDanmakuItems.length > 0 && (
-                        <div className="absolute inset-0 z-20 overflow-hidden select-none pointer-events-none group/danmaku">
-                          {dynamicDanmakuItems.map((dm, i) => (
-                            <span
-                              key={i}
-                              style={{
-                                top: dm.top,
-                                animation: `poster-danmaku-fly ${dm.duration} linear infinite`,
-                                animationDelay: dm.delay,
-                                color: dm.color,
-                                textShadow: "0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.85)",
-                              }}
-                              className={`absolute right-0 whitespace-nowrap font-bold tracking-wide transform pointer-events-auto hover:[animation-play-state:paused] hover:scale-105 hover:z-30 transition-transform cursor-default ${dm.size} ${dm.rot}`}
-                              title="鼠标悬停可定格阅读弹幕"
-                            >
-                              {dm.text}
-                            </span>
-                          ))}
+                      {/* 电影画卷级诗意字幕流 (大字体、无重叠、开场渐显淡化、鼠标悬停定格、纯净无Emoji) */}
+                      {isDanmakuEnabled && captionList.length > 0 && (
+                        <div
+                          onMouseEnter={() => setIsCaptionHovered(true)}
+                          onMouseLeave={() => setIsCaptionHovered(false)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute bottom-5 inset-x-4 z-20 flex justify-center pointer-events-auto select-none"
+                        >
+                          <div
+                            key={activeCaptionIdx}
+                            className="animate-cinematic-caption max-w-[90%] px-4 py-2 rounded-2xl bg-black/65 backdrop-blur-md border border-white/20 text-white shadow-2xl text-center cursor-default transition-all hover:bg-black/80"
+                            title="鼠标悬停已定格阅读"
+                          >
+                            <p className="text-sm sm:text-base md:text-lg font-extrabold tracking-wide leading-relaxed drop-shadow-md text-neutral-100">
+                              {captionList[activeCaptionIdx]}
+                            </p>
+                          </div>
                         </div>
                       )}
 
