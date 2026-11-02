@@ -29,6 +29,7 @@ export type CommentData = {
   content: string;
   createdAt: Date;
   updatedAt: Date;
+  approved?: number;
   user?: {
     id: number;
     username: string;
@@ -74,8 +75,8 @@ export function GalleryComments({
 
   return (
     <div className="w-full max-w-4xl mx-auto my-8 px-2 sm:px-4">
-      {/* 1. 评论区大标题与氛围感副标 */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-3 border-b border-black/5 dark:border-white/5">
+      {/* 1. 评论区大标题与氛围感副标 (已彻底移除冗余弹幕飘窗) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-black/5 dark:border-white/5">
         <div className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-theme/10 text-theme text-lg shadow-2xs">
             <i className="ri-chat-heart-line" />
@@ -92,52 +93,9 @@ export function GalleryComments({
             </p>
           </div>
         </div>
-
-        {/* 弹幕流模式标签 */}
-        {comments.length > 0 && (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-theme/5 border border-theme/20 text-xs font-semibold text-theme">
-            <span className="h-2 w-2 rounded-full bg-theme animate-ping" />
-            <span>实时画廊弹幕流已激活</span>
-          </div>
-        )}
       </div>
 
-      {/* 2. 流动弹幕墙效果 (Danmaku Floating Stream) */}
-      {comments.length > 0 && (
-        <div className="mb-6 overflow-hidden rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] p-3 border border-black/5 dark:border-white/5 select-none">
-          <div className="flex items-center gap-2 mb-2 text-[11px] font-bold text-neutral-400">
-            <i className="ri-broadcast-line text-theme" />
-            <span>留言弹幕飘窗</span>
-          </div>
-          <div className="relative flex overflow-x-hidden group">
-            <div className="flex gap-3 animate-marquee whitespace-nowrap py-1 group-hover:[animation-play-state:paused]">
-              {comments.slice(0, 15).map((c) => {
-                const name = c.user?.username || c.guestName || "画廊访客";
-                const avatar = c.user?.avatar || getDicebearLoreleiAvatar(name);
-                return (
-                  <div
-                    key={`danmaku-${c.id}`}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-w/90 dark:bg-neutral-900/90 border border-black/10 dark:border-white/10 shadow-xs backdrop-blur-md text-xs t-primary shrink-0 transition hover:scale-105"
-                  >
-                    <img
-                      src={avatar}
-                      alt={name}
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = FALLBACK_ANIME_AVATAR;
-                      }}
-                      className="h-5 w-5 rounded-full bg-theme/10 object-cover"
-                    />
-                    <span className="font-bold text-theme">{name}:</span>
-                    <span className="max-w-xs truncate">{c.content}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 3. 留言列表卡片流 (移至输入框上方，留言即刻映入眼帘) */}
+      {/* 2. 留言列表卡片流 (移至输入框上方，留言即刻映入眼帘) */}
       {loading ? (
         <div className="flex items-center justify-center py-8 text-xs text-neutral-400">
           <i className="ri-loader-4-line animate-spin text-theme text-xl mr-2" />
@@ -155,12 +113,13 @@ export function GalleryComments({
           <p className="text-[11px] text-neutral-400 mt-0.5">在下方留言板写下你的灵感或问候吧~</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 my-4">
+        <div className="space-y-2.5 my-4">
           {comments.map((comment, index) => (
             <GalleryCommentItem
               key={comment.id}
               comment={comment}
               index={index}
+              floorNumber={comments.length - index}
               canDelete={Boolean(profile?.permission)}
               onRefresh={loadComments}
             />
@@ -263,10 +222,15 @@ function GalleryCommentInput({
       if (error) {
         showAlert(String(error.value || "发表留言失败"));
       } else {
+        const containsUrl = /(https?:\/\/|[a-zA-Z0-9-]+\.(com|cn|net|org|top|xyz|cc|me|vip|io|moe))/i.test(content || "");
         setContent("");
-        // 采用轻量静默 Toast 提示，彻底移除打断视线的强弹窗确认框
-        setToastMsg("✨ 留言已成功贴上画廊！");
-        setTimeout(() => setToastMsg(null), 3000);
+        // 智能安全提醒：含有外链时提示需审核
+        if (!profile && containsUrl) {
+          setToastMsg("🛡️ 留言已提交！因包含外链，将在博主审核后正式公开。");
+        } else {
+          setToastMsg("✨ 留言已成功贴上画廊！");
+        }
+        setTimeout(() => setToastMsg(null), 3500);
         onRefresh();
       }
     } catch (err: any) {
@@ -501,15 +465,16 @@ function CommentContentRenderer({ content }: { content: string }) {
   );
 }
 
-// 留言卡片组件 (二次元便签式)
+// 留言便签条组件 (紧凑单行条状布局：左侧头像/昵称/时间/楼层，右侧内容)
 function GalleryCommentItem({
   comment,
-  index,
+  floorNumber,
   canDelete,
   onRefresh,
 }: {
   comment: CommentData;
   index: number;
+  floorNumber: number;
   canDelete: boolean;
   onRefresh: () => void;
 }) {
@@ -521,8 +486,22 @@ function GalleryCommentItem({
   const commenterName = comment.user?.username || comment.guestName || "画廊访客";
   const avatarUrl = comment.user?.avatar || getDicebearLoreleiAvatar(commenterName);
 
-  // 自然微倾角交错排布
-  const tiltClass = index % 3 === 0 ? "rotate-[-0.6deg]" : index % 3 === 1 ? "rotate-[0.6deg]" : "rotate-0";
+  // 检测留言是否包含 URL 外部链接
+  const containsUrl = /(https?:\/\/|[a-zA-Z0-9-]+\.(com|cn|net|org|top|xyz|cc|me|vip|io|moe))/i.test(comment.content || "");
+  const isPending = comment.approved === 0;
+
+  const handleApprove = async () => {
+    try {
+      const res = await fetch(`/api/comment/${comment.id}/approve`, { method: "PUT" });
+      if (res.ok) {
+        showAlert("已通过该留言审核并公开发布！", () => onRefresh());
+      } else {
+        showAlert("审批操作失败，请重试");
+      }
+    } catch {
+      showAlert("审批异常");
+    }
+  };
 
   const handleDelete = () => {
     showConfirm("删除留言确认", "确定要从画廊留言板移除这条评论吗？", async () => {
@@ -536,73 +515,101 @@ function GalleryCommentItem({
   };
 
   return (
-    <div
-      className={`group relative flex flex-col justify-between rounded-xl border border-black/10 bg-w p-3 sm:p-3.5 shadow-2xs hover:shadow-md hover:border-theme/40 transition-all duration-200 transform ${tiltClass} hover:rotate-0 dark:border-white/10`}
-    >
-      {/* Tape decoration */}
-      <div className="absolute -top-2 left-6 w-8 h-3 bg-theme/15 dark:bg-theme/25 rounded-xs rotate-[-2deg] pointer-events-none" />
-
-      {/* Header: Avatar, Name, Time, Delete */}
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2.5 min-w-0">
+    <div className="group relative flex flex-col sm:flex-row sm:items-start gap-3 rounded-2xl border border-black/10 bg-w p-3 sm:py-2.5 sm:px-4 shadow-2xs hover:shadow-xs hover:border-theme/30 transition-all dark:border-white/10 select-none">
+      {/* 左侧元信息栏 (头像、昵称、楼层、时间) */}
+      <div className="flex sm:flex-col items-center sm:items-start gap-2.5 sm:gap-1 shrink-0 sm:w-36 border-b sm:border-b-0 sm:border-r border-black/5 dark:border-white/5 pb-2 sm:pb-0 sm:pr-3">
+        <div className="flex items-center gap-2">
           <img
             src={avatarUrl}
             alt={commenterName}
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src = FALLBACK_ANIME_AVATAR;
             }}
-            className="h-8 w-8 rounded-full bg-theme/10 object-cover ring-1 ring-black/10 dark:ring-white/10"
+            className="h-7 w-7 rounded-full bg-theme/10 object-cover ring-1 ring-black/10 dark:ring-white/10 shrink-0"
           />
           <div className="min-w-0">
-            <p className="font-bold text-xs t-primary truncate flex items-center gap-1.5">
-              <span>{commenterName}</span>
+            <div className="flex items-center gap-1">
+              <span className="font-bold text-xs t-primary truncate max-w-[80px]">{commenterName}</span>
               {comment.user && (
-                <span className="px-1.5 py-0.2 rounded-md bg-theme/10 text-theme text-[10px] font-semibold">
+                <span className="px-1 py-0.2 rounded bg-theme/10 text-theme text-[9px] font-bold">
                   博主
                 </span>
               )}
-            </p>
+            </div>
             <span className="text-[10px] text-neutral-400 font-mono">
               {timeago(comment.createdAt)}
             </span>
           </div>
         </div>
 
-        {canDelete && (
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="opacity-0 group-hover:opacity-100 flex h-6 w-6 items-center justify-center rounded-lg text-neutral-400 hover:text-rose-500 hover:bg-rose-500/10 transition"
-            title="删除留言"
-          >
-            <i className="ri-delete-bin-line text-xs" />
-          </button>
-        )}
+        {/* 楼层标识数字 (如 1#, 2#, 3#) */}
+        <div className="ml-auto sm:ml-0 sm:mt-1 flex items-center gap-1.5">
+          <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/5 text-neutral-500">
+            {floorNumber}#
+          </span>
+          {isPending ? (
+            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold" title="待博主审核通过后公开显示">
+              待审核
+            </span>
+          ) : containsUrl ? (
+            <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold" title="已通过安全校验">
+              含链接
+            </span>
+          ) : null}
+        </div>
       </div>
 
-      {/* Body Content with Mac code block support */}
-      <CommentContentRenderer content={comment.content} />
+      {/* 右侧内容区 (自适应撑满，紧凑排版) */}
+      <div className="flex-1 min-w-0 flex flex-col justify-between">
+        <div className="text-xs sm:text-[13px] leading-relaxed t-primary">
+          <CommentContentRenderer content={comment.content} />
+        </div>
 
-      {/* Footer: Like Heart & Order badge */}
-      <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[11px] text-neutral-400">
-        <span className="font-mono text-[10px] opacity-60">#{comment.id}</span>
+        {/* 底部点赞与删除工具 */}
+        <div className="mt-2 pt-1.5 flex items-center justify-between text-[11px] text-neutral-400">
+          <div />
+          <div className="flex items-center gap-2">
+            {canDelete && isPending && (
+              <button
+                type="button"
+                onClick={handleApprove}
+                className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 font-bold text-[10px] transition"
+                title="审核通过并公开发布此留言"
+              >
+                <i className="ri-check-double-line text-xs" />
+                <span>通过审核</span>
+              </button>
+            )}
 
-        <button
-          type="button"
-          onClick={() => {
-            setLiked((prev) => !prev);
-            setLikes((prev) => (liked ? prev - 1 : prev + 1));
-          }}
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full transition select-none ${
-            liked
-              ? "bg-rose-500/10 text-rose-500 font-bold"
-              : "hover:bg-black/5 dark:hover:bg-white/5"
-          }`}
-          title="给这条留言点赞"
-        >
-          <i className={liked ? "ri-heart-fill text-rose-500" : "ri-heart-line"} />
-          <span>{likes > 0 ? likes : ""}</span>
-        </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLiked((prev) => !prev);
+                setLikes((prev) => (liked ? prev - 1 : prev + 1));
+              }}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full transition select-none ${
+                liked
+                  ? "bg-rose-500/10 text-rose-500 font-bold"
+                  : "hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+              title="赞同这条留言"
+            >
+              <i className={liked ? "ri-heart-fill text-rose-500" : "ri-heart-line"} />
+              <span>{likes > 0 ? likes : ""}</span>
+            </button>
+
+            {canDelete && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="opacity-0 group-hover:opacity-100 flex h-6 w-6 items-center justify-center rounded-lg text-neutral-400 hover:text-rose-500 hover:bg-rose-500/10 transition"
+                title="删除留言"
+              >
+                <i className="ri-delete-bin-line text-xs" />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       <ConfirmUI />

@@ -157,8 +157,8 @@ export function FeedService(): Hono<{
 
         return c.json(await profileAsync(c, 'feed_timeline_db', () => db.query.feeds.findMany({
             where: where,
-            columns: { id: true, title: true, createdAt: true },
-            orderBy: [desc(feeds.createdAt), desc(feeds.updatedAt)],
+            columns: { id: true, title: true, createdAt: true, updatedAt: true },
+            orderBy: [desc(feeds.updatedAt), desc(feeds.createdAt)],
         })));
     });
 

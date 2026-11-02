@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { AppContext } from "../core/hono-types";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { comments, feeds, users } from "../db/schema";
 import { profileAsync } from "../core/server-timing";
 import { notify } from "../utils/webhook";
@@ -12,13 +12,19 @@ export function CommentService(): Hono {
 
     app.get('/:feed', async (c: AppContext) => {
         const db = c.get('db');
+        const admin = c.get('admin');
         const feedId = parseInt(c.req.param('feed'));
         if (Number.isNaN(feedId) || feedId <= 0) {
             return c.text('Invalid feed ID', 400);
         }
         
+        // 普通访客仅展示已审核通过(approved=1)的留言，管理员可查看全部并就地审批
+        const queryWhere = admin
+            ? eq(comments.feedId, feedId)
+            : and(eq(comments.feedId, feedId), eq(comments.approved, 1));
+
         const comment_list = await profileAsync(c, 'comment_list_db', () => db.query.comments.findMany({
-            where: eq(comments.feedId, feedId),
+            where: queryWhere,
             columns: { feedId: false, userId: false },
             with: {
                 user: {
@@ -69,6 +75,12 @@ export function CommentService(): Hono {
             return c.text('Feed not found', 400);
         }
 
+        const admin = c.get('admin');
+
+        // 安全风控检测：如果非管理员评论且正文包含 URL 外链或推广特征，自动标记为需审核 (approved=0)
+        const contentHasUrl = /(https?:\/\/|www\.|[a-zA-Z0-9-]+\.(com|cn|net|org|top|xyz|cc|me|vip|io|moe|tk|ml|ga|cf|gq))/i.test(content || "");
+        const initialApproved = admin ? 1 : contentHasUrl ? 0 : 1;
+
         // 登录用户评论
         if (uid) {
             const user = await profileAsync(c, 'comment_create_user', () => db.query.users.findFirst({ where: eq(users.id, uid) }));
@@ -79,7 +91,8 @@ export function CommentService(): Hono {
             await db.insert(comments).values({
                 feedId,
                 userId: uid,
-                content
+                content,
+                approved: initialApproved,
             });
 
             const { webhookUrl, webhookMethod, webhookContentType, webhookHeaders, webhookBodyTemplate } =
@@ -123,7 +136,7 @@ export function CommentService(): Hono {
             guestName: guestName.trim(),
             guestEmail: guestEmail?.trim() || "",
             guestWebsite: safeGuestWebsite,
-            approved: 1,
+            approved: initialApproved,
         });
 
         const { webhookUrl, webhookMethod, webhookContentType, webhookHeaders, webhookBodyTemplate } =
@@ -184,6 +197,18 @@ export function CommentService(): Hono {
         
         await db.delete(comments).where(eq(comments.id, id_num));
         return c.text('OK');
+    });
+
+    // PUT /comment/:id/approve - 审批通过待审核留言 (admin only)
+    app.put('/:id/approve', async (c: AppContext) => {
+        const admin = c.get('admin');
+        if (!admin) return c.text('Permission denied', 403);
+        const db = c.get('db');
+        const id_num = parseInt(c.req.param('id'));
+        if (Number.isNaN(id_num) || id_num <= 0) return c.text('Invalid comment ID', 400);
+
+        await db.update(comments).set({ approved: 1 }).where(eq(comments.id, id_num));
+        return c.json({ success: true, message: 'Approved' });
     });
 
     return app;

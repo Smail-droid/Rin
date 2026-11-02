@@ -13,6 +13,7 @@ interface TimelineUnifiedItem {
     title?: string | null;
     content?: string;
     createdAt: any;
+    updatedAt?: any;
 }
 
 function parseSafeDate(val: any): Date {
@@ -27,6 +28,14 @@ function parseSafeDate(val: any): Date {
     }
     const d = new Date(val);
     return isNaN(d.getTime()) ? new Date() : d;
+}
+
+// 获取在时间轴上的有效展示时间（优先取最新更新或发表时间）
+function getEffectiveDate(item: TimelineUnifiedItem): Date {
+    const cDate = parseSafeDate(item.createdAt);
+    if (!item.updatedAt) return cDate;
+    const uDate = parseSafeDate(item.updatedAt);
+    return uDate > cDate ? uDate : cDate;
 }
 
 function formatExactDate(date: any) {
@@ -68,6 +77,7 @@ export function TimelinePage() {
                             type: "feed",
                             title: f.title,
                             createdAt: f.createdAt,
+                            updatedAt: f.updatedAt,
                         });
                     });
                 }
@@ -92,11 +102,11 @@ export function TimelinePage() {
             });
     }, []);
 
-    // Group items by Year-Month (e.g. 2026-11, 2026-10)
+    // Group items by Year-Month (以本地有效发表/更新时间为基准，确保 11 月独立成组)
     const monthGroups = useMemo(() => {
         const groups: Record<string, { year: number; month: number; label: string; items: TimelineUnifiedItem[] }> = {};
         timelineItems.forEach((item) => {
-            const d = parseSafeDate(item.createdAt);
+            const d = getEffectiveDate(item);
             const yr = d.getFullYear();
             const mo = d.getMonth() + 1;
             const moStr = String(mo).padStart(2, "0");
@@ -114,7 +124,7 @@ export function TimelinePage() {
 
         // 组内按最新时间倒序排列
         Object.values(groups).forEach((g) => {
-            g.items.sort((a, b) => parseSafeDate(b.createdAt).getTime() - parseSafeDate(a.createdAt).getTime());
+            g.items.sort((a, b) => getEffectiveDate(b).getTime() - getEffectiveDate(a).getTime());
         });
 
         return groups;
@@ -207,7 +217,7 @@ export function TimelinePage() {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 relative z-10 ani-show">
                                             {monthItems.map((item, idx) => {
                                                 const rot = rotations[idx % rotations.length];
-                                                const exactDate = formatExactDate(item.createdAt);
+                                                const exactDate = formatExactDate(getEffectiveDate(item));
                                                 const isFeed = item.type === "feed";
 
                                                 return (
