@@ -277,17 +277,17 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         />
                       </div>
 
-                      {/* 视频级海报文字流动弹幕层 (短视频/B站风格横向飘过，带随机色彩、速度与微倾角) */}
+                      {/* 视频级海报文字流动弹幕层 (放缓流速至 18s~28s，支持鼠标移入悬停定格阅读) */}
                       {isDanmakuEnabled && (
-                        <div className="absolute inset-0 z-20 overflow-hidden pointer-events-none select-none">
+                        <div className="absolute inset-0 z-20 overflow-hidden select-none pointer-events-none group/danmaku">
                           {[
-                            { text: "✨ 这里的画幅排版太有艺术感了！", top: "12%", delay: "0s", duration: "9s", color: "#ffffff", size: "text-xs", rot: "rotate-[-1deg]" },
-                            { text: `🌸 记录每一次灵感火花 · ${feed.title?.slice(0, 18) || "随笔"}`, top: "28%", delay: "2.5s", duration: "11s", color: "#38bdf8", size: "text-sm", rot: "rotate-[1deg]" },
-                            { text: "🚀 边缘原生全栈 Serverless 架构极致优雅", top: "45%", delay: "1.2s", duration: "12.5s", color: "#f472b6", size: "text-xs", rot: "rotate-0" },
-                            { text: "🍃 漫步在博主的数字记忆工坊", top: "62%", delay: "4s", duration: "10s", color: "#facc15", size: "text-xs", rot: "rotate-[1.5deg]" },
-                            { text: "💻 Mac 终端代码块高亮排版真舒服", top: "78%", delay: "3s", duration: "8.5s", color: "#4ade80", size: "text-xs", rot: "rotate-[-1.5deg]" },
-                            { text: "🎨 二次元微光美学 · 一页一世界", top: "35%", delay: "6s", duration: "13s", color: "#c084fc", size: "text-sm", rot: "rotate-[0.5deg]" },
-                            { text: "☕ 随性画廊随笔空间", top: "85%", delay: "7.5s", duration: "9.5s", color: "#ffffff", size: "text-xs", rot: "rotate-[-0.5deg]" },
+                            { text: "✨ 这里的画幅排版太有艺术感了！", top: "12%", delay: "0s", duration: "19s", color: "#ffffff", size: "text-xs", rot: "rotate-[-1deg]" },
+                            { text: `🌸 记录每一次灵感火花 · ${feed.title?.slice(0, 18) || "随笔"}`, top: "28%", delay: "4s", duration: "24s", color: "#38bdf8", size: "text-sm", rot: "rotate-[1deg]" },
+                            { text: "🚀 边缘原生全栈 Serverless 架构极致优雅", top: "45%", delay: "1.5s", duration: "26s", color: "#f472b6", size: "text-xs", rot: "rotate-0" },
+                            { text: "🍃 漫步在博主的数字记忆工坊", top: "62%", delay: "8s", duration: "21s", color: "#facc15", size: "text-xs", rot: "rotate-[1.5deg]" },
+                            { text: "💻 Mac 终端代码块高亮排版真舒服", top: "78%", delay: "5s", duration: "18s", color: "#4ade80", size: "text-xs", rot: "rotate-[-1.5deg]" },
+                            { text: "🎨 二次元微光美学 · 一页一世界", top: "35%", delay: "12s", duration: "28s", color: "#c084fc", size: "text-sm", rot: "rotate-[0.5deg]" },
+                            { text: "☕ 随性画廊随笔空间", top: "85%", delay: "15s", duration: "20s", color: "#ffffff", size: "text-xs", rot: "rotate-[-0.5deg]" },
                           ].map((dm, i) => (
                             <span
                               key={i}
@@ -296,9 +296,10 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                                 animation: `poster-danmaku-fly ${dm.duration} linear infinite`,
                                 animationDelay: dm.delay,
                                 color: dm.color,
-                                textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.8)",
+                                textShadow: "0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.85)",
                               }}
-                              className={`absolute right-0 whitespace-nowrap font-bold tracking-wide transform ${dm.size} ${dm.rot}`}
+                              className={`absolute right-0 whitespace-nowrap font-bold tracking-wide transform pointer-events-auto hover:[animation-play-state:paused] hover:scale-105 hover:z-30 transition-transform cursor-default ${dm.size} ${dm.rot}`}
+                              title="鼠标悬停可定格阅读弹幕"
                             >
                               {dm.text}
                             </span>
@@ -382,24 +383,14 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                     </div>
                   </div>
                   <div className="pt-2 flex items-center gap-1.5 shrink-0">
-                    {/* 一键复制链接 */}
+                    {/* 一键复制链接 (纯矢量图标，观感清爽) */}
                     <button
                       type="button"
                       onClick={handleCopyLink}
-                      title="复制文章直链"
-                      className="flex h-8 px-2.5 items-center gap-1 rounded-full bg-black/5 dark:bg-white/5 hover:bg-theme/10 hover:text-theme text-neutral-600 dark:text-neutral-300 text-xs font-semibold transition"
+                      title={copiedLink ? "链接已复制到剪贴板！" : "点击复制文章直链"}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 hover:bg-theme/10 hover:text-theme text-neutral-600 dark:text-neutral-300 transition"
                     >
-                      {copiedLink ? (
-                        <>
-                          <i className="ri-check-line text-emerald-500" />
-                          <span className="text-emerald-500">已复制!</span>
-                        </>
-                      ) : (
-                        <>
-                          <i className="ri-file-copy-line text-xs" />
-                          <span>复制直链</span>
-                        </>
-                      )}
+                      <i className={copiedLink ? "ri-check-line text-emerald-500 text-sm" : "ri-file-copy-line text-sm"} />
                     </button>
 
                     {/* 分享菜单浮层 */}

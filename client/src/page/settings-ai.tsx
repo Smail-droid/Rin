@@ -5,7 +5,6 @@ import {
 } from "@rin/config";
 import {
   SearchableSelect,
-  SettingsBadge,
   SettingsCard,
   SettingsCardBody,
   SettingsCardHeader,
@@ -18,7 +17,6 @@ import ReactLoading from "react-loading";
 import { client } from "../app/runtime";
 import { Button } from "../components/button";
 import { useAlert } from "../components/dialog";
-import { ItemTitle } from "./settings-items";
 import {
   AI_MODEL_PRESETS,
   AI_PROVIDER_PRESETS,
@@ -151,31 +149,54 @@ export function AISummarySettings({
   const modelOptions = AI_MODEL_PRESETS[value.provider] || [];
 
   return (
-    <>
-      <ItemTitle title={t("settings.ai_summary.title")} />
-      <SettingsCard>
-        <SettingsCardRow
-          header={<SettingsCardHeader title={t("settings.ai_summary.enable.title")} description={t("settings.ai_summary.enable.desc")} />}
-          action={
-            <Switch.Root
-              className="SwitchRoot"
-              checked={value.enabled}
-              onCheckedChange={(checked) => {
-                onChange({ enabled: checked });
-              }}
-            >
-              <Switch.Thumb className="SwitchThumb" />
-            </Switch.Root>
-          }
-        />
-      </SettingsCard>
+    <div className="space-y-3.5 ani-show select-none">
+      <div className="flex items-center gap-2 pb-1 border-b border-black/5 dark:border-white/5">
+        <i className="ri-sparkling-fill text-theme" />
+        <span className="font-bold text-xs uppercase tracking-wider text-theme">智能设置</span>
+      </div>
+
+      {/* 开关中枢 */}
+      <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-bold t-primary">启用AI总结摘要</h3>
+            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+              value.enabled ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-neutral-500/10 text-neutral-400"
+            }`}>
+              {value.enabled ? "流水线已就绪" : "已停用"}
+            </span>
+          </div>
+          <p className="text-xs text-neutral-400 mt-0.5">
+            发布或梳理文章时，智能调度大模型生成结构化导读与重点摘要
+          </p>
+        </div>
+        <Switch.Root
+          className="SwitchRoot shrink-0"
+          checked={value.enabled}
+          onCheckedChange={(checked) => {
+            onChange({ enabled: checked });
+          }}
+        >
+          <Switch.Thumb className="SwitchThumb" />
+        </Switch.Root>
+      </div>
 
       {value.enabled && (
         <>
-          <SettingsCard>
-            <SettingsCardRow
-              header={<SettingsCardHeader title={t("settings.ai_summary.provider.title")} description={t("settings.ai_summary.provider.desc")} />}
-              action={
+          {/* AI 服务商与核心参数配置切片 (紧凑 2x2 网格) */}
+          <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+              <span className="font-bold text-xs t-primary flex items-center gap-1.5">
+                <i className="ri-cpu-line text-theme" />
+                <span>模型接入与鉴权服务 (AI Provider)</span>
+              </span>
+              <span className="text-[11px] font-mono text-neutral-400">支持 OpenAI 兼容/Gemini/DeepSeek</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              {/* 服务商 */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">AI 供应商</label>
                 <SearchableSelect
                   value={value.provider}
                   onChange={handleProviderChange}
@@ -183,79 +204,71 @@ export function AISummarySettings({
                     label: preset.label,
                     value: preset.value,
                   }))}
-                  placeholder={t("settings.ai_summary.provider.title")}
+                  placeholder="选择 AI 服务供应商"
                   searchable={false}
                 />
-              }
-            />
-            <SettingsCardBody>
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium t-primary">{t("settings.ai_summary.model.title")}</p>
-                  <SearchableSelect
-                    value={value.model}
-                    onChange={(nextValue) => {
-                      onChange({ model: nextValue });
-                    }}
-                    options={modelOptions.map((option) => ({
-                      label: option,
-                      value: option,
-                    }))}
-                    placeholder={t("settings.ai_summary.model.desc")}
-                    searchPlaceholder={t("settings.ai_summary.model.desc")}
-                    emptyLabel={t("no_more")}
-                    allowCustomValue
-                    customValueLabel={(nextValue) => `${t("update.title")}: ${nextValue}`}
-                  />
-                </div>
-                {providerFields.requiresApiKey ? (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium t-primary">
-                      {t("settings.ai_summary.api_key.title")}
-                      {value.apiKeySet && (
-                        <span className="ml-2">
-                          <SettingsBadge tone="success">{t("settings.ai_summary.api_key.set")}</SettingsBadge>
-                        </span>
-                      )}
-                    </p>
-                    <input
-                      type="password"
-                      name="rin-ai-api-key"
-                      autoComplete="new-password"
-                      autoCapitalize="off"
-                      autoCorrect="off"
-                      spellCheck={false}
-                      value={value.apiKey}
-                      onChange={(event) => {
-                        onChange({ apiKey: event.target.value });
-                      }}
-                      placeholder={value.apiKeySet ? t("settings.ai_summary.api_key.placeholder_set") : "sk-..."}
-                      className="w-full rounded-xl border border-black/10 bg-w px-4 py-3 text-sm t-primary outline-none transition-colors placeholder:text-neutral-400 focus:border-black/20 focus:ring-2 focus:ring-theme/10 dark:border-white/10 dark:placeholder:text-neutral-500 dark:focus:border-white/20"
-                    />
-                  </div>
-                ) : null}
-                {providerFields.requiresApiUrl ? (
-                  <div className="space-y-2 lg:col-span-2">
-                    <p className="text-sm font-medium t-primary">{t("settings.ai_summary.api_url.title")}</p>
-                    <input
-                      type="text"
-                      value={value.apiUrl}
-                      onChange={(event) => {
-                        onChange({ apiUrl: event.target.value });
-                      }}
-                      placeholder="https://api.openai.com/v1"
-                      className="w-full rounded-xl border border-black/10 bg-w px-4 py-3 text-sm t-primary outline-none transition-colors placeholder:text-neutral-400 focus:border-black/20 focus:ring-2 focus:ring-theme/10 dark:border-white/10 dark:placeholder:text-neutral-500 dark:focus:border-white/20"
-                    />
-                    {value.provider === "gemini" && (
-                      <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                        💡 提示：Google 官方对部分节点地区有 IP 限制。若遇到“User location is not supported”报错，可在此填入可用的 Gemini 反向代理地址，或在上方切换至 DeepSeek / Cloudflare Worker AI 等无限制模型。
-                      </p>
+              </div>
+
+              {/* 模型 */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">模型名称 (Model)</label>
+                <SearchableSelect
+                  value={value.model}
+                  onChange={(nextValue) => {
+                    onChange({ model: nextValue });
+                  }}
+                  options={modelOptions.map((option) => ({
+                    label: option,
+                    value: option,
+                  }))}
+                  placeholder="选择或自定义模型名称"
+                  searchPlaceholder="搜索模型..."
+                  emptyLabel={t("no_more")}
+                  allowCustomValue
+                  customValueLabel={(nextValue) => `使用自定义: ${nextValue}`}
+                />
+              </div>
+
+              {/* API 密钥 */}
+              {providerFields.requiresApiKey && (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">API 密钥 (API Key)</label>
+                    {value.apiKeySet && (
+                      <span className="text-[10px] font-mono text-emerald-500 font-bold">已配置</span>
                     )}
                   </div>
-                ) : null}
-              </div>
-            </SettingsCardBody>
-          </SettingsCard>
+                  <input
+                    type="password"
+                    name="rin-ai-api-key"
+                    autoComplete="new-password"
+                    value={value.apiKey}
+                    onChange={(event) => {
+                      onChange({ apiKey: event.target.value });
+                    }}
+                    placeholder={value.apiKeySet ? "••••••••••••已安全存储••••••••••••" : "sk-..."}
+                    className="w-full rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] px-3 py-2 text-xs t-primary outline-none focus:border-theme transition"
+                  />
+                </div>
+              )}
+
+              {/* API 端点 */}
+              {providerFields.requiresApiUrl && (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">接口服务端点 (API URL)</label>
+                  <input
+                    type="text"
+                    value={value.apiUrl}
+                    onChange={(event) => {
+                      onChange({ apiUrl: event.target.value });
+                    }}
+                    placeholder="https://api.openai.com/v1"
+                    className="w-full rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] px-3 py-2 text-xs font-mono t-primary outline-none focus:border-theme transition"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* AI Multi-Stage Pipeline Workflow & Prompts Customization */}
           <SettingsCard>
@@ -488,6 +501,6 @@ export function AISummarySettings({
         </>
       )}
       <AlertUI />
-    </>
+    </div>
   );
 }

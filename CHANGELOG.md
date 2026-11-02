@@ -20,7 +20,11 @@ which automatically generates release notes from commit messages.
 - **Dashboard-Style General Settings**: General settings refactored with modular slices and a 2x3 iKuai-style feature toggle matrix.
 - **Time-Adaptive Dark Mode**: Auto smooth transition to night mode after 18:00; theme toggle widget is fully draggable in admin mode with persistent positioning.
 - **Moments Hyperlink Toolbar**: Added hyperlink `[text](url)`, code block, strikethrough, and list shortcuts to moments composer.
-- **Access Tokens Security Hardening**: Dark mode contrast fixed; Web Crypto API random key generation; duration and quota customization with localStorage persistence.
+- **Access Tokens Security Hardening**: Dark mode contrast fixed via custom frosted glass dropdown; Web Crypto API random key generation; duration and quota customization with localStorage persistence.
+- **Admin UI Density Refactor**: Fixed admin zoom (50%/75%/100%) to smoothly scale the main workspace; health diagnostics transformed into single-screen iKuai Dense DataGrid; AI settings tightened with 2x2 modular matrix and cleaner copy ("保存", "智能设置", "启用AI总结摘要").
+- **Article Access Permission Dialog**: Queue status table now includes an in-place [Permission] action button to configure public, password-protected, or passkey/token modes.
+- **Paced Danmaku & Hover Pause**: Hero poster danmaku flight rate eased to 18s~28s with hover-to-pause reading support.
+- **Minimalist Copy Link Button**: Streamlined copy link action in article header to pure SVG icon without redundant text.
 
 ## [v1.0.1] - 2026-11-02
 

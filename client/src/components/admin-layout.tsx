@@ -391,8 +391,11 @@ export function AdminLayout({
           </div>
         </header>
 
-        {/* Main Content Area: 彻底去除大标题Card，把高度全还给操作区 */}
-        <main className="flex-1 w-full max-w-full p-3 sm:p-5 lg:p-6 overflow-x-hidden">
+        {/* Main Content Area: 彻底去除大标题Card，把高度全还给操作区，并响应界面缩放 */}
+        <main
+          style={adminZoom !== 100 ? { zoom: `${adminZoom}%` } : undefined}
+          className="flex-1 w-full max-w-full p-3 sm:p-5 lg:p-6 overflow-x-hidden transition-all duration-200"
+        >
           <div className="w-full max-w-full mx-auto flex flex-col gap-4">
             {children}
           </div>

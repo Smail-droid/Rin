@@ -82,10 +82,10 @@ export function AdminAIPage() {
 
           <div className="flex items-center gap-3 self-end sm:self-auto">
             <Button
-              title={saving ? "保存中…" : "保存 AI 配置"}
+              title={saving ? "保存中…" : "保存"}
               onClick={handleSave}
               disabled={loading || saving}
-              className="py-2.5 px-6 shadow-sm"
+              className="py-2 px-5 shadow-sm text-xs font-bold"
             />
           </div>
         </div>

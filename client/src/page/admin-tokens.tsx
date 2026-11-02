@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAlert, useConfirm } from "../components/dialog";
 import { useSiteConfig } from "../hooks/useSiteConfig";
+import { client } from "../app/runtime";
 
 interface AccessTokenItem {
   id: string;
@@ -40,10 +41,90 @@ const DEFAULT_INITIAL_TOKENS: AccessTokenItem[] = [
   },
 ];
 
+// 高质感自定义暗黑磨砂下拉选择器 (彻底解决原生select系统白底不可见问题)
+function GlassDropdown<T extends string>({
+  value,
+  onChange,
+  options,
+  title,
+}: {
+  value: T;
+  onChange: (val: T) => void;
+  options: Array<{ value: T; label: string; sub?: string }>;
+  title?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const currentOption = options.find((o) => o.value === value) || options[0];
+
+  return (
+    <div ref={ref} className="relative w-full select-none">
+      <button
+        type="button"
+        title={title}
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between rounded-xl border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-850 px-3 py-2 text-xs t-primary hover:border-theme transition shadow-2xs"
+      >
+        <span className="truncate font-medium">{currentOption?.label || value}</span>
+        <i className={`ri-arrow-down-s-line text-neutral-400 text-sm transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-black/10 dark:border-white/10 bg-w/98 dark:bg-neutral-900/98 backdrop-blur-xl shadow-2xl p-1.5 flex flex-col gap-1 max-h-60 overflow-y-auto ani-show">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              className={`w-full flex flex-col text-left px-2.5 py-1.5 rounded-lg text-xs transition ${
+                opt.value === value
+                  ? "bg-theme text-white font-bold"
+                  : "text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              <span>{opt.label}</span>
+              {opt.sub && (
+                <span className={`text-[10px] mt-0.5 truncate ${opt.value === value ? "text-white/80" : "text-neutral-400"}`}>
+                  {opt.sub}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AdminTokensPage() {
   const siteConfig = useSiteConfig();
   const { showAlert, AlertUI } = useAlert();
   const { showConfirm, ConfirmUI } = useConfirm();
+
+  // 联动真实文章列表
+  const [feedOptions, setFeedOptions] = useState<Array<{ id: number; title: string }>>([]);
+
+  useEffect(() => {
+    client.feed.list({ limit: 50 }).then(({ data }) => {
+      if (data?.data && Array.isArray(data.data)) {
+        setFeedOptions(data.data as any);
+      }
+    }).catch(() => {});
+  }, []);
 
   // 从本地持久化存储加载通行证数据，避免刷新丢失
   const [tokens, setTokens] = useState<AccessTokenItem[]>(() => {
@@ -152,21 +233,15 @@ export function AdminTokensPage() {
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-[11px] font-bold uppercase tracking-wider text-theme">1. 口令使用规则</label>
-            <select
+            <GlassDropdown
               value={newCodeType}
-              onChange={(e: any) => setNewCodeType(e.target.value)}
-              className="rounded-xl border border-black/10 bg-w p-2 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-800 transition"
-            >
-              <option value="once" className="bg-white text-neutral-900 dark:bg-neutral-850 dark:text-neutral-100 py-1.5">
-                临时查看（访问 1 次后即焚失效）
-              </option>
-              <option value="multi" className="bg-white text-neutral-900 dark:bg-neutral-850 dark:text-neutral-100 py-1.5">
-                限次查看（允许访问指定次数）
-              </option>
-              <option value="permanent" className="bg-white text-neutral-900 dark:bg-neutral-850 dark:text-neutral-100 py-1.5">
-                永久查看（激活后永久有效）
-              </option>
-            </select>
+              onChange={(val) => setNewCodeType(val)}
+              options={[
+                { value: "once", label: "临时查看（单次即焚）", sub: "访问1次后即焚失效" },
+                { value: "multi", label: "限次查看（允许指定次数）", sub: "达到上限自动锁定" },
+                { value: "permanent", label: "永久查看（激活后永久有效）", sub: "特邀读者专属" },
+              ]}
+            />
           </div>
 
           {newCodeType === "multi" ? (
@@ -178,30 +253,22 @@ export function AdminTokensPage() {
                 max={500}
                 value={customAllowedCount}
                 onChange={(e) => setCustomAllowedCount(parseInt(e.target.value, 10) || 5)}
-                className="rounded-xl border border-black/10 bg-w p-2 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-800"
+                className="rounded-xl border border-black/10 bg-w px-3 py-2 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-850 shadow-2xs"
               />
             </div>
           ) : (
             <div className="flex flex-col gap-1">
               <label className="text-[11px] font-bold uppercase tracking-wider text-theme">有效有效期限</label>
-              <select
+              <GlassDropdown
                 value={expiryOption}
-                onChange={(e) => setExpiryOption(e.target.value)}
-                className="rounded-xl border border-black/10 bg-w p-2 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-800 transition"
-              >
-                <option value="24h" className="bg-white text-neutral-900 dark:bg-neutral-850 dark:text-neutral-100 py-1.5">
-                  24 小时内有效
-                </option>
-                <option value="7d" className="bg-white text-neutral-900 dark:bg-neutral-850 dark:text-neutral-100 py-1.5">
-                  7 天内有效
-                </option>
-                <option value="30d" className="bg-white text-neutral-900 dark:bg-neutral-850 dark:text-neutral-100 py-1.5">
-                  30 天内有效
-                </option>
-                <option value="never" className="bg-white text-neutral-900 dark:bg-neutral-850 dark:text-neutral-100 py-1.5">
-                  永久有效 (不过期)
-                </option>
-              </select>
+                onChange={(val) => setExpiryOption(val)}
+                options={[
+                  { value: "24h", label: "24 小时内有效" },
+                  { value: "7d", label: "7 天内有效" },
+                  { value: "30d", label: "30 天内有效" },
+                  { value: "never", label: "永久有效 (不过期)" },
+                ]}
+              />
             </div>
           )}
 
@@ -212,18 +279,23 @@ export function AdminTokensPage() {
               value={codePrefix}
               onChange={(e) => setCodePrefix(e.target.value)}
               placeholder="PASS / VIP / SHARE"
-              className="rounded-xl border border-black/10 bg-w p-2 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-800"
+              className="rounded-xl border border-black/10 bg-w px-3 py-2 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-850 shadow-2xs"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-theme">3. 适用授权范围</label>
-            <input
-              type="text"
+            <label className="text-[11px] font-bold uppercase tracking-wider text-theme">3. 适用授权范围 (联动文章)</label>
+            <GlassDropdown
               value={codeScope}
-              onChange={(e) => setCodeScope(e.target.value)}
-              placeholder="全站锁定文章 / 特定文章"
-              className="rounded-xl border border-black/10 bg-w p-2 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-800"
+              onChange={(val) => setCodeScope(val)}
+              options={[
+                { value: "全站私密画廊与锁定专栏", label: "全站锁定内容" },
+                ...feedOptions.map((f) => ({
+                  value: `#${f.id} ${f.title}`,
+                  label: `#${f.id} ${f.title}`,
+                  sub: "特定单篇文章绑定",
+                })),
+              ]}
             />
           </div>
 
@@ -234,7 +306,7 @@ export function AdminTokensPage() {
               value={codeRemark}
               onChange={(e) => setCodeRemark(e.target.value)}
               placeholder="如：发给张三交流用"
-              className="rounded-xl border border-black/10 bg-w p-2 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-800"
+              className="rounded-xl border border-black/10 bg-w px-3 py-2 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-850 shadow-2xs"
             />
           </div>
         </div>
