@@ -155,11 +155,24 @@ export function FeedService(): Hono<{
         const db = c.get('db');
         const where = and(eq(feeds.draft, 0), eq(feeds.listed, 1));
 
-        return c.json(await profileAsync(c, 'feed_timeline_db', () => db.query.feeds.findMany({
+        const rows = await profileAsync(c, 'feed_timeline_db', () => db.query.feeds.findMany({
             where: where,
             columns: { id: true, title: true, createdAt: true, updatedAt: true },
             orderBy: [desc(feeds.updatedAt), desc(feeds.createdAt)],
-        })));
+        }));
+
+        // 统一输出标准的带 Z 的 UTC ISO 字符串，杜绝前端由于 SQLite 空格字符串导致丢失 8 小时时区
+        const formatted = rows.map((r: any) => {
+            const cDate = r.createdAt instanceof Date ? r.createdAt : new Date(typeof r.createdAt === 'number' && r.createdAt < 10000000000 ? r.createdAt * 1000 : r.createdAt);
+            const uDate = r.updatedAt ? (r.updatedAt instanceof Date ? r.updatedAt : new Date(typeof r.updatedAt === 'number' && r.updatedAt < 10000000000 ? r.updatedAt * 1000 : r.updatedAt)) : undefined;
+            return {
+                ...r,
+                createdAt: !isNaN(cDate.getTime()) ? cDate.toISOString() : r.createdAt,
+                updatedAt: uDate && !isNaN(uDate.getTime()) ? uDate.toISOString() : r.updatedAt,
+            };
+        });
+
+        return c.json(formatted);
     });
 
     // POST /feed - Create feed

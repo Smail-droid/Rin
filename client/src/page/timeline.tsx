@@ -22,9 +22,22 @@ function parseSafeDate(val: any): Date {
     if (typeof val === "number") {
         return new Date(val < 10000000000 ? val * 1000 : val);
     }
-    if (typeof val === "string" && /^\d+$/.test(val)) {
-        const num = parseInt(val, 10);
-        return new Date(num < 10000000000 ? num * 1000 : num);
+    if (typeof val === "string") {
+        const trimmed = val.trim();
+        if (/^\d+$/.test(trimmed)) {
+            const num = parseInt(trimmed, 10);
+            return new Date(num < 10000000000 ? num * 1000 : num);
+        }
+        // 关键时区防丢算法：SQLite 经常输出形如 "2026-10-31 22:28:26" 缺失时区标识的 UTC 字符串
+        // 必须规范化为 "2026-10-31T22:28:26Z"，防止浏览器作为本地时间解析而损失 8 小时导致被误归为 10 月份
+        let normalized = trimmed;
+        if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}/.test(normalized)) {
+            normalized = normalized.replace(" ", "T") + "Z";
+        } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(normalized)) {
+            normalized = normalized + "Z";
+        }
+        const parsed = new Date(normalized);
+        return isNaN(parsed.getTime()) ? new Date(val) : parsed;
     }
     const d = new Date(val);
     return isNaN(d.getTime()) ? new Date() : d;
