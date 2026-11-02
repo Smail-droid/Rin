@@ -266,6 +266,9 @@ function GalleryCommentInput({
               <div className="flex items-center gap-2">
                 <input
                   type="text"
+                  id="comment-nickname"
+                  name="nickname"
+                  autoComplete="nickname"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
                   placeholder="输入昵称..."
@@ -374,11 +377,13 @@ function GalleryCommentInput({
 
           <textarea
             ref={textareaRef}
+            id="comment-textarea"
+            name="content"
             rows={3}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="写下你想在留言板交流的想法、提问或灵感...（支持 Markdown 与 Mac 终端 Bash 代码块）"
-            className="w-full resize-none border-0 bg-transparent p-3.5 text-xs sm:text-sm leading-relaxed t-primary placeholder-neutral-400 outline-none transition-colors min-h-[90px]"
+            placeholder="写下你的想法、探讨或问候吧...（支持 Markdown 与 Mac 终端代码块）"
+            className="w-full resize-none border-0 bg-transparent px-3.5 py-2 text-xs sm:text-[13px] leading-relaxed t-primary placeholder-neutral-400 outline-none"
           />
         </div>
 
