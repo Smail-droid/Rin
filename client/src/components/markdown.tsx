@@ -232,6 +232,31 @@ function normalizeLanguage(lang: string): string {
   return aliasMap[l] || l || "text";
 }
 
+function cleanCodeBlockContent(code: string): string {
+  // 1. 逐行处理注释中的 Markdown 链接语法（如 [http://...](http://...) 自动去方括号，还原为干净文本）
+  const lines = code.split("\n");
+  const processedLines = lines.map((line) => {
+    const trimmed = line.trimStart();
+    if (
+      trimmed.startsWith("#") ||
+      trimmed.startsWith("//") ||
+      trimmed.startsWith("--") ||
+      trimmed.startsWith(";")
+    ) {
+      return line.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, text, url) => {
+        if (text === url) return url;
+        return `${text} (${url})`;
+      });
+    }
+    return line;
+  });
+
+  let result = processedLines.join("\n");
+  // 2. 修复意外被换行拆分的 TOML 标签 [vars]：如 [\n vars \n] 自动复原为 [vars]
+  result = result.replace(/\[\s*\n+\s*([a-zA-Z0-9_\-\.]+)\s*\n+\s*\]/g, "[$1]");
+  return result;
+}
+
 export function Markdown({ content }: { content: string }) {
   const colorMode = useColorMode();
   const [index, setIndex] = React.useState(-1);
@@ -314,7 +339,7 @@ export function Markdown({ content }: { content: string }) {
 
           const rawLanguage = match ? match[1] : "";
           const language = normalizeLanguage(rawLanguage);
-          const rawCode = String(children).replace(/\n$/, "");
+          const rawCode = cleanCodeBlockContent(String(children).replace(/\n$/, ""));
           const linesCount = rawCode.split("\n").length;
 
           if (isCodeBlock) {
@@ -357,7 +382,7 @@ export function Markdown({ content }: { content: string }) {
                     )}
                   </button>
                 </div>
-                <div className="p-1">
+                <div className="p-1 overflow-x-auto">
                   <SyntaxHighlighter
                     PreTag="div"
                     className="!bg-transparent !p-3.5 !m-0 !text-[13px] leading-relaxed"
@@ -371,7 +396,7 @@ export function Markdown({ content }: { content: string }) {
                       fontSize: "12px",
                       userSelect: "none",
                     }}
-                    wrapLongLines={true}
+                    wrapLongLines={false}
                     codeTagProps={{ style: codeBlockStyle }}
                   >
                     {rawCode}

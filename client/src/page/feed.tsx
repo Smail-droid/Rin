@@ -36,6 +36,24 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const shareMenuRef = useRef<HTMLDivElement>(null);
+
+  // 切换文章（上一篇/下一篇）时立即滚回顶部，解决停留在文末问题
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [id]);
+
+  // 点击空白处收起分享菜单
+  useEffect(() => {
+    if (!isShareMenuOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target as Node)) {
+        setIsShareMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [isShareMenuOpen]);
 
   // 视频级海报弹幕控制状态
   const [isDanmakuEnabled, setIsDanmakuEnabled] = useState<boolean>(() => {
@@ -46,6 +64,9 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
       return true;
     }
   });
+
+  // 动态聚合真实全站文章名与读者留言弹幕池
+  const [dynamicDanmakuItems, setDynamicDanmakuItems] = useState<Array<{ text: string; top: string; delay: string; duration: string; color: string; size: string; rot: string }>>([]);
 
   const toggleDanmaku = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -91,6 +112,61 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
     return feed?.content?.replace(/\s+/g, "").length || 0;
   }, [feed?.content]);
   const readingMinutes = Math.max(1, Math.ceil(wordCount / 400));
+
+  useEffect(() => {
+    if (!feed?.id) return;
+    const fetchDanmakuData = async () => {
+      try {
+        const [feedRes, commentRes] = await Promise.all([
+          client.feed.list({ limit: 12 }),
+          client.comment.list(feed.id),
+        ]);
+
+        const pool: string[] = [];
+        // 1. 优先加入真实读者留言
+        if (commentRes.data && Array.isArray(commentRes.data)) {
+          commentRes.data.forEach((c: any) => {
+            const name = c.user?.username || c.guestName || "访客";
+            if (c.content?.trim()) {
+              pool.push(`💬 ${name}: ${c.content.trim().slice(0, 36)}`);
+            }
+          });
+        }
+        // 2. 加入全站真实文章标题
+        if (feedRes.data?.data && Array.isArray(feedRes.data.data)) {
+          feedRes.data.data.forEach((f: any) => {
+            if (f.title?.trim() && f.id !== feed.id) {
+              pool.push(`📖 漫游精选: ${f.title.trim().slice(0, 30)}`);
+            }
+          });
+        }
+        // 3. 美学随想寄语补充
+        pool.push("✨ 这里的画幅排版太有艺术感了！");
+        pool.push("🌸 记录每一次灵感火花");
+        pool.push("🚀 边缘原生全栈 Serverless 架构极致优雅");
+        pool.push("💻 Mac 终端代码块高亮排版真舒服");
+
+        const colorPalette = ["#ffffff", "#38bdf8", "#f472b6", "#facc15", "#4ade80", "#c084fc", "#e2e8f0"];
+        const tracks = ["12%", "26%", "42%", "58%", "72%", "85%"];
+        const rots = ["rotate-[-1deg]", "rotate-[1deg]", "rotate-0", "rotate-[1.5deg]", "rotate-[-1.5deg]"];
+        const sizes = ["text-xs", "text-sm", "text-xs", "text-xs font-semibold"];
+
+        const items = pool.slice(0, 16).map((text, idx) => ({
+          text,
+          top: tracks[idx % tracks.length],
+          delay: `${(idx * 2.8).toFixed(1)}s`,
+          duration: `${(20 + (idx % 5) * 2.5).toFixed(1)}s`,
+          color: colorPalette[idx % colorPalette.length],
+          size: sizes[idx % sizes.length],
+          rot: rots[idx % rots.length],
+        }));
+
+        setDynamicDanmakuItems(items);
+      } catch {}
+    };
+
+    void fetchDanmakuData();
+  }, [feed?.id]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -277,18 +353,10 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         />
                       </div>
 
-                      {/* 视频级海报文字流动弹幕层 (放缓流速至 18s~28s，支持鼠标移入悬停定格阅读) */}
-                      {isDanmakuEnabled && (
+                      {/* 视频级海报文字流动弹幕层 (放缓流速至 20s~32s，动态聚合真实文章名与留言，支持鼠标移入悬停) */}
+                      {isDanmakuEnabled && dynamicDanmakuItems.length > 0 && (
                         <div className="absolute inset-0 z-20 overflow-hidden select-none pointer-events-none group/danmaku">
-                          {[
-                            { text: "✨ 这里的画幅排版太有艺术感了！", top: "12%", delay: "0s", duration: "19s", color: "#ffffff", size: "text-xs", rot: "rotate-[-1deg]" },
-                            { text: `🌸 记录每一次灵感火花 · ${feed.title?.slice(0, 18) || "随笔"}`, top: "28%", delay: "4s", duration: "24s", color: "#38bdf8", size: "text-sm", rot: "rotate-[1deg]" },
-                            { text: "🚀 边缘原生全栈 Serverless 架构极致优雅", top: "45%", delay: "1.5s", duration: "26s", color: "#f472b6", size: "text-xs", rot: "rotate-0" },
-                            { text: "🍃 漫步在博主的数字记忆工坊", top: "62%", delay: "8s", duration: "21s", color: "#facc15", size: "text-xs", rot: "rotate-[1.5deg]" },
-                            { text: "💻 Mac 终端代码块高亮排版真舒服", top: "78%", delay: "5s", duration: "18s", color: "#4ade80", size: "text-xs", rot: "rotate-[-1.5deg]" },
-                            { text: "🎨 二次元微光美学 · 一页一世界", top: "35%", delay: "12s", duration: "28s", color: "#c084fc", size: "text-sm", rot: "rotate-[0.5deg]" },
-                            { text: "☕ 随性画廊随笔空间", top: "85%", delay: "15s", duration: "20s", color: "#ffffff", size: "text-xs", rot: "rotate-[-0.5deg]" },
-                          ].map((dm, i) => (
+                          {dynamicDanmakuItems.map((dm, i) => (
                             <span
                               key={i}
                               style={{
@@ -393,8 +461,8 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                       <i className={copiedLink ? "ri-check-line text-emerald-500 text-sm" : "ri-file-copy-line text-sm"} />
                     </button>
 
-                    {/* 分享菜单浮层 */}
-                    <div className="relative">
+                    {/* 分享菜单浮层 (点击空白处自动收回) */}
+                    <div ref={shareMenuRef} className="relative">
                       <button
                         type="button"
                         onClick={() => setIsShareMenuOpen(!isShareMenuOpen)}

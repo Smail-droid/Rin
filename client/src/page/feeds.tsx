@@ -77,11 +77,13 @@ function AtelierPhotoCard({
     index,
     tiltOffset = 0,
     canManage = false,
+    onToggleTop,
 }: {
     feed: any;
     index: number;
     tiltOffset?: number;
     canManage?: boolean;
+    onToggleTop?: (feedId: number, top: number) => void;
 }) {
     const { t } = useTranslation();
     const [imageError, setImageError] = useState(false);
@@ -147,12 +149,30 @@ function AtelierPhotoCard({
             {/* Subtle bottom accent line */}
             <div className="mt-2.5 flex items-center justify-between px-1 text-[11px] text-neutral-400 dark:text-neutral-500 font-medium">
                 <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
-                {feed.top === 1 && (
+                {canManage ? (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onToggleTop?.(feed.id, feed.top === 1 ? 0 : 1);
+                        }}
+                        title={feed.top === 1 ? "点击取消置顶此文章" : "点击置顶此文章至首位"}
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold transition select-none ${
+                            feed.top === 1
+                                ? "bg-theme text-white shadow-2xs hover:bg-theme-hover"
+                                : "bg-black/5 dark:bg-white/5 text-neutral-500 hover:text-theme hover:bg-theme/10"
+                        }`}
+                    >
+                        <i className={feed.top === 1 ? "ri-pushpin-fill text-xs" : "ri-pushpin-line text-xs"} />
+                        <span>{feed.top === 1 ? "已置顶" : "置顶"}</span>
+                    </button>
+                ) : feed.top === 1 ? (
                     <span className="text-theme font-semibold flex items-center gap-0.5">
                         <i className="ri-pushpin-line" />
                         <span>{t("article.top.title")}</span>
                     </span>
-                )}
+                ) : null}
             </div>
         </Link>
     );
@@ -172,6 +192,7 @@ function StickyNoteItem({
     onDragOver,
     onDrop,
     onDragEnd,
+    onMoveStep,
 }: {
     type: "about" | "timeline" | "moments" | "friends" | "search";
     siteConfig: any;
@@ -183,6 +204,7 @@ function StickyNoteItem({
     onDragOver?: (e: React.DragEvent) => void;
     onDrop?: (e: React.DragEvent) => void;
     onDragEnd?: (e: React.DragEvent) => void;
+    onMoveStep?: (type: string, direction: "prev" | "next") => void;
 }) {
     const [, setLocation] = useLocation();
     const [searchKeyword, setSearchKeyword] = useState("");
@@ -199,21 +221,51 @@ function StickyNoteItem({
         isDragOver ? "ring-2 ring-theme ring-offset-2 ring-dashed scale-102 transition-all shadow-xl" : ""
     }`;
 
-    // 统一的便签右上角管理与拖拽控制条
+    // 统一的便签右上角管理与拖拽/移动控制条
     const renderAdminControls = (focusKey: string) => {
         if (!canManage) return null;
         return (
-            <div className="absolute right-3.5 top-3.5 z-30 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <div className="absolute right-3.5 top-3.5 z-30 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                {/* 快捷向前移动 */}
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onMoveStep?.(type, "prev");
+                    }}
+                    title="在画廊首屏向前移动一个槽位"
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-500 hover:text-theme shadow-xs transition hover:scale-110 select-none"
+                >
+                    <i className="ri-arrow-left-s-line text-xs" />
+                </button>
+
+                {/* 自由拖拽手柄 */}
                 <div
-                    title="按住拖拽自由调整便签在首页的摆放次序"
-                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-500 hover:text-theme shadow-xs cursor-grab active:cursor-grabbing transition hover:scale-110"
+                    title="按住手柄自由拖放便签重排次序"
+                    draggable
+                    onDragStart={onDragStart}
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-500 hover:text-theme shadow-xs cursor-grab active:cursor-grabbing transition hover:scale-110 select-none"
                 >
                     <i className="ri-drag-move-2-line text-xs" />
                 </div>
+
+                {/* 快捷向后移动 */}
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onMoveStep?.(type, "next");
+                    }}
+                    title="在画廊首屏向后移动一个槽位"
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-500 hover:text-theme shadow-xs transition hover:scale-110 select-none"
+                >
+                    <i className="ri-arrow-right-s-line text-xs" />
+                </button>
+
                 <Link
                     href={`/admin/settings?tab=atelier&focus=${focusKey}`}
                     title="在后台超级表格中编辑此便签"
-                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-xs transition hover:scale-110 hover:text-theme"
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-xs transition hover:scale-110 hover:text-theme select-none ml-0.5"
                 >
                     <i className="ri-settings-3-line text-xs" />
                 </Link>
@@ -904,6 +956,40 @@ export function FeedsPage() {
         setDragOverNote(null);
     };
 
+    const moveNoteStep = (targetType: string, direction: "prev" | "next") => {
+        const allTypes = ["about", "timeline", "moments", "friends", "search"];
+        const currentList = [...allTypes];
+        if (notesOrder.length > 0) {
+            currentList.sort((a, b) => {
+                const idxA = notesOrder.indexOf(a);
+                const idxB = notesOrder.indexOf(b);
+                if (idxA === -1 && idxB === -1) return 0;
+                if (idxA === -1) return 1;
+                if (idxB === -1) return -1;
+                return idxA - idxB;
+            });
+        }
+        const idx = currentList.indexOf(targetType);
+        if (idx === -1) return;
+        const targetIdx = direction === "prev" ? Math.max(0, idx - 1) : Math.min(currentList.length - 1, idx + 1);
+        if (targetIdx === idx) return;
+
+        const nextOrder = [...currentList];
+        const item = nextOrder.splice(idx, 1)[0];
+        nextOrder.splice(targetIdx, 0, item);
+        setNotesOrder(nextOrder);
+        try {
+            localStorage.setItem("rin_atelier_notes_order", JSON.stringify(nextOrder));
+        } catch {}
+    };
+
+    const handleToggleTop = async (feedId: number, nextTop: number) => {
+        try {
+            await client.feed.setTop(feedId, nextTop);
+            fetchFeeds(listState, 1, false);
+        } catch {}
+    };
+
     useEffect(() => {
         const type = (query.get("type") as FeedType) || "normal";
         if (type !== listState) {
@@ -1157,6 +1243,7 @@ export function FeedsPage() {
                                         index={idx}
                                         tiltOffset={shuffleSeed}
                                         canManage={Boolean(profile?.permission)}
+                                        onToggleTop={handleToggleTop}
                                     />
                                 );
                             }
@@ -1171,6 +1258,7 @@ export function FeedsPage() {
                                         draggable={Boolean(profile?.permission)}
                                         isDragging={draggedNote === item.noteType}
                                         isDragOver={dragOverNote === item.noteType}
+                                        onMoveStep={moveNoteStep}
                                         onDragStart={(e) => {
                                             e.dataTransfer.setData("text/plain", item.noteType);
                                             setDraggedNote(item.noteType);

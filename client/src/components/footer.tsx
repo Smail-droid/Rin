@@ -21,12 +21,50 @@ function Footer() {
         return null;
     });
 
-    const resetWidgetPos = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const resetWidgetPos = (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
         setWidgetPos(null);
         try {
             localStorage.removeItem("rin_theme_widget_pos");
         } catch {}
+    };
+
+    // 高精度鼠标/指针拖拽，带有绝对视口安全保护，杜绝跑偏消失
+    const handleStartDrag = (e: React.MouseEvent) => {
+        if (!profile?.permission) return;
+        if ((e.target as HTMLElement).closest("button")) return;
+        e.preventDefault();
+
+        const el = e.currentTarget as HTMLElement;
+        const rect = el.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
+
+        const onMouseMove = (moveEvent: MouseEvent) => {
+            const rawX = moveEvent.clientX - offsetX;
+            const rawY = moveEvent.clientY - offsetY;
+            // 视口安全保护：顶部留出 75px 防被 Header 遮挡，底部留出 60px，左右各留 20px
+            const safeX = Math.max(20, Math.min(window.innerWidth - 190, rawX));
+            const safeY = Math.max(75, Math.min(window.innerHeight - 65, rawY));
+            setWidgetPos({ x: safeX, y: safeY });
+        };
+
+        const onMouseUp = (upEvent: MouseEvent) => {
+            window.removeEventListener("mousemove", onMouseMove);
+            window.removeEventListener("mouseup", onMouseUp);
+            const rawX = upEvent.clientX - offsetX;
+            const rawY = upEvent.clientY - offsetY;
+            const safeX = Math.max(20, Math.min(window.innerWidth - 190, rawX));
+            const safeY = Math.max(75, Math.min(window.innerHeight - 65, rawY));
+            const next = { x: safeX, y: safeY };
+            setWidgetPos(next);
+            try {
+                localStorage.setItem("rin_theme_widget_pos", JSON.stringify(next));
+            } catch {}
+        };
+
+        window.addEventListener("mousemove", onMouseMove);
+        window.addEventListener("mouseup", onMouseUp);
     };
     const config = useContext(ClientConfigContext);
     const footerHtml = config.get<string>('footer');
@@ -142,26 +180,17 @@ function Footer() {
                         position: "fixed",
                         left: `${widgetPos.x}px`,
                         top: `${widgetPos.y}px`,
-                        zIndex: 45,
+                        zIndex: 99,
                     } : undefined}
-                    draggable={Boolean(profile?.permission)}
-                    onDragEnd={(e) => {
-                        if (!profile?.permission) return;
-                        const x = Math.max(16, Math.min(window.innerWidth - 160, e.clientX - 60));
-                        const y = Math.max(16, Math.min(window.innerHeight - 60, e.clientY - 20));
-                        const next = { x, y };
-                        setWidgetPos(next);
-                        try {
-                            localStorage.setItem("rin_theme_widget_pos", JSON.stringify(next));
-                        } catch {}
-                    }}
-                    className={`w-fit-content inline-flex items-center gap-1 rounded-full border border-zinc-200 p-[3px] bg-w/80 backdrop-blur-md shadow-sm dark:border-zinc-700 transition-all select-none ${
-                        profile?.permission ? "cursor-grab active:cursor-grabbing hover:border-theme" : ""
+                    onMouseDown={handleStartDrag}
+                    onDoubleClick={() => resetWidgetPos()}
+                    className={`w-fit-content inline-flex items-center gap-1 rounded-full border border-zinc-200 p-[3px] bg-w/90 backdrop-blur-xl shadow-lg dark:border-zinc-700 transition-shadow select-none ${
+                        profile?.permission ? "cursor-grab active:cursor-grabbing hover:border-theme hover:ring-2 hover:ring-theme/20" : ""
                     }`}
-                    title={profile?.permission ? "管理员特权：按住可将日夜主题组件自由拖放到屏幕任意位置" : "切换浅色/跟随时间与系统/深色模式"}
+                    title={profile?.permission ? "管理员特权：按住可自由拖拽；双击重置居中" : "切换浅色/智能自适应/深色模式"}
                 >
                     {profile?.permission && (
-                        <span className="pl-1.5 pr-0.5 text-neutral-400 hover:text-theme text-xs">
+                        <span className="pl-1.5 pr-0.5 text-neutral-400 hover:text-theme text-xs cursor-grab">
                             <i className="ri-drag-move-2-line" />
                         </span>
                     )}
@@ -172,7 +201,7 @@ function Footer() {
                         <button
                             type="button"
                             onClick={resetWidgetPos}
-                            title="恢复吸附在页脚默认位置"
+                            title="点击重置吸附在页脚中央"
                             className="pr-1.5 pl-0.5 text-[10px] text-neutral-400 hover:text-rose-500 font-mono transition"
                         >
                             <i className="ri-close-circle-line" />
