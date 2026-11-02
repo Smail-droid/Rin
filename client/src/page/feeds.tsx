@@ -165,13 +165,61 @@ function StickyNoteItem({
     type,
     siteConfig,
     canManage = false,
+    draggable = false,
+    isDragging = false,
+    isDragOver = false,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
 }: {
     type: "about" | "timeline" | "moments" | "friends" | "search";
     siteConfig: any;
     canManage?: boolean;
+    draggable?: boolean;
+    isDragging?: boolean;
+    isDragOver?: boolean;
+    onDragStart?: (e: React.DragEvent) => void;
+    onDragOver?: (e: React.DragEvent) => void;
+    onDrop?: (e: React.DragEvent) => void;
+    onDragEnd?: (e: React.DragEvent) => void;
 }) {
     const [, setLocation] = useLocation();
     const [searchKeyword, setSearchKeyword] = useState("");
+
+    const dragHandlers = draggable ? {
+        draggable: true,
+        onDragStart,
+        onDragOver,
+        onDrop,
+        onDragEnd,
+    } : {};
+
+    const dragStyleClasses = `${isDragging ? "opacity-35 scale-95 transition-all" : ""} ${
+        isDragOver ? "ring-2 ring-theme ring-offset-2 ring-dashed scale-102 transition-all shadow-xl" : ""
+    }`;
+
+    // 统一的便签右上角管理与拖拽控制条
+    const renderAdminControls = (focusKey: string) => {
+        if (!canManage) return null;
+        return (
+            <div className="absolute right-3.5 top-3.5 z-30 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                <div
+                    title="按住拖拽自由调整便签在首页的摆放次序"
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-500 hover:text-theme shadow-xs cursor-grab active:cursor-grabbing transition hover:scale-110"
+                >
+                    <i className="ri-drag-move-2-line text-xs" />
+                </div>
+                <Link
+                    href={`/admin/settings?tab=atelier&focus=${focusKey}`}
+                    title="在后台超级表格中编辑此便签"
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-xs transition hover:scale-110 hover:text-theme"
+                >
+                    <i className="ri-settings-3-line text-xs" />
+                </Link>
+            </div>
+        );
+    };
 
     if (type === "about") {
         const aboutUrl = siteConfig.atelierAboutUrl || "/about";
@@ -182,9 +230,11 @@ function StickyNoteItem({
         if (noteStyle === "circle") {
             return (
                 <div
+                    {...dragHandlers}
                     onClick={() => setLocation(aboutUrl)}
-                    className="group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-amber-300/80 bg-gradient-to-tr from-amber-100 to-amber-50 dark:from-amber-950/60 dark:to-neutral-900 text-center"
+                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-amber-300/80 bg-gradient-to-tr from-amber-100 to-amber-50 dark:from-amber-950/60 dark:to-neutral-900 text-center ${dragStyleClasses}`}
                 >
+                    {renderAdminControls("about")}
                     <span className="text-3xl mb-1">{siteConfig.atelierAboutIcon || "🐾"}</span>
                     <p className="font-bold text-sm text-amber-900 dark:text-amber-200 truncate w-32">
                         {siteConfig.name || "80hou"}
@@ -200,8 +250,9 @@ function StickyNoteItem({
         if (noteStyle === "capsule") {
             return (
                 <div
+                    {...dragHandlers}
                     onClick={() => setLocation(aboutUrl)}
-                    className="group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-amber-300/80 bg-amber-50 dark:bg-amber-950/40"
+                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-amber-300/80 bg-amber-50 dark:bg-amber-950/40 ${dragStyleClasses}`}
                 >
                     <div className="flex items-center gap-2.5 min-w-0">
                         <span className="text-xl">{siteConfig.atelierAboutIcon || "🐾"}</span>
@@ -210,35 +261,29 @@ function StickyNoteItem({
                             <p className="text-[10px] text-neutral-400 truncate">{siteConfig.name || "80hou's Home"}</p>
                         </div>
                     </div>
-                    <span className="text-xs text-amber-800 dark:text-amber-300 group-hover:translate-x-1 transition-transform font-bold">&rarr;</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {renderAdminControls("about")}
+                        <span className="text-xs text-amber-800 dark:text-amber-300 group-hover:translate-x-1 transition-transform font-bold">&rarr;</span>
+                    </div>
                 </div>
             );
         }
 
-        // 默认拍立得长条便签样式 (带背景图高清自适应及居中)
+        // 默认拍立得长条便签样式
         return (
             <div
+                {...dragHandlers}
                 onClick={() => setLocation(aboutUrl)}
                 style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
                 className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-1 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
                     bgImage
                         ? "bg-cover bg-center border border-black/10 dark:border-white/10"
                         : "bg-amber-100 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/40"
-                }`}
+                } ${dragStyleClasses}`}
             >
                 {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
                 <div className="absolute -top-2 left-6 w-8 h-3.5 bg-amber-200/80 dark:bg-amber-800/50 rounded-xs rotate-[-5deg] z-20" />
-
-                {canManage && (
-                    <Link
-                        href="/admin/settings?tab=atelier&focus=about"
-                        onClick={(e) => e.stopPropagation()}
-                        title="在设置中修改此便签背景、图标或文字"
-                        className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
-                    >
-                        <i className="ri-settings-3-line text-xs" />
-                    </Link>
-                )}
+                {renderAdminControls("about")}
 
                 <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
                     <span className="text-2xl mb-1 block">{siteConfig.atelierAboutIcon || "🐾"}</span>
@@ -259,29 +304,61 @@ function StickyNoteItem({
     if (type === "timeline") {
         const targetUrl = siteConfig.atelierTimelineUrl || "/timeline";
         const bgImage = siteConfig.atelierTimelineBg;
+        const noteStyle = siteConfig.atelierTimelineStyle || "card";
+
+        if (noteStyle === "circle") {
+            return (
+                <div
+                    {...dragHandlers}
+                    onClick={() => setLocation(targetUrl)}
+                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-orange-300/80 bg-gradient-to-tr from-orange-100 to-orange-50 dark:from-orange-950/60 dark:to-neutral-900 text-center ${dragStyleClasses}`}
+                >
+                    {renderAdminControls("timeline")}
+                    <span className="text-3xl mb-1">{siteConfig.atelierTimelineIcon || "⏳"}</span>
+                    <p className="font-bold text-sm text-orange-900 dark:text-orange-200 truncate w-32">岁月轨迹</p>
+                    <span className="text-[11px] text-orange-700/80 dark:text-orange-300/80 mt-1 font-semibold group-hover:underline">
+                        时光足迹 &rarr;
+                    </span>
+                </div>
+            );
+        }
+
+        if (noteStyle === "capsule") {
+            return (
+                <div
+                    {...dragHandlers}
+                    onClick={() => setLocation(targetUrl)}
+                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-orange-300/80 bg-orange-50 dark:bg-orange-950/40 ${dragStyleClasses}`}
+                >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-xl">{siteConfig.atelierTimelineIcon || "⏳"}</span>
+                        <div className="min-w-0 truncate">
+                            <p className="font-bold text-xs text-orange-900 dark:text-orange-200 truncate">岁月轨迹</p>
+                            <p className="text-[10px] text-neutral-400 truncate">时光长河刻度</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {renderAdminControls("timeline")}
+                        <span className="text-xs text-orange-800 dark:text-orange-300 group-hover:translate-x-1 transition-transform font-bold">&rarr;</span>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div
+                {...dragHandlers}
                 onClick={() => setLocation(targetUrl)}
                 style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
                 className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform -rotate-2 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
                     bgImage
                         ? "bg-cover bg-center border border-black/10 dark:border-white/10"
                         : "bg-orange-50 dark:bg-orange-950/40 border border-orange-200/80 dark:border-orange-800/40"
-                }`}
+                } ${dragStyleClasses}`}
             >
                 {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
                 <div className="absolute -top-2.5 right-6 w-10 h-3.5 bg-orange-200/70 dark:bg-orange-800/50 rounded-xs rotate-[3deg] z-20" />
-
-                {canManage && (
-                    <Link
-                        href="/admin/settings?tab=atelier&focus=timeline"
-                        onClick={(e) => e.stopPropagation()}
-                        title="在设置中修改此便签背景、图标或文字"
-                        className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
-                    >
-                        <i className="ri-settings-3-line text-xs" />
-                    </Link>
-                )}
+                {renderAdminControls("timeline")}
 
                 <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
                     <span className="text-2xl mb-1 block">{siteConfig.atelierTimelineIcon || "⏳"}</span>
@@ -300,29 +377,61 @@ function StickyNoteItem({
     if (type === "moments") {
         const targetUrl = siteConfig.atelierMomentsUrl || "/moments";
         const bgImage = siteConfig.atelierMomentsBg;
+        const noteStyle = siteConfig.atelierMomentsStyle || "card";
+
+        if (noteStyle === "circle") {
+            return (
+                <div
+                    {...dragHandlers}
+                    onClick={() => setLocation(targetUrl)}
+                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-emerald-300/80 bg-gradient-to-tr from-emerald-100 to-emerald-50 dark:from-emerald-950/60 dark:to-neutral-900 text-center ${dragStyleClasses}`}
+                >
+                    {renderAdminControls("moments")}
+                    <span className="text-3xl mb-1">{siteConfig.atelierMomentsIcon || "💭"}</span>
+                    <p className="font-bold text-sm text-emerald-900 dark:text-emerald-200 truncate w-32">日常随想</p>
+                    <span className="text-[11px] text-emerald-700/80 dark:text-emerald-300/80 mt-1 font-semibold group-hover:underline">
+                        动态碎碎念 &rarr;
+                    </span>
+                </div>
+            );
+        }
+
+        if (noteStyle === "capsule") {
+            return (
+                <div
+                    {...dragHandlers}
+                    onClick={() => setLocation(targetUrl)}
+                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-emerald-300/80 bg-emerald-50 dark:bg-emerald-950/40 ${dragStyleClasses}`}
+                >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-xl">{siteConfig.atelierMomentsIcon || "💭"}</span>
+                        <div className="min-w-0 truncate">
+                            <p className="font-bold text-xs text-emerald-900 dark:text-emerald-200 truncate">日常随想</p>
+                            <p className="text-[10px] text-neutral-400 truncate">朋友圈动态</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {renderAdminControls("moments")}
+                        <span className="text-xs text-emerald-800 dark:text-emerald-300 group-hover:translate-x-1 transition-transform font-bold">&rarr;</span>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div
+                {...dragHandlers}
                 onClick={() => setLocation(targetUrl)}
                 style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
                 className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-2 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
                     bgImage
                         ? "bg-cover bg-center border border-black/10 dark:border-white/10"
                         : "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/40"
-                }`}
+                } ${dragStyleClasses}`}
             >
                 {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
                 <div className="absolute -top-2 left-8 w-10 h-3.5 bg-emerald-200/70 dark:bg-emerald-800/50 rounded-xs rotate-[-3deg] z-20" />
-
-                {canManage && (
-                    <Link
-                        href="/admin/settings?tab=atelier&focus=moments"
-                        onClick={(e) => e.stopPropagation()}
-                        title="在设置中修改此便签背景、图标或文字"
-                        className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
-                    >
-                        <i className="ri-settings-3-line text-xs" />
-                    </Link>
-                )}
+                {renderAdminControls("moments")}
 
                 <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
                     <span className="text-2xl mb-1 block">{siteConfig.atelierMomentsIcon || "💭"}</span>
@@ -341,29 +450,61 @@ function StickyNoteItem({
     if (type === "friends") {
         const targetUrl = siteConfig.atelierFriendsUrl || "/friends";
         const bgImage = siteConfig.atelierFriendsBg;
+        const noteStyle = siteConfig.atelierFriendsStyle || "card";
+
+        if (noteStyle === "circle") {
+            return (
+                <div
+                    {...dragHandlers}
+                    onClick={() => setLocation(targetUrl)}
+                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-rose-300/80 bg-gradient-to-tr from-rose-100 to-rose-50 dark:from-rose-950/60 dark:to-neutral-900 text-center ${dragStyleClasses}`}
+                >
+                    {renderAdminControls("friends")}
+                    <span className="text-3xl mb-1">{siteConfig.atelierFriendsIcon || "🌸"}</span>
+                    <p className="font-bold text-sm text-rose-900 dark:text-rose-200 truncate w-32">邻家友链</p>
+                    <span className="text-[11px] text-rose-700/80 dark:text-rose-300/80 mt-1 font-semibold group-hover:underline">
+                        拜访朋友们 &rarr;
+                    </span>
+                </div>
+            );
+        }
+
+        if (noteStyle === "capsule") {
+            return (
+                <div
+                    {...dragHandlers}
+                    onClick={() => setLocation(targetUrl)}
+                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-rose-300/80 bg-rose-50 dark:bg-rose-950/40 ${dragStyleClasses}`}
+                >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-xl">{siteConfig.atelierFriendsIcon || "🌸"}</span>
+                        <div className="min-w-0 truncate">
+                            <p className="font-bold text-xs text-rose-900 dark:text-rose-200 truncate">邻家友链</p>
+                            <p className="text-[10px] text-neutral-400 truncate">博主数字花园</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {renderAdminControls("friends")}
+                        <span className="text-xs text-rose-800 dark:text-rose-300 group-hover:translate-x-1 transition-transform font-bold">&rarr;</span>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div
+                {...dragHandlers}
                 onClick={() => setLocation(targetUrl)}
                 style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
                 className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform -rotate-1 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
                     bgImage
                         ? "bg-cover bg-center border border-black/10 dark:border-white/10"
                         : "bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/40"
-                }`}
+                } ${dragStyleClasses}`}
             >
                 {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
                 <div className="absolute -top-2 right-8 w-10 h-3.5 bg-rose-200/70 dark:bg-rose-800/50 rounded-xs rotate-[4deg] z-20" />
-
-                {canManage && (
-                    <Link
-                        href="/admin/settings?tab=atelier&focus=friends"
-                        onClick={(e) => e.stopPropagation()}
-                        title="在设置中修改此便签背景、图标或文字"
-                        className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
-                    >
-                        <i className="ri-settings-3-line text-xs" />
-                    </Link>
-                )}
+                {renderAdminControls("friends")}
 
                 <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
                     <span className="text-2xl mb-1 block">{siteConfig.atelierFriendsIcon || "🌸"}</span>
@@ -381,28 +522,60 @@ function StickyNoteItem({
 
     // Direct Search Sticky Note
     const bgImage = siteConfig.atelierSearchBg;
+    const noteStyle = siteConfig.atelierSearchStyle || "card";
+
+    if (noteStyle === "circle") {
+        return (
+            <div
+                {...dragHandlers}
+                onClick={() => setLocation("/search")}
+                className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-sky-300/80 bg-gradient-to-tr from-sky-100 to-sky-50 dark:from-sky-950/60 dark:to-neutral-900 text-center ${dragStyleClasses}`}
+            >
+                {renderAdminControls("search")}
+                <span className="text-3xl mb-1">{siteConfig.atelierSearchIcon || "🔍"}</span>
+                <p className="font-bold text-sm text-sky-900 dark:text-sky-200 truncate w-32">随心探索</p>
+                <span className="text-[11px] text-sky-700/80 dark:text-sky-300/80 mt-1 font-semibold group-hover:underline">
+                    检索全站 &rarr;
+                </span>
+            </div>
+        );
+    }
+
+    if (noteStyle === "capsule") {
+        return (
+            <div
+                {...dragHandlers}
+                onClick={() => setLocation("/search")}
+                className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-sky-300/80 bg-sky-50 dark:bg-sky-950/40 ${dragStyleClasses}`}
+            >
+                <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-xl">{siteConfig.atelierSearchIcon || "🔍"}</span>
+                    <div className="min-w-0 truncate">
+                        <p className="font-bold text-xs text-sky-900 dark:text-sky-200 truncate">随心探索</p>
+                        <p className="text-[10px] text-neutral-400 truncate">检索文章与标签</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    {renderAdminControls("search")}
+                    <span className="text-xs text-sky-800 dark:text-sky-300 group-hover:translate-x-1 transition-transform font-bold">&rarr;</span>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div
+            {...dragHandlers}
             style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
             className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-1.5 hover:rotate-0 hover:scale-[1.03] select-none overflow-hidden ${
                 bgImage
                     ? "bg-cover bg-center border border-black/10 dark:border-white/10"
                     : "bg-sky-50 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/40"
-            }`}
+            } ${dragStyleClasses}`}
         >
             {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
             <div className="absolute -top-2.5 left-10 w-10 h-3.5 bg-sky-200/70 dark:bg-sky-800/50 rounded-xs rotate-[-4deg] z-20" />
-
-            {canManage && (
-                <Link
-                    href="/admin/settings?tab=atelier&focus=search"
-                    onClick={(e) => e.stopPropagation()}
-                    title="在设置中修改此便签背景、图标或文字"
-                    className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
-                >
-                    <i className="ri-settings-3-line text-xs" />
-                </Link>
-            )}
+            {renderAdminControls("search")}
 
             <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
                 <span className="text-2xl mb-1 block">{siteConfig.atelierSearchIcon || "🔍"}</span>
@@ -677,6 +850,60 @@ export function FeedsPage() {
         }).catch(() => {});
     }, []);
 
+    // 首页便签自由拖拽摆放与持久化排序
+    const [draggedNote, setDraggedNote] = useState<string | null>(null);
+    const [dragOverNote, setDragOverNote] = useState<string | null>(null);
+    const [notesOrder, setNotesOrder] = useState<string[]>(() => {
+        try {
+            const saved = localStorage.getItem("rin_atelier_notes_order");
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+        } catch {}
+        return [];
+    });
+
+    const resetNotesOrder = () => {
+        setNotesOrder([]);
+        try {
+            localStorage.removeItem("rin_atelier_notes_order");
+        } catch {}
+    };
+
+    const handleNoteDrop = (targetType: string) => {
+        if (!draggedNote || draggedNote === targetType) {
+            setDraggedNote(null);
+            setDragOverNote(null);
+            return;
+        }
+        const allTypes = ["about", "timeline", "moments", "friends", "search"];
+        const currentList = [...allTypes];
+        if (notesOrder.length > 0) {
+            currentList.sort((a, b) => {
+                const idxA = notesOrder.indexOf(a);
+                const idxB = notesOrder.indexOf(b);
+                if (idxA === -1 && idxB === -1) return 0;
+                if (idxA === -1) return 1;
+                if (idxB === -1) return -1;
+                return idxA - idxB;
+            });
+        }
+        const fromIdx = currentList.indexOf(draggedNote);
+        const toIdx = currentList.indexOf(targetType);
+        if (fromIdx !== -1 && toIdx !== -1) {
+            const nextOrder = [...currentList];
+            nextOrder.splice(fromIdx, 1);
+            nextOrder.splice(toIdx, 0, draggedNote);
+            setNotesOrder(nextOrder);
+            try {
+                localStorage.setItem("rin_atelier_notes_order", JSON.stringify(nextOrder));
+            } catch {}
+        }
+        setDraggedNote(null);
+        setDragOverNote(null);
+    };
+
     useEffect(() => {
         const type = (query.get("type") as FeedType) || "normal";
         if (type !== listState) {
@@ -711,7 +938,16 @@ export function FeedsPage() {
         const layoutMode = siteConfig.atelierNotesLayout || "grid";
 
         let orderedNotes = [...activeNoteTypes];
-        if (layoutMode === "random") {
+        if (notesOrder.length > 0) {
+            orderedNotes.sort((a, b) => {
+                const idxA = notesOrder.indexOf(a);
+                const idxB = notesOrder.indexOf(b);
+                if (idxA === -1 && idxB === -1) return 0;
+                if (idxA === -1) return 1;
+                if (idxB === -1) return -1;
+                return idxA - idxB;
+            });
+        } else if (layoutMode === "random") {
             orderedNotes = orderedNotes.sort(() => Math.sin(firstPageFeeds.length) - 0.5);
         }
 
@@ -764,6 +1000,7 @@ export function FeedsPage() {
     }, [
         currentFeedData,
         listState,
+        notesOrder,
         siteConfig.pageSize,
         siteConfig.atelierNotesLayout,
         siteConfig.atelierAboutShow,
@@ -804,6 +1041,17 @@ export function FeedsPage() {
                                 ({currentFeeds.size})
                             </span>
                         </h1>
+                        {Boolean(profile?.permission) && notesOrder.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={resetNotesOrder}
+                                title="重置便签为系统默认排布次序"
+                                className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition select-none"
+                            >
+                                <i className="ri-restart-line text-xs" />
+                                <span>已自定义便签顺序 · 恢复默认</span>
+                            </button>
+                        )}
                     </div>
 
                     {profile?.permission && (
@@ -920,6 +1168,27 @@ export function FeedsPage() {
                                         type={item.noteType}
                                         siteConfig={siteConfig}
                                         canManage={Boolean(profile?.permission)}
+                                        draggable={Boolean(profile?.permission)}
+                                        isDragging={draggedNote === item.noteType}
+                                        isDragOver={dragOverNote === item.noteType}
+                                        onDragStart={(e) => {
+                                            e.dataTransfer.setData("text/plain", item.noteType);
+                                            setDraggedNote(item.noteType);
+                                        }}
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            if (dragOverNote !== item.noteType) {
+                                                setDragOverNote(item.noteType);
+                                            }
+                                        }}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            handleNoteDrop(item.noteType);
+                                        }}
+                                        onDragEnd={() => {
+                                            setDraggedNote(null);
+                                            setDragOverNote(null);
+                                        }}
                                     />
                                 );
                             }

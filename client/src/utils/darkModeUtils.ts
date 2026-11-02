@@ -11,17 +11,30 @@ export function getStoredThemeMode(): ThemeMode {
   return "system";
 }
 
+export function isNightTime(): boolean {
+  const hour = new Date().getHours();
+  return hour >= 18 || hour < 6;
+}
+
 export function setThemeMode(mode: ThemeMode) {
   if (typeof window === "undefined") return;
   localStorage.setItem("theme", mode);
+
+  // 注入平滑过渡类
+  document.documentElement.classList.add("theme-transitioning");
 
   if (mode !== "system") {
     document.documentElement.setAttribute("data-color-mode", mode);
   } else {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    document.documentElement.setAttribute("data-color-mode", mediaQuery.matches ? "dark" : "light");
+    const autoDark = mediaQuery.matches || isNightTime();
+    document.documentElement.setAttribute("data-color-mode", autoDark ? "dark" : "light");
   }
   window.dispatchEvent(new Event("colorSchemeChange"));
+
+  setTimeout(() => {
+    document.documentElement.classList.remove("theme-transitioning");
+  }, 450);
 }
 
 export function listenSystemMode() {
@@ -30,11 +43,8 @@ export function listenSystemMode() {
   function darkModeHandler() {
     const mode = localStorage.getItem("theme");
     if (mode === null || mode === "system") {
-      if (mediaQuery.matches) {
-        document.documentElement.setAttribute("data-color-mode", "dark");
-      } else {
-        document.documentElement.setAttribute("data-color-mode", "light");
-      }
+      const autoDark = mediaQuery.matches || isNightTime();
+      document.documentElement.setAttribute("data-color-mode", autoDark ? "dark" : "light");
       window.dispatchEvent(new Event("colorSchemeChange"));
     }
   }

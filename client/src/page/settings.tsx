@@ -2,9 +2,9 @@ import { Modal, SearchableSelect, SettingsBadge, SettingsCard, SettingsCardBody,
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useSearch } from "wouter";
+import { Link, useSearch } from "wouter";
 import ReactLoading from "react-loading";
-import { client, oauth_url } from "../app/runtime";
+import { client } from "../app/runtime";
 import { Button } from "../components/button";
 import { useAlert } from "../components/dialog.tsx";
 import { HeaderLayoutPreview } from "../components/site-header/layout-preview";
@@ -30,7 +30,8 @@ import {
 } from "../utils/theme-color";
 import { getStoredThemeMode, setThemeMode, type ThemeMode } from "../utils/darkModeUtils";
 import { AISummarySettings } from "./settings-ai";
-import { CollapsibleStickyCard, ItemButton, ItemEmojiInput, ItemImageInput, ItemInput, ItemSwitch, ItemTitle, ItemWithUpload } from "./settings-items";
+import { ItemButton, ItemImageInput, ItemInput, ItemSwitch, ItemTitle, ItemWithUpload } from "./settings-items";
+import { ImageUploadInput } from "../components/image-upload-input";
 import {
   areSettingsDraftsEqual,
   buildAIConfigDraftValue,
@@ -73,6 +74,63 @@ const ATELIER_TITLE_STYLES = [
   { id: "starlight_cosmic", name: "星空极夜璀璨", desc: "深邃蓝紫星河粒子光晕，浩瀚神秘" },
 ];
 
+const STICKY_NOTES_CONFIG = [
+  {
+    id: "about" as const,
+    name: "关于我",
+    subKey: "atelier.about",
+    defaultIcon: "🐾",
+    defaultUrl: "/about",
+    defaultDesc: "欢迎光临我的记忆工坊与随笔空间，点击了解更多。",
+    presetEmojis: ABOUT_PRESET_EMOJIS,
+  },
+  {
+    id: "timeline" as const,
+    name: "岁月轨迹",
+    subKey: "atelier.timeline",
+    defaultIcon: "⏳",
+    defaultUrl: "/timeline",
+    defaultDesc: "以时间为轴，串联起每一次灵感与技术实践。",
+    presetEmojis: TIMELINE_PRESET_EMOJIS,
+  },
+  {
+    id: "moments" as const,
+    name: "朋友圈动态",
+    subKey: "atelier.moments",
+    defaultIcon: "💭",
+    defaultUrl: "/moments",
+    defaultDesc: "生活碎碎念、朋友圈动态与不设限的日常记录。",
+    presetEmojis: MOMENTS_PRESET_EMOJIS,
+  },
+  {
+    id: "friends" as const,
+    name: "邻家友链",
+    subKey: "atelier.friends",
+    defaultIcon: "🌸",
+    defaultUrl: "/friends",
+    defaultDesc: "漫步在同好博主的数字花园，交换思想火花。",
+    presetEmojis: FRIENDS_PRESET_EMOJIS,
+  },
+  {
+    id: "search" as const,
+    name: "随心探索",
+    subKey: "atelier.search",
+    defaultIcon: "🔍",
+    defaultUrl: "/search",
+    defaultDesc: "输入关键词即刻检索文章与解决方案。",
+    presetEmojis: SEARCH_PRESET_EMOJIS,
+  },
+  {
+    id: "deck" as const,
+    name: "记忆翻动底片",
+    subKey: "atelier.deck",
+    defaultIcon: "🎴",
+    defaultUrl: "/gallery",
+    defaultDesc: "漫游图床画廊，浏览大图并复制链接。",
+    presetEmojis: DECK_PRESET_EMOJIS,
+  },
+];
+
 export function Settings() {
   const { t } = useTranslation();
   const siteConfig = useSiteConfig();
@@ -101,24 +159,12 @@ export function Settings() {
   );
   const [activeThemeMode, setActiveThemeMode] = useState<ThemeMode>(getStoredThemeMode());
 
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    about: false,
-    timeline: false,
-    moments: false,
-    friends: false,
-    search: false,
-    deck: false,
-  });
-
-  const toggleSection = (key: string) => {
-    setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  useEffect(() => {
-    if (focusTarget && ["about", "timeline", "moments", "friends", "search", "deck"].includes(focusTarget)) {
-      setExpandedSections((prev) => ({ ...prev, [focusTarget]: true }));
-    }
-  }, [focusTarget]);
+  const [activeCoverModal, setActiveCoverModal] = useState<{
+    id: string;
+    name: string;
+    configKey: string;
+  } | null>(null);
+  const [activeEmojiPopover, setActiveEmojiPopover] = useState<string | null>(null);
 
   // URL tab change synchronizer
   useEffect(() => {
@@ -179,6 +225,12 @@ export function Settings() {
   }, [showAlert, t]);
 
   const { clientConfig, serverConfig } = useMemo(() => createSettingsConfigWrappers(draft), [draft]);
+  const enabledNotesCount = useMemo(() => {
+    return STICKY_NOTES_CONFIG.filter((note) => {
+      const val = clientConfig.get(`atelier.${note.id}_show`);
+      return val !== false && val !== "false";
+    }).length;
+  }, [clientConfig]);
   const aiValue = useMemo(() => buildAIConfigDraftValue(draft, hasStoredAiApiKey), [draft, hasStoredAiApiKey]);
   const hasUnsavedChanges = !areSettingsDraftsEqual(draft, initialDraft);
   const themeColorValue = normalizeThemeColor(String(clientConfig.get("theme.color") ?? "#fc466b"));
@@ -311,75 +363,108 @@ export function Settings() {
             </div>
           </div>
 
-          {/* Tab 1: General Settings */}
+          {/* Tab 1: General Settings (画廊概览切片仪表盘风格) */}
           {activeCategory === "general" && (
-            <div className="w-full flex flex-col space-y-3 ani-show">
-              <ItemTitle title={t("settings.site.title")} />
-              <ItemInput
-                title={t("settings.site.name.title")}
-                description={t("settings.site.name.desc")}
-                configKeyTitle={t("settings.site.name.label")}
-                value={String(clientConfig.get("site.name") ?? "")}
-                placeholder={String(clientConfig.default("site.name") ?? t("settings.site.name.label"))}
-                onChange={(value) => {
-                  setConfigValue("client", "site.name", value);
-                }}
-              />
-              <ItemInput
-                title={t("settings.site.description.title")}
-                description={t("settings.site.description.desc")}
-                configKeyTitle={t("settings.site.description.label")}
-                value={String(clientConfig.get("site.description") ?? "")}
-                placeholder={String(clientConfig.default("site.description") ?? t("settings.site.description.label"))}
-                onChange={(value) => {
-                  setConfigValue("client", "site.description", value);
-                }}
-              />
-              <ItemImageInput
-                title={t("settings.site.avatar.title")}
-                description={t("settings.site.avatar.desc")}
-                configKeyTitle={t("settings.site.avatar.label")}
-                value={String(clientConfig.get("site.avatar") ?? "")}
-                placeholder={String(clientConfig.default("site.avatar") ?? t("settings.site.avatar.label"))}
-                onChange={(value) => {
-                  setConfigValue("client", "site.avatar", value);
-                }}
-                onError={showAlert}
-              />
-              <ItemInput
-                title={t("settings.site.page_size.title")}
-                description={t("settings.site.page_size.desc")}
-                configKeyTitle={t("settings.site.page_size.label")}
-                value={String(clientConfig.get("site.page_size") ?? "")}
-                placeholder={String(clientConfig.default("site.page_size") ?? t("settings.site.page_size.label"))}
-                onChange={(value) => {
-                  setConfigValue("client", "site.page_size", value);
-                }}
-              />
-              <ItemWithUpload
-                title={t("settings.favicon.title")}
-                description={t("settings.favicon.desc")}
-                accept="image/png,image/jpeg,image/gif,image/svg+xml,image/x-icon"
-                onFileChange={handleFaviconChange}
-              />
-              <ItemSwitch
-                title="启用全站站点导航栏"
-                description="开启后在全站页面显示导航栏；关闭后前台将完全隐藏导航条，提供极致纯净沉浸视觉"
-                checked={clientConfig.get("header.show_nav") === true || clientConfig.get("header.show_nav") === "true"}
-                onChange={(checked) => {
-                  setConfigValue("client", "header.show_nav", checked);
-                }}
-              />
-              <div className="w-full p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-                <div>
-                  <span className="text-sm font-semibold t-primary block">前台导航条排布位置与挂件模式</span>
-                  <span className="text-xs text-neutral-400">选择导航栏呈现为顶部常规栏、居中浮动药丸胶囊或底部便携挂件</span>
+            <div className="w-full flex flex-col space-y-4 ani-show">
+              {/* 顶部：站点综合运行中枢与参数透视 */}
+              <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-theme/10 text-theme text-2xl shadow-2xs">
+                    <i className="ri-dashboard-3-line" />
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-bold t-primary">画廊站点核心配置中枢</h2>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                        边缘实时生效
+                      </span>
+                    </div>
+                    <p className="text-xs text-neutral-400 mt-0.5">
+                      集中管控画廊博客身份、全站导航排布、交互功能总闸与访客统计
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+
+                <div className="flex flex-wrap items-center gap-2 text-xs font-mono self-start sm:self-auto">
+                  <span className="px-2.5 py-1 rounded-xl bg-black/5 dark:bg-white/5 text-neutral-500">
+                    页面容量: {String(clientConfig.get("site.page_size") || 12)} 篇/页
+                  </span>
+                  <span className="px-2.5 py-1 rounded-xl bg-theme/10 text-theme font-bold">
+                    导航模式: {String(clientConfig.get("header.position") || "top") === "float" ? "居中浮动" : String(clientConfig.get("header.position") || "top") === "bottom" ? "底部挂件" : "顶部固定"}
+                  </span>
+                </div>
+              </div>
+
+              {/* 切片 1: 站点基本身份工坊 (2 列卡片) */}
+              <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+                <div className="flex items-center gap-2 pb-3 border-b border-black/5 dark:border-white/5">
+                  <i className="ri-user-smile-line text-theme text-base" />
+                  <h3 className="font-bold text-sm t-primary">站点身份与展示规范 (Branding)</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <ItemInput
+                    title={t("settings.site.name.title")}
+                    description={t("settings.site.name.desc")}
+                    configKeyTitle={t("settings.site.name.label")}
+                    value={String(clientConfig.get("site.name") ?? "")}
+                    placeholder={String(clientConfig.default("site.name") ?? t("settings.site.name.label"))}
+                    onChange={(value) => {
+                      setConfigValue("client", "site.name", value);
+                    }}
+                  />
+                  <ItemInput
+                    title={t("settings.site.page_size.title")}
+                    description={t("settings.site.page_size.desc")}
+                    configKeyTitle={t("settings.site.page_size.label")}
+                    value={String(clientConfig.get("site.page_size") ?? "")}
+                    placeholder={String(clientConfig.default("site.page_size") ?? t("settings.site.page_size.label"))}
+                    onChange={(value) => {
+                      setConfigValue("client", "site.page_size", value);
+                    }}
+                  />
+                </div>
+
+                <ItemInput
+                  title={t("settings.site.description.title")}
+                  description={t("settings.site.description.desc")}
+                  configKeyTitle={t("settings.site.description.label")}
+                  value={String(clientConfig.get("site.description") ?? "")}
+                  placeholder={String(clientConfig.default("site.description") ?? t("settings.site.description.label"))}
+                  onChange={(value) => {
+                    setConfigValue("client", "site.description", value);
+                  }}
+                />
+
+                <ItemImageInput
+                  title={t("settings.site.avatar.title")}
+                  description={t("settings.site.avatar.desc")}
+                  configKeyTitle={t("settings.site.avatar.label")}
+                  value={String(clientConfig.get("site.avatar") ?? "")}
+                  placeholder={String(clientConfig.default("site.avatar") ?? t("settings.site.avatar.label"))}
+                  onChange={(value) => {
+                    setConfigValue("client", "site.avatar", value);
+                  }}
+                  onError={showAlert}
+                />
+              </div>
+
+              {/* 切片 2: 全站导航条位置与挂件模式 (iKuai 风格切换卡片) */}
+              <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <i className="ri-layout-top-line text-theme text-base" />
+                    <h3 className="text-sm font-bold t-primary">前台导航条排布位置与挂件形态</h3>
+                  </div>
+                  <p className="text-xs text-neutral-400 mt-1">
+                    支持一键切换为顶部常规导航条、居中悬浮极光胶囊或底部轻便挂件，提供不同的视觉沉浸感
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto">
                   {[
                     { id: "top", label: "顶部固定", icon: "ri-layout-top-line" },
                     { id: "float", label: "居中浮动胶囊", icon: "ri-capsule-line" },
-                    { id: "bottom", label: "底部挂件", icon: "ri-layout-bottom-line" },
+                    { id: "bottom", label: "底部便携挂件", icon: "ri-layout-bottom-line" },
                   ].map((pos) => {
                     const currentPos = String(clientConfig.get("header.position") || "top");
                     const isSelected = currentPos === pos.id;
@@ -388,9 +473,9 @@ export function Settings() {
                         key={pos.id}
                         type="button"
                         onClick={() => setConfigValue("client", "header.position", pos.id)}
-                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold transition select-none ${
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition select-none ${
                           isSelected
-                            ? "bg-theme text-white shadow-xs font-bold"
+                            ? "bg-theme text-white shadow-xs font-bold scale-102"
                             : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
                         }`}
                       >
@@ -401,47 +486,164 @@ export function Settings() {
                   })}
                 </div>
               </div>
-              <ItemSwitch
-                title={t("settings.login.enable.title")}
-                description={t("settings.login.enable.desc", { url: oauth_url })}
-                checked={clientConfig.getBoolean("login.enabled")}
-                onChange={(checked) => {
-                  setConfigValue("client", "login.enabled", checked);
-                }}
-              />
-              <ItemSwitch
-                title={t("settings.comment.enable.title")}
-                description={t("settings.comment.enable.desc")}
-                checked={clientConfig.getBoolean("comment.enabled")}
-                onChange={(checked) => {
-                  setConfigValue("client", "comment.enabled", checked);
-                }}
-              />
-              <ItemSwitch
-                title={t("settings.counter.enable.title")}
-                description={t("settings.counter.enable.desc")}
-                checked={clientConfig.getBoolean("counter.enabled")}
-                onChange={(checked) => {
-                  setConfigValue("client", "counter.enabled", checked);
-                }}
-              />
-              <ItemSwitch
-                title={t("settings.rss.title")}
-                description={t("settings.rss.desc")}
-                checked={clientConfig.getBoolean("rss")}
-                onChange={(checked) => {
-                  setConfigValue("client", "rss", checked);
-                }}
-              />
-              <ItemInput
-                title={t("settings.footer.title")}
-                description={t("settings.footer.desc")}
-                configKeyTitle="Footer HTML"
-                value={String(clientConfig.get("footer") ?? "")}
-                onChange={(value) => {
-                  setConfigValue("client", "footer", value);
-                }}
-              />
+
+              {/* 切片 3: 全站功能总闸矩阵 (iKuai 2x3 模块化卡片切片) */}
+              <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+                <div className="flex items-center gap-2 pb-3 border-b border-black/5 dark:border-white/5">
+                  <i className="ri-toggle-line text-theme text-base" />
+                  <h3 className="font-bold text-sm t-primary">全站核心功能开关矩阵 (Feature Toggles)</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* 开关 1: 导航栏显隐 */}
+                  <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="font-bold text-xs t-primary block truncate">启用全站导航栏</span>
+                      <span className="text-[11px] text-neutral-400 block truncate">前台是否呈现导航条</span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={clientConfig.get("header.show_nav") === true || clientConfig.get("header.show_nav") === "true"}
+                      onClick={() => {
+                        const cur = clientConfig.get("header.show_nav") === true || clientConfig.get("header.show_nav") === "true";
+                        setConfigValue("client", "header.show_nav", !cur);
+                      }}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                        (clientConfig.get("header.show_nav") === true || clientConfig.get("header.show_nav") === "true") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                      }`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
+                        (clientConfig.get("header.show_nav") === true || clientConfig.get("header.show_nav") === "true") ? "translate-x-4.5" : "translate-x-1"
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* 开关 2: 访客登录 */}
+                  <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="font-bold text-xs t-primary block truncate">开放访客登录</span>
+                      <span className="text-[11px] text-neutral-400 block truncate">允许前台账户登录入口</span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={clientConfig.getBoolean("login.enabled")}
+                      onClick={() => setConfigValue("client", "login.enabled", !clientConfig.getBoolean("login.enabled"))}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                        clientConfig.getBoolean("login.enabled") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                      }`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
+                        clientConfig.getBoolean("login.enabled") ? "translate-x-4.5" : "translate-x-1"
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* 开关 3: 留言评论系统 */}
+                  <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="font-bold text-xs t-primary block truncate">留言板与文章评论</span>
+                      <span className="text-[11px] text-neutral-400 block truncate">全站互动留言评论体系</span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={clientConfig.getBoolean("comment.enabled")}
+                      onClick={() => setConfigValue("client", "comment.enabled", !clientConfig.getBoolean("comment.enabled"))}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                        clientConfig.getBoolean("comment.enabled") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                      }`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
+                        clientConfig.getBoolean("comment.enabled") ? "translate-x-4.5" : "translate-x-1"
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* 开关 4: 访问统计 PV/UV */}
+                  <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="font-bold text-xs t-primary block truncate">阅读计数器 (PV/UV)</span>
+                      <span className="text-[11px] text-neutral-400 block truncate">文章独立访客与浏览统计</span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={clientConfig.getBoolean("counter.enabled")}
+                      onClick={() => setConfigValue("client", "counter.enabled", !clientConfig.getBoolean("counter.enabled"))}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                        clientConfig.getBoolean("counter.enabled") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                      }`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
+                        clientConfig.getBoolean("counter.enabled") ? "translate-x-4.5" : "translate-x-1"
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* 开关 5: 原生 RSS 订阅源 */}
+                  <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="font-bold text-xs t-primary block truncate">原生 RSS 订阅源</span>
+                      <span className="text-[11px] text-neutral-400 block truncate">提供 /feed 和 /rss.xml</span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={clientConfig.getBoolean("rss")}
+                      onClick={() => setConfigValue("client", "rss", !clientConfig.getBoolean("rss"))}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                        clientConfig.getBoolean("rss") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                      }`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
+                        clientConfig.getBoolean("rss") ? "translate-x-4.5" : "translate-x-1"
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* 切片快捷导航: 快速直达进阶便签表格 */}
+                  <div className="p-3.5 rounded-xl border border-theme/20 bg-theme/[0.04] flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="font-bold text-xs text-theme block truncate">便签超级表格</span>
+                      <span className="text-[11px] text-neutral-400 block truncate">管理首屏 6 大互动便签</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveCategory("atelier")}
+                      className="px-2.5 py-1 rounded-lg bg-theme text-white font-bold text-xs shadow-2xs hover:bg-theme-hover transition"
+                    >
+                      立即前往 &rarr;
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 切片 4: 图标上传与页脚全局 HTML 代码 */}
+              <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+                <div className="flex items-center gap-2 pb-3 border-b border-black/5 dark:border-white/5">
+                  <i className="ri-code-box-line text-theme text-base" />
+                  <h3 className="font-bold text-sm t-primary">站点图标 (Favicon) 与全局自定义注入</h3>
+                </div>
+
+                <ItemWithUpload
+                  title={t("settings.favicon.title")}
+                  description={t("settings.favicon.desc")}
+                  accept="image/png,image/jpeg,image/gif,image/svg+xml,image/x-icon"
+                  onFileChange={handleFaviconChange}
+                />
+
+                <ItemInput
+                  title={t("settings.footer.title")}
+                  description={t("settings.footer.desc")}
+                  configKeyTitle="Footer HTML"
+                  value={String(clientConfig.get("footer") ?? "")}
+                  onChange={(value) => {
+                    setConfigValue("client", "footer", value);
+                  }}
+                />
+              </div>
             </div>
           )}
 
@@ -1240,496 +1442,315 @@ export function Settings() {
             </SettingsCard>
           </div>
 
-          {/* 便签卡片折叠手风琴布局（清爽节省篇幅，点击展开） */}
-          <CollapsibleStickyCard
-            id="setting-atelier-about"
-            title="1. “关于我”便签设置"
-            icon={String(clientConfig.get("atelier.about_icon") ?? "🐾")}
-            badgeText={String(clientConfig.get("atelier.about_url") ?? "/about")}
-            isOpen={expandedSections.about}
-            onToggle={() => toggleSection("about")}
-          >
-            <ItemSwitch
-              title="在画廊首页展示此便签"
-              description="控制该便签是否在画廊前台首屏文章间呈现"
-              checked={clientConfig.get("atelier.about_show") !== false && clientConfig.get("atelier.about_show") !== "false"}
-              onChange={(checked) => {
-                setConfigValue("client", "atelier.about_show", checked);
-              }}
-            />
-            <div className="w-full p-4 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <span className="text-sm font-semibold t-primary block">便签展示风格形态</span>
-                <span className="text-xs text-neutral-400">选择便签在首页文章流中的视觉呈现形式</span>
+          {/* 画廊随想便签阵列配置 iKuai 风格超级数据表格 (Dense DataGrid) */}
+          <div className="w-full flex flex-col space-y-3 ani-show">
+            {/* 顶栏控制中枢 */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-2xs">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-theme/10 text-theme text-xl shadow-2xs">
+                  <i className="ri-layout-grid-line" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm sm:text-base t-primary">便签阵列管理 (Dense DataGrid)</h3>
+                    <span className={`text-[11px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                      enabledNotesCount === STICKY_NOTES_CONFIG.length
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : enabledNotesCount > 0
+                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        : "bg-neutral-500/10 text-neutral-500"
+                    }`}>
+                      已启用 {enabledNotesCount} / {STICKY_NOTES_CONFIG.length}
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    集中调控画廊首屏交错便签的显隐、展示形态、跳转目标与艺术背景封面
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                {[
-                  { id: "card", label: "拍立得长条" },
-                  { id: "circle", label: "精致小圆盘" },
-                  { id: "capsule", label: "极简小胶囊" },
-                ].map((st) => (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => setConfigValue("client", "atelier.about_style", st.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition select-none ${
-                      (String(clientConfig.get("atelier.about_style") || "card")) === st.id
-                        ? "bg-theme text-white shadow-2xs font-bold"
-                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
-                    }`}
-                  >
-                    {st.label}
-                  </button>
-                ))}
+
+              {/* 批量操作工具 */}
+              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    STICKY_NOTES_CONFIG.forEach((note) => {
+                      setConfigValue("client", `atelier.${note.id}_show`, true);
+                    });
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition flex items-center gap-1 select-none"
+                >
+                  <i className="ri-checkbox-circle-line" />
+                  <span>全部开启</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    STICKY_NOTES_CONFIG.forEach((note) => {
+                      setConfigValue("client", `atelier.${note.id}_show`, false);
+                    });
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition flex items-center gap-1 select-none"
+                >
+                  <i className="ri-close-circle-line" />
+                  <span>全部关闭</span>
+                </button>
               </div>
             </div>
-            <ItemEmojiInput
-              title="“关于我”便签图标 (Emoji / 符号)"
-              description="便签左上角个性符号（博主/身份专属推荐：🐾 🐱 🐶 🦊 🐼 🐨 🦁 🐯 🦄 ☕ 🍵 🍀 🌿 🌸 🎧 🎮 💻 🎨 🌟 👑 ✨ 🌻 🐣 🍧 等，可点击快速填入或自行输入）"
-              configKeyTitle="atelier.about_icon"
-              value={String(clientConfig.get("atelier.about_icon") ?? "🐾")}
-              placeholder="🐾"
-              presetEmojis={ABOUT_PRESET_EMOJIS}
-              onChange={(value) => {
-                setConfigValue("client", "atelier.about_icon", value);
-              }}
-            />
-            <ItemInput
-              title="“关于我”跳转链接"
-              description="点击便签时跳转的文章别名或页面链接（例如 /about 或 /feed/1）"
-              configKeyTitle="atelier.about_url"
-              value={String(clientConfig.get("atelier.about_url") ?? "/about")}
-              placeholder="/about"
-              onChange={(value) => {
-                setConfigValue("client", "atelier.about_url", value);
-              }}
-            />
-            <ItemInput
-              title="“关于我”描述语"
-              description="便签卡片上展示的心情寄语"
-              configKeyTitle="atelier.about_desc"
-              value={String(clientConfig.get("atelier.about_desc") ?? "欢迎光临我的记忆工坊与随笔空间，点击了解更多。")}
-              placeholder="欢迎光临我的记忆工坊与随笔空间，点击了解更多。"
-              onChange={(value) => {
-                setConfigValue("client", "atelier.about_desc", value);
-              }}
-            />
-            <ItemImageInput
-              title="“关于我”背景图"
-              description="为画廊中的“关于我”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
-              configKeyTitle="atelier.about_bg"
-              value={String(clientConfig.get("atelier.about_bg") ?? "")}
-              placeholder="https://..."
-              onChange={(value) => {
-                setConfigValue("client", "atelier.about_bg", value);
-              }}
-              onError={showAlert}
-            />
-          </CollapsibleStickyCard>
 
-          <CollapsibleStickyCard
-            id="setting-atelier-timeline"
-            title="2. “岁月轨迹”便签设置"
-            icon={String(clientConfig.get("atelier.timeline_icon") ?? "⏳")}
-            badgeText={String(clientConfig.get("atelier.timeline_url") ?? "/timeline")}
-            isOpen={expandedSections.timeline}
-            onToggle={() => toggleSection("timeline")}
-          >
-            <ItemSwitch
-              title="在画廊首页展示此便签"
-              description="控制该便签是否在画廊前台首屏文章间呈现"
-              checked={clientConfig.get("atelier.timeline_show") !== false && clientConfig.get("atelier.timeline_show") !== "false"}
-              onChange={(checked) => {
-                setConfigValue("client", "atelier.timeline_show", checked);
-              }}
-            />
-            <div className="w-full p-4 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <span className="text-sm font-semibold t-primary block">便签展示风格形态</span>
-                <span className="text-xs text-neutral-400">选择便签在首页文章流中的视觉呈现形式</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                {[
-                  { id: "card", label: "拍立得长条" },
-                  { id: "circle", label: "精致小圆盘" },
-                  { id: "capsule", label: "极简小胶囊" },
-                ].map((st) => (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => setConfigValue("client", "atelier.timeline_style", st.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition select-none ${
-                      (String(clientConfig.get("atelier.timeline_style") || "card")) === st.id
-                        ? "bg-theme text-white shadow-2xs font-bold"
-                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
-                    }`}
-                  >
-                    {st.label}
-                  </button>
-                ))}
+            {/* iKuai 风格超级表格主体 */}
+            <div className="rounded-2xl border border-black/10 bg-w dark:border-white/10 overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse min-w-[760px]">
+                  <thead>
+                    <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-500 dark:text-neutral-400 font-mono">
+                      <th className="py-3 px-3 w-16 text-center">序号/图标</th>
+                      <th className="py-3 px-3 w-36">便签名称</th>
+                      <th className="py-3 px-3 w-24 text-center">首屏展示</th>
+                      <th className="py-3 px-3 w-40">视觉形态</th>
+                      <th className="py-3 px-3 w-44">跳转链接</th>
+                      <th className="py-3 px-3">心情描述语</th>
+                      <th className="py-3 px-3 w-28 text-center">专属背景图</th>
+                      <th className="py-3 px-3 w-20 text-center">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {STICKY_NOTES_CONFIG.map((note) => {
+                      const isShow = clientConfig.get(`atelier.${note.id}_show`) !== false && clientConfig.get(`atelier.${note.id}_show`) !== "false";
+                      const currentIcon = String(clientConfig.get(`atelier.${note.id}_icon`) ?? note.defaultIcon);
+                      const currentStyle = String(clientConfig.get(`atelier.${note.id}_style`) || "card");
+                      const currentUrl = String(clientConfig.get(`atelier.${note.id}_url`) ?? note.defaultUrl);
+                      const currentDesc = String(clientConfig.get(`atelier.${note.id}_desc`) ?? note.defaultDesc);
+                      const currentBg = String(clientConfig.get(`atelier.${note.id}_bg`) ?? "");
+
+                      return (
+                        <tr
+                          key={note.id}
+                          id={`setting-atelier-${note.id}`}
+                          className={`border-b border-black/[0.04] dark:border-white/[0.04] transition-colors ${
+                            isShow ? "hover:bg-theme/[0.03]" : "opacity-60 bg-black/[0.01] dark:bg-white/[0.01]"
+                          }`}
+                        >
+                          {/* 序号与图标（点击弹出 Emoji 快捷气泡） */}
+                          <td className="py-3 px-3 text-center">
+                            <div className="relative inline-block">
+                              <button
+                                type="button"
+                                title="点击修改便签图标"
+                                onClick={() => setActiveEmojiPopover(activeEmojiPopover === note.id ? null : note.id)}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg bg-theme/10 hover:bg-theme/20 text-sm transition shadow-2xs font-mono font-bold mx-auto select-none"
+                              >
+                                {currentIcon}
+                              </button>
+
+                              {/* Emoji 快捷点选浮层 */}
+                              {activeEmojiPopover === note.id && (
+                                <div className="absolute left-full top-0 ml-2 z-50 p-2.5 rounded-xl bg-w shadow-xl border border-black/10 dark:border-white/10 flex flex-wrap gap-1.5 w-48 ani-show backdrop-blur-md">
+                                  <div className="w-full text-[10px] text-neutral-400 font-mono mb-1 flex items-center justify-between">
+                                    <span>推荐专属图标</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveEmojiPopover(null)}
+                                      className="text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                  {note.presetEmojis.map((emoji) => (
+                                    <button
+                                      key={emoji}
+                                      type="button"
+                                      onClick={() => {
+                                        setConfigValue("client", `atelier.${note.id}_icon`, emoji);
+                                        setActiveEmojiPopover(null);
+                                      }}
+                                      className="h-7 w-7 rounded-md hover:bg-theme/10 flex items-center justify-center text-sm transition select-none"
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* 便签名称与副标题 */}
+                          <td className="py-3 px-3">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-xs t-primary">{note.name}</span>
+                              <span className="text-[10px] font-mono text-neutral-400">atelier.{note.id}</span>
+                            </div>
+                          </td>
+
+                          {/* 首屏展示开关 */}
+                          <td className="py-3 px-3 text-center">
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isShow}
+                              onClick={() => setConfigValue("client", `atelier.${note.id}_show`, !isShow)}
+                              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out select-none ${
+                                isShow ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out mt-0.5 ${
+                                  isShow ? "translate-x-4.5" : "translate-x-1"
+                                }`}
+                              />
+                            </button>
+                          </td>
+
+                          {/* 视觉形态选择 */}
+                          <td className="py-3 px-3">
+                            {note.id === "deck" ? (
+                              <span className="text-[11px] font-mono px-2 py-1 rounded-md bg-black/5 dark:bg-white/5 text-neutral-500 select-none">
+                                记忆翻动胶卷
+                              </span>
+                            ) : (
+                              <div className="inline-flex items-center rounded-lg bg-black/5 dark:bg-white/5 p-0.5 select-none">
+                                {[
+                                  { id: "card", label: "长条" },
+                                  { id: "circle", label: "圆盘" },
+                                  { id: "capsule", label: "胶囊" },
+                                ].map((st) => (
+                                  <button
+                                    key={st.id}
+                                    type="button"
+                                    onClick={() => setConfigValue("client", `atelier.${note.id}_style`, st.id)}
+                                    className={`px-2 py-0.5 rounded-md text-[11px] transition font-medium ${
+                                      currentStyle === st.id
+                                        ? "bg-theme text-white shadow-2xs font-bold"
+                                        : "text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200"
+                                    }`}
+                                  >
+                                    {st.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* 跳转链接 */}
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={currentUrl}
+                                onChange={(e) => setConfigValue("client", `atelier.${note.id}_url`, e.target.value)}
+                                placeholder={note.defaultUrl}
+                                className="w-full text-xs font-mono py-1 px-2 rounded-lg bg-black/[0.03] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition"
+                              />
+                              <Link
+                                href={currentUrl}
+                                title="新标签页预览此链接"
+                                target="_blank"
+                                className="p-1 rounded text-neutral-400 hover:text-theme transition shrink-0"
+                              >
+                                <i className="ri-external-link-line text-xs" />
+                              </Link>
+                            </div>
+                          </td>
+
+                          {/* 寄语描述语 */}
+                          <td className="py-3 px-3">
+                            <input
+                              type="text"
+                              value={currentDesc}
+                              onChange={(e) => setConfigValue("client", `atelier.${note.id}_desc`, e.target.value)}
+                              placeholder={note.defaultDesc}
+                              className="w-full text-xs py-1 px-2 rounded-lg bg-black/[0.03] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition"
+                            />
+                          </td>
+
+                          {/* 专属背景封面预览与上传 */}
+                          <td className="py-3 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {currentBg ? (
+                                <img
+                                  src={currentBg}
+                                  alt="封面"
+                                  className="h-6 w-9 rounded object-cover shadow-2xs ring-1 ring-black/10"
+                                />
+                              ) : (
+                                <span className="h-6 w-9 rounded border border-dashed border-black/20 dark:border-white/20 flex items-center justify-center text-[10px] text-neutral-400 font-mono">
+                                  质感
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setActiveCoverModal({ id: note.id, name: note.name, configKey: `atelier.${note.id}_bg` })}
+                                title="设置专属背景封面"
+                                className="p-1 rounded-md text-neutral-500 hover:text-theme hover:bg-theme/10 transition"
+                              >
+                                <i className="ri-image-edit-line text-sm" />
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* 快捷恢复默认 */}
+                          <td className="py-3 px-3 text-center">
+                            <button
+                              type="button"
+                              title="重置为此便签的默认配置"
+                              onClick={() => {
+                                setConfigValue("client", `atelier.${note.id}_show`, true);
+                                setConfigValue("client", `atelier.${note.id}_icon`, note.defaultIcon);
+                                setConfigValue("client", `atelier.${note.id}_url`, note.defaultUrl);
+                                setConfigValue("client", `atelier.${note.id}_desc`, note.defaultDesc);
+                                setConfigValue("client", `atelier.${note.id}_bg`, "");
+                                if (note.id !== "deck") {
+                                  setConfigValue("client", `atelier.${note.id}_style`, "card");
+                                }
+                              }}
+                              className="p-1 rounded-md text-neutral-400 hover:text-amber-500 hover:bg-amber-500/10 transition"
+                            >
+                              <i className="ri-restart-line text-sm" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
-            <ItemEmojiInput
-              title="“岁月轨迹”便签图标 (Emoji / 符号)"
-              description="便签左上角个性符号（岁月/刻度专属推荐：⏳ ⌛ ⏰ ⏱️ 🕰️ 📅 📆 🗓️ 📜 🧭 ⚓ 🏹 🛸 🚀 🌠 🌌 🪐 🍂 🍁 🌊 🏛️ ⛩️ 🕯️ 🔮 等，可点击快速填入或自行输入）"
-              configKeyTitle="atelier.timeline_icon"
-              value={String(clientConfig.get("atelier.timeline_icon") ?? "⏳")}
-              placeholder="⏳"
-              presetEmojis={TIMELINE_PRESET_EMOJIS}
-              onChange={(value) => {
-                setConfigValue("client", "atelier.timeline_icon", value);
-              }}
-            />
-            <ItemInput
-              title="“岁月轨迹”跳转链接"
-              description="点击便签时跳转的页面链接"
-              configKeyTitle="atelier.timeline_url"
-              value={String(clientConfig.get("atelier.timeline_url") ?? "/timeline")}
-              placeholder="/timeline"
-              onChange={(value) => {
-                setConfigValue("client", "atelier.timeline_url", value);
-              }}
-            />
-            <ItemInput
-              title="“岁月轨迹”描述语"
-              description="便签卡片上展示的时光寄语"
-              configKeyTitle="atelier.timeline_desc"
-              value={String(clientConfig.get("atelier.timeline_desc") ?? "以时间为轴，串联起每一次灵感与技术实践。")}
-              placeholder="以时间为轴，串联起每一次灵感与技术实践。"
-              onChange={(value) => {
-                setConfigValue("client", "atelier.timeline_desc", value);
-              }}
-            />
-            <ItemImageInput
-              title="“岁月轨迹”背景图"
-              description="为画廊中的“岁月轨迹”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
-              configKeyTitle="atelier.timeline_bg"
-              value={String(clientConfig.get("atelier.timeline_bg") ?? "")}
-              placeholder="https://..."
-              onChange={(value) => {
-                setConfigValue("client", "atelier.timeline_bg", value);
-              }}
-              onError={showAlert}
-            />
-          </CollapsibleStickyCard>
+          </div>
 
-          <CollapsibleStickyCard
-            id="setting-atelier-moments"
-            title="3. “日常随想”便签设置"
-            icon={String(clientConfig.get("atelier.moments_icon") ?? "💭")}
-            badgeText={String(clientConfig.get("atelier.moments_url") ?? "/moments")}
-            isOpen={expandedSections.moments}
-            onToggle={() => toggleSection("moments")}
-          >
-            <ItemSwitch
-              title="在画廊首页展示此便签"
-              description="控制该便签是否在画廊前台首屏文章间呈现"
-              checked={clientConfig.get("atelier.moments_show") !== false && clientConfig.get("atelier.moments_show") !== "false"}
-              onChange={(checked) => {
-                setConfigValue("client", "atelier.moments_show", checked);
-              }}
-            />
-            <div className="w-full p-4 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <span className="text-sm font-semibold t-primary block">便签展示风格形态</span>
-                <span className="text-xs text-neutral-400">选择便签在首页文章流中的视觉呈现形式</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                {[
-                  { id: "card", label: "拍立得长条" },
-                  { id: "circle", label: "精致小圆盘" },
-                  { id: "capsule", label: "极简小胶囊" },
-                ].map((st) => (
+          {/* 便签背景封面紧凑设置模态框 */}
+          {activeCoverModal && (
+            <Modal
+              isOpen={!!activeCoverModal}
+              onRequestClose={() => setActiveCoverModal(null)}
+              contentLabel={`设置“${activeCoverModal.name}”背景封面`}
+              panelClassName="p-6 max-w-lg w-full"
+            >
+              <div className="space-y-4 text-xs">
+                <h2 className="text-base font-bold t-primary">设置“{activeCoverModal.name}”背景封面 (建议 800×480)</h2>
+                <p className="text-neutral-500">
+                  为画廊前台首屏展示的“{activeCoverModal.name}”便签上传高品质背景图（推荐宽高比约 5:3，如 800×480 像素，支持本地拖拽上传或直接填入图床 URL，留空则恢复默认清新纸张微质感）：
+                </p>
+                <ImageUploadInput
+                  value={String(clientConfig.get(activeCoverModal.configKey) ?? "")}
+                  onChange={(val) => {
+                    setConfigValue("client", activeCoverModal.configKey, val);
+                  }}
+                  onError={showAlert}
+                  placeholder="https://..."
+                  shape="rounded"
+                />
+                <div className="flex justify-end gap-2 pt-2">
                   <button
-                    key={st.id}
                     type="button"
-                    onClick={() => setConfigValue("client", "atelier.moments_style", st.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition select-none ${
-                      (String(clientConfig.get("atelier.moments_style") || "card")) === st.id
-                        ? "bg-theme text-white shadow-2xs font-bold"
-                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
-                    }`}
+                    onClick={() => setActiveCoverModal(null)}
+                    className="px-4 py-2 rounded-xl bg-theme text-white text-xs font-semibold shadow-xs"
                   >
-                    {st.label}
+                    确定
                   </button>
-                ))}
+                </div>
               </div>
-            </div>
-            <ItemEmojiInput
-              title="“日常随想”便签图标 (Emoji / 符号)"
-              description="便签左上角个性符号（灵感/随笔专属推荐：💭 💬 🫧 💡 ☕ 🍃 🌤️ 🌈 🎈 🎵 📖 📝 📮 💌 🍺 🥂 🥐 🍰 🧁 🌻 🧸 🪁 🎐 🍬 等，可点击快速填入或自行输入）"
-              configKeyTitle="atelier.moments_icon"
-              value={String(clientConfig.get("atelier.moments_icon") ?? "💭")}
-              placeholder="💭"
-              presetEmojis={MOMENTS_PRESET_EMOJIS}
-              onChange={(value) => {
-                setConfigValue("client", "atelier.moments_icon", value);
-              }}
-            />
-            <ItemInput
-              title="“日常随想”跳转链接"
-              description="点击便签时跳转的页面链接"
-              configKeyTitle="atelier.moments_url"
-              value={String(clientConfig.get("atelier.moments_url") ?? "/moments")}
-              placeholder="/moments"
-              onChange={(value) => {
-                setConfigValue("client", "atelier.moments_url", value);
-              }}
-            />
-            <ItemInput
-              title="“日常随想”描述语"
-              description="便签卡片上展示的生活随想"
-              configKeyTitle="atelier.moments_desc"
-              value={String(clientConfig.get("atelier.moments_desc") ?? "生活碎碎念、朋友圈动态与不设限的日常记录。")}
-              placeholder="生活碎碎念、朋友圈动态与不设限的日常记录。"
-              onChange={(value) => {
-                setConfigValue("client", "atelier.moments_desc", value);
-              }}
-            />
-            <ItemImageInput
-              title="“日常随想”背景图"
-              description="为画廊中的“日常随想”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
-              configKeyTitle="atelier.moments_bg"
-              value={String(clientConfig.get("atelier.moments_bg") ?? "")}
-              placeholder="https://..."
-              onChange={(value) => {
-                setConfigValue("client", "atelier.moments_bg", value);
-              }}
-              onError={showAlert}
-            />
-          </CollapsibleStickyCard>
-
-          <CollapsibleStickyCard
-            id="setting-atelier-friends"
-            title="4. “邻家友链”便签设置"
-            icon={String(clientConfig.get("atelier.friends_icon") ?? "🌸")}
-            badgeText={String(clientConfig.get("atelier.friends_url") ?? "/friends")}
-            isOpen={expandedSections.friends}
-            onToggle={() => toggleSection("friends")}
-          >
-            <ItemSwitch
-              title="在画廊首页展示此便签"
-              description="控制该便签是否在画廊前台首屏文章间呈现"
-              checked={clientConfig.get("atelier.friends_show") !== false && clientConfig.get("atelier.friends_show") !== "false"}
-              onChange={(checked) => {
-                setConfigValue("client", "atelier.friends_show", checked);
-              }}
-            />
-            <div className="w-full p-4 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <span className="text-sm font-semibold t-primary block">便签展示风格形态</span>
-                <span className="text-xs text-neutral-400">选择便签在首页文章流中的视觉呈现形式</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                {[
-                  { id: "card", label: "拍立得长条" },
-                  { id: "circle", label: "精致小圆盘" },
-                  { id: "capsule", label: "极简小胶囊" },
-                ].map((st) => (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => setConfigValue("client", "atelier.friends_style", st.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition select-none ${
-                      (String(clientConfig.get("atelier.friends_style") || "card")) === st.id
-                        ? "bg-theme text-white shadow-2xs font-bold"
-                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
-                    }`}
-                  >
-                    {st.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <ItemEmojiInput
-              title="“邻家友链”便签图标 (Emoji / 符号)"
-              description="便签左上角个性符号（邻里/友谊专属推荐：🌸 🌺 🌷 🌹 💐 🏡 🏠 🏘️ 🏰 🤝 👫 👭 👬 💌 🌐 🛸 🪴 🍄 🎁 🎉 🎈 🍭 🌟 ✨ 等，可点击快速填入或自行输入）"
-              configKeyTitle="atelier.friends_icon"
-              value={String(clientConfig.get("atelier.friends_icon") ?? "🌸")}
-              placeholder="🌸"
-              presetEmojis={FRIENDS_PRESET_EMOJIS}
-              onChange={(value) => {
-                setConfigValue("client", "atelier.friends_icon", value);
-              }}
-            />
-            <ItemInput
-              title="“邻家友链”跳转链接"
-              description="点击便签时跳转的页面链接"
-              configKeyTitle="atelier.friends_url"
-              value={String(clientConfig.get("atelier.friends_url") ?? "/friends")}
-              placeholder="/friends"
-              onChange={(value) => {
-                setConfigValue("client", "atelier.friends_url", value);
-              }}
-            />
-            <ItemInput
-              title="“邻家友链”描述语"
-              description="便签卡片上展示的友谊寄语"
-              configKeyTitle="atelier.friends_desc"
-              value={String(clientConfig.get("atelier.friends_desc") ?? "漫步在同好博主的数字花园，交换思想火花。")}
-              placeholder="漫步在同好博主的数字花园，交换思想火花。"
-              onChange={(value) => {
-                setConfigValue("client", "atelier.friends_desc", value);
-              }}
-            />
-            <ItemImageInput
-              title="“邻家友链”背景图"
-              description="为画廊中的“邻家友链”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
-              configKeyTitle="atelier.friends_bg"
-              value={String(clientConfig.get("atelier.friends_bg") ?? "")}
-              placeholder="https://..."
-              onChange={(value) => {
-                setConfigValue("client", "atelier.friends_bg", value);
-              }}
-              onError={showAlert}
-            />
-          </CollapsibleStickyCard>
-
-          <CollapsibleStickyCard
-            id="setting-atelier-search"
-            title="5. “随心探索”便签设置"
-            icon={String(clientConfig.get("atelier.search_icon") ?? "🔍")}
-            badgeText={String(clientConfig.get("atelier.search_url") ?? "/search")}
-            isOpen={expandedSections.search}
-            onToggle={() => toggleSection("search")}
-          >
-            <ItemSwitch
-              title="在画廊首页展示此便签"
-              description="控制该便签是否在画廊前台首屏文章间呈现"
-              checked={clientConfig.get("atelier.search_show") !== false && clientConfig.get("atelier.search_show") !== "false"}
-              onChange={(checked) => {
-                setConfigValue("client", "atelier.search_show", checked);
-              }}
-            />
-            <div className="w-full p-4 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <span className="text-sm font-semibold t-primary block">便签展示风格形态</span>
-                <span className="text-xs text-neutral-400">选择便签在首页文章流中的视觉呈现形式</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                {[
-                  { id: "card", label: "拍立得长条" },
-                  { id: "circle", label: "精致小圆盘" },
-                  { id: "capsule", label: "极简小胶囊" },
-                ].map((st) => (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => setConfigValue("client", "atelier.search_style", st.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition select-none ${
-                      (String(clientConfig.get("atelier.search_style") || "card")) === st.id
-                        ? "bg-theme text-white shadow-2xs font-bold"
-                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
-                    }`}
-                  >
-                    {st.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <ItemEmojiInput
-              title="“随心探索”便签图标 (Emoji / 符号)"
-              description="便签左上角个性符号（探索/检索专属推荐：🔍 🔎 🧭 🔭 🔬 🗺️ 🗝️ 🔮 🎯 🏹 💡 ⚡ 📡 🛸 🕵️‍♂️ 🕵️‍♀️ 🧠 📚 🔖 💎 🛰️ 🚀 💫 🧐 等，可点击快速填入或自行输入）"
-              configKeyTitle="atelier.search_icon"
-              value={String(clientConfig.get("atelier.search_icon") ?? "🔍")}
-              placeholder="🔍"
-              presetEmojis={SEARCH_PRESET_EMOJIS}
-              onChange={(value) => {
-                setConfigValue("client", "atelier.search_icon", value);
-              }}
-            />
-            <ItemInput
-              title="“随心探索”跳转链接"
-              description="点击便签或回车时跳转的搜索页面链接"
-              configKeyTitle="atelier.search_url"
-              value={String(clientConfig.get("atelier.search_url") ?? "/search")}
-              placeholder="/search"
-              onChange={(value) => {
-                setConfigValue("client", "atelier.search_url", value);
-              }}
-            />
-            <ItemInput
-              title="“随心探索”描述语"
-              description="便签卡片上展示的探索寄语"
-              configKeyTitle="atelier.search_desc"
-              value={String(clientConfig.get("atelier.search_desc") ?? "输入关键词即刻检索文章与解决方案。")}
-              placeholder="输入关键词即刻检索文章与解决方案。"
-              onChange={(value) => {
-                setConfigValue("client", "atelier.search_desc", value);
-              }}
-            />
-            <ItemImageInput
-              title="“随心探索”背景图"
-              description="为画廊中的“随心探索”便签设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
-              configKeyTitle="atelier.search_bg"
-              value={String(clientConfig.get("atelier.search_bg") ?? "")}
-              placeholder="https://..."
-              onChange={(value) => {
-                setConfigValue("client", "atelier.search_bg", value);
-              }}
-              onError={showAlert}
-            />
-          </CollapsibleStickyCard>
-
-          <CollapsibleStickyCard
-            id="setting-atelier-deck"
-            title="6. “记忆翻动”卡片设置"
-            icon={String(clientConfig.get("atelier.deck_icon") ?? "🎴")}
-            badgeText={String(clientConfig.get("atelier.deck_url") ?? "/gallery")}
-            isOpen={expandedSections.deck}
-            onToggle={() => toggleSection("deck")}
-          >
-            <ItemSwitch
-              title="在画廊首页展示此卡片"
-              description="控制记忆翻动卡片是否在首屏相册末尾呈现"
-              checked={clientConfig.get("atelier.deck_show") !== false && clientConfig.get("atelier.deck_show") !== "false"}
-              onChange={(checked) => {
-                setConfigValue("client", "atelier.deck_show", checked);
-              }}
-            />
-            <ItemEmojiInput
-              title="“记忆翻动”卡片图标 (Emoji / 符号)"
-              description="卡片翻转个性符号（图床/画廊专属推荐：🎴 🃏 📸 📷 🎞️ 🖼️ 🎨 🖌️ 🎬 🎭 🎪 🎡 🎠 🎆 🎇 🌠 🌅 🌄 🎑 📽️ 📼 🔮 💎 ✨ 等，可点击快速填入或自行输入）"
-              configKeyTitle="atelier.deck_icon"
-              value={String(clientConfig.get("atelier.deck_icon") ?? "🎴")}
-              placeholder="🎴"
-              presetEmojis={DECK_PRESET_EMOJIS}
-              onChange={(value) => {
-                setConfigValue("client", "atelier.deck_icon", value);
-              }}
-            />
-            <ItemInput
-              title="“记忆翻动”跳转链接"
-              description="点击卡片中“漫游图床画廊”按钮时跳转的页面链接"
-              configKeyTitle="atelier.deck_url"
-              value={String(clientConfig.get("atelier.deck_url") ?? "/gallery")}
-              placeholder="/gallery"
-              onChange={(value) => {
-                setConfigValue("client", "atelier.deck_url", value);
-              }}
-            />
-            <ItemInput
-              title="“记忆翻动”描述语"
-              description="卡片上展示的相片收录说明文字"
-              configKeyTitle="atelier.deck_desc"
-              value={String(clientConfig.get("atelier.deck_desc") ?? "漫游图床画廊，浏览大图并复制链接。")}
-              placeholder="漫游图床画廊，浏览大图并复制链接。"
-              onChange={(value) => {
-                setConfigValue("client", "atelier.deck_desc", value);
-              }}
-            />
-            <ItemImageInput
-              title="“记忆翻动”背景图"
-              description="为画廊中的“记忆翻动”卡片设置专属艺术背景封面（支持上传图片或输入 URL，留空使用清新纸张质感）"
-              configKeyTitle="atelier.deck_bg"
-              value={String(clientConfig.get("atelier.deck_bg") ?? "")}
-              placeholder="https://..."
-              onChange={(value) => {
-                setConfigValue("client", "atelier.deck_bg", value);
-              }}
-              onError={showAlert}
-            />
-          </CollapsibleStickyCard>
+            </Modal>
+          )}
         </div>
       )}
 

@@ -375,11 +375,43 @@ export function MomentsPage() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => insertFormat("[", "](https://)", "链接文字")}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+                      title="插入超链接 [文字](URL)"
+                    >
+                      <i className="ri-link" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => insertFormat("![图片描述](", ")", "https://")}
                       className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
                       title="插入图片链接"
                     >
                       <i className="ri-image-line" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertFormat("```bash\n", "\n```", "echo 'Hello Rin Atelier'")}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+                      title="Mac 终端代码块 (```bash)"
+                    >
+                      <i className="ri-terminal-box-line" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertFormat("~~", "~~", "划线文字")}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+                      title="删除线 (~~)"
+                    >
+                      <i className="ri-strikethrough" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertFormat("- ", "", "待办/事项")}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+                      title="无序列表 (-)"
+                    >
+                      <i className="ri-list-unordered" />
                     </button>
                   </div>
 

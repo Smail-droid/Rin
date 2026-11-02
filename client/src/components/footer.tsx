@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import Popup from 'reactjs-popup';
 import { useLocation } from 'wouter';
 import { ClientConfigContext } from '../state/config';
+import { ProfileContext } from '../state/profile';
 import { Helmet } from "react-helmet";
 import { siteName } from '../utils/constants';
 import { useTranslation } from "react-i18next";
@@ -10,7 +11,23 @@ import { type ThemeMode, setThemeMode } from "../utils/darkModeUtils";
 function Footer() {
     const { t } = useTranslation()
     const [, setLocation] = useLocation()
+    const profile = useContext(ProfileContext);
     const [modeState, setModeState] = useState<ThemeMode>('system');
+    const [widgetPos, setWidgetPos] = useState<{ x: number; y: number } | null>(() => {
+        try {
+            const saved = localStorage.getItem("rin_theme_widget_pos");
+            if (saved) return JSON.parse(saved);
+        } catch {}
+        return null;
+    });
+
+    const resetWidgetPos = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setWidgetPos(null);
+        try {
+            localStorage.removeItem("rin_theme_widget_pos");
+        } catch {}
+    };
     const config = useContext(ClientConfigContext);
     const footerHtml = config.get<string>('footer');
     const footerHtmlRef = useRef<HTMLDivElement | null>(null);
@@ -120,10 +137,47 @@ function Footer() {
                         </Popup>
                     </>}
                 </p>
-                <div className="w-fit-content inline-flex rounded-full border border-zinc-200 p-[3px] dark:border-zinc-700">
-                    <ThemeButton mode='light' current={modeState} label="Toggle light mode" icon="ri-sun-line" onClick={setMode} />
-                    <ThemeButton mode='system' current={modeState} label="Toggle system mode" icon="ri-computer-line" onClick={setMode} />
-                    <ThemeButton mode='dark' current={modeState} label="Toggle dark mode" icon="ri-moon-line" onClick={setMode} />
+                <div
+                    style={widgetPos ? {
+                        position: "fixed",
+                        left: `${widgetPos.x}px`,
+                        top: `${widgetPos.y}px`,
+                        zIndex: 45,
+                    } : undefined}
+                    draggable={Boolean(profile?.permission)}
+                    onDragEnd={(e) => {
+                        if (!profile?.permission) return;
+                        const x = Math.max(16, Math.min(window.innerWidth - 160, e.clientX - 60));
+                        const y = Math.max(16, Math.min(window.innerHeight - 60, e.clientY - 20));
+                        const next = { x, y };
+                        setWidgetPos(next);
+                        try {
+                            localStorage.setItem("rin_theme_widget_pos", JSON.stringify(next));
+                        } catch {}
+                    }}
+                    className={`w-fit-content inline-flex items-center gap-1 rounded-full border border-zinc-200 p-[3px] bg-w/80 backdrop-blur-md shadow-sm dark:border-zinc-700 transition-all select-none ${
+                        profile?.permission ? "cursor-grab active:cursor-grabbing hover:border-theme" : ""
+                    }`}
+                    title={profile?.permission ? "管理员特权：按住可将日夜主题组件自由拖放到屏幕任意位置" : "切换浅色/跟随时间与系统/深色模式"}
+                >
+                    {profile?.permission && (
+                        <span className="pl-1.5 pr-0.5 text-neutral-400 hover:text-theme text-xs">
+                            <i className="ri-drag-move-2-line" />
+                        </span>
+                    )}
+                    <ThemeButton mode='light' current={modeState} label="浅色日间模式" icon="ri-sun-line" onClick={setMode} />
+                    <ThemeButton mode='system' current={modeState} label="智能自适应模式（18:00后自动夜间）" icon="ri-computer-line" onClick={setMode} />
+                    <ThemeButton mode='dark' current={modeState} label="深色夜间模式" icon="ri-moon-line" onClick={setMode} />
+                    {profile?.permission && widgetPos && (
+                        <button
+                            type="button"
+                            onClick={resetWidgetPos}
+                            title="恢复吸附在页脚默认位置"
+                            className="pr-1.5 pl-0.5 text-[10px] text-neutral-400 hover:text-rose-500 font-mono transition"
+                        >
+                            <i className="ri-close-circle-line" />
+                        </button>
+                    )}
                 </div>
             </div>
         </footer>

@@ -1,4 +1,4 @@
-import { Spinner } from "@rin/ui";
+import { Modal, Spinner } from "@rin/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link } from "wouter";
@@ -16,7 +16,70 @@ export function AdminTagsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // 新建与编辑状态
+  // 关联文章状态
+  const [associatingTag, setAssociatingTag] = useState<Tag | null>(null);
+  const [allFeeds, setAllFeeds] = useState<Array<{ id: number; title: string; createdAt: string }>>([]);
+  const [associatedFeedIds, setAssociatedFeedIds] = useState<Set<number>>(new Set());
+  const [loadingFeeds, setLoadingFeeds] = useState(false);
+  const [savingAssociation, setSavingAssociation] = useState(false);
+  const [feedSearchQuery, setFeedSearchQuery] = useState("");
+
+  const handleOpenAssociation = async (tag: Tag) => {
+    setAssociatingTag(tag);
+    setLoadingFeeds(true);
+    setFeedSearchQuery("");
+    try {
+      const [feedsRes, associatedRes] = await Promise.all([
+        client.feed.list({ limit: 100 }),
+        fetch(`/api/tag/${tag.id}/feeds`).then((r) => r.json()).catch(() => []),
+      ]);
+      if (feedsRes.data?.data) {
+        setAllFeeds(feedsRes.data.data as any);
+      }
+      if (Array.isArray(associatedRes)) {
+        setAssociatedFeedIds(new Set(associatedRes));
+      } else {
+        setAssociatedFeedIds(new Set());
+      }
+    } catch (e: any) {
+      showAlert(e.message || "加载文章关联数据失败");
+    } finally {
+      setLoadingFeeds(false);
+    }
+  };
+
+  const handleSaveAssociation = async () => {
+    if (!associatingTag) return;
+    setSavingAssociation(true);
+    try {
+      const res = await fetch(`/api/tag/${associatingTag.id}/feeds`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feedIds: Array.from(associatedFeedIds) }),
+      });
+      if (res.ok) {
+        showAlert(`🎉 标签「${associatingTag.name}」文章关联已更新！`);
+        setAssociatingTag(null);
+        fetchTags();
+      } else {
+        showAlert("保存关联失败，请稍后重试");
+      }
+    } catch (e: any) {
+      showAlert(e.message || "保存关联出现异常");
+    } finally {
+      setSavingAssociation(false);
+    }
+  };
+
+  const toggleFeedAssociation = (feedId: number) => {
+    const next = new Set(associatedFeedIds);
+    if (next.has(feedId)) {
+      next.delete(feedId);
+    } else {
+      next.add(feedId);
+    }
+    setAssociatedFeedIds(next);
+  };
   const [newTagName, setNewTagName] = useState("");
   const [creating, setCreating] = useState(false);
   const [editingTag, setEditingTag] = useState<{ id: number; name: string } | null>(null);
@@ -536,13 +599,22 @@ export function AdminTagsPage() {
                         </Link>
                       </td>
 
-                      {/* 操作列: [编辑] [删除] */}
+                      {/* 操作列: [关联文章] [编辑] [删除] */}
                       <td className="py-2.5 px-4 text-right pr-6 whitespace-nowrap">
                         <div className="inline-flex items-center gap-2">
                           <button
                             type="button"
+                            onClick={() => handleOpenAssociation(tag)}
+                            className="text-theme hover:underline font-semibold text-xs flex items-center gap-0.5"
+                            title="为该标签批量关联或取消关联文章"
+                          >
+                            <i className="ri-links-line" />
+                            <span>关联文章</span>
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleStartEdit(tag)}
-                            className="text-theme hover:underline font-semibold text-xs"
+                            className="text-neutral-600 dark:text-neutral-300 hover:text-theme hover:underline font-semibold text-xs"
                           >
                             编辑
                           </button>
@@ -648,6 +720,121 @@ export function AdminTagsPage() {
           </div>
         </div>
       </div>
+
+      {/* 关联/解绑文章弹窗 */}
+      {associatingTag && (
+        <Modal
+          isOpen={!!associatingTag}
+          onRequestClose={() => setAssociatingTag(null)}
+          contentLabel={`管理标签「${associatingTag.name}」关联文章`}
+          panelClassName="p-6 max-w-xl w-full"
+        >
+          <div className="flex flex-col gap-3 text-xs">
+            <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+              <div>
+                <h3 className="text-sm font-bold t-primary flex items-center gap-2">
+                  <span>管理标签关联文章:</span>
+                  <span className="text-theme font-mono">#{associatingTag.name}</span>
+                </h3>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  勾选文章即挂载此标签，取消勾选即从该文章解绑
+                </p>
+              </div>
+              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-theme/10 text-theme">
+                已选 {associatedFeedIds.size} 篇
+              </span>
+            </div>
+
+            {/* 搜索框 */}
+            <div className="relative">
+              <input
+                type="text"
+                value={feedSearchQuery}
+                onChange={(e) => setFeedSearchQuery(e.target.value)}
+                placeholder="快速筛选文章标题..."
+                className="w-full rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] py-1.5 pl-8 pr-3 text-xs outline-none focus:border-theme"
+              />
+              <i className="ri-search-line absolute left-2.5 top-2 text-neutral-400" />
+            </div>
+
+            {/* 文章列表 */}
+            {loadingFeeds ? (
+              <div className="flex items-center justify-center py-12">
+                <Spinner />
+              </div>
+            ) : (
+              <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1 divide-y divide-black/5 dark:divide-white/5">
+                {allFeeds
+                  .filter((f) => !feedSearchQuery.trim() || f.title.toLowerCase().includes(feedSearchQuery.trim().toLowerCase()))
+                  .map((feed) => {
+                    const isChecked = associatedFeedIds.has(feed.id);
+                    return (
+                      <label
+                        key={feed.id}
+                        className={`flex items-center justify-between p-2 rounded-xl cursor-pointer transition select-none ${
+                          isChecked ? "bg-theme/[0.06]" : "hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleFeedAssociation(feed.id)}
+                            className="h-3.5 w-3.5 rounded accent-theme cursor-pointer"
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold truncate t-primary">{feed.title || "无标题文章"}</span>
+                            <span className="text-[10px] text-neutral-400 font-mono">ID: #{feed.id}</span>
+                          </div>
+                        </div>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                          isChecked ? "bg-theme text-white" : "text-neutral-400"
+                        }`}>
+                          {isChecked ? "已关联" : "未关联"}
+                        </span>
+                      </label>
+                    );
+                  })}
+              </div>
+            )}
+
+            {/* 底部按钮 */}
+            <div className="flex items-center justify-between pt-3 border-t border-black/5 dark:border-white/5">
+              <button
+                type="button"
+                onClick={() => {
+                  if (associatedFeedIds.size === allFeeds.length) {
+                    setAssociatedFeedIds(new Set());
+                  } else {
+                    setAssociatedFeedIds(new Set(allFeeds.map((f) => f.id)));
+                  }
+                }}
+                className="text-neutral-500 hover:text-theme font-medium"
+              >
+                {associatedFeedIds.size === allFeeds.length ? "取消全选" : "全选所有文章"}
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAssociatingTag(null)}
+                  className="px-3.5 py-1.5 rounded-xl border border-black/10 text-neutral-600 dark:border-white/10 dark:text-neutral-300 font-semibold"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveAssociation}
+                  disabled={savingAssociation}
+                  className="px-4 py-1.5 rounded-xl bg-theme text-white font-bold shadow-xs hover:bg-theme-hover disabled:opacity-50 flex items-center gap-1"
+                >
+                  {savingAssociation && <Spinner />}
+                  <span>保存关联变更</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

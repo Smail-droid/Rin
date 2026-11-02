@@ -2,6 +2,7 @@ import { SettingsBadge, Spinner } from "@rin/ui";
 import { useCallback, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { Link } from "wouter";
 import type { QueueStatusItem, QueueStatusResponse } from "../api/client";
 import { client } from "../app/runtime";
 import { useAlert, useConfirm } from "../components/dialog";
@@ -497,9 +498,13 @@ export function QueueStatusPage() {
                       {/* Title & Alias */}
                       <td className="py-3.5 px-3 max-w-[280px] sm:max-w-[360px]">
                         <div className="flex flex-col min-w-0">
-                          <span className="font-bold truncate t-primary hover:text-theme cursor-pointer" title={item.title || ""}>
+                          <Link
+                            href={`/admin/writing?id=${item.id}`}
+                            className="font-bold truncate t-primary hover:text-theme cursor-pointer transition"
+                            title="点击直接在后台编辑此文章"
+                          >
                             {item.title || "无标题文章"}
-                          </span>
+                          </Link>
                           {item.aiSummaryError ? (
                             <span className="text-[10px] text-rose-500 truncate mt-0.5" title={item.aiSummaryError || ""}>
                               ⚠ 错误: {item.aiSummaryError}
@@ -535,6 +540,16 @@ export function QueueStatusPage() {
                       {/* Actions */}
                       <td className="py-3.5 px-3 text-right pr-5 whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
+                          {/* 直接编辑文章入口 */}
+                          <Link
+                            href={`/admin/writing?id=${item.id}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-200 font-semibold transition text-[11px]"
+                            title="在后台直接修改与编辑此文章"
+                          >
+                            <i className="ri-edit-line text-xs" />
+                            <span>编辑</span>
+                          </Link>
+
                           <button
                             type="button"
                             onClick={() => handleSingleRetry(item)}

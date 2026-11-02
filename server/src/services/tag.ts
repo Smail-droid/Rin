@@ -119,6 +119,43 @@ export function TagService(): Hono {
         return c.text('Deleted');
     });
 
+    // GET /tag/:id/feeds - Get associated feed IDs for a tag
+    app.get('/:id/feeds', async (c: AppContext) => {
+        const db = c.get('db');
+        const id_num = parseInt(c.req.param('id'), 10);
+        if (Number.isNaN(id_num) || id_num <= 0) return c.text('Invalid tag ID', 400);
+
+        const rows = await db.select({ feedId: feedHashtags.feedId })
+            .from(feedHashtags)
+            .where(eq(feedHashtags.hashtagId, id_num));
+        return c.json(rows.map((r) => r.feedId));
+    });
+
+    // POST /tag/:id/feeds - Update associated feeds for a tag (admin only)
+    app.post('/:id/feeds', async (c: AppContext) => {
+        const admin = c.get('admin');
+        if (!admin) return c.text('Permission denied', 403);
+        const db = c.get('db');
+        const id_num = parseInt(c.req.param('id'), 10);
+        if (Number.isNaN(id_num) || id_num <= 0) return c.text('Invalid tag ID', 400);
+
+        const body = await c.req.json<{ feedIds: number[] }>().catch(() => ({ feedIds: [] }));
+        const feedIds = Array.isArray(body.feedIds) ? body.feedIds : [];
+
+        // 清除当前标签旧的所有关联
+        await db.delete(feedHashtags).where(eq(feedHashtags.hashtagId, id_num));
+
+        // 重新插入新的关联
+        if (feedIds.length > 0) {
+            await db.insert(feedHashtags).values(feedIds.map((feedId) => ({
+                feedId,
+                hashtagId: id_num,
+            })));
+        }
+
+        return c.json({ success: true, count: feedIds.length });
+    });
+
     return app;
 }
 

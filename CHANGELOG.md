@@ -9,6 +9,26 @@ This file contains **detailed** changelog information for each release.
 For a quick overview of changes, see the [GitHub Releases](https://github.com/openRin/Rin/releases) page
 which automatically generates release notes from commit messages.
 
+## [v1.0.2] - 2026-11-03
+
+### Added
+- **Multi-language Syntax Highlighting**: One Dark & One Light theme with Prism engine; supports JS, TS, Python, Rust, Go, Bash, SQL, JSON, YAML, HTML, CSS, Dockerfile, Nginx, with line numbers and one-click copy.
+- **Poster Danmaku Stream**: Video/Bilibili-style text danmaku floating over the hero poster with custom toggle, random pastel colors, staggered speed, and subtle rotation.
+- **Tag-Feed Association Shuttle**: Dense DataGrid in `admin-tags` now features a batch association dialog to easily bind or unbind articles to any tag.
+- **Queue Status In-Place Edit**: Direct writing entry link added to queue status action column and article titles.
+- **Copy Direct Link & Social Sharing**: Article header and footer now include direct link copying, Markdown quote copying, and one-click sharing to X and Telegram.
+- **Dashboard-Style General Settings**: General settings refactored with modular slices and a 2x3 iKuai-style feature toggle matrix.
+- **Time-Adaptive Dark Mode**: Auto smooth transition to night mode after 18:00; theme toggle widget is fully draggable in admin mode with persistent positioning.
+- **Moments Hyperlink Toolbar**: Added hyperlink `[text](url)`, code block, strikethrough, and list shortcuts to moments composer.
+- **Access Tokens Security Hardening**: Dark mode contrast fixed; Web Crypto API random key generation; duration and quota customization with localStorage persistence.
+
+## [v1.0.1] - 2026-11-02
+
+### Added
+- **iKuai Dense DataGrid for Sticky Notes**: Replaced 6 bulky accordion cards with a unified dense table for full control over styles, links, emojis, and covers.
+- **Draggable Homepage Notes**: Admin drag-and-drop handles for reordering notes on the homepage gallery with localStorage persistence.
+- **All-Notes Widget Styles**: Completed circle and capsule widget variants for Timeline, Moments, Friends, and Search notes.
+
 ## [v1.0.0] - 2026-11-01
 
 ### Overview

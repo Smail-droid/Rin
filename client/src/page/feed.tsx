@@ -33,6 +33,43 @@ function extractFirstMarkdownImageUrl(content: string) {
 export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Element, clean: (id: string) => void }) {
   const { t } = useTranslation();
   const siteConfig = useSiteConfig();
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
+  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+
+  // 视频级海报弹幕控制状态
+  const [isDanmakuEnabled, setIsDanmakuEnabled] = useState<boolean>(() => {
+    try {
+      const val = localStorage.getItem("rin_poster_danmaku_enabled");
+      return val !== "false";
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleDanmaku = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDanmakuEnabled((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("rin_poster_danmaku_enabled", String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleCopyLink = () => {
+    void navigator.clipboard.writeText(window.location.href);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleCopyMarkdown = (title: string) => {
+    const md = `[${title}](${window.location.href})`;
+    void navigator.clipboard.writeText(md);
+    setCopiedMarkdown(true);
+    setTimeout(() => setCopiedMarkdown(false), 2000);
+  };
   const profile = useContext(ProfileContext);
   const [feed, setFeed] = useState<Feed>();
   const [error, setError] = useState<string>();
@@ -240,6 +277,52 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         />
                       </div>
 
+                      {/* 视频级海报文字流动弹幕层 (短视频/B站风格横向飘过，带随机色彩、速度与微倾角) */}
+                      {isDanmakuEnabled && (
+                        <div className="absolute inset-0 z-20 overflow-hidden pointer-events-none select-none">
+                          {[
+                            { text: "✨ 这里的画幅排版太有艺术感了！", top: "12%", delay: "0s", duration: "9s", color: "#ffffff", size: "text-xs", rot: "rotate-[-1deg]" },
+                            { text: `🌸 记录每一次灵感火花 · ${feed.title?.slice(0, 18) || "随笔"}`, top: "28%", delay: "2.5s", duration: "11s", color: "#38bdf8", size: "text-sm", rot: "rotate-[1deg]" },
+                            { text: "🚀 边缘原生全栈 Serverless 架构极致优雅", top: "45%", delay: "1.2s", duration: "12.5s", color: "#f472b6", size: "text-xs", rot: "rotate-0" },
+                            { text: "🍃 漫步在博主的数字记忆工坊", top: "62%", delay: "4s", duration: "10s", color: "#facc15", size: "text-xs", rot: "rotate-[1.5deg]" },
+                            { text: "💻 Mac 终端代码块高亮排版真舒服", top: "78%", delay: "3s", duration: "8.5s", color: "#4ade80", size: "text-xs", rot: "rotate-[-1.5deg]" },
+                            { text: "🎨 二次元微光美学 · 一页一世界", top: "35%", delay: "6s", duration: "13s", color: "#c084fc", size: "text-sm", rot: "rotate-[0.5deg]" },
+                            { text: "☕ 随性画廊随笔空间", top: "85%", delay: "7.5s", duration: "9.5s", color: "#ffffff", size: "text-xs", rot: "rotate-[-0.5deg]" },
+                          ].map((dm, i) => (
+                            <span
+                              key={i}
+                              style={{
+                                top: dm.top,
+                                animation: `poster-danmaku-fly ${dm.duration} linear infinite`,
+                                animationDelay: dm.delay,
+                                color: dm.color,
+                                textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.8)",
+                              }}
+                              className={`absolute right-0 whitespace-nowrap font-bold tracking-wide transform ${dm.size} ${dm.rot}`}
+                            >
+                              {dm.text}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 弹幕开关控制胶囊 (右上角快捷切换) */}
+                      <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={toggleDanmaku}
+                          title={isDanmakuEnabled ? "点击关闭海报弹幕" : "点击开启海报弹幕"}
+                          className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 backdrop-blur-md shadow-md transition-all select-none ${
+                            isDanmakuEnabled
+                              ? "bg-theme/90 text-white hover:bg-theme"
+                              : "bg-black/60 text-neutral-300 hover:bg-black/80 hover:text-white"
+                          }`}
+                        >
+                          <i className={isDanmakuEnabled ? "ri-chat-voice-line text-sm" : "ri-chat-off-line text-sm"} />
+                          <span>{isDanmakuEnabled ? "弹幕: 开启" : "弹幕: 关闭"}</span>
+                        </button>
+                      </div>
+
                       {/* 浮动全屏查看标签 */}
                       <div className="absolute top-4 right-4 z-20 px-3 py-1 rounded-full bg-black/50 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition duration-300 shadow-md">
                         <i className="ri-fullscreen-line text-sm" />
@@ -298,29 +381,106 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                       )}
                     </div>
                   </div>
-                  <div className="pt-2">
+                  <div className="pt-2 flex items-center gap-1.5 shrink-0">
+                    {/* 一键复制链接 */}
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      title="复制文章直链"
+                      className="flex h-8 px-2.5 items-center gap-1 rounded-full bg-black/5 dark:bg-white/5 hover:bg-theme/10 hover:text-theme text-neutral-600 dark:text-neutral-300 text-xs font-semibold transition"
+                    >
+                      {copiedLink ? (
+                        <>
+                          <i className="ri-check-line text-emerald-500" />
+                          <span className="text-emerald-500">已复制!</span>
+                        </>
+                      ) : (
+                        <>
+                          <i className="ri-file-copy-line text-xs" />
+                          <span>复制直链</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* 分享菜单浮层 */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsShareMenuOpen(!isShareMenuOpen)}
+                        title="分享此文章"
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 hover:bg-theme/10 hover:text-theme text-neutral-600 dark:text-neutral-300 transition"
+                      >
+                        <i className="ri-share-forward-line text-sm" />
+                      </button>
+
+                      {isShareMenuOpen && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-full mt-2 z-40 p-2.5 rounded-2xl bg-w shadow-2xl border border-black/10 dark:border-white/10 w-48 flex flex-col gap-1 ani-show"
+                        >
+                          <div className="text-[10px] font-mono text-neutral-400 px-2 py-1 uppercase tracking-wider">
+                            分享文章至
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleCopyMarkdown(feed.title || "画廊随想");
+                              setIsShareMenuOpen(false);
+                            }}
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-xs text-left text-neutral-700 dark:text-neutral-200 transition"
+                          >
+                            <i className="ri-markdown-line text-theme" />
+                            <span>{copiedMarkdown ? "已复制 Markdown!" : "复制 Markdown 引用"}</span>
+                          </button>
+                          <a
+                            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(feed.title || "")}&url=${encodeURIComponent(window.location.href)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => setIsShareMenuOpen(false)}
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-xs text-left text-neutral-700 dark:text-neutral-200 transition"
+                          >
+                            <i className="ri-twitter-x-line" />
+                            <span>分享到 X (Twitter)</span>
+                          </a>
+                          <a
+                            href={`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(feed.title || "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => setIsShareMenuOpen(false)}
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-xs text-left text-neutral-700 dark:text-neutral-200 transition"
+                          >
+                            <i className="ri-telegram-line text-sky-500" />
+                            <span>分享到 Telegram</span>
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
                     {profile?.permission && (
-                      <div className="flex gap-2">
+                      <div className="flex gap-1.5 ml-1">
                         <button
                           aria-label={top > 0 ? t("untop.title") : t("top.title")}
                           onClick={topFeed}
-                          className={`flex-1 flex flex-col items-end justify-center px-2 py rounded-full transition ${top > 0 ? "bg-theme text-white hover:bg-theme-hover active:bg-theme-active" : "bg-secondary bg-button dark:text-neutral-400"}`}
+                          title={top > 0 ? "取消置顶" : "置顶文章"}
+                          className={`flex h-8 w-8 items-center justify-center rounded-full transition ${top > 0 ? "bg-theme text-white hover:bg-theme-hover active:bg-theme-active" : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300"}`}
                         >
                           <i className="ri-skip-up-line" />
                         </button>
                         <Link
                           aria-label={t("edit")}
-                          href={`/admin/writing/${feed.id}`}
-                          className="flex-1 flex flex-col items-end justify-center px-2 py bg-secondary bg-button rounded-full transition"
+                          href={`/admin/writing?id=${feed.id}`}
+                          title="在后台修改编辑此文章"
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:text-theme transition"
                         >
-                          <i className="ri-edit-2-line dark:text-neutral-400" />
+                          <i className="ri-edit-2-line" />
                         </Link>
                         <button
                           aria-label={t("delete.title")}
                           onClick={deleteFeed}
-                          className="flex-1 flex flex-col items-end justify-center px-2 py bg-secondary bg-button rounded-full transition"
+                          title="删除文章"
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 text-neutral-400 hover:text-rose-500 transition"
                         >
-                          <i className="ri-delete-bin-7-line text-red-500" />
+                          <i className="ri-delete-bin-7-line" />
                         </button>
                       </div>
                     )}
@@ -371,6 +531,24 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         {feed.user.username}
                       </span>
                     </div>
+                  </div>
+                </div>
+
+                {/* 原创版权与底部分享条 */}
+                <div className="mt-8 p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-bold t-primary">本文链接：{typeof window !== "undefined" ? window.location.href : ""}</span>
+                    <span className="text-neutral-400 text-[11px]">本作品采用 CC BY-NC-SA 4.0 国际许可协议进行许可，转载请保留出处。</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="px-3 py-1.5 rounded-xl bg-theme text-white font-bold hover:bg-theme-hover active:scale-95 transition flex items-center gap-1 shadow-2xs"
+                    >
+                      <i className="ri-file-copy-line" />
+                      <span>{copiedLink ? "已复制!" : "复制分享链接"}</span>
+                    </button>
                   </div>
                 </div>
               </article>

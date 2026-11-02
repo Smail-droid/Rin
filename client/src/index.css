@@ -406,5 +406,32 @@ a.toc-link {
   animation: danmakuMarquee 35s linear infinite;
 }
 
+/* 视频级海报横向飞过弹幕动画 (从视口右侧横穿至左侧完全离开) */
+@keyframes poster-danmaku-fly {
+  0% {
+    transform: translateX(110vw);
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.95;
+  }
+  92% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateX(-150vw);
+    opacity: 0;
+  }
+}
+
+/* 全站主题日夜切换平滑过渡 */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 0.4s ease, border-color 0.4s ease, color 0.4s ease !important;
+  transition-delay: 0s !important;
+}
+
 
 

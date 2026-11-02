@@ -2,8 +2,8 @@ import React, { cloneElement, isValidElement, useEffect, useMemo, useRef } from 
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import {
-  base16AteliersulphurpoolLight,
-  vscDarkPlus,
+  oneLight,
+  oneDark,
 } from "react-syntax-highlighter/dist/esm/styles/prism";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
@@ -182,6 +182,56 @@ function MarkdownImage({
   );
 }
 
+function normalizeLanguage(lang: string): string {
+  const l = (lang || "").trim().toLowerCase();
+  const aliasMap: Record<string, string> = {
+    js: "javascript",
+    ts: "typescript",
+    jsx: "jsx",
+    tsx: "tsx",
+    py: "python",
+    python3: "python",
+    sh: "bash",
+    shell: "bash",
+    zsh: "bash",
+    bash: "bash",
+    yml: "yaml",
+    yaml: "yaml",
+    rs: "rust",
+    rust: "rust",
+    go: "go",
+    golang: "go",
+    c: "c",
+    cpp: "cpp",
+    cxx: "cpp",
+    cs: "csharp",
+    csharp: "csharp",
+    java: "java",
+    kt: "kotlin",
+    kotlin: "kotlin",
+    sql: "sql",
+    mysql: "sql",
+    pgsql: "sql",
+    postgres: "sql",
+    html: "html",
+    xml: "xml",
+    css: "css",
+    scss: "scss",
+    less: "less",
+    json: "json",
+    md: "markdown",
+    markdown: "markdown",
+    docker: "dockerfile",
+    dockerfile: "dockerfile",
+    nginx: "nginx",
+    lua: "lua",
+    toml: "toml",
+    ini: "ini",
+    graphql: "graphql",
+  };
+  return aliasMap[l] || l || "text";
+}
+
 export function Markdown({ content }: { content: string }) {
   const colorMode = useColorMode();
   const [index, setIndex] = React.useState(-1);
@@ -262,29 +312,32 @@ export function Markdown({ content }: { content: string }) {
             fontSize: "13px",
           };
 
-          const language = match ? match[1] : "";
+          const rawLanguage = match ? match[1] : "";
+          const language = normalizeLanguage(rawLanguage);
+          const rawCode = String(children).replace(/\n$/, "");
+          const linesCount = rawCode.split("\n").length;
 
           if (isCodeBlock) {
             return (
-              <div className="relative group my-4 rounded-2xl border border-black/10 dark:border-white/10 overflow-hidden shadow-xs bg-[#f8fafc] dark:bg-[#1e1e1e]">
+              <div className="relative group my-4 rounded-2xl border border-black/10 dark:border-white/10 overflow-hidden shadow-xs bg-[#fafafa] dark:bg-[#1e1e24] transition-all">
                 {/* Mac Code Header Bar */}
-                <div className="flex items-center justify-between px-3.5 py-2 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] select-none">
+                <div className="flex items-center justify-between px-3.5 py-2 border-b border-black/5 dark:border-white/5 bg-black/[0.03] dark:bg-white/[0.03] select-none">
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1.5">
-                      <span className="h-2.5 w-2.5 rounded-full bg-rose-400/80 inline-block" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80 inline-block" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80 inline-block" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-rose-400 inline-block shadow-2xs" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-amber-400 inline-block shadow-2xs" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 inline-block shadow-2xs" />
                     </div>
-                    {language && (
-                      <span className="ml-2 font-mono text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                        {language}
+                    {rawLanguage && (
+                      <span className="ml-2 font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/10 text-neutral-500 dark:text-neutral-300">
+                        {rawLanguage}
                       </span>
                     )}
                   </div>
                   <button
                     type="button"
                     onClick={() => {
-                      navigator.clipboard.writeText(String(children));
+                      navigator.clipboard.writeText(rawCode);
                       setCopied(true);
                       setTimeout(() => setCopied(false), 2000);
                     }}
@@ -294,7 +347,7 @@ export function Markdown({ content }: { content: string }) {
                     {copied ? (
                       <>
                         <i className="ri-check-line text-emerald-500" />
-                        <span className="text-emerald-500">已复制!</span>
+                        <span className="text-emerald-500 font-bold">已复制!</span>
                       </>
                     ) : (
                       <>
@@ -307,17 +360,21 @@ export function Markdown({ content }: { content: string }) {
                 <div className="p-1">
                   <SyntaxHighlighter
                     PreTag="div"
-                    className="!bg-transparent !p-3.5 !m-0"
+                    className="!bg-transparent !p-3.5 !m-0 !text-[13px] leading-relaxed"
                     language={language}
-                    style={
-                      colorMode === "dark"
-                        ? vscDarkPlus
-                        : base16AteliersulphurpoolLight
-                    }
+                    style={colorMode === "dark" ? oneDark : oneLight}
+                    showLineNumbers={linesCount > 3}
+                    lineNumberStyle={{
+                      minWidth: "2.5em",
+                      paddingRight: "1em",
+                      color: colorMode === "dark" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)",
+                      fontSize: "12px",
+                      userSelect: "none",
+                    }}
                     wrapLongLines={true}
                     codeTagProps={{ style: codeBlockStyle }}
                   >
-                    {String(children).replace(/\n$/, "")}
+                    {rawCode}
                   </SyntaxHighlighter>
                 </div>
               </div>
