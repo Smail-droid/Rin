@@ -100,16 +100,16 @@ rin/
 
 为了彻底保护 R2 存储桶避免被外部恶意请求或随机参数刷穿免费额度，全站配置了完整的边缘 CDN 加速闭环：
 
-1. **R2 自定义域连接**：连接二级域名 `img.170705.xyz`，启用最低 TLS 1.2 加密。
-2. **Cache Rules (缓存规则)**：对 `img.170705.xyz` 启用 `Eligible for cache`，边缘 TTL 与浏览器 TTL 设为 **1 个月**。
-3. **Page Rules (页面规则防刷核心)**：匹配 `img.170705.xyz/*`，缓存级别设置为 **忽略查询字符串 (Ignore Query String)**。
+1. **R2 自定义域连接**：连接二级域名 `img.example.com`，启用最低 TLS 1.2 加密。
+2. **Cache Rules (缓存规则)**：对 `img.example.com` 启用 `Eligible for cache`，边缘 TTL 与浏览器 TTL 设为 **1 个月**。
+3. **Page Rules (页面规则防刷核心)**：匹配 `img.example.com/*`，缓存级别设置为 **忽略查询字符串 (Ignore Query String)**。
 4. **Smart Tiered Cache**：开启智能分层缓存，区域核心机房互联共享缓存，回源率直降 70% 以上。
 5. **协议与速度优化**：
-   - `HTTP/3 (with QUIC)`：已启用 ✅ (抗网络丢包神器)
-   - `0-RTT 连接恢复`：已启用 ✅ (回访 0 握手秒连)
-   - `Early Hints`：已启用 ✅ (提前预载静态资源)
-   - `Speed Brain`：已启用 ✅ (鼠标悬停预加载)
-   - `Cloudflare Fonts`：已启用 ✅ (外部字体转同源 CDN 加速)
+   - `HTTP/3 (with QUIC)`：已启用 (抗网络丢包神器)
+   - `0-RTT 连接恢复`：已启用 (回访 0 握手秒连)
+   - `Early Hints`：已启用 (提前预载静态资源)
+   - `Speed Brain`：已启用 (鼠标悬停预加载)
+   - `Cloudflare Fonts`：已启用 (外部字体转同源 CDN 加速)
 
 ---
 
