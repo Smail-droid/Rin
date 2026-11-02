@@ -897,19 +897,6 @@ export function FeedsPage() {
                     </div>
                 )}
             </main>
-
-            {/* 管理员首页常驻快捷创作画笔 */}
-            {profile?.permission && (
-                <div className="fixed bottom-6 right-6 z-40 flex items-center">
-                    <Link
-                        href="/admin/writing"
-                        className="flex h-12 w-12 items-center justify-center rounded-full bg-theme text-white shadow-xl hover:bg-theme-hover hover:scale-110 active:scale-95 transition-all select-none group"
-                        title="开始创作 (进入写作模式)"
-                    >
-                        <i className="ri-quill-pen-line text-xl group-hover:rotate-12 transition-transform" />
-                    </Link>
-                </div>
-            )}
         </>
     );
 }

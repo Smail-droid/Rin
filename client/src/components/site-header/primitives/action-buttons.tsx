@@ -291,7 +291,31 @@ export function UserAvatar({
 
   return shouldShowEntry ? (
     <div className={className + " flex flex-row items-center"}>
-      {profile ? (
+      {profile?.permission ? (
+        <button
+          onClick={() => setLocation("/admin")}
+          title={t("admin.title") || "进入后台管理"}
+          aria-label={t("profile.title") || "进入后台管理"}
+          className={
+            plain
+              ? "group flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-neutral-500 transition-all hover:bg-black/5 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-neutral-100"
+              : "flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-black/10 bg-w dark:border-white/10 shadow-2xs hover:border-theme transition"
+          }
+        >
+          {profile.avatar ? (
+            <ImageWithFallback
+              src={profile.avatar}
+              alt={profile.name || t("profile.title")}
+              className="h-8 w-8 cursor-pointer rounded-full"
+              imageClassName="transition duration-200 group-hover:brightness-95"
+            />
+          ) : (
+            <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-theme/10 text-theme transition-colors">
+              <i className="ri-dashboard-line text-sm" />
+            </div>
+          )}
+        </button>
+      ) : profile ? (
         <Popup
           arrow={false}
           position={popoverUp ? "top left" : "bottom right"}

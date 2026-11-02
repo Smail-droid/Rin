@@ -38,6 +38,10 @@ const QueueStatusPage = lazy(() => import("../page/queue-status").then((m) => ({
 const CompatTasksPage = lazy(() => import("../page/compat-tasks").then((m) => ({ default: m.CompatTasksPage })));
 const WritingPage = lazy(() => import("../page/writing").then((m) => ({ default: m.WritingPage })));
 const AdminFilesPage = lazy(() => import("../page/admin-files").then((m) => ({ default: m.AdminFilesPage })));
+const AdminDashboardPage = lazy(() => import("../page/admin-dashboard").then((m) => ({ default: m.AdminDashboardPage })));
+const AdminOpenListPage = lazy(() => import("../page/admin-openlist").then((m) => ({ default: m.AdminOpenListPage })));
+const AdminTokensPage = lazy(() => import("../page/admin-tokens").then((m) => ({ default: m.AdminTokensPage })));
+const AdminAccessPage = lazy(() => import("../page/admin-access").then((m) => ({ default: m.AdminAccessPage })));
 
 function RouteLoadingFallback() {
   return (
@@ -79,6 +83,26 @@ export function AppRoutes() {
       <AppRoute path="/search/:keyword">
         {(params) => <SearchPage keyword={params.keyword || ""} />}
       </AppRoute>
+
+      <AdminRoute path="/admin" requirePermission title="画廊概览" description="系统核心资产统计 · 边缘运行健康指标 · 常用业务快捷中枢">
+        <AdminDashboardPage />
+      </AdminRoute>
+
+      <AdminRoute path="/admin/dashboard" requirePermission title="画廊概览" description="系统核心资产统计 · 边缘运行健康指标 · 常用业务快捷中枢">
+        <AdminDashboardPage />
+      </AdminRoute>
+
+      <AdminRoute path="/admin/openlist" requirePermission title="资源列表" description="OpenList 边缘存储目录索引挂载 · 支持网盘聚合与前台按需展示">
+        <AdminOpenListPage />
+      </AdminRoute>
+
+      <AdminRoute path="/admin/access" requirePermission title="访问权限" description="文章隐私与特定内容保护 · 一键加锁与授权验证">
+        <AdminAccessPage />
+      </AdminRoute>
+
+      <AdminRoute path="/admin/tokens" requirePermission title="口令生成" description="场景化访问通行证工坊 · 单次即焚/限次查看/永久激活密钥">
+        <AdminTokensPage />
+      </AdminRoute>
 
       <AdminRoute path="/admin/settings" requirePermission title={t("settings.title")} description={t("admin.settings_description")}>
         <Settings />

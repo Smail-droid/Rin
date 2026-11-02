@@ -61,7 +61,7 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
     // Fullscreen image preview lightbox
-    const [previewModalUrl, setPreviewModalUrl] = useState<string | null>(null);
+    const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
     // Toast state
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -352,17 +352,60 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                 </div>
             )}
 
-            {/* Lightbox Preview Modal */}
-            {previewModalUrl && (
+            {/* 沉浸式画廊全屏翻图灯箱 (Lightbox - 支持左右切图) */}
+            {previewIndex !== null && filteredFiles[previewIndex] && (
                 <div
-                    onClick={() => setPreviewModalUrl(null)}
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm cursor-zoom-out animate-fade-in"
+                    onClick={() => setPreviewIndex(null)}
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md select-none ani-show"
                 >
-                    <img
-                        src={previewModalUrl}
-                        alt="Preview"
-                        className="max-h-[92vh] max-w-[92vw] rounded-2xl shadow-2xl object-contain"
-                    />
+                    <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
+                        <span className="text-xs font-mono text-white/70 bg-white/10 px-3 py-1 rounded-full">
+                            {previewIndex + 1} / {filteredFiles.length}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setPreviewIndex(null)}
+                            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/40 transition"
+                        >
+                            <i className="ri-close-line text-xl" />
+                        </button>
+                    </div>
+
+                    {previewIndex > 0 && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewIndex((prev) => (prev !== null ? prev - 1 : null));
+                            }}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/30 backdrop-blur-sm transition"
+                            title="上一张"
+                        >
+                            <i className="ri-arrow-left-s-line text-2xl" />
+                        </button>
+                    )}
+
+                    {previewIndex < filteredFiles.length - 1 && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewIndex((prev) => (prev !== null ? prev + 1 : null));
+                            }}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/30 backdrop-blur-sm transition"
+                            title="下一张"
+                        >
+                            <i className="ri-arrow-right-s-line text-2xl" />
+                        </button>
+                    )}
+
+                    <div onClick={(e) => e.stopPropagation()} className="relative max-h-[88vh] max-w-[90vw] flex items-center justify-center">
+                        <img
+                            src={filteredFiles[previewIndex].url}
+                            alt={filteredFiles[previewIndex].key}
+                            className="max-h-[88vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl"
+                        />
+                    </div>
                 </div>
             )}
 
@@ -595,19 +638,6 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                     />
                                 </div>
                                 <div className="absolute right-4 top-4 z-10 flex items-center gap-1.5">
-                                    {isImage && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setPreviewModalUrl(file.url);
-                                            }}
-                                            title="查看原图大图"
-                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-neutral-600 shadow-xs backdrop-blur-xs transition hover:bg-neutral-900 hover:text-white dark:bg-neutral-800/90 dark:text-neutral-300"
-                                        >
-                                            <i className="ri-zoom-in-line text-xs" />
-                                        </button>
-                                    )}
                                     {!readOnly && (
                                         <button
                                             type="button"
@@ -623,11 +653,14 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                     )}
                                 </div>
 
-                                {/* Preview Area (Crisp, Distortion-Free object-contain) */}
+                                {/* Preview Area (点击直接画廊大图预览并翻页) */}
                                 <div
-                                    onClick={() => handleCopy(file)}
+                                    onClick={() => {
+                                        const idx = filteredFiles.findIndex((f) => f.key === file.key);
+                                        if (idx !== -1) setPreviewIndex(idx);
+                                    }}
                                     className="h-44 sm:h-48 w-full overflow-hidden rounded-xl bg-neutral-50/70 dark:bg-neutral-950/40 mb-2.5 flex items-center justify-center relative cursor-pointer group/img border border-black/5 dark:border-white/5"
-                                    title="点击复制图片链接"
+                                    title="点击画廊大图全屏预览 (支持左右切换翻页)"
                                 >
                                     {isImage ? (
                                         <img

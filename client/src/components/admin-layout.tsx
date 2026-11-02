@@ -5,22 +5,38 @@ import { useSiteConfig } from "../hooks/useSiteConfig";
 import { client } from "../app/runtime";
 import { getStoredThemeMode, setThemeMode, useColorMode, type ThemeMode } from "../utils/darkModeUtils";
 
-type NavItem = {
+export type NavItem = {
   href: string;
   icon: string;
   label: string;
   tag?: string;
+  children?: { href: string; label: string; tag?: string }[];
 };
 
-const ADMIN_NAV_ITEMS: NavItem[] = [
-  { href: "/admin/writing", icon: "ri-quill-pen-line", label: "写作发布", tag: "Editor" },
-  { href: "/admin/files", icon: "ri-folder-image-line", label: "图床文件", tag: "R2" },
-  { href: "/admin/settings", icon: "ri-settings-3-line", label: "系统设置", tag: "Config" },
-  { href: "/admin/tags", icon: "ri-price-tag-3-line", label: "标签分类", tag: "Tags" },
-  { href: "/admin/health", icon: "ri-heart-pulse-line", label: "健康检查", tag: "Health" },
-  { href: "/admin/ai", icon: "ri-sparkling-fill", label: "AI 助手", tag: "AI" },
-  { href: "/admin/queue-status", icon: "ri-todo-line", label: "队列监控", tag: "Queue" },
-  { href: "/admin/compat-tasks", icon: "ri-history-line", label: "兼容任务", tag: "Tasks" },
+export const ADMIN_NAV_ITEMS: NavItem[] = [
+  { href: "/admin/dashboard", icon: "ri-dashboard-3-line", label: "画廊概览", tag: "CORE" },
+  { href: "/admin/writing", icon: "ri-quill-pen-line", label: "文章撰写", tag: "WRITE" },
+  { href: "/admin/files", icon: "ri-folder-image-line", label: "图床媒体", tag: "MEDIA" },
+  { href: "/admin/settings?tab=general", icon: "ri-equalizer-line", label: "基础设置", tag: "BASIC" },
+  {
+    href: "/admin/settings?tab=atelier",
+    icon: "ri-palette-line",
+    label: "画廊进阶",
+    tag: "ADV",
+    children: [
+      { href: "/admin/settings?tab=atelier&focus=about", label: "便签配置", tag: "NOTES" },
+      { href: "/admin/settings?tab=theme", label: "主题字效", tag: "FONTS" },
+      { href: "/admin/settings?tab=atelier&focus=deck", label: "相册卡片", tag: "DECK" },
+    ],
+  },
+  { href: "/admin/tags", icon: "ri-price-tag-3-line", label: "分类标签", tag: "TAGS" },
+  { href: "/admin/ai", icon: "ri-sparkling-fill", label: "智能助手", tag: "AI" },
+  { href: "/admin/queue-status", icon: "ri-todo-line", label: "队列监控", tag: "QUEUE" },
+  { href: "/admin/openlist", icon: "ri-hard-drive-2-line", label: "资源列表", tag: "LIST" },
+  { href: "/admin/access", icon: "ri-shield-keyhole-line", label: "访问权限", tag: "LOCK" },
+  { href: "/admin/tokens", icon: "ri-key-2-line", label: "口令生成", tag: "AUTH" },
+  { href: "/admin/health", icon: "ri-heart-pulse-line", label: "健康诊断", tag: "DIAG" },
+  { href: "/admin/compat-tasks", icon: "ri-history-line", label: "兼容回填", tag: "TASKS" },
 ];
 
 export function AdminLayout({
@@ -358,14 +374,14 @@ export function AdminLayout({
         {/* Top 3X-UI Header Bar */}
         <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-black/5 bg-white/80 px-4 sm:px-6 backdrop-blur-xl dark:border-white/5 dark:bg-[#161b26]/80 select-none">
           {/* Left: Breadcrumbs & Status Tag */}
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex items-center gap-2 rounded-full border border-black/10 bg-black/[0.02] px-3 py-1 text-xs dark:border-white/10 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-2 rounded-full border border-black/10 bg-black/[0.02] px-3.5 py-1 text-xs dark:border-white/10 dark:bg-white/[0.02]">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-medium t-primary">Rin 后台系统</span>
-              <span className="text-neutral-400">/</span>
+              <span className="font-bold text-neutral-800 dark:text-neutral-100">后台系统</span>
+              <span className="text-neutral-400 font-bold">/</span>
               <span className="font-bold text-theme truncate">{title}</span>
             </div>
-            <span className="hidden md:inline-block font-mono text-[11px] text-neutral-400">
+            <span className="hidden lg:inline-block font-mono text-[11px] text-neutral-400">
               v1.0.0 · 边缘原生
             </span>
           </div>
