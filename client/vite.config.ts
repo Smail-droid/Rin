@@ -41,12 +41,7 @@ export default defineConfig(({ mode }) => {
               return 'vendor-mermaid';
             }
 
-            // 3. KaTeX 数学公式解析与渲染引擎
-            if (normalizedId.includes('/katex/')) {
-              return 'vendor-katex';
-            }
-
-            // 4. 代码高亮库生态
+            // 3. 代码高亮库生态
             if (
               normalizedId.includes('/react-syntax-highlighter/') ||
               normalizedId.includes('/refractor/') ||
