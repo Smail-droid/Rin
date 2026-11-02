@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
 import { client } from "../app/runtime";
@@ -352,14 +353,14 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                 </div>
             )}
 
-            {/* 沉浸式画廊全屏翻图灯箱 (Lightbox - 支持左右切图) */}
-            {previewIndex !== null && filteredFiles[previewIndex] && (
+            {/* 沉浸式画廊全屏翻图灯箱 (Lightbox - 挂载至 document.body 杜绝父级容器样式裁切) */}
+            {previewIndex !== null && filteredFiles[previewIndex] && typeof document !== "undefined" && createPortal(
                 <div
                     onClick={() => setPreviewIndex(null)}
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md select-none ani-show"
+                    className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/92 p-4 backdrop-blur-md select-none ani-show"
                 >
                     <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
-                        <span className="text-xs font-mono text-white/70 bg-white/10 px-3 py-1 rounded-full">
+                        <span className="text-xs font-mono text-white/80 bg-white/10 px-3.5 py-1 rounded-full border border-white/10">
                             {previewIndex + 1} / {filteredFiles.length}
                         </span>
                         <button
@@ -378,8 +379,8 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                 e.stopPropagation();
                                 setPreviewIndex((prev) => (prev !== null ? prev - 1 : null));
                             }}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/30 backdrop-blur-sm transition"
-                            title="上一张"
+                            className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/30 backdrop-blur-sm transition"
+                            title="上一张 (Left Arrow)"
                         >
                             <i className="ri-arrow-left-s-line text-2xl" />
                         </button>
@@ -392,8 +393,8 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                 e.stopPropagation();
                                 setPreviewIndex((prev) => (prev !== null ? prev + 1 : null));
                             }}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/30 backdrop-blur-sm transition"
-                            title="下一张"
+                            className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/30 backdrop-blur-sm transition"
+                            title="下一张 (Right Arrow)"
                         >
                             <i className="ri-arrow-right-s-line text-2xl" />
                         </button>
@@ -403,10 +404,11 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                         <img
                             src={filteredFiles[previewIndex].url}
                             alt={filteredFiles[previewIndex].key}
-                            className="max-h-[88vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl"
+                            className="max-h-[88vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl ring-1 ring-white/10"
                         />
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Read-only gallery mode header */}

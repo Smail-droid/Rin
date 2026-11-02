@@ -275,55 +275,40 @@ export function Settings() {
           {(loading || saving) && <ReactLoading width="1em" height="1em" type="spin" color="#FC466B" />}
 
           {/* Top Category Tabs (Modular Settings Navigation) */}
-          <div className="flex w-full items-center gap-2 overflow-x-auto pb-2 border-b border-black/10 dark:border-white/10 scrollbar-none">
-            <button
-              type="button"
-              onClick={() => setActiveCategory("general")}
-              className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition select-none ${
-                activeCategory === "general"
-                  ? "bg-theme text-white shadow-xs scale-[1.02]"
-                  : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:text-neutral-300"
-              }`}
-            >
-              <i className="ri-settings-4-line text-sm" />
-              <span>基础设置</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveCategory("theme")}
-              className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition select-none ${
-                activeCategory === "theme"
-                  ? "bg-theme text-white shadow-xs scale-[1.02]"
-                  : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:text-neutral-300"
-              }`}
-            >
-              <i className="ri-palette-line text-sm" />
-              <span>主题与布局</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveCategory("atelier")}
-              className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition select-none ${
-                activeCategory === "atelier"
-                  ? "bg-theme text-white shadow-xs scale-[1.02]"
-                  : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:text-neutral-300"
-              }`}
-            >
-              <i className="ri-magic-line text-sm" />
-              <span>进阶设置</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveCategory("services")}
-              className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition select-none ${
-                activeCategory === "services"
-                  ? "bg-theme text-white shadow-xs scale-[1.02]"
-                  : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:text-neutral-300"
-              }`}
-            >
-              <i className="ri-apps-2-line text-sm" />
-              <span>扩展服务与集成</span>
-            </button>
+          <div className="flex w-full items-center justify-between gap-3 pb-3 border-b border-black/10 dark:border-white/10">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
+              {[
+                { id: "general", label: "基础设置", icon: "ri-settings-4-line" },
+                { id: "theme", label: "主题与布局", icon: "ri-palette-line" },
+                { id: "atelier", label: "进阶设置", icon: "ri-magic-line" },
+                { id: "services", label: "扩展服务", icon: "ri-apps-2-line" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveCategory(tab.id as any)}
+                  className={`shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition select-none ${
+                    activeCategory === tab.id
+                      ? "bg-theme text-white shadow-xs scale-[1.02]"
+                      : "bg-black/5 hover:bg-black/10 text-neutral-600 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
+                  }`}
+                >
+                  <i className={`${tab.icon} text-sm`} />
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* 紧凑型系统状态指标胶囊 (iKuai 状态感) */}
+            <div className="hidden md:flex items-center gap-2 text-xs font-mono shrink-0 select-none">
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                <span>Worker 边缘就绪</span>
+              </span>
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 font-semibold border border-sky-500/20">
+                <span>R2 存储桶已连接</span>
+              </span>
+            </div>
           </div>
 
           {/* Tab 1: General Settings */}

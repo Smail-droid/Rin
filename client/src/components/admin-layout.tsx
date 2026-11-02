@@ -41,11 +41,11 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
 
 export function AdminLayout({
   title,
-  description,
+  description: _description,
   children,
 }: {
   title: string;
-  description: string;
+  description?: string;
   children: ReactNode;
 }) {
   const siteConfig = useSiteConfig();
@@ -128,8 +128,7 @@ export function AdminLayout({
 
   return (
     <div
-      style={{ zoom: `${adminZoom}%` }}
-      className="min-h-screen bg-[#f8fafc] text-neutral-800 dark:bg-[#12161f] dark:text-[#d1d5db] flex transition-colors duration-200"
+      className="min-h-screen w-full max-w-full bg-[#f8fafc] text-neutral-800 dark:bg-[#12161f] dark:text-[#d1d5db] flex transition-colors duration-200 overflow-x-hidden"
     >
       {/* ====================================================================
           1. 3X-UI 风格迷你图标可折叠侧边栏 (默认收起，Hover/Pin 展开)
@@ -417,23 +416,10 @@ export function AdminLayout({
           </div>
         </header>
 
-        {/* Main Content Area */}
-        <main className="flex-1 w-full p-4 sm:p-6 lg:p-8">
-          <div className="w-full max-w-[1680px] mx-auto flex flex-col gap-6">
-            {/* Page Header Card */}
-            <div className="rounded-2xl border border-black/10 bg-w p-5 sm:p-6 shadow-sm dark:border-white/10">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-black/5 pb-4 dark:border-white/5">
-                <div>
-                  <h1 className="text-xl sm:text-2xl font-bold t-primary tracking-tight">{title}</h1>
-                  <p className="mt-1 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                    {description}
-                  </p>
-                </div>
-              </div>
-
-              {/* Children Content */}
-              <div className="mt-5">{children}</div>
-            </div>
+        {/* Main Content Area: 彻底去除大标题Card，把高度全还给操作区 */}
+        <main className="flex-1 w-full max-w-full p-3 sm:p-5 lg:p-6 overflow-x-hidden">
+          <div className="w-full max-w-full mx-auto flex flex-col gap-4">
+            {children}
           </div>
         </main>
       </div>
