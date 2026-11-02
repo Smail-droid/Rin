@@ -73,14 +73,26 @@ export function Header({ children }: { children?: React.ReactNode }) {
   }
 
   const useTopHeader = layoutDefinition.kind === "top";
+  const headerPosition = siteConfig.headerPosition || "top";
   const headerPaddingClassName = headerLayout === "compact" ? "mx-0 mt-0" : "mx-4 mt-4";
-  const containerClassName =
-    !useTopHeader || headerBehavior === "static"
-      ? "relative z-40"
-      : `fixed inset-x-0 top-0 z-40 transition-transform duration-300 ${
-          headerBehavior === "reveal" && !isRevealed ? "-translate-y-full" : "translate-y-0"
-        }`;
-  const spacerClassName = !useTopHeader || headerBehavior === "static" ? "h-0" : "h-20";
+
+  // 灵活的导航条排布位置 (顶部常规 / 居中浮动药丸 / 底部便携挂件)
+  let containerClassName = "fixed z-40 transition-all duration-300 ";
+  if (headerPosition === "float") {
+    containerClassName += "top-4 left-1/2 -translate-x-1/2 w-auto max-w-[92vw] rounded-full shadow-2xl backdrop-blur-xl bg-w/85 border border-black/10 dark:border-white/10 px-4 py-1.5";
+  } else if (headerPosition === "bottom") {
+    containerClassName += "bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-[92vw] rounded-full shadow-2xl backdrop-blur-xl bg-w/85 border border-black/10 dark:border-white/10 px-4 py-1.5";
+  } else {
+    // 默认 "top" 常规模式
+    containerClassName =
+      !useTopHeader || headerBehavior === "static"
+        ? "relative z-40"
+        : `fixed inset-x-0 top-0 z-40 transition-transform duration-300 ${
+            headerBehavior === "reveal" && !isRevealed ? "-translate-y-full" : "translate-y-0"
+          }`;
+  }
+
+  const spacerClassName = headerPosition !== "top" || !useTopHeader || headerBehavior === "static" ? "h-0" : "h-20";
 
   return (
     <>

@@ -363,13 +363,44 @@ export function Settings() {
                 onFileChange={handleFaviconChange}
               />
               <ItemSwitch
-                title="显示顶部站点导航栏"
-                description="开启后在全站页面顶部显示导航栏；关闭后前台将完全隐藏顶部导航条，提供极致纯净沉浸视觉（子页面均配备返回按钮）"
+                title="启用全站站点导航栏"
+                description="开启后在全站页面显示导航栏；关闭后前台将完全隐藏导航条，提供极致纯净沉浸视觉"
                 checked={clientConfig.get("header.show_nav") === true || clientConfig.get("header.show_nav") === "true"}
                 onChange={(checked) => {
                   setConfigValue("client", "header.show_nav", checked);
                 }}
               />
+              <div className="w-full p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                <div>
+                  <span className="text-sm font-semibold t-primary block">前台导航条排布位置与挂件模式</span>
+                  <span className="text-xs text-neutral-400">选择导航栏呈现为顶部常规栏、居中浮动药丸胶囊或底部便携挂件</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {[
+                    { id: "top", label: "顶部固定", icon: "ri-layout-top-line" },
+                    { id: "float", label: "居中浮动胶囊", icon: "ri-capsule-line" },
+                    { id: "bottom", label: "底部挂件", icon: "ri-layout-bottom-line" },
+                  ].map((pos) => {
+                    const currentPos = String(clientConfig.get("header.position") || "top");
+                    const isSelected = currentPos === pos.id;
+                    return (
+                      <button
+                        key={pos.id}
+                        type="button"
+                        onClick={() => setConfigValue("client", "header.position", pos.id)}
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold transition select-none ${
+                          isSelected
+                            ? "bg-theme text-white shadow-xs font-bold"
+                            : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                        }`}
+                      >
+                        <i className={pos.icon} />
+                        <span>{pos.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <ItemSwitch
                 title={t("settings.login.enable.title")}
                 description={t("settings.login.enable.desc", { url: oauth_url })}

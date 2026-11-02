@@ -40,19 +40,6 @@ export type CommentData = {
   guestWebsite?: string;
 };
 
-
-const KAOMOJI_MOODS = [
-  "(*/ω＼*)",
-  "(=^･ω･^=)",
-  "੭ ᐕ)੭",
-  "φ(>ω<*)",
-  "ヾ(≧▽≦*)o",
-  "(っ˘ڡ˘ς)",
-  "(o゜▽゜)o☆",
-  "(ง •_•)ง",
-  "(´▽`ʃ♡ƪ)",
-];
-
 export function GalleryComments({
   feedId,
   enabled,
@@ -206,21 +193,7 @@ function GalleryCommentInput({
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const emojiPickerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
-        setIsEmojiPickerOpen(false);
-      }
-    }
-    if (isEmojiPickerOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [isEmojiPickerOpen]);
 
   const insertFormat = (before: string, after: string = "", placeholder: string = "") => {
     const textarea = textareaRef.current;
@@ -428,81 +401,6 @@ function GalleryCommentInput({
               >
                 <i className="ri-image-line text-xs" />
               </button>
-
-              <div className="h-3 w-[1px] bg-black/10 dark:bg-white/10 mx-1" />
-
-              {/* 扁平整合的表情/颜文字按钮 */}
-              <div ref={emojiPickerRef} className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
-                  className={`flex h-7 items-center gap-1 px-2 rounded-lg transition select-none text-xs ${
-                    isEmojiPickerOpen
-                      ? "bg-theme text-white font-bold shadow-2xs"
-                      : "hover:bg-black/5 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300"
-                  }`}
-                  title="插入 Emoji / 颜文字表情"
-                >
-                  <span>😀</span>
-                  <span className="text-[11px] font-medium hidden sm:inline">表情</span>
-                  <i className={`ri-arrow-down-s-line text-xs transition-transform ${isEmojiPickerOpen ? "rotate-180" : ""}`} />
-                </button>
-
-                {/* 悬浮轻量表情与颜文字面板 (改用 bottom-9 向上展开，彻底杜绝遮挡文本输入框) */}
-                {isEmojiPickerOpen && (
-                  <div className="absolute left-0 bottom-9 z-50 w-72 sm:w-80 rounded-2xl border border-black/10 bg-w p-3 shadow-2xl dark:border-white/10 backdrop-blur-2xl ani-show">
-                    <div className="mb-2">
-                      <p className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider mb-1">
-                        常用二次元 Emoji
-                      </p>
-                      <div className="grid grid-cols-8 gap-1">
-                        {[
-                          "🌸", "✨", "🎀", "💖", "💌", "🧸", "🍭", "🎈",
-                          "🎐", "🫧", "💫", "🧁", "🍡", "🍧", "🍰", "🍵",
-                          "☕", "🍓", "🥞", "🍩", "🍕", "🍙", "🍣", "🎮",
-                          "🎧", "📸", "🎴", "🎯", "🗝️", "🔮", "🎨", "🎬",
-                          "🐾", "🐱", "🐶", "🦊", "🐰", "🐼", "🐨", "🦄",
-                          "💎", "🌟", "🍀", "🌈", "⚡", "💡", "🪐", "🎉"
-                        ].map((emoji) => (
-                          <button
-                            key={emoji}
-                            type="button"
-                            onClick={() => {
-                              insertFormat(emoji);
-                              setIsEmojiPickerOpen(false);
-                            }}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg text-sm hover:scale-125 transition-transform hover:bg-black/5 dark:hover:bg-white/10 select-none"
-                            title={`插入 ${emoji}`}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-black/5 dark:border-white/5">
-                      <p className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider mb-1">
-                        萌系颜文字心情
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {KAOMOJI_MOODS.map((mood) => (
-                          <button
-                            key={mood}
-                            type="button"
-                            onClick={() => {
-                              insertFormat(` ${mood} `);
-                              setIsEmojiPickerOpen(false);
-                            }}
-                            className="px-2 py-0.5 rounded-full bg-theme/5 hover:bg-theme/15 text-theme text-[11px] transition select-none"
-                          >
-                            {mood}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
 
             <span className="text-[10px] font-mono text-neutral-400 hidden sm:inline-block">

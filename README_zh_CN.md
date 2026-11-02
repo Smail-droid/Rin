@@ -51,7 +51,7 @@
 
 | 变量名称 (Variable Name) | 必填 | 推荐填写值 / 示例 | 说明 |
 | :--- | :---: | :--- | :--- |
-| `S3_ACCESS_HOST` | 是 | `https://img.example.com` | **R2 自定义图床域名**（必须带协议头，末尾不加斜杠） |
+| `S3_ACCESS_HOST` | 否 | `https://img.example.com` | **R2 自定义图床加速域名（选填，按需配置）**。若未配置将默认走 Worker 内置 `/api/blob/*` 存储路由 |
 
 5. 进入 GitHub 仓库的 **Actions** 选项卡，手动触发一次 **Build** 工作流，系统将自动执行类型检查、前端编译、数据库迁移并发布上线。
 

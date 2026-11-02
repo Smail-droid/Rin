@@ -20,6 +20,7 @@ export const SITE_CONFIG_KEYS = {
     themePreset: "theme.preset",
     themeCustomColorEnabled: "theme.custom_color_enabled",
     headerShowNav: "header.show_nav",
+    headerPosition: "header.position", // "top" (顶部固定) | "float" (居中浮动胶囊) | "bottom" (底部挂件)
     atelierTitle: "atelier.title",
     atelierTitleStyle: "atelier.title_style",
     hashtagsTitleStyle: "atelier.hashtags_title_style",
@@ -110,6 +111,7 @@ export function useSiteConfig() {
         themePreset: config.get<string>(SITE_CONFIG_KEYS.themePreset) || "sakura",
         themeCustomColorEnabled: config.getBoolean(SITE_CONFIG_KEYS.themeCustomColorEnabled),
         headerShowNav,
+        headerPosition: config.get<string>(SITE_CONFIG_KEYS.headerPosition) || "top",
         atelierTitle: config.get<string>(SITE_CONFIG_KEYS.atelierTitle) || "画廊随想",
         atelierTitleStyle: config.get<string>(SITE_CONFIG_KEYS.atelierTitleStyle) || "aurora_flow",
         hashtagsTitleStyle: config.get<string>(SITE_CONFIG_KEYS.hashtagsTitleStyle) || "aurora_flow",

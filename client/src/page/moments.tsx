@@ -24,25 +24,12 @@ interface Moment {
 }
 
 const MOMENT_STATUSES = [
-  { id: "cute", label: "🐱 卖萌中", text: "> 🐱 **状态：卖萌中**\n\n" },
-  { id: "fish", label: "🍵 摸鱼中", text: "> 🍵 **状态：摸鱼日常**\n\n" },
-  { id: "casual", label: "☕ 随言随笔", text: "> ☕ **状态：随言随笔**\n\n" },
-  { id: "code", label: "💡 灵感代码", text: "> 💡 **状态：灵感代码**\n\n" },
-  { id: "game", label: "🎮 宅家战斗", text: "> 🎮 **状态：宅家游戏中**\n\n" },
-  { id: "debug", label: "💻 正在Debug", text: "> 💻 **状态：正在排查Bug**\n\n" },
-  { id: "daily", label: "🌟 今日日常", text: "> 🌟 **状态：今日份记录**\n\n" },
-  { id: "chill", label: "🍃 放空发呆", text: "> 🍃 **状态：放空中**\n\n" },
-];
-
-const MOMENT_KAOMOJIS = [
-  "(*/ω＼*)",
-  "(=^･ω･^=)",
-  "੭ ᐕ)੭",
-  "φ(>ω<*)",
-  "ヾ(≧▽≦*)o",
-  "(っ˘ڡ˘ς)",
-  "(o゜▽゜)o☆",
-  "(ง •_•)ง",
+  { id: "casual", label: "随言随笔", icon: "ri-chat-1-line", text: "> **状态：随言随笔**\n\n" },
+  { id: "code", label: "灵感代码", icon: "ri-code-line", text: "> **状态：灵感代码**\n\n" },
+  { id: "debug", label: "排查调优", icon: "ri-bug-line", text: "> **状态：正在排查Bug**\n\n" },
+  { id: "daily", label: "今日日常", icon: "ri-sun-line", text: "> **状态：今日份记录**\n\n" },
+  { id: "study", label: "读书深耕", icon: "ri-book-open-line", text: "> **状态：读书研读**\n\n" },
+  { id: "chill", label: "放空休息", icon: "ri-cup-line", text: "> **状态：放空休息**\n\n" },
 ];
 
 export function MomentsPage() {
@@ -337,13 +324,14 @@ export function MomentsPage() {
                           key={st.id}
                           type="button"
                           onClick={() => handleApplyStatus(st)}
-                          className={`px-2.5 py-1 rounded-full text-xs transition select-none shrink-0 font-medium ${
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs transition select-none shrink-0 font-medium ${
                             isSelected
                               ? "bg-theme text-white shadow-2xs font-bold"
                               : "bg-black/[0.04] text-neutral-600 hover:bg-black/[0.08] dark:bg-white/5 dark:text-neutral-300"
                           }`}
                         >
-                          {st.label}
+                          <i className={`${st.icon} text-xs`} />
+                          <span>{st.label}</span>
                         </button>
                       );
                     })}
@@ -387,36 +375,12 @@ export function MomentsPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() =>
-                        insertFormat(
-                          "```bash\n",
-                          "\n```",
-                          "#!/bin/bash\n# Terminal Command\necho 'Hello Moments'"
-                        )
-                      }
-                      className="flex h-7 items-center gap-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition text-[11px] font-mono"
-                      title="Mac终端 Bash 代码块"
+                      onClick={() => insertFormat("![图片描述](", ")", "https://")}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 hover:text-theme transition"
+                      title="插入图片链接"
                     >
-                      <i className="ri-terminal-box-line" />
-                      <span>Bash</span>
+                      <i className="ri-image-line" />
                     </button>
-
-                    <div className="h-3 w-[1px] bg-black/10 dark:bg-white/10 mx-1" />
-
-                    {/* 颜文字快捷胶囊 */}
-                    <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
-                      {MOMENT_KAOMOJIS.map((km) => (
-                        <button
-                          key={km}
-                          type="button"
-                          onClick={() => insertFormat(` ${km} `)}
-                          className="px-2 py-0.5 rounded-full bg-theme/5 hover:bg-theme/15 text-theme text-[11px] transition select-none shrink-0"
-                          title="插入颜文字"
-                        >
-                          {km}
-                        </button>
-                      ))}
-                    </div>
                   </div>
 
                   <textarea
