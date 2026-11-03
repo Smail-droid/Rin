@@ -1,8 +1,9 @@
 import i18n from 'i18next';
 import _ from 'lodash';
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 import {Helmet} from "react-helmet";
 import {useTranslation} from "react-i18next";
+import {useSearch} from "wouter";
 import Loading from 'react-loading';
 import {ShowAlertType, useAlert} from '../components/dialog';
 import {Checkbox, Input} from "../components/input";
@@ -119,9 +120,25 @@ async function update({
 }
 
 // 写作页面
-export function WritingPage({ id }: { id?: number }) {
+export function WritingPage({ id: propId }: { id?: number }) {
   const { t } = useTranslation();
   const siteConfig = useSiteConfig();
+  const searchString = useSearch();
+
+  // 双模兼容解析：既支持 /admin/writing/:id 路径参数，也无缝兼容 /admin/writing?id= 查询参数
+  const id = useMemo(() => {
+    if (typeof propId === "number" && propId > 0) return propId;
+    try {
+      const sp = new URLSearchParams(searchString);
+      const qId = sp.get("id");
+      if (qId && /^\d+$/.test(qId)) {
+        const num = parseInt(qId, 10);
+        if (num > 0) return num;
+      }
+    } catch {}
+    return undefined;
+  }, [propId, searchString]);
+
   const cache = Cache.with(id);
   const [title, setTitle] = cache.useCache("title", "");
   const [summary, setSummary] = cache.useCache("summary", "");

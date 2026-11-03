@@ -597,7 +597,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         </button>
                         <Link
                           aria-label={t("edit")}
-                          href={`/admin/writing?id=${feed.id}`}
+                          href={`/admin/writing/${feed.id}`}
                           title="在后台修改编辑此文章"
                           className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:text-theme transition"
                         >
