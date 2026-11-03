@@ -353,8 +353,12 @@ export function Markdown({ content }: { content: string }) {
           const { children, className, node, ...rest } = props;
           const match = /language-(\w+)/.exec(className || "");
 
-          const curContent = content.slice(node?.position?.start.offset || 0);
-          const isCodeBlock = curContent.trimStart().startsWith("```");
+          // 健壮判断是否为多行独立代码块：
+          // 1. 带有 language-xxx 类名；或 2. 内容含有换行；或 3. 原始文本切片以 ``` 或 ~~~ 开头
+          const curContent = cleanContent.slice(node?.position?.start.offset || 0);
+          const startsWithFence = curContent.trimStart().startsWith("```") || curContent.trimStart().startsWith("~~~");
+          const hasMultipleLines = String(children).includes("\n");
+          const isCodeBlock = Boolean(match) || startsWithFence || hasMultipleLines;
 
           const codeBlockStyle = {
             fontFamily: 'ui-monospace, "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
