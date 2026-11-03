@@ -15,18 +15,11 @@ export type NavItem = {
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/dashboard", icon: "ri-dashboard-3-line", label: "概览" },
   { href: "/admin/writing", icon: "ri-quill-pen-line", label: "撰写" },
-  { href: "/admin/files", icon: "ri-folder-image-line", label: "图床" },
-  { href: "/admin/settings?tab=general", icon: "ri-equalizer-line", label: "基础" },
-  { href: "/admin/settings?tab=atelier", icon: "ri-palette-line", label: "进阶" },
-  { href: "/admin/tags", icon: "ri-price-tag-3-line", label: "标签" },
-  { href: "/admin/ai", icon: "ri-sparkling-fill", label: "智能" },
-  { href: "/admin/queue-status", icon: "ri-todo-line", label: "队列" },
-  { href: "/admin/openlist", icon: "ri-hard-drive-2-line", label: "资源" },
-  { href: "/admin/access", icon: "ri-shield-keyhole-line", label: "权限" },
-  { href: "/admin/tokens", icon: "ri-key-2-line", label: "口令" },
-  { href: "/admin/health", icon: "ri-heart-pulse-line", label: "诊断" },
-  { href: "/admin/seo", icon: "ri-search-eye-line", label: "SEO" },
-  { href: "/admin/compat-tasks", icon: "ri-history-line", label: "回填" },
+  { href: "/admin/tags", icon: "ri-price-tag-3-line", label: "内容" },
+  { href: "/admin/files", icon: "ri-folder-image-line", label: "媒体" },
+  { href: "/admin/queue-status", icon: "ri-todo-line", label: "调度" },
+  { href: "/admin/settings", icon: "ri-equalizer-line", label: "设置" },
+  { href: "/admin/ops", icon: "ri-heart-pulse-line", label: "运维" },
 ];
 
 export function AdminLayout({

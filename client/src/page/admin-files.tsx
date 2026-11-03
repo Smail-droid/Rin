@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
 import { client } from "../app/runtime";
+import { useSiteConfig } from "../hooks/useSiteConfig";
 import type { StorageFileItem } from "../api/client";
 
 function formatFileSize(bytes: number): string {
@@ -38,6 +39,7 @@ type CopyFormat = "url" | "html" | "markdown" | "bbcode";
 
 export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}) {
     const { t } = useTranslation();
+    const siteConfig = useSiteConfig() as any;
     const [files, setFiles] = useState<StorageFileItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -445,72 +447,89 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                 />
             )}
 
-            {/* 1. Upload Zone */}
+            {/* 1. OpenList Worker 紧凑折叠挂载条 (不到一屏绝不独占路由，与图床无缝整合) */}
             {!readOnly && (
-                <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`relative flex flex-col items-center justify-center py-10 px-6 rounded-3xl border-2 border-dashed cursor-pointer transition-all duration-200 select-none ${
-                        isDragging
-                            ? "border-sky-500 bg-sky-50/70 dark:border-sky-400 dark:bg-sky-950/30 scale-[1.01] shadow-md"
-                            : "border-sky-300 hover:border-sky-400 bg-w hover:bg-neutral-50/60 dark:border-sky-700/60 dark:hover:border-sky-500 dark:bg-neutral-900/40"
-                    }`}
-                >
-                    <div className="relative mb-3 flex items-center justify-center">
-                        {isUploading ? (
-                            <i className="ri-loader-4-line animate-spin text-5xl text-theme" />
-                        ) : (
-                            <div className="text-6xl drop-shadow-sm transform transition duration-200 hover:scale-105">
-                                📁
+                <div className="rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] p-3 shadow-2xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-theme/10 text-theme text-sm">
+                                <i className="ri-hard-drive-2-line" />
+                            </span>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-xs t-primary">OpenList 边缘目录挂载</span>
+                                    <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                                        siteConfig.openlistWorkerUrl ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-neutral-500/10 text-neutral-400"
+                                    }`}>
+                                        {siteConfig.openlistWorkerUrl ? "已挂载" : "未挂载"}
+                                    </span>
+                                </div>
+                                <p className="text-[11px] text-neutral-400 truncate mt-0.5">
+                                    {siteConfig.openlistWorkerUrl ? siteConfig.openlistWorkerUrl : "基于 doc.oplist.org.cn 规范的 Cloudflare Worker 网盘多源目录索引"}
+                                </p>
                             </div>
-                        )}
-                    </div>
+                        </div>
 
-                    <p className="text-base sm:text-lg font-semibold text-neutral-800 dark:text-neutral-100">
-                        {isUploading ? "正在上传中..." : "点击或拖拽上传图片"}
-                    </p>
-                    <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
-                        支持 JPG、JPEG、PNG、GIF、WebP 等格式，最大 10MB
-                    </p>
-
-                    <div className="mt-3.5 inline-flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 bg-neutral-100/70 dark:bg-white/5 px-3 py-1 rounded-full border border-black/5 dark:border-white/5">
-                        <span>💡 你也可以直接</span>
-                        <kbd className="rounded-md border border-black/10 bg-w px-1.5 py-0.5 text-[11px] font-mono font-semibold text-neutral-700 shadow-2xs dark:border-white/10 dark:bg-neutral-800 dark:text-neutral-300">
-                            Ctrl+V
-                        </kbd>
-                        <span>粘贴剪贴板中的图片</span>
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                            {siteConfig.openlistWorkerUrl && (
+                                <a
+                                    href={siteConfig.openlistWorkerUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 text-xs font-semibold t-primary hover:border-theme transition flex items-center gap-1"
+                                >
+                                    <i className="ri-external-link-line text-theme" />
+                                    <span>浏览网盘</span>
+                                </a>
+                            )}
+                            <Link
+                                href="/admin/openlist"
+                                className="px-2.5 py-1 rounded-lg bg-theme/10 hover:bg-theme/20 text-theme text-xs font-semibold transition"
+                            >
+                                挂载配置
+                            </Link>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* 2. Upload History & Management */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
                 {/* Section Header */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/5 pb-3 dark:border-white/5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/5 pb-2.5 dark:border-white/5">
                     <div className="flex items-center gap-3">
-                        <h2 className="flex items-center gap-2 text-lg font-bold t-primary">
-                            <i className="ri-image-2-line text-theme" />
-                            <span>历史上传</span>
+                        <h2 className="flex items-center gap-2 text-base font-bold t-primary">
+                            <i className="ri-folder-image-line text-theme" />
+                            <span>R2 媒体资产相册</span>
                         </h2>
                         <div className="flex items-center gap-2 text-xs">
-                            <span className="rounded-full bg-neutral-100 dark:bg-white/10 px-2.5 py-0.5 font-semibold text-neutral-600 dark:text-neutral-300">
+                            <span className="rounded-full bg-neutral-100 dark:bg-white/10 px-2 py-0.5 font-semibold text-neutral-600 dark:text-neutral-300 text-[11px]">
                                 {totalCount} 个文件
                             </span>
-                            <span className="rounded-full bg-neutral-100 dark:bg-white/10 px-2.5 py-0.5 font-semibold text-neutral-600 dark:text-neutral-300">
+                            <span className="rounded-full bg-neutral-100 dark:bg-white/10 px-2 py-0.5 font-semibold text-neutral-600 dark:text-neutral-300 text-[11px]">
                                 {formatFileSize(totalSize)}
                             </span>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        {!readOnly && (
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-theme px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-theme-hover active:scale-95 transition disabled:opacity-50"
+                            >
+                                <i className="ri-upload-cloud-line text-sm" />
+                                <span>{isUploading ? "正在上传..." : "上传媒体图片"}</span>
+                            </button>
+                        )}
                         <button
                             onClick={handleRefresh}
                             disabled={refreshing}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 bg-w px-3 py-1.5 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5 disabled:opacity-50"
+                            className="inline-flex items-center gap-1 rounded-xl border border-black/10 bg-w px-2.5 py-1.5 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5 disabled:opacity-50"
                         >
-                            <i className={`ri-refresh-line text-sm ${refreshing ? "animate-spin" : ""}`} />
+                            <i className={`ri-refresh-line text-xs ${refreshing ? "animate-spin" : ""}`} />
                             <span>{t("admin_files.refresh", "刷新")}</span>
                         </button>
                     </div>
@@ -589,30 +608,43 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                 </div>
             </div>
 
-            {/* 3. Cards Grid (Expansive, Crisp Image Preview, 4-Color Format Switcher) */}
+            {/* 3. Cards Grid (首格虚线嵌入上传 + 统一步骤冷灰卡片) */}
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 animate-pulse">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 animate-pulse">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
-                        <div key={i} className="rounded-2xl border border-black/5 bg-w p-3 dark:border-white/5">
-                            <div className="h-48 w-full rounded-xl bg-neutral-200 dark:bg-neutral-800 mb-2.5" />
+                        <div key={i} className="rounded-xl border border-black/5 bg-w p-3 dark:border-white/5">
+                            <div className="h-44 w-full rounded-lg bg-neutral-200 dark:bg-neutral-800 mb-2" />
                             <div className="h-4 w-3/4 rounded bg-neutral-200 dark:bg-neutral-800 mb-2" />
-                            <div className="h-3 w-1/2 rounded bg-neutral-200 dark:bg-neutral-800 mb-2.5" />
-                            <div className="h-7 w-full rounded-lg bg-neutral-200 dark:bg-neutral-800" />
+                            <div className="h-6 w-full rounded-lg bg-neutral-200 dark:bg-neutral-800" />
                         </div>
                     ))}
                 </div>
-            ) : filteredFiles.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-black/10 dark:border-white/10 rounded-2xl">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-400 dark:bg-white/5 dark:text-neutral-500 mb-3">
-                        <i className="ri-folder-open-line text-3xl" />
-                    </div>
-                    <p className="text-base font-semibold t-primary">{t("admin_files.no_files", "暂无文件")}</p>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 max-w-sm">
-                        点击上方上传区或按 Ctrl+V 即可快速上传图片至 R2 存储桶
-                    </p>
-                </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5">
+                    {/* 首格虚线内嵌上传卡片 (跟图片等高，点击或拖拽直接上传，彻底消灭巨型占位框) */}
+                    {!readOnly && (
+                        <div
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            onClick={() => fileInputRef.current?.click()}
+                            className={`group relative flex flex-col items-center justify-center min-h-[290px] rounded-xl border-2 border-dashed cursor-pointer transition-all duration-150 p-4 select-none ${
+                                isDragging
+                                    ? "border-theme bg-theme/5 scale-[1.01]"
+                                    : "border-black/15 bg-black/[0.01] hover:border-theme hover:bg-theme/[0.02] dark:border-white/15 dark:bg-white/[0.01]"
+                            }`}
+                        >
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 text-neutral-400 group-hover:text-theme group-hover:scale-110 transition-all mb-2 shadow-2xs">
+                                <i className={`text-2xl ${isUploading ? "ri-loader-4-line animate-spin text-theme" : "ri-upload-cloud-2-line"}`} />
+                            </div>
+                            <span className="font-bold text-xs t-primary group-hover:text-theme transition-colors">
+                                {isUploading ? "上传处理中..." : "上传或拖拽图片"}
+                            </span>
+                            <span className="text-[10px] text-neutral-400 mt-1 text-center">
+                                支持 JPG/PNG/WebP，可直接 Ctrl+V 粘贴
+                            </span>
+                        </div>
+                    )}
                     {filteredFiles.map((file) => {
                         const fileName = file.key.split("/").pop() || file.key;
                         const isImage = getFileCategory(file.contentType, file.key) === "image";
@@ -717,9 +749,9 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                     </div>
                                 </div>
 
-                                {/* 4-Color Format Switcher Buttons (Exact Match to Screenshots 2, 3, 4, 5) */}
-                                <div className="grid grid-cols-4 gap-1.5 pt-1.5 border-t border-black/5 dark:border-white/5 text-xs">
-                                    {/* 1. Raw URL (Lime Green when active) */}
+                                {/* 4-Color Format Switcher Buttons (统一冷灰工业级线框，消除刺眼黄色) */}
+                                <div className="grid grid-cols-4 gap-1 pt-1.5 border-t border-black/5 dark:border-white/5 text-xs">
+                                    {/* 1. Raw URL */}
                                     <button
                                         type="button"
                                         onClick={() =>
@@ -729,16 +761,16 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                             }))
                                         }
                                         title="切换为 URL 格式"
-                                        className={`flex items-center justify-center rounded-xl py-1.5 transition text-xs font-semibold ${
+                                        className={`flex items-center justify-center rounded-lg py-1 transition text-[11px] font-semibold ${
                                             currentFormat === "url"
-                                                ? "bg-lime-500 text-white font-bold shadow-xs scale-[1.02]"
-                                                : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:hover:bg-white/10 dark:text-neutral-400"
+                                                ? "bg-theme text-white font-bold shadow-2xs"
+                                                : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-theme hover:text-theme"
                                         }`}
                                     >
                                         <i className="ri-link text-xs" />
                                     </button>
 
-                                    {/* 2. HTML (Amber Yellow when active) */}
+                                    {/* 2. HTML */}
                                     <button
                                         type="button"
                                         onClick={() =>
@@ -748,16 +780,16 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                             }))
                                         }
                                         title="切换为 HTML 格式"
-                                        className={`flex items-center justify-center rounded-xl py-1.5 transition text-[11px] font-bold ${
+                                        className={`flex items-center justify-center rounded-lg py-1 transition text-[11px] font-bold ${
                                             currentFormat === "html"
-                                                ? "bg-amber-400 text-neutral-900 font-bold shadow-xs scale-[1.02]"
-                                                : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:hover:bg-white/10 dark:text-neutral-400"
+                                                ? "bg-theme text-white font-bold shadow-2xs"
+                                                : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-theme hover:text-theme"
                                         }`}
                                     >
                                         &lt;/&gt;
                                     </button>
 
-                                    {/* 3. Markdown (Sky Blue when active) */}
+                                    {/* 3. Markdown */}
                                     <button
                                         type="button"
                                         onClick={() =>
@@ -767,16 +799,16 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                             }))
                                         }
                                         title="切换为 Markdown 格式"
-                                        className={`flex items-center justify-center rounded-xl py-1.5 transition text-[11px] font-bold ${
+                                        className={`flex items-center justify-center rounded-lg py-1 transition text-[11px] font-bold ${
                                             currentFormat === "markdown"
-                                                ? "bg-sky-400 text-white font-bold shadow-xs scale-[1.02]"
-                                                : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:hover:bg-white/10 dark:text-neutral-400"
+                                                ? "bg-theme text-white font-bold shadow-2xs"
+                                                : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-theme hover:text-theme"
                                         }`}
                                     >
                                         M&darr;
                                     </button>
 
-                                    {/* 4. BBCode (Coral/Salmon Orange when active) */}
+                                    {/* 4. BBCode */}
                                     <button
                                         type="button"
                                         onClick={() =>
@@ -786,13 +818,13 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                             }))
                                         }
                                         title="切换为 BBCode 格式"
-                                        className={`flex items-center justify-center rounded-xl py-1.5 transition text-[10px] font-bold ${
+                                        className={`flex items-center justify-center rounded-lg py-1 transition text-[10px] font-bold ${
                                             currentFormat === "bbcode"
-                                                ? "bg-rose-400 text-white font-bold shadow-xs scale-[1.02]"
-                                                : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 dark:bg-white/5 dark:hover:bg-white/10 dark:text-neutral-400"
+                                                ? "bg-theme text-white font-bold shadow-2xs"
+                                                : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-theme hover:text-theme"
                                         }`}
                                     >
-                                        [BB]
+                                        BB
                                     </button>
                                 </div>
                             </div>

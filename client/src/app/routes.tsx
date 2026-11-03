@@ -32,8 +32,7 @@ const CallbackPage = lazy(() => import("../page/callback").then((m) => ({ defaul
 // Admin routes lazy loading (monaco editor, charts & management utilities decoupled)
 const Settings = lazy(() => import("../page/settings").then((m) => ({ default: m.Settings })));
 const AdminTagsPage = lazy(() => import("../page/admin-tags").then((m) => ({ default: m.AdminTagsPage })));
-const HealthPage = lazy(() => import("../page/health").then((m) => ({ default: m.HealthPage })));
-const AdminSEOPage = lazy(() => import("../page/admin-seo").then((m) => ({ default: m.AdminSEOPage })));
+const AdminOpsHubPage = lazy(() => import("../page/admin-ops").then((m) => ({ default: m.AdminOpsHubPage })));
 const AdminAIPage = lazy(() => import("../page/admin-ai").then((m) => ({ default: m.AdminAIPage })));
 const QueueStatusPage = lazy(() => import("../page/queue-status").then((m) => ({ default: m.QueueStatusPage })));
 const CompatTasksPage = lazy(() => import("../page/compat-tasks").then((m) => ({ default: m.CompatTasksPage })));
@@ -113,12 +112,21 @@ export function AppRoutes() {
         <AdminTagsPage />
       </AdminRoute>
 
+      {/* 运维中心 (三合一：健康诊断 + 增量回填 + SEO引擎 左右双拼同屏展示) */}
+      <AdminRoute path="/admin/ops" requirePermission title="运维" description="系统健康巡检 · 离线增量数据回填 · SEO全网收录中枢">
+        <AdminOpsHubPage />
+      </AdminRoute>
+
       <AdminRoute path="/admin/health" requirePermission title="诊断" description={t("admin.health_description")}>
-        <HealthPage />
+        <AdminOpsHubPage />
       </AdminRoute>
 
       <AdminRoute path="/admin/seo" requirePermission title="SEO" description="各大搜索引擎收录指南 · 自动化Sitemap与Robots检测 · Cloudflare IndexNow主动推送">
-        <AdminSEOPage />
+        <AdminOpsHubPage />
+      </AdminRoute>
+
+      <AdminRoute path="/admin/compat-tasks" requirePermission title="回填" description={t("admin.compat_tasks_description")}>
+        <AdminOpsHubPage />
       </AdminRoute>
 
       <AdminRoute path="/admin/ai" requirePermission title="AI" description="配置大模型提供商与核心系统指令提示词">

@@ -7,7 +7,7 @@ import {useSearch} from "wouter";
 import Loading from 'react-loading';
 import {ShowAlertType, useAlert} from '../components/dialog';
 import {Checkbox, Input} from "../components/input";
-import { DateTimeInput, FlatMetaRow, FlatPanel, Modal } from "@rin/ui";
+import { DateTimeInput, FlatPanel, Modal } from "@rin/ui";
 import { client } from "../app/runtime";
 import {Cache} from '../utils/cache';
 import {useSiteConfig} from "../hooks/useSiteConfig";
@@ -310,41 +310,41 @@ export function WritingPage({ id: propId }: { id?: number }) {
     return (
       <button
         onClick={publishButton}
-        className={`inline-flex items-center justify-center gap-2 rounded-xl bg-theme px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-theme-hover active:bg-theme-active disabled:cursor-not-allowed disabled:opacity-60 ${className ?? ""}`}
+        className={`inline-flex items-center justify-center gap-1.5 rounded-xl bg-theme px-4 py-2 text-xs font-bold text-white shadow-2xs hover:bg-theme-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 transition-all ${className ?? ""}`}
         disabled={publishing}
       >
-        {publishing && <Loading type="spin" height={16} width={16} />}
-        <span>{t('publish.title')}</span>
+        {publishing && <Loading type="spin" height={14} width={14} />}
+        <span>{t('publish.title') || "发布文章"}</span>
       </button>
     );
   }
 
-  function MetaInput({ className }: { className?: string }) {
+  function MetaInput({ className: _className }: { className?: string }) {
     return (
-        <FlatPanel className={className}>
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
-            <div className="flex-1 w-full min-w-0">
-              <Input
-                id={id}
+        <div className="w-full flex flex-col gap-2">
+          {/* 48px 单行沉浸式顶栏：左侧标题，右侧属性设置 + 紧凑发布按钮 */}
+          <div className="flex items-center justify-between gap-3 w-full h-12 px-3 rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] shadow-2xs select-none">
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
                 value={title}
-                setValue={setTitle}
+                onChange={(e) => setTitle(e.target.value)}
                 placeholder={t("title") || "在此输入文章标题..."}
-                variant="flat"
-                className="text-base font-bold w-full"
+                className="w-full bg-transparent text-sm sm:text-base font-extrabold t-primary outline-none placeholder:text-neutral-400 placeholder:font-normal"
               />
             </div>
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsMetaExpanded((prev) => !prev)}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition select-none ${
+                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition select-none ${
                   isMetaExpanded
-                    ? "border-theme bg-theme/10 text-theme shadow-2xs"
-                    : "border-black/10 bg-w text-neutral-600 hover:border-theme hover:text-theme dark:border-white/10 dark:text-neutral-300"
+                    ? "border-theme bg-theme/10 text-theme"
+                    : "border-black/10 bg-black/[0.02] text-neutral-600 hover:border-theme hover:text-theme dark:border-white/10 dark:bg-white/[0.02] dark:text-neutral-300"
                 }`}
                 title={isMetaExpanded ? "收起文章属性面板" : "展开文章属性设置 (简介、别名、标签、可见性)"}
               >
-                <i className="ri-settings-4-line text-sm" />
+                <i className="ri-equalizer-line text-xs" />
                 <span className="hidden sm:inline">{isMetaExpanded ? "收起属性" : "属性设置"}</span>
                 <i className={`ri-arrow-down-s-line text-xs transition-transform ${isMetaExpanded ? "rotate-180" : ""}`} />
               </button>
@@ -354,7 +354,7 @@ export function WritingPage({ id: propId }: { id?: number }) {
 
           {/* 可折叠的文章属性面板 (默认收起，点击展开) */}
           {isMetaExpanded && (
-            <div className="mt-4 pt-4 border-t border-black/5 dark:border-white/5 ani-show">
+            <div className="p-3.5 rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] shadow-xs ani-show">
               <div className="grid gap-3 lg:grid-cols-2">
                 <Input
                   id={id}
@@ -362,6 +362,7 @@ export function WritingPage({ id: propId }: { id?: number }) {
                   setValue={setSummary}
                   placeholder={t("summary") || "文章简介 / 导读摘要"}
                   variant="flat"
+                  className="w-full"
                 />
                 <Input
                   id={id}
@@ -369,6 +370,7 @@ export function WritingPage({ id: propId }: { id?: number }) {
                   setValue={setAlias}
                   placeholder={t("alias") || "文章自定义别名 (如 /about)"}
                   variant="flat"
+                  className="w-full"
                 />
                 <Input
                   id={id}
@@ -380,42 +382,30 @@ export function WritingPage({ id: propId }: { id?: number }) {
                 />
               </div>
 
-              <div className="mt-4 grid gap-2 sm:gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(18rem,2fr)]">
-                <FlatMetaRow
-                  className="cursor-pointer rounded-none border-0 bg-transparent px-0 py-2 sm:rounded-2xl sm:border sm:bg-secondary sm:px-4 sm:py-3"
-                  onClick={() => setDraft(!draft)}
-                >
-                  <p>{t('visible.self_only')}</p>
+              <div className="mt-3 pt-2.5 border-t border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-4">
                   <Checkbox
                     id="draft"
+                    placeholder={t("draft")}
                     value={draft}
                     setValue={setDraft}
-                    placeholder={t('draft')}
                   />
-                </FlatMetaRow>
-                <FlatMetaRow
-                  className="cursor-pointer rounded-none border-0 bg-transparent px-0 py-2 sm:rounded-2xl sm:border sm:bg-secondary sm:px-4 sm:py-3"
-                  onClick={() => setListed(!listed)}
-                >
-                  <p>{t('listed')}</p>
                   <Checkbox
                     id="listed"
+                    placeholder={t("listed")}
                     value={listed}
                     setValue={setListed}
-                    placeholder={t('listed')}
                   />
-                </FlatMetaRow>
-                <FlatMetaRow className="gap-3 rounded-none border-0 bg-transparent px-0 py-2 sm:rounded-2xl sm:border sm:bg-secondary sm:px-4 sm:py-3 xl:col-span-1">
-                  <p className="mr-2 whitespace-nowrap">
-                    {t('created_at')}
-                  </p>
-                  <DateTimeInput value={createdAt} onChange={setCreatedAt} className="w-full max-w-[16rem]" />
-                </FlatMetaRow>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-neutral-400 font-mono text-[11px]">发表时间:</span>
+                  <DateTimeInput value={createdAt} onChange={setCreatedAt} className="w-full max-w-[15rem]" />
+                </div>
               </div>
             </div>
           )}
-        </FlatPanel>
-    )
+        </div>
+    );
   }
 
   return (
