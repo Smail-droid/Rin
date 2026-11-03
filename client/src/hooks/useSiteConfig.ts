@@ -80,6 +80,8 @@ export const SITE_CONFIG_KEYS = {
     galleryCardSize: "gallery.card_size",
     galleryCardMaxWidth: "gallery.card_max_width",
     galleryCardGap: "gallery.card_gap",
+
+    danmakuSpeed: "danmaku.speed",
 } as const;
 
 // Hook to get site configuration
@@ -170,6 +172,8 @@ export function useSiteConfig() {
         galleryCardSize: String(config.get(SITE_CONFIG_KEYS.galleryCardSize) ?? "medium"),
         galleryCardMaxWidth: Number.parseInt(String(config.get(SITE_CONFIG_KEYS.galleryCardMaxWidth) ?? 380), 10) || 380,
         galleryCardGap: Number.parseInt(String(config.get(SITE_CONFIG_KEYS.galleryCardGap) ?? 24), 10) || 24,
+
+        danmakuSpeed: String(config.get(SITE_CONFIG_KEYS.danmakuSpeed) ?? "normal"),
     };
 }
 

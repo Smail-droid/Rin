@@ -1531,6 +1531,75 @@ export function Settings() {
             </SettingsCard>
           </div>
 
+          {/* 海报微光流动弹幕全景控制台 (速度/字号/流速/形态) */}
+          <div className="w-full">
+            <SettingsCard>
+              <SettingsCardRow
+                header={
+                  <SettingsCardHeader
+                    title="文章海报弹幕效果配置中心 (Danmaku Studio)"
+                    description="自由调控详情页海报顶部轨道与两侧微光弹幕的流动速度、字号大小与流转节奏"
+                  />
+                }
+                action={
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-theme">
+                      {String(clientConfig.get("danmaku.speed") ?? "normal") === "fast" ? "极速流转" : String(clientConfig.get("danmaku.speed") ?? "normal") === "slow" ? "从容慢速" : "标准舒缓"}
+                    </span>
+                  </div>
+                }
+              />
+              <SettingsCardBody>
+                <div className="flex flex-col gap-4">
+                  {/* 流动速度预设选择 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-black/5 dark:border-white/5">
+                    <div>
+                      <div className="text-sm font-semibold t-primary">弹幕流动与穿梭流速</div>
+                      <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                        调整海报顶部与两侧弹幕滑过与相聚的游动速度
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {[
+                        { speed: "slow", label: "从容慢速 (Slow)" },
+                        { speed: "normal", label: "标准舒缓 (Normal)" },
+                        { speed: "fast", label: "灵动极速 (Fast)" },
+                      ].map((item) => {
+                        const currentSpeed = String(clientConfig.get("danmaku.speed") ?? "normal");
+                        const isSelected = currentSpeed === item.speed;
+                        return (
+                          <button
+                            key={item.speed}
+                            type="button"
+                            onClick={() => setConfigValue("client", "danmaku.speed", item.speed)}
+                            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all select-none ${
+                              isSelected
+                                ? "bg-theme text-white shadow-xs scale-105"
+                                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300"
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 弹幕特性说明与避坑建议 */}
+                  <div className="p-3.5 rounded-xl bg-black/[0.015] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex items-center justify-between text-xs">
+                    <div className="space-y-0.5">
+                      <span className="font-bold t-primary block">✨ 动态特性：</span>
+                      <p className="text-[11px] text-neutral-400">
+                        • 顶部天花板轨道已自动预留左右两端安全避让距离，彻底避开左上角弹幕开关与右上角全屏预览标签；<br />
+                        • 左翼与右翼弹幕每轮动态从全站真实文章库中随机洗牌抽取，向中心游动并在接近核心画框时产生晶体粒子微光破碎消散。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </SettingsCardBody>
+            </SettingsCard>
+          </div>
+
           {/* 画廊随想便签阵列配置 iKuai 风格超级数据表格 (Dense DataGrid) */}
           <div className="w-full flex flex-col space-y-3 ani-show">
             {/* 顶栏控制中枢 */}

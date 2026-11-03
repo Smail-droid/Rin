@@ -152,57 +152,68 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
           });
         }
         if (commentsList.length === 0) {
-          commentsList.push("漫步在画廊随想记忆工坊", "留下足迹与思想火花");
+          commentsList.push("漫步在画廊随想记忆工坊", "留下足迹与思想火花", "每一篇随笔都是长河里静止的微光");
         }
 
-        // 2. 区域 2：左翼灵感风采区 (二次元美学短语，手绘微倾角)
-        const leftQuotes = [
+        // 2. 动态全站文章池洗牌（每次打开随机抽取不同文章，彻底告别固定）
+        const allFetchedArticles: string[] = [];
+        if (feedRes.data?.data && Array.isArray(feedRes.data.data)) {
+          feedRes.data.data.forEach((f: any) => {
+            if (f.id !== feed.id && f.title?.trim()) {
+              const clean = cleanCaptionText(f.title.trim());
+              if (clean) allFetchedArticles.push(clean);
+            }
+          });
+        }
+
+        // 随机洗牌算法 (Fisher-Yates Shuffle)
+        const shuffledArticles = [...allFetchedArticles].sort(() => 0.5 - Math.random());
+
+        // 3. 区域 2：左翼灵感风采区 (随机文章标题 + 二次元灵感短语交替)
+        const leftBaseQuotes = [
           "一页一世界 · 随性画廊风采",
           "二次元微光美学与浮游微光",
           "岁月不语 惟石能言",
           "每一次灵感火花在此凝结",
         ];
+        const leftSelected = [
+          ...shuffledArticles.slice(0, 2),
+          ...leftBaseQuotes.sort(() => 0.5 - Math.random()).slice(0, 2),
+        ];
 
-        // 3. 区域 3：右翼精选区 (全站文章精选标题，手绘微倾角)
-        const rightTitles: string[] = [];
-        if (feedRes.data?.data && Array.isArray(feedRes.data.data)) {
-          feedRes.data.data.forEach((f: any) => {
-            if (f.id !== feed.id && f.title?.trim()) {
-              const clean = cleanCaptionText(f.title.trim());
-              if (clean) rightTitles.push(clean.slice(0, 24));
-            }
-          });
-        }
-        if (rightTitles.length === 0) {
-          rightTitles.push("边缘原生全栈架构", "时光长河岁月足迹");
-        }
+        // 4. 区域 3：右翼精选区 (动态随机抽取的其他精选文章标题)
+        const rightSelected = shuffledArticles.length >= 4 
+          ? shuffledArticles.slice(2, 6) 
+          : ["边缘原生全栈架构", "时光长河岁月足迹", "Cloudflare Serverless", "极客终端代码高亮"];
 
         const topColors = ["#ffffff", "#38bdf8", "#facc15", "#4ade80", "#c084fc", "#ffd166"];
         const leftColors = ["#f472b6", "#c084fc", "#38bdf8", "#ffffff", "#ffd166"];
         const rightColors = ["#ffd166", "#4ade80", "#38bdf8", "#f472b6", "#c084fc"];
-        // 显著放大的手绘大倾角 (肉眼清晰可见，极富灵动随性美感)
+        
+        // 显著放大的手绘错落大倾角 (肉眼清晰可见，极富灵动随性美感)
         const leftRots = ["rotate-[-5.5deg]", "rotate-[4.8deg]", "rotate-[-6.2deg]", "rotate-[5deg]"];
         const rightRots = ["rotate-[5.5deg]", "rotate-[-4.8deg]", "rotate-[6.2deg]", "rotate-[-5deg]"];
 
+        // 提速后的灵动流速 (加快游动节奏，深入中心才消散)
         setTriZoneDanmaku({
           topTrack: commentsList.slice(0, 8).map((text, i) => ({
             text,
-            delay: `${(1.5 + i * 4.5).toFixed(1)}s`,
-            duration: `${(18 + (i % 3) * 3).toFixed(1)}s`,
+            delay: `${(1.2 + i * 3.8).toFixed(1)}s`,
+            duration: `${(13 + (i % 3) * 2.5).toFixed(1)}s`,
             color: topColors[i % topColors.length],
             direction: i % 2 === 0 ? "rtl" : "ltr", // 奇偶双向交替对向飞越
           })),
-          leftFlank: leftQuotes.map((text, i) => ({
+          leftFlank: leftSelected.map((text, i) => ({
             text,
-            delay: `${(i * 3.2).toFixed(1)}s`,
-            duration: `${(7.5 + (i % 3) * 2.5).toFixed(1)}s`,
+            delay: `${(i * 2.4).toFixed(1)}s`,
+            duration: `${(4.8 + (i % 3) * 1.4).toFixed(1)}s`,
             color: leftColors[i % leftColors.length],
             rot: leftRots[i % leftRots.length],
           })),
-          rightFlank: rightTitles.slice(0, 4).map((text, i) => ({
+          rightFlank: rightSelected.map((text, i) => ({
             text,
-            delay: `${(0.8 + i * 3.5).toFixed(1)}s`,
-            duration: `${(8.5 + (i % 3) * 2.2).toFixed(1)}s`,
+            delay: `${(0.6 + i * 2.5).toFixed(1)}s`,
+            duration: `${(5.2 + (i % 3) * 1.5).toFixed(1)}s`,
             color: rightColors[i % rightColors.length],
             rot: rightRots[i % rightRots.length],
           })),
@@ -401,18 +412,20 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                       {/* 三区隔离画廊弹幕系统：顶部双向交替轨道、两侧显著大倾角、相遇晶体破碎消散 */}
                       {isDanmakuEnabled && (
                         <div className="absolute inset-0 z-20 pointer-events-none select-none overflow-hidden">
-                          {/* 区域 1: 顶上轨道 (读者留言双向交替滑过：从左到右与从右到左对穿) */}
-                          <div className="absolute top-2.5 sm:top-3.5 inset-x-28 h-6 overflow-hidden">
+                          {/* 区域 1: 顶上轨道 (读者留言双向交替滑过：从左到右与从右到左对穿，避开左侧开关与右侧标签) */}
+                          <div className="absolute top-3 inset-x-32 sm:inset-x-36 h-7 overflow-hidden">
                             {triZoneDanmaku.topTrack.map((dm, i) => (
                               <span
                                 key={`top-${i}`}
                                 style={{
-                                  animation: `${dm.direction === "rtl" ? "danmaku-top-rtl" : "danmaku-top-ltr"} ${dm.duration} linear infinite`,
+                                  animation: `${dm.direction === "rtl" ? "danmaku-top-rtl" : "danmaku-top-ltr"} ${
+                                    siteConfig.danmakuSpeed === "fast" ? "10s" : siteConfig.danmakuSpeed === "slow" ? "18s" : dm.duration
+                                  } linear infinite`,
                                   animationDelay: dm.delay,
                                   color: dm.color,
                                   textShadow: "0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.85)",
                                 }}
-                                className={`absolute ${dm.direction === "rtl" ? "right-0" : "left-0"} whitespace-nowrap font-extrabold text-xs sm:text-[13px] tracking-wide pointer-events-auto hover:[animation-play-state:paused] transition-transform cursor-default`}
+                                className={`absolute ${dm.direction === "rtl" ? "right-0" : "left-0"} whitespace-nowrap font-extrabold text-sm sm:text-base tracking-wide pointer-events-auto hover:[animation-play-state:paused] transition-transform cursor-default`}
                                 title="读者留言弹幕 · 鼠标悬停定格"
                               >
                                 {dm.text}
