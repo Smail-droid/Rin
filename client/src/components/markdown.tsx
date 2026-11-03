@@ -233,22 +233,26 @@ function normalizeLanguage(lang: string): string {
 }
 
 function cleanCodeBlockContent(code: string): string {
-  // 1. 逐行处理注释中的 Markdown 链接语法（如 [http://...](http://...) 自动去方括号，还原为干净文本）
+  // 1. 全域无死角清洗代码块内部的 Markdown 链接语法：
+  // 无论是在 Shell 命令行中（如 curl -fsSL [https://...](https://...)），
+  // 还是在注释行（如 # [说明](http://...)），或是配置文件中，
+  // 统统剥离方括号与圆括号，确保用户复制到终端时 100% 为可执行的纯文本裸字符串！
   const lines = code.split("\n");
   const processedLines = lines.map((line) => {
-    const trimmed = line.trimStart();
-    if (
-      trimmed.startsWith("#") ||
-      trimmed.startsWith("//") ||
-      trimmed.startsWith("--") ||
-      trimmed.startsWith(";")
-    ) {
-      return line.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, text, url) => {
-        if (text === url) return url;
-        return `${text} (${url})`;
-      });
-    }
-    return line;
+    return line.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, text, url) => {
+      // 若 [text](url) 相同，直接返回纯裸链（如 https://get.docker.com）
+      if (text === url) return url;
+      // 若为命令行中误写入的 [说明](http://url)，提取出真正的可执行链接 url
+      if (url.startsWith("http://") || url.startsWith("https://")) {
+        // 如果是在注释行中，保留纯文字形式 "说明: url"
+        const trimmed = line.trimStart();
+        if (trimmed.startsWith("#") || trimmed.startsWith("//") || trimmed.startsWith("--") || trimmed.startsWith(";")) {
+          return `${text}: ${url}`;
+        }
+        return url;
+      }
+      return text;
+    });
   });
 
   let result = processedLines.join("\n");
