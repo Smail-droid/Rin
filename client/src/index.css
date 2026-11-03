@@ -406,26 +406,37 @@ a.toc-link {
   animation: danmakuMarquee 35s linear infinite;
 }
 
-/* 画廊海报三区隔离弹幕动画系统 (顶部横穿、左翼向右微浮动、右翼向左微浮动，中间绝对留白) */
-@keyframes danmaku-top-track {
+/* 画廊海报多维空间弹幕系统 (顶部对向交替飞越、两侧大倾角浮动、中央相撞微光破碎消散) */
+@keyframes danmaku-top-rtl {
   0% { transform: translateX(100vw); opacity: 0; }
   3% { opacity: 0.95; }
   97% { opacity: 0.95; }
-  100% { transform: translateX(-120%); opacity: 0; }
+  100% { transform: translateX(-120vw); opacity: 0; }
 }
 
-@keyframes danmaku-left-drift {
-  0% { transform: translateX(-40px); opacity: 0; }
-  15% { opacity: 0.95; }
-  85% { opacity: 0.95; }
-  100% { transform: translateX(35px); opacity: 0; }
+@keyframes danmaku-top-ltr {
+  0% { transform: translateX(-100vw); opacity: 0; }
+  3% { opacity: 0.95; }
+  97% { opacity: 0.95; }
+  100% { transform: translateX(120vw); opacity: 0; }
 }
 
-@keyframes danmaku-right-drift {
-  0% { transform: translateX(40px); opacity: 0; }
-  15% { opacity: 0.95; }
-  85% { opacity: 0.95; }
-  100% { transform: translateX(-35px); opacity: 0; }
+/* 左侧向中心飘动，并在相遇边缘产生晶体粒子微光破碎消散动效 */
+@keyframes danmaku-collide-left {
+  0% { transform: translateX(-50px) rotate(var(--rot, -4deg)); opacity: 0; filter: blur(0px); }
+  15% { opacity: 0.95; filter: blur(0px); }
+  72% { transform: translateX(65px) rotate(var(--rot, -4deg)); opacity: 0.95; filter: blur(0px); }
+  85% { transform: translateX(85px) scale(1.08) rotate(calc(var(--rot, -4deg) + 3deg)); opacity: 0.7; filter: blur(2px); text-shadow: 0 0 16px currentColor; }
+  100% { transform: translateX(105px) scale(1.22) rotate(calc(var(--rot, -4deg) + 7deg)); opacity: 0; filter: blur(8px); }
+}
+
+/* 右侧向中心飘动，并在相遇边缘产生晶体粒子微光破碎消散动效 */
+@keyframes danmaku-collide-right {
+  0% { transform: translateX(50px) rotate(var(--rot, 4deg)); opacity: 0; filter: blur(0px); }
+  15% { opacity: 0.95; filter: blur(0px); }
+  72% { transform: translateX(-65px) rotate(var(--rot, 4deg)); opacity: 0.95; filter: blur(0px); }
+  85% { transform: translateX(-85px) scale(1.08) rotate(calc(var(--rot, 4deg) - 3deg)); opacity: 0.7; filter: blur(2px); text-shadow: 0 0 16px currentColor; }
+  100% { transform: translateX(-105px) scale(1.22) rotate(calc(var(--rot, 4deg) - 7deg)); opacity: 0; filter: blur(8px); }
 }
 
 /* 全站主题日夜切换平滑过渡 */

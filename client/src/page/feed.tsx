@@ -80,11 +80,11 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
     }
   });
 
-  // 空间隔离三区弹幕数据模型 (顶部天花板轨道、左翼灵感区、右翼精选区，中间核心人物画幅绝对留白)
+  // 空间隔离三区弹幕数据模型 (顶部天花板双向轨道、左右大倾角浮动、中央微光破碎消散)
   const [triZoneDanmaku, setTriZoneDanmaku] = useState<{
-    topTrack: Array<{ text: string; delay: string; color: string }>;
-    leftFlank: Array<{ text: string; delay: string; color: string; rot: string }>;
-    rightFlank: Array<{ text: string; delay: string; color: string; rot: string }>;
+    topTrack: Array<{ text: string; delay: string; duration: string; color: string; direction: "rtl" | "ltr" }>;
+    leftFlank: Array<{ text: string; delay: string; duration: string; color: string; rot: string }>;
+    rightFlank: Array<{ text: string; delay: string; duration: string; color: string; rot: string }>;
   }>({ topTrack: [], leftFlank: [], rightFlank: [] });
 
   const toggleDanmaku = (e: React.MouseEvent) => {
@@ -177,27 +177,32 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
           rightTitles.push("边缘原生全栈架构", "时光长河岁月足迹");
         }
 
-        const topColors = ["#ffffff", "#38bdf8", "#facc15", "#4ade80", "#c084fc"];
-        const leftColors = ["#f472b6", "#c084fc", "#38bdf8", "#ffffff"];
-        const rightColors = ["#ffd166", "#4ade80", "#38bdf8", "#f472b6"];
-        const leftRots = ["rotate-[-2.5deg]", "rotate-[1.8deg]", "rotate-[-3deg]", "rotate-[2deg]"];
-        const rightRots = ["rotate-[2.2deg]", "rotate-[-1.8deg]", "rotate-[3deg]", "rotate-[-2.4deg]"];
+        const topColors = ["#ffffff", "#38bdf8", "#facc15", "#4ade80", "#c084fc", "#ffd166"];
+        const leftColors = ["#f472b6", "#c084fc", "#38bdf8", "#ffffff", "#ffd166"];
+        const rightColors = ["#ffd166", "#4ade80", "#38bdf8", "#f472b6", "#c084fc"];
+        // 显著放大的手绘大倾角 (肉眼清晰可见，极富灵动随性美感)
+        const leftRots = ["rotate-[-5.5deg]", "rotate-[4.8deg]", "rotate-[-6.2deg]", "rotate-[5deg]"];
+        const rightRots = ["rotate-[5.5deg]", "rotate-[-4.8deg]", "rotate-[6.2deg]", "rotate-[-5deg]"];
 
         setTriZoneDanmaku({
           topTrack: commentsList.slice(0, 8).map((text, i) => ({
             text,
-            delay: `${(1.5 + i * 5).toFixed(1)}s`,
+            delay: `${(1.5 + i * 4.5).toFixed(1)}s`,
+            duration: `${(18 + (i % 3) * 3).toFixed(1)}s`,
             color: topColors[i % topColors.length],
+            direction: i % 2 === 0 ? "rtl" : "ltr", // 奇偶双向交替对向飞越
           })),
           leftFlank: leftQuotes.map((text, i) => ({
             text,
-            delay: `${(i * 3.5).toFixed(1)}s`,
+            delay: `${(i * 3.2).toFixed(1)}s`,
+            duration: `${(7.5 + (i % 3) * 2.5).toFixed(1)}s`,
             color: leftColors[i % leftColors.length],
             rot: leftRots[i % leftRots.length],
           })),
           rightFlank: rightTitles.slice(0, 4).map((text, i) => ({
             text,
-            delay: `${(0.8 + i * 3.8).toFixed(1)}s`,
+            delay: `${(0.8 + i * 3.5).toFixed(1)}s`,
+            duration: `${(8.5 + (i % 3) * 2.2).toFixed(1)}s`,
             color: rightColors[i % rightColors.length],
             rot: rightRots[i % rightRots.length],
           })),
@@ -393,21 +398,21 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         />
                       </div>
 
-                      {/* 三区隔离画廊弹幕系统：顶部天花板轨道、左侧微光风采区、右侧精选标题区，中间核心人物画框彻底留白防撞 */}
+                      {/* 三区隔离画廊弹幕系统：顶部双向交替轨道、两侧显著大倾角、相遇晶体破碎消散 */}
                       {isDanmakuEnabled && (
                         <div className="absolute inset-0 z-20 pointer-events-none select-none overflow-hidden">
-                          {/* 区域 1: 顶上轨道 (读者留言横向滑过，完全避开中间插画) */}
-                          <div className="absolute top-2.5 sm:top-3.5 left-28 right-32 h-6 overflow-hidden">
+                          {/* 区域 1: 顶上轨道 (读者留言双向交替滑过：从左到右与从右到左对穿) */}
+                          <div className="absolute top-2.5 sm:top-3.5 inset-x-28 h-6 overflow-hidden">
                             {triZoneDanmaku.topTrack.map((dm, i) => (
                               <span
                                 key={`top-${i}`}
                                 style={{
-                                  animation: "danmaku-top-track 20s linear infinite",
+                                  animation: `${dm.direction === "rtl" ? "danmaku-top-rtl" : "danmaku-top-ltr"} ${dm.duration} linear infinite`,
                                   animationDelay: dm.delay,
                                   color: dm.color,
                                   textShadow: "0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.85)",
                                 }}
-                                className="absolute right-0 whitespace-nowrap font-extrabold text-xs sm:text-[13px] tracking-wide pointer-events-auto hover:[animation-play-state:paused] transition-transform cursor-default"
+                                className={`absolute ${dm.direction === "rtl" ? "right-0" : "left-0"} whitespace-nowrap font-extrabold text-xs sm:text-[13px] tracking-wide pointer-events-auto hover:[animation-play-state:paused] transition-transform cursor-default`}
                                 title="读者留言弹幕 · 鼠标悬停定格"
                               >
                                 {dm.text}
@@ -415,18 +420,18 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                             ))}
                           </div>
 
-                          {/* 区域 2: 左翼灵感风采区 (二次元美学风采，向右微浮动过渡，手绘微倾角) */}
-                          <div className="absolute left-2 sm:left-4 top-16 bottom-12 w-36 sm:w-52 flex flex-col justify-around pointer-events-none">
+                          {/* 区域 2: 左翼灵感风采区 (显著手绘大倾角，向中心游动并粒子破碎消散，绝对禁止折行) */}
+                          <div className="absolute left-2 sm:left-4 top-16 bottom-12 flex flex-col justify-around pointer-events-none">
                             {triZoneDanmaku.leftFlank.map((dm, i) => (
                               <div
                                 key={`left-${i}`}
                                 style={{
-                                  animation: "danmaku-left-drift 8.5s ease-in-out infinite",
+                                  animation: `danmaku-collide-left ${dm.duration} ease-in-out infinite`,
                                   animationDelay: dm.delay,
                                   color: dm.color,
                                   textShadow: "0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.85)",
                                 }}
-                                className={`transform ${dm.rot} text-xs sm:text-[13px] font-bold tracking-wide pointer-events-auto hover:[animation-play-state:paused] hover:scale-105 transition-transform cursor-default`}
+                                className={`transform ${dm.rot} text-xs sm:text-[13px] font-extrabold tracking-wide whitespace-nowrap pointer-events-auto hover:[animation-play-state:paused] hover:scale-105 transition-transform cursor-default`}
                                 title="画廊随想美学风采"
                               >
                                 {dm.text}
@@ -434,18 +439,18 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                             ))}
                           </div>
 
-                          {/* 区域 3: 右翼精选标题区 (全站文章精选标题，向左微浮动过渡，手绘微倾角) */}
-                          <div className="absolute right-2 sm:right-4 top-16 bottom-12 w-36 sm:w-52 flex flex-col justify-around items-end pointer-events-none text-right">
+                          {/* 区域 3: 右翼精选标题区 (显著手绘大倾角，向中心游动并粒子破碎消散，绝对禁止折行) */}
+                          <div className="absolute right-2 sm:right-4 top-16 bottom-12 flex flex-col justify-around items-end pointer-events-none text-right">
                             {triZoneDanmaku.rightFlank.map((dm, i) => (
                               <div
                                 key={`right-${i}`}
                                 style={{
-                                  animation: "danmaku-right-drift 9s ease-in-out infinite",
+                                  animation: `danmaku-collide-right ${dm.duration} ease-in-out infinite`,
                                   animationDelay: dm.delay,
                                   color: dm.color,
                                   textShadow: "0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.85)",
                                 }}
-                                className={`transform ${dm.rot} text-xs sm:text-[13px] font-bold tracking-wide pointer-events-auto hover:[animation-play-state:paused] hover:scale-105 transition-transform cursor-default`}
+                                className={`transform ${dm.rot} text-xs sm:text-[13px] font-extrabold tracking-wide whitespace-nowrap pointer-events-auto hover:[animation-play-state:paused] hover:scale-105 transition-transform cursor-default`}
                                 title="全站漫游精选文章"
                               >
                                 {dm.text}
