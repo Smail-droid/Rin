@@ -223,14 +223,23 @@ export function SearchButton({ className = "", onClose, plain = false }: { class
   );
 }
 
-export function LanguageSwitch({ className, plain = false, popoverUp: _popoverUp = false }: { className?: string; plain?: boolean; popoverUp?: boolean }) {
+export function LanguageSwitch({ className, plain = false, popoverUp = false }: { className?: string; plain?: boolean; popoverUp?: boolean }) {
   const { i18n } = useTranslation();
-  
-  // 智能识别当前是否为中文环境
-  const isZh = i18n.language?.startsWith("zh") ?? true;
+  const config = useContext(ClientConfigContext);
+  const switchMode = config.get<string>("site.language_switch_mode") || "toggle";
+
+  const languages = [
+    { code: "zh-CN", name: "简体中文" },
+    { code: "en", name: "English" },
+    { code: "zh-TW", name: "繁體中文" },
+    { code: "ja", name: "日本語" },
+  ];
+
+  const currentLng = i18n.language || "zh-CN";
+  const isZh = currentLng.startsWith("zh");
 
   const toggleLanguage = () => {
-    // 一键即时切换中文与英文，消除繁琐下拉弹窗
+    // 一键即时切换中文与英文
     const targetLng = isZh ? "en" : "zh-CN";
     void i18n.changeLanguage(targetLng);
     try {
@@ -238,22 +247,78 @@ export function LanguageSwitch({ className, plain = false, popoverUp: _popoverUp
     } catch {}
   };
 
+  // 1. 如果后台设置为【一键即时切换】模式 (默认)
+  if (switchMode === "toggle") {
+    return (
+      <div className={className + " flex flex-row items-center"}>
+        <button
+          type="button"
+          onClick={toggleLanguage}
+          title={isZh ? "当前: 简体中文 (点击快速切换为 English)" : "Current: English (Click to switch to 简体中文)"}
+          aria-label="Language Toggle"
+          className={
+            plain
+              ? "flex h-8 px-2.5 items-center justify-center gap-1 rounded-full text-xs font-bold text-neutral-600 transition-all hover:text-theme hover:bg-black/5 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-white/10 select-none"
+              : "flex h-8 px-2.5 rounded-full border border-black/10 dark:border-white/10 bg-w items-center justify-center gap-1 text-xs font-bold t-primary bg-button hover:border-theme hover:text-theme shadow-2xs active:scale-95 transition-all select-none"
+          }
+        >
+          <i className="ri-translate-2 text-sm text-theme" />
+          <span className="font-mono text-[11px] uppercase tracking-wider">{isZh ? "中" : "EN"}</span>
+        </button>
+      </div>
+    );
+  }
+
+  // 2. 如果后台设置为【完整多语言面板】模式 (包含简/繁/英/日多语种备用可选)
   return (
     <div className={className + " flex flex-row items-center"}>
-      <button
-        type="button"
-        onClick={toggleLanguage}
-        title={isZh ? "当前: 简体中文 (点击切换为 English)" : "Current: English (Click to switch to 简体中文)"}
-        aria-label="Language Toggle"
-        className={
-          plain
-            ? "flex h-8 px-2.5 items-center justify-center gap-1 rounded-full text-xs font-bold text-neutral-600 transition-all hover:text-theme hover:bg-black/5 dark:text-neutral-300 dark:hover:text-white dark:hover:bg-white/10 select-none"
-            : "flex h-8 px-2.5 rounded-full border border-black/10 dark:border-white/10 bg-w items-center justify-center gap-1 text-xs font-bold t-primary bg-button hover:border-theme hover:text-theme shadow-2xs active:scale-95 transition-all select-none"
+      <Popup
+        trigger={
+          <button
+            title="选择语言 (Languages)"
+            aria-label="Languages"
+            className={
+              plain
+                ? "flex h-8 px-2 items-center justify-center gap-1 text-neutral-500 hover:text-theme transition dark:text-neutral-400 select-none"
+                : "flex h-8 px-2.5 rounded-full border border-black/10 dark:border-white/10 bg-w items-center justify-center gap-1 text-xs font-bold t-primary bg-button hover:border-theme shadow-2xs select-none"
+            }
+          >
+            <i className="ri-translate-2 text-sm text-theme" />
+            <span className="font-mono text-[11px] uppercase">
+              {currentLng.startsWith("zh-TW") ? "繁" : currentLng.startsWith("zh") ? "中" : currentLng.startsWith("ja") ? "日" : "EN"}
+            </span>
+          </button>
         }
+        position={popoverUp ? "top left" : "bottom right"}
+        arrow={false}
+        closeOnDocumentClick
       >
-        <i className="ri-translate-2 text-sm text-theme" />
-        <span className="font-mono text-[11px] uppercase tracking-wider">{isZh ? "中" : "EN"}</span>
-      </button>
+        <div className={`${HEADER_POPUP_PANEL_CLASS} min-w-36 p-1.5`}>
+          <p className="px-2.5 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+            语言切换 (Languages)
+          </p>
+          {languages.map(({ code, name }) => (
+            <button
+              key={code}
+              type="button"
+              onClick={() => {
+                void i18n.changeLanguage(code);
+                try {
+                  localStorage.setItem("i18nextLng", code);
+                } catch {}
+              }}
+              className={`w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-left transition select-none ${
+                currentLng === code
+                  ? "bg-theme text-white font-bold"
+                  : "t-primary hover:bg-black/5 dark:hover:bg-white/10"
+              }`}
+            >
+              <span>{name}</span>
+              {currentLng === code && <i className="ri-check-line text-xs" />}
+            </button>
+          ))}
+        </div>
+      </Popup>
     </div>
   );
 }

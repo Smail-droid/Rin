@@ -1044,25 +1044,27 @@ export function Settings() {
                 </div>
               </div>
 
-              {/* Site Language & Translation Preferences (博客多语言与翻译偏好设置) */}
+              {/* Site Language & Translation Preferences (博客多语言与国际化全景控制中心) */}
               <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10">
                 <div className="flex flex-col gap-3 rounded-2xl border border-black/5 bg-black/[0.015] p-4 dark:border-white/5 dark:bg-white/[0.02]">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <div className="text-sm font-semibold t-primary flex items-center gap-2">
                         <i className="ri-translate-2 text-theme" />
-                        <span>多语言偏好与国际化设置</span>
+                        <span>多语言偏好与国际化控制中心</span>
                       </div>
                       <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 max-w-md">
-                        当前博客已内置全套中英国际化系统。前台顶栏提供一键快速在中英文之间即时切换。
+                        当前系统已内置 简体中文 (zh-CN)、繁体中文 (zh-TW)、English (en)、日本語 (ja) 完整语言包。
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
                       {[
                         { code: "auto", label: "浏览器自适应 (Auto)" },
-                        { code: "zh-CN", label: "简体中文 (zh-CN)" },
-                        { code: "en", label: "English (en)" },
+                        { code: "zh-CN", label: "简体中文" },
+                        { code: "en", label: "English" },
+                        { code: "zh-TW", label: "繁體中文" },
+                        { code: "ja", label: "日本語" },
                       ].map((item) => {
                         const currentPref = String(clientConfig.get("site.language_preference") ?? "auto");
                         const isSelected = currentPref === item.code;
@@ -1089,8 +1091,44 @@ export function Settings() {
                     </div>
                   </div>
 
-                  <div className="text-[11px] text-neutral-400">
-                    💡 说明：在【浏览器自适应】模式下，系统会优先根据访客操作系统的第一首选语言（navigator.language）自动展示对应的中文或英文；访客点击顶栏翻译按钮可自由就地切换并本地记忆。
+                  {/* 顶栏切换交互模式配置：一键即时切换 vs 完整下拉菜单 */}
+                  <div className="pt-3 border-t border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-bold t-primary block">前台顶栏语言切换按钮模式</span>
+                      <span className="text-[11px] text-neutral-400">
+                        {String(clientConfig.get("site.language_switch_mode") ?? "toggle") === "toggle"
+                          ? "当前为【一键即时切换】：点击直接在中英之间无感切换，免去二级下拉"
+                          : "当前为【完整多语言面板】：点击弹出包含 简/繁/英/日 的精美语言选择面板"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {[
+                        { mode: "toggle", label: "一键中英即时切换" },
+                        { mode: "menu", label: "完整多语言弹出面板" },
+                      ].map((m) => {
+                        const currentMode = String(clientConfig.get("site.language_switch_mode") ?? "toggle");
+                        const isSelected = currentMode === m.mode;
+                        return (
+                          <button
+                            key={m.mode}
+                            type="button"
+                            onClick={() => setConfigValue("client", "site.language_switch_mode", m.mode)}
+                            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all select-none ${
+                              isSelected
+                                ? "bg-theme text-white shadow-2xs"
+                                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300"
+                            }`}
+                          >
+                            {m.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="text-[11px] text-neutral-400 leading-relaxed">
+                    💡 自适应探测机制：在【浏览器自适应】下，系统会自动探测访客系统的 <code className="font-mono text-theme font-bold">navigator.language</code>。当命中中文时展示简体/繁体，命中日文时展示日本語，其他任何未知国家语言（如德法西韩）将统一平滑回退（Fallback）到通用国际 English。
                   </div>
                 </div>
               </div>
