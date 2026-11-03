@@ -81,7 +81,7 @@ function GlassDropdown<T extends string>({
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 z-[999] rounded-xl border border-black/10 dark:border-white/15 bg-w/98 dark:bg-neutral-900/98 backdrop-blur-2xl shadow-2xl p-1.5 flex flex-col gap-1 max-h-60 overflow-y-auto ani-show ring-1 ring-black/5 dark:ring-white/10">
+        <div className="absolute top-full left-0 right-0 mt-1.5 z-[9999] rounded-xl border border-black/15 dark:border-white/20 bg-white dark:bg-[#1a1f2c] shadow-[0_20px_50px_rgba(0,0,0,0.35)] p-1.5 flex flex-col gap-1 max-h-60 overflow-y-auto ani-show ring-1 ring-black/10 dark:ring-white/10 select-none">
           {options.map((opt) => (
             <button
               key={opt.value}
@@ -90,15 +90,15 @@ function GlassDropdown<T extends string>({
                 onChange(opt.value);
                 setOpen(false);
               }}
-              className={`w-full flex flex-col text-left px-2.5 py-1.5 rounded-lg text-xs transition ${
+              className={`w-full flex flex-col text-left px-2.5 py-2 rounded-lg text-xs transition ${
                 opt.value === value
-                  ? "bg-theme text-white font-bold"
-                  : "text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/5"
+                  ? "bg-theme text-white font-bold shadow-xs"
+                  : "text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800"
               }`}
             >
-              <span>{opt.label}</span>
+              <span className="font-semibold">{opt.label}</span>
               {opt.sub && (
-                <span className={`text-[10px] mt-0.5 truncate ${opt.value === value ? "text-white/80" : "text-neutral-400"}`}>
+                <span className={`text-[10px] mt-0.5 truncate ${opt.value === value ? "text-white/90" : "text-neutral-500 dark:text-neutral-400"}`}>
                   {opt.sub}
                 </span>
               )}

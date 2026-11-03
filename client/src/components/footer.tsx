@@ -2,101 +2,39 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import Popup from 'reactjs-popup';
 import { useLocation } from 'wouter';
 import { ClientConfigContext } from '../state/config';
-import { ProfileContext } from '../state/profile';
 import { Helmet } from "react-helmet";
 import { siteName } from '../utils/constants';
 import { useTranslation } from "react-i18next";
 import { buildLoginPath, HIDDEN_LOGIN_REDIRECT } from "../utils/auth-redirect";
-import { type ThemeMode, setThemeMode } from "../utils/darkModeUtils";
+import { setThemeMode, useColorMode, type ThemeMode } from "../utils/darkModeUtils";
+
 function Footer() {
-    const { t } = useTranslation()
-    const [, setLocation] = useLocation()
-    const profile = useContext(ProfileContext);
-    const [modeState, setModeState] = useState<ThemeMode>('system');
-    const [widgetPos, setWidgetPos] = useState<{ x: number; y: number } | null>(() => {
-        try {
-            const saved = localStorage.getItem("rin_theme_widget_pos");
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                // 安全防线：如果存储的坐标处于屏幕超下方的异常位置，自动丢弃重置
-                if (parsed && typeof parsed.y === "number" && parsed.y > 0 && parsed.y < window.innerHeight - 30) {
-                    return parsed;
-                }
-            }
-        } catch {}
-        return null;
-    });
+    const { t } = useTranslation();
+    const [, setLocation] = useLocation();
+    const colorMode = useColorMode();
 
-    const resetWidgetPos = (e?: React.MouseEvent) => {
-        if (e) e.stopPropagation();
-        setWidgetPos(null);
-        try {
-            localStorage.removeItem("rin_theme_widget_pos");
-        } catch {}
+    // 像后台一样纯净单键即时切换日间与夜间，绝无跑偏消失
+    const toggleTheme = () => {
+        const next: ThemeMode = colorMode === 'dark' ? 'light' : 'dark';
+        setThemeMode(next);
     };
 
-    // 高精度鼠标/指针拖拽，带有绝对视口安全保护，杜绝跑偏消失
-    const handleStartDrag = (e: React.MouseEvent) => {
-        if (!profile?.permission) return;
-        if ((e.target as HTMLElement).closest("button")) return;
-        e.preventDefault();
-
-        const el = e.currentTarget as HTMLElement;
-        const rect = el.getBoundingClientRect();
-        const offsetX = e.clientX - rect.left;
-        const offsetY = e.clientY - rect.top;
-
-        const onMouseMove = (moveEvent: MouseEvent) => {
-            const rawX = moveEvent.clientX - offsetX;
-            const rawY = moveEvent.clientY - offsetY;
-            // 视口安全保护：顶部留出 75px 防被 Header 遮挡，底部留出 60px，左右各留 20px
-            const safeX = Math.max(20, Math.min(window.innerWidth - 190, rawX));
-            const safeY = Math.max(75, Math.min(window.innerHeight - 65, rawY));
-            setWidgetPos({ x: safeX, y: safeY });
-        };
-
-        const onMouseUp = (upEvent: MouseEvent) => {
-            window.removeEventListener("mousemove", onMouseMove);
-            window.removeEventListener("mouseup", onMouseUp);
-            const rawX = upEvent.clientX - offsetX;
-            const rawY = upEvent.clientY - offsetY;
-            const safeX = Math.max(20, Math.min(window.innerWidth - 190, rawX));
-            const safeY = Math.max(75, Math.min(window.innerHeight - 65, rawY));
-            const next = { x: safeX, y: safeY };
-            setWidgetPos(next);
-            try {
-                localStorage.setItem("rin_theme_widget_pos", JSON.stringify(next));
-            } catch {}
-        };
-
-        window.addEventListener("mousemove", onMouseMove);
-        window.addEventListener("mouseup", onMouseUp);
-    };
     const config = useContext(ClientConfigContext);
     const footerHtml = config.get<string>('footer');
     const footerHtmlRef = useRef<HTMLDivElement | null>(null);
     const mountedScriptNodesRef = useRef<HTMLScriptElement[]>([]);
     const loginEnabled = config.getBoolean('login.enabled');
     const [doubleClickTimes, setDoubleClickTimes] = useState(0);
-    useEffect(() => {
-        const mode = localStorage.getItem('theme') as ThemeMode || 'system';
-        setModeState(mode);
-        setMode(mode);
-    }, [])
 
     useEffect(() => {
         const container = footerHtmlRef.current;
-        if (!container) {
-            return;
-        }
+        if (!container) return;
 
         mountedScriptNodesRef.current.forEach((script) => script.remove());
         mountedScriptNodesRef.current = [];
         container.replaceChildren();
 
-        if (!footerHtml) {
-            return;
-        }
+        if (!footerHtml) return;
 
         const template = document.createElement('template');
         template.innerHTML = footerHtml;
@@ -107,149 +45,99 @@ function Footer() {
         container.appendChild(template.content.cloneNode(true));
 
         scripts.forEach((script) => {
-            const nextScript = document.createElement('script');
-
-            Array.from(script.attributes).forEach((attribute) => {
-                nextScript.setAttribute(attribute.name, attribute.value);
+            const newScript = document.createElement('script');
+            Array.from(script.attributes).forEach((attr) => {
+                newScript.setAttribute(attr.name, attr.value);
             });
-
-            nextScript.textContent = script.textContent;
-            container.appendChild(nextScript);
-            mountedScriptNodesRef.current.push(nextScript);
+            newScript.textContent = script.textContent;
+            container.appendChild(newScript);
+            mountedScriptNodesRef.current.push(newScript);
         });
 
         return () => {
             mountedScriptNodesRef.current.forEach((script) => script.remove());
             mountedScriptNodesRef.current = [];
         };
-    }, [footerHtml])
-
-    const setMode = (mode: ThemeMode) => {
-        setModeState(mode);
-        setThemeMode(mode);
-    };
-
-    // 单键循环轮转：浅色 (Sun) ➔ 深色 (Moon) ➔ 智能自适应 (Computer)
-    const cycleMode = () => {
-        const next: ThemeMode = modeState === 'light' ? 'dark' : modeState === 'dark' ? 'system' : 'light';
-        setMode(next);
-    };
-
-    const getThemeIconAndLabel = () => {
-        if (modeState === 'light') return { icon: "ri-sun-line text-amber-500", label: "当前: 浅色日间模式 (点击切换为深色夜间)" };
-        if (modeState === 'dark') return { icon: "ri-moon-line text-sky-400", label: "当前: 深色夜间模式 (点击切换为智能自适应)" };
-        return { icon: "ri-computer-line text-theme", label: "当前: 智能自适应 (18:00后夜间，点击切换为浅色)" };
-    };
-
-    const themeInfo = getThemeIconAndLabel();
+    }, [footerHtml]);
 
     return (
         <footer className="w-full flex flex-col items-center justify-center pt-2 pb-6 text-center select-none overflow-hidden">
-        <Helmet>
-            <link rel="alternate" type="application/rss+xml" title={siteName} href="/rss.xml" />
-            <link rel="alternate" type="application/atom+xml" title={siteName} href="/atom.xml" />
-            <link rel="alternate" type="application/json" title={siteName} href="/rss.json" />
-        </Helmet>
-        <div className="flex flex-col mb-4 space-y-2 justify-center items-center t-primary ani-show">
-            <div ref={footerHtmlRef} />
-            <p className='text-xs text-neutral-500 font-normal link-line'>
-                <span onDoubleClick={() => {
-                    if(doubleClickTimes >= 2){ // actually need 3 times doubleClick
-                        setDoubleClickTimes(0)
-                        if(!loginEnabled) {
-                            setLocation(buildLoginPath(HIDDEN_LOGIN_REDIRECT))
+            <Helmet>
+                <link rel="alternate" type="application/rss+xml" title={siteName} href="/rss.xml" />
+                <link rel="alternate" type="application/atom+xml" title={siteName} href="/atom.xml" />
+                <link rel="alternate" type="application/json" title={siteName} href="/rss.json" />
+            </Helmet>
+            <div className="flex flex-col mb-4 space-y-2 justify-center items-center t-primary ani-show">
+                <div ref={footerHtmlRef} />
+                <p className='text-xs text-neutral-500 font-normal link-line'>
+                    <span onDoubleClick={() => {
+                        if (doubleClickTimes >= 2) {
+                            setDoubleClickTimes(0);
+                            if (!loginEnabled) {
+                                setLocation(buildLoginPath(HIDDEN_LOGIN_REDIRECT));
+                            }
+                        } else {
+                            setDoubleClickTimes(doubleClickTimes + 1);
                         }
-                    } else {
-                        setDoubleClickTimes(doubleClickTimes + 1)
-                    }
-                }}>
-                    © {new Date().getFullYear()} Powered by <a className='hover:underline' href="https://www.nodeseek.com/space/39375#/general" target="_blank">80hou</a>
-                </span>
-                {config.getBoolean('rss') && <>
-                    <Spliter />
-                    <Popup trigger={
-                        <button className="hover:underline" type="button">
-                            RSS
-                        </button>
-                    }
-                        position="top center"
-                        arrow={false}
-                        closeOnDocumentClick>
-                        <div className="border-card">
-                            <p className='font-bold t-primary'>
-                                {t('footer.rss')}
-                            </p>
-                            <p>
-                                <a href='/rss.xml'>
-                                    RSS
-                                </a> <Spliter />
-                                <a href='/atom.xml'>
-                                    Atom
-                                </a> <Spliter />
-                                <a href='/rss.json'>
-                                    JSON
-                                </a>
-                            </p>
-
-                        </div>
-                    </Popup>
-                </>}
-            </p>
-            {/* 单键灵动小太阳/月亮圆形按钮 (点击在日/夜/系统自适应三合一单键轮转切换) */}
-            <div
-                style={widgetPos ? {
-                    position: "fixed",
-                    left: `${widgetPos.x}px`,
-                    top: `${widgetPos.y}px`,
-                    zIndex: 99,
-                } : undefined}
-                onMouseDown={handleStartDrag}
-                onDoubleClick={() => resetWidgetPos()}
-                className={`w-fit-content inline-flex items-center gap-1 rounded-full border border-black/10 dark:border-white/10 p-1 bg-w/95 backdrop-blur-xl shadow-md transition-shadow select-none ${
-                    profile?.permission ? "cursor-grab active:cursor-grabbing hover:border-theme hover:ring-2 hover:ring-theme/20" : ""
-                }`}
-                title={profile?.permission ? `管理员特权：${themeInfo.label}；按住拖动，双击复位` : themeInfo.label}
-            >
-                {profile?.permission && (
-                    <span className="pl-1 pr-0.5 text-neutral-400 hover:text-theme text-xs cursor-grab" title="拖拽手柄">
-                        <i className="ri-drag-move-2-line" />
+                    }}>
+                        © {new Date().getFullYear()} Powered by <a className='hover:underline' href="https://www.nodeseek.com/space/39375#/general" target="_blank">80hou</a>
                     </span>
-                )}
+                    {config.getBoolean('rss') && <>
+                        <Spliter />
+                        <Popup trigger={
+                            <button className="hover:underline" type="button">
+                                RSS
+                            </button>
+                        }
+                            position="top center"
+                            arrow={false}
+                            closeOnDocumentClick>
+                            <div className="border-card">
+                                <p className='font-bold t-primary'>
+                                    {t('footer.rss')}
+                                </p>
+                                <p>
+                                    <a href='/rss.xml'>
+                                        RSS
+                                    </a> <Spliter />
+                                    <a href='/atom.xml'>
+                                        Atom
+                                    </a> <Spliter />
+                                    <a href='/rss.json'>
+                                        JSON
+                                    </a>
+                                </p>
+                            </div>
+                        </Popup>
+                    </>}
+                </p>
 
-                <button
-                    type="button"
-                    onClick={cycleMode}
-                    aria-label={themeInfo.label}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/10 hover:scale-105 active:scale-95 transition-all text-sm shadow-2xs"
-                >
-                    <i className={themeInfo.icon} />
-                </button>
-
-                <span className="text-[10px] font-mono px-1.5 font-bold text-neutral-500 hidden sm:inline">
-                    {modeState === 'light' ? "日间" : modeState === 'dark' ? "夜间" : "自适应"}
-                </span>
-
-                {profile?.permission && widgetPos && (
+                {/* 像后台一样纯净灵动的单键日月模式切换按钮，稳稳吸附在页脚中央，绝不消失跑偏 */}
+                <div className="w-fit-content inline-flex items-center gap-1.5 rounded-full border border-black/10 dark:border-white/10 p-1 bg-w/95 backdrop-blur-xl shadow-xs transition-all select-none">
                     <button
                         type="button"
-                        onClick={resetWidgetPos}
-                        title="点击重置吸附在页脚中央"
-                        className="pr-1 pl-0.5 text-[10px] text-neutral-400 hover:text-rose-500 font-mono transition"
+                        onClick={toggleTheme}
+                        aria-label="切换浅色/暗黑模式"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/10 hover:scale-110 active:scale-95 transition-all text-sm shadow-2xs"
+                        title={colorMode === 'dark' ? "当前: 暗黑夜间模式 (点击切换为浅色日间)" : "当前: 浅色日间模式 (点击切换为暗黑夜间)"}
                     >
-                        <i className="ri-close-circle-line" />
+                        <i className={colorMode === 'dark' ? "ri-moon-line text-sky-400 text-base" : "ri-sun-line text-amber-500 text-base"} />
                     </button>
-                )}
+                    <span className="text-[11px] font-mono pr-2 font-bold text-neutral-500 dark:text-neutral-400 select-none">
+                        {colorMode === 'dark' ? "夜间" : "日间"}
+                    </span>
+                </div>
             </div>
-        </div>
-    </footer>
+        </footer>
     );
 }
 
 function Spliter() {
-    return (<span className='px-1'>
-        |
-    </span>
-    )
+    return (
+        <span className='px-1'>
+            |
+        </span>
+    );
 }
 
 export default Footer;
