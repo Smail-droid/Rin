@@ -116,12 +116,14 @@ function AtelierPhotoCard({
             )}
 
             {/* Poster area: high-res, crisp, large image */}
-            <div className="relative w-full overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-800/60 shadow-inner">
+            <div className="relative w-full overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-800/60 shadow-inner min-h-[220px]">
                 {hasImage ? (
                     <img
                         src={feed.avatar}
                         alt=""
                         loading="lazy"
+                        decoding="async"
+                        fetchPriority={index < 2 ? "high" : "low"}
                         onError={() => setImageError(true)}
                         className="w-full h-auto max-h-[580px] object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                     />
