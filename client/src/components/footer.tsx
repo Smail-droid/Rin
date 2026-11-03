@@ -129,6 +129,20 @@ function Footer() {
         setThemeMode(mode);
     };
 
+    // 单键循环轮转：浅色 (Sun) ➔ 深色 (Moon) ➔ 智能自适应 (Computer)
+    const cycleMode = () => {
+        const next: ThemeMode = modeState === 'light' ? 'dark' : modeState === 'dark' ? 'system' : 'light';
+        setMode(next);
+    };
+
+    const getThemeIconAndLabel = () => {
+        if (modeState === 'light') return { icon: "ri-sun-line text-amber-500", label: "当前: 浅色日间模式 (点击切换为深色夜间)" };
+        if (modeState === 'dark') return { icon: "ri-moon-line text-sky-400", label: "当前: 深色夜间模式 (点击切换为智能自适应)" };
+        return { icon: "ri-computer-line text-theme", label: "当前: 智能自适应 (18:00后夜间，点击切换为浅色)" };
+    };
+
+    const themeInfo = getThemeIconAndLabel();
+
     return (
         <footer className="w-full flex flex-col items-center justify-center pt-2 pb-6 text-center select-none overflow-hidden">
         <Helmet>
@@ -181,6 +195,7 @@ function Footer() {
                     </Popup>
                 </>}
             </p>
+            {/* 单键灵动小太阳/月亮圆形按钮 (点击在日/夜/系统自适应三合一单键轮转切换) */}
             <div
                 style={widgetPos ? {
                     position: "fixed",
@@ -190,25 +205,36 @@ function Footer() {
                 } : undefined}
                 onMouseDown={handleStartDrag}
                 onDoubleClick={() => resetWidgetPos()}
-                className={`w-fit-content inline-flex items-center gap-1 rounded-full border border-black/10 dark:border-white/10 p-[3px] bg-w/95 backdrop-blur-xl shadow-md transition-shadow select-none ${
+                className={`w-fit-content inline-flex items-center gap-1 rounded-full border border-black/10 dark:border-white/10 p-1 bg-w/95 backdrop-blur-xl shadow-md transition-shadow select-none ${
                     profile?.permission ? "cursor-grab active:cursor-grabbing hover:border-theme hover:ring-2 hover:ring-theme/20" : ""
                 }`}
-                title={profile?.permission ? "管理员特权：按住可自由拖拽；双击重置居中" : "切换浅色/智能自适应/深色模式"}
+                title={profile?.permission ? `管理员特权：${themeInfo.label}；按住拖动，双击复位` : themeInfo.label}
             >
                 {profile?.permission && (
-                    <span className="pl-1.5 pr-0.5 text-neutral-400 hover:text-theme text-xs cursor-grab" title="拖拽手柄">
+                    <span className="pl-1 pr-0.5 text-neutral-400 hover:text-theme text-xs cursor-grab" title="拖拽手柄">
                         <i className="ri-drag-move-2-line" />
                     </span>
                 )}
-                <ThemeButton mode='light' current={modeState} label="浅色日间模式" icon="ri-sun-line" onClick={setMode} />
-                <ThemeButton mode='system' current={modeState} label="智能自适应模式（18:00后自动夜间）" icon="ri-computer-line" onClick={setMode} />
-                <ThemeButton mode='dark' current={modeState} label="深色夜间模式" icon="ri-moon-line" onClick={setMode} />
+
+                <button
+                    type="button"
+                    onClick={cycleMode}
+                    aria-label={themeInfo.label}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/10 hover:scale-105 active:scale-95 transition-all text-sm shadow-2xs"
+                >
+                    <i className={themeInfo.icon} />
+                </button>
+
+                <span className="text-[10px] font-mono px-1.5 font-bold text-neutral-500 hidden sm:inline">
+                    {modeState === 'light' ? "日间" : modeState === 'dark' ? "夜间" : "自适应"}
+                </span>
+
                 {profile?.permission && widgetPos && (
                     <button
                         type="button"
                         onClick={resetWidgetPos}
                         title="点击重置吸附在页脚中央"
-                        className="pr-1.5 pl-0.5 text-[10px] text-neutral-400 hover:text-rose-500 font-mono transition"
+                        className="pr-1 pl-0.5 text-[10px] text-neutral-400 hover:text-rose-500 font-mono transition"
                     >
                         <i className="ri-close-circle-line" />
                     </button>
@@ -224,13 +250,6 @@ function Spliter() {
         |
     </span>
     )
-}
-
-function ThemeButton({ current, mode, label, icon, onClick }: { current: ThemeMode, label: string, mode: ThemeMode, icon: string, onClick: (mode: ThemeMode) => void }) {
-    return (<button aria-label={label} type="button" onClick={() => onClick(mode)}
-        className={`rounded-inherit inline-flex h-[32px] w-[32px] items-center justify-center border-0 t-primary ${current === mode ? "bg-w rounded-full shadow-xl shadow-light" : ""}`}>
-        <i className={`${icon}`} />
-    </button>)
 }
 
 export default Footer;
