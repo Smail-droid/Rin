@@ -36,6 +36,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/access", icon: "ri-shield-keyhole-line", label: "访问权限", tag: "LOCK" },
   { href: "/admin/tokens", icon: "ri-key-2-line", label: "口令生成", tag: "AUTH" },
   { href: "/admin/health", icon: "ri-heart-pulse-line", label: "健康诊断", tag: "DIAG" },
+  { href: "/admin/seo", icon: "ri-search-eye-line", label: "SEO引擎", tag: "SEO" },
   { href: "/admin/compat-tasks", icon: "ri-history-line", label: "兼容回填", tag: "TASKS" },
 ];
 

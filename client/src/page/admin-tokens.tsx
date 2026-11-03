@@ -69,7 +69,7 @@ function GlassDropdown<T extends string>({
   const currentOption = options.find((o) => o.value === value) || options[0];
 
   return (
-    <div ref={ref} className="relative w-full select-none">
+    <div ref={ref} className={`relative w-full select-none ${open ? "z-50" : "z-10"}`}>
       <button
         type="button"
         title={title}
@@ -81,7 +81,7 @@ function GlassDropdown<T extends string>({
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-black/10 dark:border-white/10 bg-w/98 dark:bg-neutral-900/98 backdrop-blur-xl shadow-2xl p-1.5 flex flex-col gap-1 max-h-60 overflow-y-auto ani-show">
+        <div className="absolute top-full left-0 right-0 mt-1.5 z-[999] rounded-xl border border-black/10 dark:border-white/15 bg-w/98 dark:bg-neutral-900/98 backdrop-blur-2xl shadow-2xl p-1.5 flex flex-col gap-1 max-h-60 overflow-y-auto ani-show ring-1 ring-black/5 dark:ring-white/10">
           {options.map((opt) => (
             <button
               key={opt.value}
@@ -215,8 +215,8 @@ export function AdminTokensPage() {
       <AlertUI />
       <ConfirmUI />
 
-      {/* 顶部场景规则配置与生成器 */}
-      <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs">
+      {/* 顶部场景规则配置与生成器 (设置高层级与overflow-visible，防止下拉弹层被遮挡) */}
+      <div className="relative z-20 p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs overflow-visible">
         <div className="flex items-center gap-3 pb-3 border-b border-black/5 dark:border-white/5">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-theme/10 text-theme text-lg">
             <i className="ri-key-2-line" />

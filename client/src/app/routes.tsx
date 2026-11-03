@@ -33,6 +33,7 @@ const CallbackPage = lazy(() => import("../page/callback").then((m) => ({ defaul
 const Settings = lazy(() => import("../page/settings").then((m) => ({ default: m.Settings })));
 const AdminTagsPage = lazy(() => import("../page/admin-tags").then((m) => ({ default: m.AdminTagsPage })));
 const HealthPage = lazy(() => import("../page/health").then((m) => ({ default: m.HealthPage })));
+const AdminSEOPage = lazy(() => import("../page/admin-seo").then((m) => ({ default: m.AdminSEOPage })));
 const AdminAIPage = lazy(() => import("../page/admin-ai").then((m) => ({ default: m.AdminAIPage })));
 const QueueStatusPage = lazy(() => import("../page/queue-status").then((m) => ({ default: m.QueueStatusPage })));
 const CompatTasksPage = lazy(() => import("../page/compat-tasks").then((m) => ({ default: m.CompatTasksPage })));
@@ -114,6 +115,10 @@ export function AppRoutes() {
 
       <AdminRoute path="/admin/health" requirePermission title={t("health.title")} description={t("admin.health_description")}>
         <HealthPage />
+      </AdminRoute>
+
+      <AdminRoute path="/admin/seo" requirePermission title="SEO引擎" description="各大搜索引擎收录指南 · 自动化Sitemap与Robots检测 · Cloudflare IndexNow主动推送">
+        <AdminSEOPage />
       </AdminRoute>
 
       <AdminRoute path="/admin/ai" requirePermission title="AI 助手" description="配置大模型提供商与核心系统指令提示词">
