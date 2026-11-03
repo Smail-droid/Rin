@@ -16,7 +16,13 @@ function Footer() {
     const [widgetPos, setWidgetPos] = useState<{ x: number; y: number } | null>(() => {
         try {
             const saved = localStorage.getItem("rin_theme_widget_pos");
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // 安全防线：如果存储的坐标处于屏幕超下方的异常位置，自动丢弃重置
+                if (parsed && typeof parsed.y === "number" && parsed.y > 0 && parsed.y < window.innerHeight - 30) {
+                    return parsed;
+                }
+            }
         } catch {}
         return null;
     });
@@ -124,92 +130,92 @@ function Footer() {
     };
 
     return (
-        <footer>
-            <Helmet>
-                <link rel="alternate" type="application/rss+xml" title={siteName} href="/rss.xml" />
-                <link rel="alternate" type="application/atom+xml" title={siteName} href="/atom.xml" />
-                <link rel="alternate" type="application/json" title={siteName} href="/rss.json" />
-            </Helmet>
-            <div className="flex flex-col mb-8 space-y-2 justify-center items-center t-primary ani-show">
-                <div ref={footerHtmlRef} />
-                <p className='text-sm text-neutral-500 font-normal link-line'>
-                    <span onDoubleClick={() => {
-                        if(doubleClickTimes >= 2){ // actually need 3 times doubleClick
-                            setDoubleClickTimes(0)
-                            if(!loginEnabled) {
-                                setLocation(buildLoginPath(HIDDEN_LOGIN_REDIRECT))
-                            }
-                        } else {
-                            setDoubleClickTimes(doubleClickTimes + 1)
+        <footer className="w-full flex flex-col items-center justify-center pt-2 pb-6 text-center select-none overflow-hidden">
+        <Helmet>
+            <link rel="alternate" type="application/rss+xml" title={siteName} href="/rss.xml" />
+            <link rel="alternate" type="application/atom+xml" title={siteName} href="/atom.xml" />
+            <link rel="alternate" type="application/json" title={siteName} href="/rss.json" />
+        </Helmet>
+        <div className="flex flex-col mb-4 space-y-2 justify-center items-center t-primary ani-show">
+            <div ref={footerHtmlRef} />
+            <p className='text-xs text-neutral-500 font-normal link-line'>
+                <span onDoubleClick={() => {
+                    if(doubleClickTimes >= 2){ // actually need 3 times doubleClick
+                        setDoubleClickTimes(0)
+                        if(!loginEnabled) {
+                            setLocation(buildLoginPath(HIDDEN_LOGIN_REDIRECT))
                         }
-                    }}>
-                        © {new Date().getFullYear()} Powered by <a className='hover:underline' href="https://www.nodeseek.com/space/39375#/general" target="_blank">80hou</a>
-                    </span>
-                    {config.getBoolean('rss') && <>
-                        <Spliter />
-                        <Popup trigger={
-                            <button className="hover:underline" type="button">
-                                RSS
-                            </button>
-                        }
-                            position="top center"
-                            arrow={false}
-                            closeOnDocumentClick>
-                            <div className="border-card">
-                                <p className='font-bold t-primary'>
-                                    {t('footer.rss')}
-                                </p>
-                                <p>
-                                    <a href='/rss.xml'>
-                                        RSS
-                                    </a> <Spliter />
-                                    <a href='/atom.xml'>
-                                        Atom
-                                    </a> <Spliter />
-                                    <a href='/rss.json'>
-                                        JSON
-                                    </a>
-                                </p>
-
-                            </div>
-                        </Popup>
-                    </>}
-                </p>
-                <div
-                    style={widgetPos ? {
-                        position: "fixed",
-                        left: `${widgetPos.x}px`,
-                        top: `${widgetPos.y}px`,
-                        zIndex: 99,
-                    } : undefined}
-                    onMouseDown={handleStartDrag}
-                    onDoubleClick={() => resetWidgetPos()}
-                    className={`w-fit-content inline-flex items-center gap-1 rounded-full border border-zinc-200 p-[3px] bg-w/90 backdrop-blur-xl shadow-lg dark:border-zinc-700 transition-shadow select-none ${
-                        profile?.permission ? "cursor-grab active:cursor-grabbing hover:border-theme hover:ring-2 hover:ring-theme/20" : ""
-                    }`}
-                    title={profile?.permission ? "管理员特权：按住可自由拖拽；双击重置居中" : "切换浅色/智能自适应/深色模式"}
-                >
-                    {profile?.permission && (
-                        <span className="pl-1.5 pr-0.5 text-neutral-400 hover:text-theme text-xs cursor-grab">
-                            <i className="ri-drag-move-2-line" />
-                        </span>
-                    )}
-                    <ThemeButton mode='light' current={modeState} label="浅色日间模式" icon="ri-sun-line" onClick={setMode} />
-                    <ThemeButton mode='system' current={modeState} label="智能自适应模式（18:00后自动夜间）" icon="ri-computer-line" onClick={setMode} />
-                    <ThemeButton mode='dark' current={modeState} label="深色夜间模式" icon="ri-moon-line" onClick={setMode} />
-                    {profile?.permission && widgetPos && (
-                        <button
-                            type="button"
-                            onClick={resetWidgetPos}
-                            title="点击重置吸附在页脚中央"
-                            className="pr-1.5 pl-0.5 text-[10px] text-neutral-400 hover:text-rose-500 font-mono transition"
-                        >
-                            <i className="ri-close-circle-line" />
+                    } else {
+                        setDoubleClickTimes(doubleClickTimes + 1)
+                    }
+                }}>
+                    © {new Date().getFullYear()} Powered by <a className='hover:underline' href="https://www.nodeseek.com/space/39375#/general" target="_blank">80hou</a>
+                </span>
+                {config.getBoolean('rss') && <>
+                    <Spliter />
+                    <Popup trigger={
+                        <button className="hover:underline" type="button">
+                            RSS
                         </button>
-                    )}
-                </div>
+                    }
+                        position="top center"
+                        arrow={false}
+                        closeOnDocumentClick>
+                        <div className="border-card">
+                            <p className='font-bold t-primary'>
+                                {t('footer.rss')}
+                            </p>
+                            <p>
+                                <a href='/rss.xml'>
+                                    RSS
+                                </a> <Spliter />
+                                <a href='/atom.xml'>
+                                    Atom
+                                </a> <Spliter />
+                                <a href='/rss.json'>
+                                    JSON
+                                </a>
+                            </p>
+
+                        </div>
+                    </Popup>
+                </>}
+            </p>
+            <div
+                style={widgetPos ? {
+                    position: "fixed",
+                    left: `${widgetPos.x}px`,
+                    top: `${widgetPos.y}px`,
+                    zIndex: 99,
+                } : undefined}
+                onMouseDown={handleStartDrag}
+                onDoubleClick={() => resetWidgetPos()}
+                className={`w-fit-content inline-flex items-center gap-1 rounded-full border border-black/10 dark:border-white/10 p-[3px] bg-w/95 backdrop-blur-xl shadow-md transition-shadow select-none ${
+                    profile?.permission ? "cursor-grab active:cursor-grabbing hover:border-theme hover:ring-2 hover:ring-theme/20" : ""
+                }`}
+                title={profile?.permission ? "管理员特权：按住可自由拖拽；双击重置居中" : "切换浅色/智能自适应/深色模式"}
+            >
+                {profile?.permission && (
+                    <span className="pl-1.5 pr-0.5 text-neutral-400 hover:text-theme text-xs cursor-grab" title="拖拽手柄">
+                        <i className="ri-drag-move-2-line" />
+                    </span>
+                )}
+                <ThemeButton mode='light' current={modeState} label="浅色日间模式" icon="ri-sun-line" onClick={setMode} />
+                <ThemeButton mode='system' current={modeState} label="智能自适应模式（18:00后自动夜间）" icon="ri-computer-line" onClick={setMode} />
+                <ThemeButton mode='dark' current={modeState} label="深色夜间模式" icon="ri-moon-line" onClick={setMode} />
+                {profile?.permission && widgetPos && (
+                    <button
+                        type="button"
+                        onClick={resetWidgetPos}
+                        title="点击重置吸附在页脚中央"
+                        className="pr-1.5 pl-0.5 text-[10px] text-neutral-400 hover:text-rose-500 font-mono transition"
+                    >
+                        <i className="ri-close-circle-line" />
+                    </button>
+                )}
             </div>
-        </footer>
+        </div>
+    </footer>
     );
 }
 

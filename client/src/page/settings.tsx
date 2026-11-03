@@ -132,7 +132,7 @@ const STICKY_NOTES_CONFIG = [
 ];
 
 export function Settings() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const siteConfig = useSiteConfig();
   const searchString = useSearch();
   const searchParams = useMemo(() => new URLSearchParams(searchString), [searchString]);
@@ -1040,6 +1040,57 @@ export function Settings() {
                     >
                       字号实时预览：岁月不语，惟石能言。每一篇随笔都是长河里静止的浮游微光，在字里行间静候知音。
                     </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Site Language & Translation Preferences (博客多语言与翻译偏好设置) */}
+              <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10">
+                <div className="flex flex-col gap-3 rounded-2xl border border-black/5 bg-black/[0.015] p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold t-primary flex items-center gap-2">
+                        <i className="ri-translate-2 text-theme" />
+                        <span>多语言偏好与国际化设置</span>
+                      </div>
+                      <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 max-w-md">
+                        当前博客已内置全套中英国际化系统。前台顶栏提供一键快速在中英文之间即时切换。
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {[
+                        { code: "auto", label: "浏览器自适应 (Auto)" },
+                        { code: "zh-CN", label: "简体中文 (zh-CN)" },
+                        { code: "en", label: "English (en)" },
+                      ].map((item) => {
+                        const currentPref = String(clientConfig.get("site.language_preference") ?? "auto");
+                        const isSelected = currentPref === item.code;
+                        return (
+                          <button
+                            key={item.code}
+                            type="button"
+                            onClick={() => {
+                              setConfigValue("client", "site.language_preference", item.code);
+                              if (item.code !== "auto") {
+                                void i18n.changeLanguage(item.code);
+                              }
+                            }}
+                            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all select-none ${
+                              isSelected
+                                ? "bg-theme text-white shadow-xs scale-105"
+                                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="text-[11px] text-neutral-400">
+                    💡 说明：在【浏览器自适应】模式下，系统会优先根据访客操作系统的第一首选语言（navigator.language）自动展示对应的中文或英文；访客点击顶栏翻译按钮可自由就地切换并本地记忆。
                   </div>
                 </div>
               </div>
