@@ -257,6 +257,36 @@ function cleanCodeBlockContent(code: string): string {
   return result;
 }
 
+// 预处理清洗全篇 Markdown 文本（修复历史文章表格换行粘连、LaTeX 公式转纯文本符号等顽疾）
+function preprocessMarkdownContent(raw: string): string {
+  if (!raw) return "";
+  let text = raw;
+
+  // 1. 修复 Markdown 表格前后的空行缺失导致表格无法被解析或与上一段粘连
+  text = text.replace(/([^\n])\n(\|[^\n]+\|)\n/g, "$1\n\n$2\n");
+  text = text.replace(/\n(\|[^\n]+\|)\n([^\n|])/g, "\n$1\n\n$2");
+
+  // 2. 清洗历史旧文章中残留的 LaTeX 数学公式语法，自动还原为纯净易懂的文本：
+  // 例: $\le 65536$ -> ≤ 65536, $\ge 131072$ -> ≥ 131072
+  text = text.replace(/\$\\le\s*([0-9.]+)\$/g, "≤ $1");
+  text = text.replace(/\$\\ge\s*([0-9.]+)\$/g, "≥ $1");
+  text = text.replace(/\$<\s*([0-9.]+)\$/g, "< $1");
+  text = text.replace(/\$>\s*([0-9.]+)\$/g, "> $1");
+  text = text.replace(/\$=\s*([0-9.]+)\$/g, "= $1");
+  text = text.replace(/\$([0-9.]+)\s*\\sim\s*([0-9.]+)\$/g, "$1 ~ $2");
+  text = text.replace(/\$([0-9.]+)\s*\\times\s*([0-9.]+)(?:\\text\{\s*([A-Za-z]+)\s*\})?\s*\\approx\s*(?:\\mathbf\{)?([0-9.]+)(?:\\text\{\s*([A-Za-z]+)\s*\})?\}?\$/g, "$1 × $2$3 ≈ $4 $5");
+  // 消除遗留的普通 $...$ 包裹但内部只是简单不等式/公式的字符
+  text = text.replace(/\$([^\$\n]+)\$/g, (_match, inner) => {
+    let cleaned = inner;
+    cleaned = cleaned.replace(/\\le/g, "≤").replace(/\\ge/g, "≥").replace(/\\approx/g, "≈").replace(/\\times/g, "×").replace(/\\sim/g, "~");
+    cleaned = cleaned.replace(/\\text\{([^\}]+)\}/g, "$1").replace(/\\mathbf\{([^\}]+)\}/g, "$1");
+    cleaned = cleaned.replace(/\\/g, "").trim();
+    return cleaned;
+  });
+
+  return text;
+}
+
 export function Markdown({ content }: { content: string }) {
   const colorMode = useColorMode();
   const [index, setIndex] = React.useState(-1);
@@ -268,11 +298,13 @@ export function Markdown({ content }: { content: string }) {
 
 
 
+  const cleanContent = useMemo(() => preprocessMarkdownContent(content), [content]);
+
   const Content = useMemo(() => (
     <ReactMarkdown
       className="toc-content min-w-0 dark:text-neutral-300 [overflow-wrap:anywhere]"
       remarkPlugins={[gfm, remarkMermaid, remarkAlert, remarkBreaks]}
-      children={content}
+      children={cleanContent}
       rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
       components={{
         img({ node, src, ...props }) {
