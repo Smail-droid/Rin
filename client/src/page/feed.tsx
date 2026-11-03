@@ -136,12 +136,9 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
     if (!feed?.id) return;
     const fetchDanmakuData = async () => {
       try {
-        const [feedRes, commentRes] = await Promise.all([
-          client.feed.list({ limit: 12 }),
-          client.comment.list(feed.id),
-        ]);
+        const commentRes = await client.comment.list(feed.id);
 
-        // 1. 区域 1：顶上天花板轨道 (真实读者留言)
+        // 1. 真实读者纯文字留言提取
         const commentsList: string[] = [];
         if (commentRes.data && Array.isArray(commentRes.data)) {
           commentRes.data.forEach((c: any) => {
@@ -152,39 +149,36 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
           });
         }
         if (commentsList.length === 0) {
-          commentsList.push("漫步在画廊随想记忆工坊", "留下足迹与思想火花", "每一篇随笔都是长河里静止的微光");
+          commentsList.push(
+            "漫步在画廊随想记忆工坊",
+            "留下足迹与思想火花",
+            "每一篇随笔都是长河里静止的微光",
+            "二次元微光美学真舒服",
+            "随性画廊风采，静候知音"
+          );
         }
 
-        // 2. 动态全站文章池洗牌（每次打开随机抽取不同文章，彻底告别固定）
-        const allFetchedArticles: string[] = [];
-        if (feedRes.data?.data && Array.isArray(feedRes.data.data)) {
-          feedRes.data.data.forEach((f: any) => {
-            if (f.id !== feed.id && f.title?.trim()) {
-              const clean = cleanCaptionText(f.title.trim());
-              if (clean) allFetchedArticles.push(clean);
-            }
-          });
-        }
+        // 随机洗牌真实留言
+        const shuffledComments = [...commentsList].sort(() => 0.5 - Math.random());
 
-        // 随机洗牌算法 (Fisher-Yates Shuffle)
-        const shuffledArticles = [...allFetchedArticles].sort(() => 0.5 - Math.random());
-
-        // 3. 区域 2：左翼灵感风采区 (随机文章标题 + 二次元灵感短语交替)
-        const leftBaseQuotes = [
+        // 2. 清爽开场白短语（彻底移除长篇大段文章内容，回归纯净）
+        const aestheticIntros = [
           "一页一世界 · 随性画廊风采",
-          "二次元微光美学与浮游微光",
-          "岁月不语 惟石能言",
-          "每一次灵感火花在此凝结",
-        ];
-        const leftSelected = [
-          ...shuffledArticles.slice(0, 2),
-          ...leftBaseQuotes.sort(() => 0.5 - Math.random()).slice(0, 2),
+          "二次元微光美学 · 浮游微光",
+          "岁月不语 · 惟石能言",
+          "记录每一次灵感火花在此凝结",
         ];
 
-        // 4. 区域 3：右翼精选区 (动态随机抽取的其他精选文章标题)
-        const rightSelected = shuffledArticles.length >= 4 
-          ? shuffledArticles.slice(2, 6) 
-          : ["边缘原生全栈架构", "时光长河岁月足迹", "Cloudflare Serverless", "极客终端代码高亮"];
+        // 3. 区域 2 与 3：以清爽美学开场，后续 100% 衔接真实读者留言（绝不放长文章内容）
+        const leftStream = [
+          aestheticIntros[0],
+          ...shuffledComments.slice(0, 3),
+        ];
+
+        const rightStream = [
+          aestheticIntros[1],
+          ...shuffledComments.slice(3, 6),
+        ];
 
         const topColors = ["#ffffff", "#38bdf8", "#facc15", "#4ade80", "#c084fc", "#ffd166"];
         const leftColors = ["#f472b6", "#c084fc", "#38bdf8", "#ffffff", "#ffd166"];
@@ -196,21 +190,21 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
 
         // 提速后的灵动流速 (加快游动节奏，深入中心才消散)
         setTriZoneDanmaku({
-          topTrack: commentsList.slice(0, 8).map((text, i) => ({
+          topTrack: shuffledComments.slice(0, 8).map((text, i) => ({
             text,
             delay: `${(1.2 + i * 3.8).toFixed(1)}s`,
             duration: `${(13 + (i % 3) * 2.5).toFixed(1)}s`,
             color: topColors[i % topColors.length],
             direction: i % 2 === 0 ? "rtl" : "ltr", // 奇偶双向交替对向飞越
           })),
-          leftFlank: leftSelected.map((text, i) => ({
+          leftFlank: leftStream.map((text, i) => ({
             text,
             delay: `${(i * 2.4).toFixed(1)}s`,
             duration: `${(4.8 + (i % 3) * 1.4).toFixed(1)}s`,
             color: leftColors[i % leftColors.length],
             rot: leftRots[i % leftRots.length],
           })),
-          rightFlank: rightSelected.map((text, i) => ({
+          rightFlank: rightStream.map((text, i) => ({
             text,
             delay: `${(0.6 + i * 2.5).toFixed(1)}s`,
             duration: `${(5.2 + (i % 3) * 1.5).toFixed(1)}s`,

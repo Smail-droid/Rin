@@ -14,30 +14,29 @@ export type NavItem = {
 };
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
-  { href: "/admin/dashboard", icon: "ri-dashboard-3-line", label: "画廊概览", tag: "CORE" },
-  { href: "/admin/writing", icon: "ri-quill-pen-line", label: "文章撰写", tag: "WRITE" },
-  { href: "/admin/files", icon: "ri-folder-image-line", label: "图床媒体", tag: "MEDIA" },
-  { href: "/admin/settings?tab=general", icon: "ri-equalizer-line", label: "基础设置", tag: "BASIC" },
+  { href: "/admin/dashboard", icon: "ri-dashboard-3-line", label: "概览" },
+  { href: "/admin/writing", icon: "ri-quill-pen-line", label: "撰写" },
+  { href: "/admin/files", icon: "ri-folder-image-line", label: "图床" },
+  { href: "/admin/settings?tab=general", icon: "ri-equalizer-line", label: "基础" },
   {
     href: "/admin/settings?tab=atelier",
     icon: "ri-palette-line",
-    label: "画廊进阶",
-    tag: "ADV",
+    label: "进阶",
     children: [
-      { href: "/admin/settings?tab=atelier&focus=about", label: "便签配置", tag: "NOTES" },
-      { href: "/admin/settings?tab=theme", label: "主题字效", tag: "FONTS" },
-      { href: "/admin/settings?tab=atelier&focus=deck", label: "相册卡片", tag: "DECK" },
+      { href: "/admin/settings?tab=atelier&focus=about", label: "便签" },
+      { href: "/admin/settings?tab=theme", label: "字效" },
+      { href: "/admin/settings?tab=atelier&focus=deck", label: "相册" },
     ],
   },
-  { href: "/admin/tags", icon: "ri-price-tag-3-line", label: "分类标签", tag: "TAGS" },
-  { href: "/admin/ai", icon: "ri-sparkling-fill", label: "智能助手", tag: "AI" },
-  { href: "/admin/queue-status", icon: "ri-todo-line", label: "队列监控", tag: "QUEUE" },
-  { href: "/admin/openlist", icon: "ri-hard-drive-2-line", label: "资源列表", tag: "LIST" },
-  { href: "/admin/access", icon: "ri-shield-keyhole-line", label: "访问权限", tag: "LOCK" },
-  { href: "/admin/tokens", icon: "ri-key-2-line", label: "口令生成", tag: "AUTH" },
-  { href: "/admin/health", icon: "ri-heart-pulse-line", label: "健康诊断", tag: "DIAG" },
-  { href: "/admin/seo", icon: "ri-search-eye-line", label: "SEO引擎", tag: "SEO" },
-  { href: "/admin/compat-tasks", icon: "ri-history-line", label: "兼容回填", tag: "TASKS" },
+  { href: "/admin/tags", icon: "ri-price-tag-3-line", label: "标签" },
+  { href: "/admin/ai", icon: "ri-sparkling-fill", label: "智能" },
+  { href: "/admin/queue-status", icon: "ri-todo-line", label: "队列" },
+  { href: "/admin/openlist", icon: "ri-hard-drive-2-line", label: "资源" },
+  { href: "/admin/access", icon: "ri-shield-keyhole-line", label: "权限" },
+  { href: "/admin/tokens", icon: "ri-key-2-line", label: "口令" },
+  { href: "/admin/health", icon: "ri-heart-pulse-line", label: "诊断" },
+  { href: "/admin/seo", icon: "ri-search-eye-line", label: "SEO" },
+  { href: "/admin/compat-tasks", icon: "ri-history-line", label: "回填" },
 ];
 
 export function AdminLayout({
@@ -61,7 +60,9 @@ export function AdminLayout({
 
   // 鼠标悬停展开状态
   const [isHovered, setIsHovered] = useState(false);
-  const isExpanded = isPinned || isHovered;
+  // 移动端展开侧边栏抽屉状态
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isExpanded = isPinned || isHovered || mobileMenuOpen;
 
   // 快捷搜索菜单
   const [searchQuery, setSearchQuery] = useState("");
@@ -131,14 +132,26 @@ export function AdminLayout({
     <div
       className="min-h-screen w-full max-w-full bg-[#f8fafc] text-neutral-800 dark:bg-[#12161f] dark:text-[#d1d5db] flex transition-colors duration-200 overflow-x-hidden"
     >
+      {/* 移动端全屏半透明遮罩背景 (防止点击穿透与视觉闪烁) */}
+      {mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden ani-show"
+        />
+      )}
+
       {/* ====================================================================
           1. 3X-UI 风格迷你图标可折叠侧边栏 (默认收起，Hover/Pin 展开)
           ==================================================================== */}
       <aside
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between border-r border-black/10 bg-white/95 backdrop-blur-2xl dark:border-white/10 dark:bg-[#161b26]/95 shadow-2xl transition-all duration-300 ease-in-out select-none ${
-          isExpanded ? "w-64" : "w-[68px]"
+        onMouseEnter={() => {
+          if (typeof window !== "undefined" && window.innerWidth >= 1024) setIsHovered(true);
+        }}
+        onMouseLeave={() => {
+          if (typeof window !== "undefined" && window.innerWidth >= 1024) setIsHovered(false);
+        }}
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between border-r border-black/10 bg-white/98 backdrop-blur-2xl dark:border-white/10 dark:bg-[#161b26]/98 shadow-2xl transition-all duration-200 ease-in-out select-none ${
+          isExpanded ? "w-56 translate-x-0" : "w-[60px] sm:w-[68px] -translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Top Area: Logo, Title, Pin, Theme Toggle */}
@@ -229,47 +242,46 @@ export function AdminLayout({
             )}
           </div>
 
-          {/* Nav Items List */}
-          <nav className="flex flex-col gap-1 p-2 overflow-y-auto max-h-[calc(100vh-280px)] scrollbar-none">
+          {/* Nav Items List (紧凑行间距与移动端流畅排布) */}
+          <nav className="flex flex-col gap-0.5 p-1.5 overflow-y-auto max-h-[calc(100vh-270px)] scrollbar-none">
             {filteredNavItems.map((item) => {
               const isActive = location === item.href || location.startsWith(`${item.href}/`);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`group relative flex items-center rounded-xl transition-all duration-200 ${
-                    isExpanded ? "gap-3 px-3 py-2.5" : "h-11 w-full justify-center"
+                  onClick={() => {
+                    // 移动端点击后自动收回展开菜单，流畅无阻碍
+                    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                      setIsHovered(false);
+                      setIsPinned(false);
+                      setMobileMenuOpen(false);
+                    }
+                  }}
+                  className={`group relative flex items-center rounded-xl transition-all duration-150 ${
+                    isExpanded ? "gap-2.5 px-3 py-1.5" : "h-9 w-full justify-center"
                   } ${
                     isActive
-                      ? "bg-theme text-white shadow-md font-semibold"
+                      ? "bg-theme text-white shadow-xs font-bold"
                       : "text-neutral-600 hover:bg-black/[0.04] dark:text-neutral-400 dark:hover:bg-white/[0.04] dark:hover:text-neutral-200"
                   }`}
                   title={!isExpanded ? item.label : undefined}
                 >
                   <i
-                    className={`${item.icon} text-lg shrink-0 transition-transform ${
-                      isActive ? "scale-110" : "group-hover:scale-110"
+                    className={`${item.icon} text-base shrink-0 transition-transform ${
+                      isActive ? "scale-105" : "group-hover:scale-105"
                     }`}
                   />
 
                   {isExpanded && (
                     <div className="flex flex-1 items-center justify-between min-w-0 ani-show">
-                      <span className="truncate text-xs font-medium">{item.label}</span>
-                      {item.tag && (
-                        <span
-                          className={`rounded-md px-1.5 py-0.2 text-[9px] font-mono uppercase ${
-                            isActive ? "bg-white/20 text-white" : "bg-black/5 text-neutral-400 dark:bg-white/10"
-                          }`}
-                        >
-                          {item.tag}
-                        </span>
-                      )}
+                      <span className="truncate text-xs font-medium tracking-wide">{item.label}</span>
                     </div>
                   )}
 
                   {/* Active Indicator Bar on Collapsed Mode */}
                   {isActive && !isExpanded && (
-                    <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r bg-white" />
+                    <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r bg-theme dark:bg-white" />
                   )}
                 </Link>
               );
@@ -367,28 +379,38 @@ export function AdminLayout({
           2. 主工作区与顶部 3X-UI 风格仪表盘控制栏
           ==================================================================== */}
       <div
-        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${
-          isPinned ? "pl-64" : "pl-[68px]"
-        }`}
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ease-in-out ${
+          isPinned ? "lg:pl-56" : "lg:pl-[68px]"
+        } pl-0`}
       >
         {/* Top 3X-UI Header Bar */}
-        <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-black/5 bg-white/80 px-4 sm:px-6 backdrop-blur-xl dark:border-white/5 dark:bg-[#161b26]/80 select-none">
-          {/* Left: Breadcrumbs & Status Tag */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex items-center gap-2 rounded-full border border-black/10 bg-black/[0.02] px-3.5 py-1 text-xs dark:border-white/10 dark:bg-white/[0.02]">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-bold text-neutral-800 dark:text-neutral-100">后台系统</span>
-              <span className="text-neutral-400 font-bold">/</span>
+        <header className="sticky top-0 z-30 flex h-14 sm:h-16 w-full items-center justify-between border-b border-black/5 bg-white/80 px-3 sm:px-6 backdrop-blur-xl dark:border-white/5 dark:bg-[#161b26]/80 select-none">
+          {/* Left: Mobile Hamburger & Breadcrumbs */}
+          <div className="flex items-center gap-2 min-w-0">
+            {/* 移动端汉堡菜单触发按钮 */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="flex lg:hidden h-8 w-8 items-center justify-center rounded-xl bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 mr-1"
+              title="切换后台导航栏"
+            >
+              <i className={mobileMenuOpen ? "ri-close-line text-lg" : "ri-menu-2-line text-lg"} />
+            </button>
+
+            <div className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-black/10 bg-black/[0.02] px-3 py-1 text-xs dark:border-white/10 dark:bg-white/[0.02]">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="font-bold text-neutral-800 dark:text-neutral-100 hidden sm:inline">后台</span>
+              <span className="text-neutral-400 font-bold hidden sm:inline">/</span>
               <span className="font-bold text-theme truncate">{title}</span>
             </div>
-            <span className="hidden lg:inline-block font-mono text-[11px] text-neutral-400">
+            <span className="hidden xl:inline-block font-mono text-[11px] text-neutral-400">
               v1.0.0 · 边缘原生
             </span>
           </div>
 
           {/* Right: 极客运行状态胶囊 (已移除重复操作按钮，左侧与左上角头像已提供入口) */}
           <div className="flex items-center gap-2 text-xs font-mono text-neutral-400">
-            <span className="hidden sm:inline-block">点击左上角头像可直接返回画廊主页</span>
+            <span className="hidden md:inline-block text-[11px]">点击左上头像返回画廊</span>
           </div>
         </header>
 

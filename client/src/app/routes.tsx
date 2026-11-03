@@ -89,59 +89,59 @@ export function AppRoutes() {
         <AdminDashboardPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/dashboard" requirePermission title="画廊概览" description="系统核心资产统计 · 边缘运行健康指标 · 常用业务快捷中枢">
+      <AdminRoute path="/admin/dashboard" requirePermission title="概览" description="系统核心资产统计 · 边缘运行健康指标 · 常用业务快捷中枢">
         <AdminDashboardPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/openlist" requirePermission title="资源列表" description="OpenList 边缘存储目录索引挂载 · 支持网盘聚合与前台按需展示">
+      <AdminRoute path="/admin/openlist" requirePermission title="资源" description="OpenList 边缘存储目录索引挂载 · 支持网盘聚合与前台按需展示">
         <AdminOpenListPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/access" requirePermission title="访问权限" description="文章隐私与特定内容保护 · 一键加锁与授权验证">
+      <AdminRoute path="/admin/access" requirePermission title="权限" description="文章隐私与特定内容保护 · 一键加锁与授权验证">
         <AdminAccessPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/tokens" requirePermission title="口令生成" description="场景化访问通行证工坊 · 单次即焚/限次查看/永久激活密钥">
+      <AdminRoute path="/admin/tokens" requirePermission title="口令" description="场景化访问通行证工坊 · 单次即焚/限次查看/永久激活密钥">
         <AdminTokensPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/settings" requirePermission title={t("settings.title")} description={t("admin.settings_description")}>
+      <AdminRoute path="/admin/settings" requirePermission title="设置" description={t("admin.settings_description")}>
         <Settings />
       </AdminRoute>
 
-      <AdminRoute path="/admin/tags" requirePermission title="标签分类管理" description="管理与重命名全站标签体系">
+      <AdminRoute path="/admin/tags" requirePermission title="标签" description="管理与重命名全站标签体系">
         <AdminTagsPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/health" requirePermission title={t("health.title")} description={t("admin.health_description")}>
+      <AdminRoute path="/admin/health" requirePermission title="诊断" description={t("admin.health_description")}>
         <HealthPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/seo" requirePermission title="SEO引擎" description="各大搜索引擎收录指南 · 自动化Sitemap与Robots检测 · Cloudflare IndexNow主动推送">
+      <AdminRoute path="/admin/seo" requirePermission title="SEO" description="各大搜索引擎收录指南 · 自动化Sitemap与Robots检测 · Cloudflare IndexNow主动推送">
         <AdminSEOPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/ai" requirePermission title="AI 助手" description="配置大模型提供商与核心系统指令提示词">
+      <AdminRoute path="/admin/ai" requirePermission title="AI" description="配置大模型提供商与核心系统指令提示词">
         <AdminAIPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/queue-status" requirePermission title="队列与任务监控" description="Cloudflare 边缘分布式队列总线 · 实时探针指标 · 异步任务调度与错误自愈治理">
+      <AdminRoute path="/admin/queue-status" requirePermission title="队列" description="Cloudflare 边缘分布式队列总线 · 实时探针指标 · 异步任务调度与错误自愈治理">
         <QueueStatusPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/compat-tasks" requirePermission title={t("compat_tasks.title")} description={t("admin.compat_tasks_description")}>
+      <AdminRoute path="/admin/compat-tasks" requirePermission title="回填" description={t("admin.compat_tasks_description")}>
         <CompatTasksPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/writing" requirePermission title={t("writing")} description={t("admin.writing_description")}>
+      <AdminRoute path="/admin/writing" requirePermission title="撰写" description={t("admin.writing_description")}>
         <WritingPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/writing/:id" requirePermission title={t("writing")} description={t("admin.writing_description")}>
+      <AdminRoute path="/admin/writing/:id" requirePermission title="撰写" description={t("admin.writing_description")}>
         {({ id }) => <WritingPage id={tryInt(0, id)} />}
       </AdminRoute>
 
-      <AdminRoute path="/admin/files" requirePermission title={t("admin_files.title")} description={t("admin_files.description")}>
+      <AdminRoute path="/admin/files" requirePermission title="图床" description={t("admin_files.description")}>
         <AdminFilesPage />
       </AdminRoute>
 
