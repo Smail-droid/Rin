@@ -41,3 +41,8 @@ dist-ssr
 # Bun
 .bun/*
 .jeikcode/codegraph/
+
+# Local User Private Memory & Rules (Strictly uncommitted)
+.jeikcode.user.md
+.jeikcode/user-wrap.md
+*.user.md

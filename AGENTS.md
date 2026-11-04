@@ -58,6 +58,10 @@ bun run release <version>  # 发布新版本 (patch/minor/major/x.y.z)
    - SQLite 的整型布尔值（`top`、`accepted`、`approved` 的 `0` 和 `1`）严禁直接写 `{item.top && <Badge />}`，因为当值为 `0` 时 React 会把数字 `0` 作为文本节点直接渲染到标题前；必须写成显式布尔三元：`{isTop ? <Badge /> : null}`。
 5. **词汇合规与工程品味**：
    - 严禁出现特定私有软路由系统或特定代理面板名称。凡紧凑表格一律称为**“高密单屏超级数据表格 (Dense DataGrid)”**，凡折叠侧栏一律称为**“极简迷你侧边栏 (Mini Sidebar)”**。
+6. **双轨制公私分流记忆与脱敏红线 (Privacy & Secret Sanitization)**：
+   - 随 Git 提交的 `AGENTS.md` 仅沉淀公开通用的**工程经验、设计哲学与 Bug 防踩坑模式**，**严禁将真实的个人隐私（真实密码、私有 Token、生产私有 IP、真实个人联系方式）原样写入 `AGENTS.md`**；
+   - 任何涉及测试密钥、内部域名的表述必须统一使用标准占位符（如 `<YOUR_API_KEY>`、`example.com`）；
+   - 开发者个人的本地私密偏好、内部测试参数与私密笔记，统一存放于被 `.gitignore` 永久忽略的本地 `.jeikcode.user.md` 中，绝不上云泄露。
 
 ---
 
@@ -75,6 +79,13 @@ bun run release <version>  # 发布新版本 (patch/minor/major/x.y.z)
   - 交互原语：React Portal 顶层传送门（解决大图灯箱裁切）、可拖拽指令浮窗、标准底部分页控制器（总数/PageSize/翻页/前往跳转）；
 - 通过组合现有原语、配置状态驱动与插槽扩展（Slots），以极简代码优雅实现复杂灵感。
 
+### 3.3 专业技能联动与方法论协同 (Skills Synergy)
+- 环境中已挂载丰富的专业技能库 (Skills)，遇到特定场景优先调取相应技能驱动：
+  - **复杂问题根因定位**：优先调用 `systematic-debugging` 或 `diagnosing-bugs`，杜绝无依据盲猜；
+  - **代码审查与重构前**：优先激活 `code-review-and-quality` 展开多维度深度审计；
+  - **界面与设计灵感落地**：优先结合 `code-simplification` 提炼既有积木，结合 `design-*` 寻找微光美学迁移路径；
+  - 所有技能执行必须无条件服从本章程的 131 kB 分包红线与安全基线。
+
 ---
 
 ## 4. 🛡️ 底线防线：不可逾越的工程安全基线 (Non-negotiable Baseline)
@@ -87,6 +98,7 @@ bun run release <version>  # 发布新版本 (patch/minor/major/x.y.z)
 4. **暗黑模式磨砂下拉防白底**：避免使用原生 `<select>` 产生的暗黑模式白底白字缺陷，统一使用 `GlassDropdown` 或 `SearchableSelect`，弹层配置 `z-[999]` 与父级防遮挡。
 5. **时区与平滑体验**：SQLite 无时区字符串前端统一标准化补齐，防止月末文章时区丢失；跨页面路由跳转保持视口自动归零回顶。
 6. **自动化风控与兜底**：友链嗅探维持 4 秒超时熔断与三级 Favicon 代理兜底；留言含外链自动转入待审（`approved = 0`）。
+7. **敏感信息与密钥防泄漏红线**：Git 提交前严格审查 `git diff`，严禁将包含真实私钥、Token、`.env` 的敏感改动提交推送至远程仓库。
 
 ---
 
@@ -125,6 +137,7 @@ rin/
 2. [ ] `bun run test` 全量自动化测试套件 100% 绿灯全通（严禁私自删改测试断言掩盖错误）。
 3. [ ] 若涉及依赖或组件变动，`bun run build` 后主入口 `index.js` 依然维持在 ~131 kB 量级，三大重型库保持动态按需加载。
 4. [ ] 遵守词汇审查红线，无违规名称残留；JSX 布尔值严格三元运算，无漏出数字 `0/1`。
+5. [ ] 严格执行隐私脱敏审查，无真实密钥、生产私有 IP 或个人隐私泄露风险。
 
 ### 6.2 门禁后文字复盘汇报纪律 (Post-Checklist Report)
 完成自检后，Agent **必须在回复中以文字形式向开发者明确汇报以下维度**，确保沟通透明且富有建设性：
