@@ -1,296 +1,134 @@
-# AGENTS.md - Rin Project Guidelines
+# AGENTS.md - 🌸 画廊随想 (Gallery Blog) AI 工程开发章程与记忆备忘录
 
-## Build Commands
+> **核心哲学**：**代码可以规范，灵感不该被局限 (Code can be disciplined; inspiration must remain unbounded)。**  
+> 本项目是一座「二次元微光美学 × Serverless 边缘原生全栈 × 高密单屏超级数据网格」的个人画廊博客与知识库系统。
+> 本章程的使命是**守住工程安全与性能底线，同时为一切艺术灵感与前沿交互创意留出无限生长的空间**。所有 AI Agent 必须通读并严格履行本章程。
+
+---
+
+## 1. 常用开发与构建命令 (Build & Tooling Commands)
+
+统一使用 **Bun** 作为包管理器、脚本运行器与测试执行器，通过 `cli/bin/rin.ts` 调度工程任务：
 
 ```bash
-# Development (using Rin CLI)
-bun dev                    # Start both client and server
-bun dev:client            # Client only (Vite + React)
-bun dev:server            # Server only (Wrangler dev server on port 11498)
-bun dev:cron              # Server with cron triggers enabled
+# 开发调试 (Development)
+bun dev                    # 同时启动前端 (Vite + React) 与边缘后端 (Wrangler 端口 11498)
+bun dev:client             # 仅启动前端开发服
+bun dev:server             # 仅启动后端开发服
+bun dev:cron               # 启动带 Cron Triggers 定时任务的后端服务
 
-# Building
-bun run build             # Build all workspaces (turbo)
-bun run check             # TypeScript type check (turbo)
+# 编译与类型检查 (Build & Check)
+bun run build              # 编译全工作区 (Turbo) —— 检查首屏 chunk 体积与懒加载分离
+bun run check              # 全局 TypeScript 严格类型检查 (Turbo)
 
-# Database (using Rin CLI)
-bun run db:generate       # Generate Drizzle migrations
-bun run db:migrate        # Run local database migrations
+# 数据库迁移 (Cloudflare D1 + Drizzle ORM)
+bun run db:generate        # 生成 Drizzle SQL 迁移文件
+bun run db:migrate         # 执行本地 D1 数据库迁移
 
-# Formatting
-bun run format:check      # Check formatting
-bun run format:write      # Fix formatting
+# 代码格式化 (Formatting)
+bun run format:check       # 检查代码格式
+bun run format:write       # 自动修复代码格式
 
-# Deployment (using Rin CLI)
-bun run deploy            # Deploy both frontend (Pages) and backend (Workers)
-bun run deploy:server     # Deploy backend only
- bun run deploy:client     # Deploy frontend only
+# 自动化测试 (Testing - 统一使用 bun:test，严禁引入 Vitest/Jest)
+bun run test               # 运行全栈所有自动化测试 (全量用例必须 100% 绿灯全通)
+bun run test:client        # 仅运行前端测试 (bun:test + jsdom)
+bun run test:server        # 仅运行服务端测试 (bun:test)
+bun run test:coverage      # 生成测试覆盖率报告
 
-# Release (using Rin CLI)
-bun run release <version> # Create a new release (patch/minor/major/x.y.z)
-
-# Testing
-bun run test              # Run all tests (client + server)
-bun run test:client       # Run client tests only
-bun run test:server       # Run server tests only
-bun run test:coverage     # Run tests with coverage report
+# 部署与发布 (Deployment & Release)
+bun run deploy             # 部署前后端至 Cloudflare (Pages + Workers)
+bun run deploy:client      # 仅部署前端 (Cloudflare Pages)
+bun run deploy:server      # 仅部署后端 (Cloudflare Workers)
+bun run release <version>  # 发布新版本 (patch/minor/major/x.y.z)
 ```
 
-## Rin CLI
+---
 
-The project uses a unified CLI tool located at `cli/bin/rin.ts`. Command implementations live under `cli/src/{commands,tasks,lib}`.
+## 2. 🧠 长青记忆与重要对话提炼 (Living Dialogue Distillation)
 
-### CLI Commands
-- `bun cli/bin/rin.ts dev [options]` - Start development server
-- `bun cli/bin/rin.ts deploy [options]` - Deploy to Cloudflare
-- `bun cli/bin/rin.ts db migrate` - Run database migrations
-- `bun cli/bin/rin.ts release <version>` - Create a new release
+本章节记录历次重构碰撞中沉淀的**核心认知与血泪教训**。后来的 Agent 必须将此作为永恒上下文，您可随时手动或指令修正本区内容：
 
-## Architecture Status
+1. **断崖式瘦身初心（永不妥协的分包线）**：
+   - 曾因首屏捆绑 Monaco Editor 与 Mermaid 导致首屏高达 5.68 MB；我们将其压制到 **131.42 kB (gzip: 38.37 kB)**。任何时候严禁静态顶层 `import` 重型库，前台访客视图必须保持 0 字节无关依赖开销。
+2. **核心助手标准化命名：画廊文字侍从 (Text Attendant)**：
+   - 创作工坊中的 AI 助手正式定名为**「画廊文字侍从」**。它拥有就绪态指示、指针拖拽/双击复位、视口防越界、三大选项卡（咨询/预设/流水线）与光标快捷插入能力。
+3. **前后台联动架构原则（绝不把样式写死）**：
+   - 全站页面坚决贯彻“配置驱动视图 (Config-Driven Presentation)”：导航排布（经典/纯文本/灵动岛/底部挂件）、瀑布流列数、留白边距滑块、文章卡片变体（默认/杂志风/紧凑/画册海报）、字号滑块、18 款主题色与 12 种艺术字族，**全部由后台响应式驱动**。严禁在前台写死单一样式，必须保留可调节的弹性槽。
+4. **布尔短路求值防漏 0（经典 JSX 陷阱）**：
+   - SQLite 的整型布尔值（`top`、`accepted`、`approved` 的 `0` 和 `1`）严禁直接写 `{item.top && <Badge />}`，因为当值为 `0` 时 React 会把数字 `0` 作为文本节点直接渲染到标题前；必须写成显式布尔三元：`{isTop ? <Badge /> : null}`。
+5. **词汇合规与工程品味**：
+   - 严禁出现特定私有软路由系统或特定代理面板名称。凡紧凑表格一律称为**“高密单屏超级数据表格 (Dense DataGrid)”**，凡折叠侧栏一律称为**“极简迷你侧边栏 (Mini Sidebar)”**。
 
-This repository is a product monorepo, not a framework monorepo.
+---
 
-- `rin` should learn from `~/projects/rine` on module boundaries and type discipline.
-- `rin` should NOT blindly copy `rine`'s `contracts/core/renderer/adapters/apps` layout.
-- The current repository still centers around a concrete app: React frontend, Cloudflare Worker backend, shared API package, and local CLI tooling.
-- If a change improves directory symmetry but does not improve dependency boundaries, it is usually the wrong refactor.
+## 3. 🎨 界面灵感演进与轻量落地法则 (Fluid Evolution Principles)
 
-### Current Reality
+### 3.1 拥抱发散灵感，拒绝教条局限
+- **风格迁移大于死板规定**：当开发者提出一个新的发散想法或视觉构想时，Agent 的第一天职是**顺应原风格美学脉络（粉白渐变、呼吸感微光、拍立得错落倾角、极客终端）进行自然迁移**，而不是用刻板的尺寸数字去限制创意。
+- **形式服务于场景**：无论是高密紧凑的数据管理，还是舒展留白的画廊漫游，都可以根据场景需要自由演进，探索更优雅的展现形式。
 
-- `client/` is the web application, not a reusable package.
-- `server/` is the Worker application, not a generic framework core.
-- `packages/api/` is the only stable shared package today.
-- `packages/ui/` exists in the tree but is not yet a real workspace package; treat it as incomplete work until it has its own `package.json`, tsconfig, exports, and consumers.
-- `cli/` is an engineering tool for this repo, not a runtime dependency of the product.
+### 3.2 不随意增生组件，重在现有原子积木的巧思组合
+- 严禁为了细微功能生造大量一次性、难以维护的孤岛组件。
+- **优先复用与灵活组合既有原语**：
+  - 基础组件原语：`@rin/ui` (`Modal`, `SearchableSelect`, `Spinner`, `SettingsBadge`)；
+  - 布局与视觉原语：Tailwind 工具类、CSS 渐变与动态变量、拟态毛玻璃 (`backdrop-blur-md`)、`ImageWithFallback`；
+  - 交互原语：React Portal 顶层传送门（解决大图灯箱裁切）、可拖拽指令浮窗、标准底部分页控制器（总数/PageSize/翻页/前往跳转）；
+- 通过组合现有原语、配置状态驱动与插槽扩展（Slots），以极简代码优雅实现复杂灵感。
 
-### Refactor Direction
+---
 
-When restructuring, prefer this target shape over a direct clone of `rine`:
+## 4. 🛡️ 底线防线：不可逾越的工程安全基线 (Non-negotiable Baseline)
+
+创意可以自由发散，但以下底层安全性与鲁棒性底线绝不可触碰：
+
+1. **严格 CSP (Zero Eval 沙盒)**：全站坚决禁用 `'unsafe-eval'`，严禁使用 `eval()`、`new Function()` 或字符串形式的 `setTimeout`/`setInterval`。
+2. **密码学安全随机源**：通行证、Token 及哈希校验统一使用 Web Crypto API 的 `crypto.getRandomValues()`，严禁使用 `Math.random()`。
+3. **React Portal 解决遮挡与溢出**：全屏大图预览灯箱及顶层弹窗必须挂载至 `document.body` 并提权至 `z-[9999]`，杜绝局部 `overflow: hidden` 裁切。
+4. **暗黑模式磨砂下拉防白底**：避免使用原生 `<select>` 产生的暗黑模式白底白字缺陷，统一使用 `GlassDropdown` 或 `SearchableSelect`，弹层配置 `z-[999]` 与父级防遮挡。
+5. **时区与平滑体验**：SQLite 无时区字符串前端统一标准化补齐，防止月末文章时区丢失；跨页面路由跳转保持视口自动归零回顶。
+6. **自动化风控与兜底**：友链嗅探维持 4 秒超时熔断与三级 Favicon 代理兜底；留言含外链自动转入待审（`approved = 0`）。
+
+---
+
+## 5. 📁 架构分层与工程边界 (Architecture Boundaries)
 
 ```text
 rin/
-├── apps/
-│   ├── web/            # current client app
-│   └── worker/         # current server app
+├── client/          # React 18 + Vite 6 + TailwindCSS 前端 SPA 应用
+│   └── src/
+│       ├── components/  # 灵活可复用的业务组件（遵守 Portal / 侍从拖拽 / 微光美学）
+│       ├── page/        # 页面级视图与 14 大后台管理模块
+│       ├── api/         # 类型安全的客户端 API 请求封装 (HttpClient)
+│       └── utils/       # 时区处理、格式转换、安全校验工具
+├── server/          # Cloudflare Workers (`workerd`) 边缘服务端
+│   └── src/
+│       ├── services/    # 路由业务 Handler (按功能模块装配 Router)
+│       ├── db/          # Drizzle ORM + Cloudflare D1 数据库 Schema (snake_case)
+│       ├── core/        # Hono 风格轻量路由器、中间件、上下文与环境类型
+│       └── utils/       # 缓存 (CacheImpl)、Web Crypto、Webhook、AI 提炼工具
 ├── packages/
-│   ├── api/            # shared request/response types and schemas
-│   ├── ui/             # real reusable UI primitives and markdown-related UI
-│   ├── web-core/       # app shell, providers, routing, layout composition
-│   ├── server-core/    # app assembly, middleware, route registration, env typing
-│   └── config/         # shared config keys, defaults, parsing, client-safe views
-├── tools/
-│   └── cli/            # current CLI moved only when boundaries are stable
+│   ├── api/         # @rin/api 前后端共享请求/响应契约与类型定义
+│   ├── ui/          # @rin/ui 基础通用 UI 原语 (Modal, SettingsBadge, Spinner, SearchableSelect)
+│   └── config/      # @rin/config 共享配置模型、默认键名与解析工具
+└── cli/             # 工程构建、数据库迁移、发布与部署 CLI (`cli/bin/rin.ts`)
 ```
 
-This is a direction, not a mandate to rename everything immediately.
+- **架构原则**：保持扁平清晰的产品架构，**严禁盲目重命名 `client/` 或 `server/` 为 `apps/*`**，严禁引入空壳抽象。
 
-## Refactor Guardrails
+---
 
-All agents must follow these rules for architecture work:
+## 6. 🚀 提交前自检门禁与复盘汇报纪律 (Pre-Commit & Reporting)
 
-1. Do not start by renaming `client/` to `apps/web` or `server/` to `apps/worker`.
-2. Do not create empty framework-style packages just to mirror `rine`.
-3. Do not introduce a `renderer` package unless the app actually gains SSR or shared rendering orchestration.
-4. Do not split every server utility into `adapters/*` packages unless there are at least two credible implementations or an immediate runtime boundary that justifies it.
-5. Do not move code across the repo solely for aesthetics if imports, tests, and ownership get worse.
+### 6.1 自动化质量门禁 (Checklist)
+在提交代码前，Agent 必须在终端完成自检：
+1. [ ] `bun run check` 全局 TypeScript 严格类型检查 0 报错。
+2. [ ] `bun run test` 全量自动化测试套件 100% 绿灯全通（严禁私自删改测试断言掩盖错误）。
+3. [ ] 若涉及依赖或组件变动，`bun run build` 后主入口 `index.js` 依然维持在 ~131 kB 量级，三大重型库保持动态按需加载。
+4. [ ] 遵守词汇审查红线，无违规名称残留；JSX 布尔值严格三元运算，无漏出数字 `0/1`。
 
-### Required Refactor Order
-
-For any substantial restructure, agents should work in this order:
-
-1. Stabilize boundaries.
-   - Create real workspace packages before migrating code into them.
-   - Add missing package manifests, tsconfig files, and explicit exports.
-   - Introduce a root TypeScript base config before broad moves.
-2. Extract shared logic.
-   - Move truly shared UI into `packages/ui`.
-   - Move shared config models and parsing into a dedicated shared package.
-   - Keep app-specific composition in the app layer.
-3. Simplify application entrypoints.
-   - Split frontend bootstrap, providers, routes, and layout composition.
-   - Split backend app assembly, middleware registration, and runtime entry handling.
-4. Rename directories only after the dependency graph is cleaner.
-
-If a proposed refactor skips step 1 and jumps to step 4, it should be treated as suspect.
-
-## Layering Rules
-
-### Frontend
-
-- `client/src/App.tsx` should trend toward composition only: providers, routes, and top-level layout wiring.
-- Page initialization, session loading, config hydration, and permission gating should move into dedicated modules when touched.
-- Reusable presentational components belong in `packages/ui` only when they are app-agnostic.
-- Components that depend on `client` state containers, Wouter routing, or app-specific permissions should remain in the app layer.
-
-### Backend
-
-- `server/src/core` currently acts as app assembly, not framework core. Keep that distinction explicit.
-- Route registration, middleware wiring, error mapping, and runtime entrypoints should be separated when refactoring.
-- Business services stay close to the app until a stable abstraction clearly exists.
-- Shared contracts and config types should move out before shared behavior moves out.
-
-### Shared Packages
-
-- `packages/api` is for shared API contracts, schemas, validators, and transport-facing types.
-- Shared packages must not depend on `client/` or `server/` application modules.
-- Shared packages should expose explicit entrypoints and avoid deep relative imports from consumers.
-
-## Required Checks Before Structural Changes
-
-Before any non-trivial reorganization, agents must do all of the following:
-
-1. Read this `AGENTS.md`.
-2. Inspect the current package/workspace manifests.
-3. Search for all imports of the modules being moved.
-4. Verify whether the target package already has a real manifest and public entrypoint.
-5. Explain why the destination layer is better than the current one.
-
-If those checks are not done, the refactor is not ready.
-
-## Anti-Patterns
-
-Avoid these common mistakes:
-
-- Copying `rine` abstractions into `rin` without a product need.
-- Moving files into `packages/` while still importing app internals from them.
-- Creating `core` modules that actually contain product-specific assembly.
-- Mixing sensitive server-only configuration logic with client-safe config views.
-- Leaving half-migrated directories that look shared but are not buildable or imported anywhere.
-
-## Testing
-
-The project has comprehensive test coverage for both client and server:
-
-### Client Tests (Bun + jsdom)
-- **Location**: `client/src/**/__tests__/*.test.ts`
-- **Runner**: Bun's native test runner (`bun:test`); DOM tests import the shared jsdom setup
-- **Commands**:
-  ```bash
-  bun run test:client          # Run tests once
-  bun run test:client:watch    # Watch mode
-  bun run test:client:coverage # With coverage report
-  ```
-
-### Server Tests (Bun)
-- **Location**: `server/src/**/__tests__/*.test.ts`, `server/tests/`
-- **Runner**: Bun's native test runner (`bun:test`)
-- **Commands**:
-  ```bash
-  bun run test:server          # Run tests once
-  bun run test:server:coverage # With coverage report
-  ```
-
-### Test Structure
-- All test files import from `bun:test`; do not add another test runner.
-- Unit tests for services, utilities, and core functionality
-- Integration tests for API endpoints
-- Security tests for mock isolation
-- Fixtures and mocks in `server/tests/fixtures/`
-
-## Code Style Guidelines
-
-### TypeScript
-
-- **Target**: ESNext with ESNext modules
-- **Strict mode**: Enabled
-- **Module resolution**: `bundler` mode
-- **JSX**: `react-jsx` transform
-- Allow importing `.ts` extensions directly
-- Skip lib check for faster builds
-- Unused locals/parameters: NOT enforced (set to false in server, true in client)
-
-### Imports
-
-```typescript
-// External imports first (alphabetical)
-import { eq, and } from "drizzle-orm";
-import React from 'react';
-
-// Internal imports (alphabetical)
-import { Router } from "../core/router";
-import { feeds } from "../db/schema";
-```
-
-### Naming Conventions
-
-- **Files**: kebab-case (e.g., `feed_card.tsx`, `ai-config.ts`)
-- **Components**: PascalCase (e.g., `FeedCard`, `ErrorBoundary`)
-- **Functions**: camelCase (e.g., `FeedService`, `createClient`)
-- **Types/Interfaces**: PascalCase (e.g., `ServiceLoader`, `Context`)
-- **Constants**: UPPER_SNAKE_CASE for true constants
-- **Database tables**: snake_case in schema
-
-### React Components
-
-- Use functional components with hooks
-- Props interface defined inline or as separate type
-- Use `useMemo` for expensive computations
-- Use `useTranslation()` hook for i18n
-- Error boundaries wrap the app
-
-### Server (Cloudflare Workers)
-
-- Service pattern: Each feature is a service function that takes a `Router`
-- Lazy loading for heavy dependencies (WordPress import modules)
-- Database via Drizzle ORM with D1
-- Caching via custom CacheImpl utility
-
-### Commit Messages
-
-Must follow conventional commits format:
-```
-feat: add new feature
-chore: update dependencies
-fix: resolve bug
-docs: update documentation
-ci: update CI configuration
-style: formatting changes
-test: add tests
-pref: performance improvements
-```
-
-Setup the commit hook:
-```bash
-ln -s ../../cli/templates/git-commit-msg.sh .git/hooks/commit-msg
-```
-
-### Error Handling
-
-- Server: Return appropriate HTTP status codes via `set.status`
-- Client: Use error boundaries (`GlobalErrorBoundary`)
-- TypeScript strict null checks enabled
-
-### Project Structure
-
-```
-/home/xeu/projects/rin/
-├── client/          # React + Vite frontend
-│   ├── src/
-│   │   ├── components/   # React components
-│   │   ├── page/        # Page components
-│   │   ├── api/         # API client
-│   │   └── utils/       # Utilities
-├── server/          # Cloudflare Workers backend
-│   ├── src/
-│   │   ├── services/    # API route handlers
-│   │   ├── db/         # Database schema
-│   │   ├── core/       # Router and types
-│   │   └── utils/      # Utilities
-├── packages/        # Shared packages
-│   └── api/         # @rin/api - Shared API types
-├── cli/             # Rin CLI tool
-│   └── bin/
-│       └── rin.ts   # CLI entry point
-├── docs/            # Rspress documentation
-├── cli/             # Rin CLI entrypoints, commands, tasks, templates
-└── scripts/         # Compatibility wrappers around CLI tasks
-```
-
-### Key Technologies
-
-- **Client**: React 18, Vite, TailwindCSS, Wouter (routing), i18next, Vitest
-- **Server**: Hono-like router, Drizzle ORM, Cloudflare Workers/D1, bun:test
-- **Shared Types**: @rin/api package for type-safe API communication
-- **Package Manager**: Bun
-- **Build**: Turbo for monorepo orchestration
-- **Testing**: Vitest (client), Bun native test runner (server)
+### 6.2 门禁后文字复盘汇报纪律 (Post-Checklist Report)
+完成自检后，Agent **必须在回复中以文字形式向开发者明确汇报以下维度**，确保沟通透明且富有建设性：
+1. **灵感落地路径**：如何理解并基于现有风格底蕴迁移实现了开发者的发散想法；
+2. **轻量复用分析**：复用了哪些已有原子积木（避免了盲目新增组件），代码如何保持精炼；
+3. **前后台联动设计**：提供了哪些配置槽或动态参数，前台如何响应感知；
+4. **工程底线与测试确认**：明确汇报类型检查与全栈测试的执行结果。
