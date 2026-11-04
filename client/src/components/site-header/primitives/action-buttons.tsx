@@ -9,6 +9,8 @@ import { removeAuthToken } from "../../../utils/auth";
 import { ImageWithFallback } from "../../image-with-fallback";
 import { HEADER_POPUP_PANEL_CLASS } from "../shared";
 
+import { setThemeMode, useColorMode, type ThemeMode } from "../../../utils/darkModeUtils";
+
 export function HeaderActions({
   profile,
   className = "",
@@ -23,8 +25,37 @@ export function HeaderActions({
   return (
     <div className={className}>
       <SearchButton plain={plain} />
+      <ThemeToggle plain={plain} />
       <LanguageSwitch plain={plain} popoverUp={popoverUp} />
       <UserAvatar profile={profile} plain={plain} popoverUp={popoverUp} />
+    </div>
+  );
+}
+
+// 纯净日月日夜切换按钮 (移至顶栏右侧，黄太阳/粉月亮，纯单键无旁白文字，绝不跑偏)
+export function ThemeToggle({ className = "", plain = false }: { className?: string; plain?: boolean }) {
+  const colorMode = useColorMode();
+
+  const toggleTheme = () => {
+    const next: ThemeMode = colorMode === "dark" ? "light" : "dark";
+    setThemeMode(next);
+  };
+
+  return (
+    <div className={className + " flex flex-row items-center"}>
+      <button
+        type="button"
+        onClick={toggleTheme}
+        aria-label="切换日夜模式"
+        title={colorMode === "dark" ? "当前: 夜间模式 (点击切换为日间)" : "当前: 日间模式 (点击切换为夜间)"}
+        className={
+          plain
+            ? "flex h-8 w-8 items-center justify-center transition-transform hover:scale-115 active:scale-95 select-none"
+            : "flex h-8 w-8 items-center justify-center rounded-full border border-black/10 dark:border-white/10 bg-w hover:border-theme shadow-2xs transition-transform hover:scale-110 active:scale-95 select-none"
+        }
+      >
+        <i className={colorMode === "dark" ? "ri-moon-line text-rose-400 text-base" : "ri-sun-line text-amber-500 text-base"} />
+      </button>
     </div>
   );
 }

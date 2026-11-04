@@ -478,143 +478,161 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                   );
                 })()}
 
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold t-primary break-all mb-2 leading-tight">
-                      {feed.title}
-                    </h1>
-                    <div className="mt-1 mb-2 flex flex-wrap items-center gap-3 text-xs text-neutral-400">
-                      <span className="inline-flex items-center gap-1 font-mono font-bold text-theme">
-                        #{String(feed.id).padStart(4, "0")}
-                      </span>
-                      <span>·</span>
-                      <span className="inline-flex items-center gap-1">
-                        <i className="ri-time-line text-theme" />
-                        <span>约 {readingMinutes} 分钟 ({wordCount} 字)</span>
-                      </span>
-                      <span>·</span>
-                      <span
-                        className="inline-flex items-center gap-1"
-                        title={new Date(feed.createdAt).toLocaleString()}
-                      >
-                        <i className="ri-calendar-line text-theme" />
-                        <span>{timeago(feed.createdAt)}</span>
-                      </span>
-
-                      {feed.createdAt !== feed.updatedAt && (
+                <div className="flex flex-col gap-3">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold t-primary [overflow-wrap:anywhere] leading-snug">
+                    {feed.title}
+                  </h1>
+                    {/* 独立操作工具栏 (复制直链、分享、置顶、编辑、删除)，在小屏上自然独立成行，绝不压缩标题 */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-black/5 dark:border-white/5">
+                      {/* 左侧元信息条 (字数、时间、阅读量) */}
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-neutral-400">
+                        <span className="inline-flex items-center gap-1 font-mono font-bold text-theme">
+                          #{String(feed.id).padStart(4, "0")}
+                        </span>
+                        <span>·</span>
+                        <span className="inline-flex items-center gap-1">
+                          <i className="ri-time-line text-theme" />
+                          <span>约 {readingMinutes} 分钟</span>
+                        </span>
+                        <span>·</span>
                         <span
                           className="inline-flex items-center gap-1"
-                          title={new Date(feed.updatedAt).toLocaleString()}
+                          title={new Date(feed.createdAt).toLocaleString()}
                         >
-                          <i className="ri-refresh-line" />
-                          <span>更新于 {timeago(feed.updatedAt)}</span>
+                          <i className="ri-calendar-line text-theme" />
+                          <span>{timeago(feed.createdAt)}</span>
                         </span>
-                      )}
 
-                      {counterEnabled && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/5 dark:bg-white/5">
-                          <span>{t("count.pv")} {feed.pv}</span>
-                          <span>·</span>
-                          <span>{t("count.uv")} {feed.uv}</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="pt-2 flex items-center gap-1.5 shrink-0">
-                    {/* 一键复制链接 (纯矢量图标，观感清爽) */}
-                    <button
-                      type="button"
-                      onClick={handleCopyLink}
-                      title={copiedLink ? "链接已复制到剪贴板！" : "点击复制文章直链"}
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 hover:bg-theme/10 hover:text-theme text-neutral-600 dark:text-neutral-300 transition"
-                    >
-                      <i className={copiedLink ? "ri-check-line text-emerald-500 text-sm" : "ri-file-copy-line text-sm"} />
-                    </button>
+                        {feed.createdAt !== feed.updatedAt && (
+                          <>
+                            <span>·</span>
+                            <span
+                              className="inline-flex items-center gap-1"
+                              title={new Date(feed.updatedAt).toLocaleString()}
+                            >
+                              <i className="ri-refresh-line" />
+                              <span>更新于 {timeago(feed.updatedAt)}</span>
+                            </span>
+                          </>
+                        )}
 
-                    {/* 分享菜单浮层 (点击空白处自动收回) */}
-                    <div ref={shareMenuRef} className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setIsShareMenuOpen(!isShareMenuOpen)}
-                        title="分享此文章"
-                        className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 hover:bg-theme/10 hover:text-theme text-neutral-600 dark:text-neutral-300 transition"
-                      >
-                        <i className="ri-share-forward-line text-sm" />
-                      </button>
+                        {counterEnabled && (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/5 font-mono text-[11px]">
+                            <span>{t("count.pv")} {feed.pv}</span>
+                            <span>·</span>
+                            <span>{t("count.uv")} {feed.uv}</span>
+                          </span>
+                        )}
+                      </div>
 
-                      {isShareMenuOpen && (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          className="absolute right-0 top-full mt-2 z-40 p-2.5 rounded-2xl bg-w shadow-2xl border border-black/10 dark:border-white/10 w-48 flex flex-col gap-1 ani-show"
+                      {/* 右侧独立操作按钮群 */}
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                        {/* 一键复制链接 */}
+                        <button
+                          type="button"
+                          onClick={handleCopyLink}
+                          title={copiedLink ? "链接已复制到剪贴板！" : "点击复制文章直链"}
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 hover:bg-theme/10 hover:text-theme text-neutral-600 dark:text-neutral-300 transition"
                         >
-                          <div className="text-[10px] font-mono text-neutral-400 px-2 py-1 uppercase tracking-wider">
-                            分享文章至
-                          </div>
+                          <i className={copiedLink ? "ri-check-line text-emerald-500 text-sm" : "ri-file-copy-line text-sm"} />
+                        </button>
+
+                        {/* 分享菜单浮层 */}
+                        <div ref={shareMenuRef} className="relative">
                           <button
                             type="button"
-                            onClick={() => {
-                              handleCopyMarkdown(feed.title || "画廊随想");
-                              setIsShareMenuOpen(false);
-                            }}
-                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-xs text-left text-neutral-700 dark:text-neutral-200 transition"
+                            onClick={() => setIsShareMenuOpen(!isShareMenuOpen)}
+                            title="分享此文章"
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 hover:bg-theme/10 hover:text-theme text-neutral-600 dark:text-neutral-300 transition"
                           >
-                            <i className="ri-markdown-line text-theme" />
-                            <span>{copiedMarkdown ? "已复制 Markdown!" : "复制 Markdown 引用"}</span>
+                            <i className="ri-share-forward-line text-sm" />
                           </button>
-                          <a
-                            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(feed.title || "")}&url=${encodeURIComponent(window.location.href)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={() => setIsShareMenuOpen(false)}
-                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-xs text-left text-neutral-700 dark:text-neutral-200 transition"
-                          >
-                            <i className="ri-twitter-x-line" />
-                            <span>分享到 X (Twitter)</span>
-                          </a>
-                          <a
-                            href={`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(feed.title || "")}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={() => setIsShareMenuOpen(false)}
-                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-xs text-left text-neutral-700 dark:text-neutral-200 transition"
-                          >
-                            <i className="ri-telegram-line text-sky-500" />
-                            <span>分享到 Telegram</span>
-                          </a>
-                        </div>
-                      )}
-                    </div>
 
-                    {profile?.permission && (
-                      <div className="flex gap-1.5 ml-1">
-                        <button
-                          aria-label={top > 0 ? t("untop.title") : t("top.title")}
-                          onClick={topFeed}
-                          title={top > 0 ? "取消置顶" : "置顶文章"}
-                          className={`flex h-8 w-8 items-center justify-center rounded-full transition ${top > 0 ? "bg-theme text-white hover:bg-theme-hover active:bg-theme-active" : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300"}`}
-                        >
-                          <i className="ri-skip-up-line" />
-                        </button>
-                        <Link
-                          aria-label={t("edit")}
-                          href={`/admin/writing/${feed.id}`}
-                          title="在后台修改编辑此文章"
-                          className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:text-theme transition"
-                        >
-                          <i className="ri-edit-2-line" />
-                        </Link>
-                        <button
-                          aria-label={t("delete.title")}
-                          onClick={deleteFeed}
-                          title="删除文章"
-                          className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 text-neutral-400 hover:text-rose-500 transition"
-                        >
-                          <i className="ri-delete-bin-7-line" />
-                        </button>
+                          {isShareMenuOpen && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="absolute right-0 top-full mt-2 z-40 p-2.5 rounded-2xl bg-w shadow-2xl border border-black/10 dark:border-white/10 w-48 flex flex-col gap-1 ani-show"
+                            >
+                              <div className="text-[10px] font-mono text-neutral-400 px-2 py-1 uppercase tracking-wider">
+                                分享文章至
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleCopyMarkdown(feed.title || "画廊随想");
+                                  setIsShareMenuOpen(false);
+                                }}
+                                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-xs text-left text-neutral-700 dark:text-neutral-200 transition"
+                              >
+                                <i className="ri-markdown-line text-theme" />
+                                <span>{copiedMarkdown ? "已复制 Markdown!" : "复制 Markdown 引用"}</span>
+                              </button>
+                              <a
+                                href={`https://service.weibo.com/share/share.php?url=${encodeURIComponent(window.location.href)}&title=${encodeURIComponent(feed.title || "")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => setIsShareMenuOpen(false)}
+                                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-xs text-left text-neutral-700 dark:text-neutral-200 transition"
+                              >
+                                <i className="ri-weibo-line text-rose-500" />
+                                <span>分享到新浪微博</span>
+                              </a>
+                              <a
+                                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(feed.title || "")}&url=${encodeURIComponent(window.location.href)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => setIsShareMenuOpen(false)}
+                                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-xs text-left text-neutral-700 dark:text-neutral-200 transition"
+                              >
+                                <i className="ri-twitter-x-line" />
+                                <span>分享到 X (Twitter)</span>
+                              </a>
+                              <a
+                                href={`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(feed.title || "")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => setIsShareMenuOpen(false)}
+                                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-xs text-left text-neutral-700 dark:text-neutral-200 transition"
+                              >
+                                <i className="ri-telegram-line text-sky-500" />
+                                <span>分享到 Telegram</span>
+                              </a>
+                            </div>
+                          )}
+                        </div>
+
+                        {profile?.permission && (
+                          <div className="flex gap-1.5 ml-1">
+                            <button
+                              aria-label={top > 0 ? t("untop.title") : t("top.title")}
+                              onClick={topFeed}
+                              title={top > 0 ? "取消置顶" : "置顶文章"}
+                              className={`flex h-8 w-8 items-center justify-center rounded-full transition ${top > 0 ? "bg-theme text-white hover:bg-theme-hover active:bg-theme-active" : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300"}`}
+                            >
+                              <i className="ri-skip-up-line" />
+                            </button>
+                            <Link
+                              aria-label={t("edit")}
+                              href={`/admin/writing/${feed.id}`}
+                              title="在后台修改编辑此文章"
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:text-theme transition"
+                            >
+                              <i className="ri-edit-2-line" />
+                            </Link>
+                            <button
+                              aria-label={t("delete.title")}
+                              onClick={deleteFeed}
+                              title="删除文章"
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 text-neutral-400 hover:text-rose-500 transition"
+                            >
+                              <i className="ri-delete-bin-7-line" />
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
+
                 {(hasAISummary || showAISummaryState) && (
                   <div className="my-4 p-4 rounded-xl bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-100 dark:border-purple-800/30">
                     <div className="flex items-center justify-between gap-2 mb-2">
@@ -731,4 +749,3 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
 }
 
 export { TOCHeader } from "../components/toc-header";
-

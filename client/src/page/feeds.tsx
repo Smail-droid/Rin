@@ -115,8 +115,8 @@ function AtelierPhotoCard({
                 </Link>
             )}
 
-            {/* Poster area: high-res, crisp, large image */}
-            <div className="relative w-full overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-800/60 shadow-inner min-h-[220px]">
+            {/* Poster area: high-res, crisp, large image (图片自适应充满，移除多余硬编码min-h以杜绝留黑) */}
+            <div className="relative w-full overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-800/60 shadow-inner">
                 {hasImage ? (
                     <img
                         src={feed.avatar}
@@ -125,7 +125,7 @@ function AtelierPhotoCard({
                         decoding="async"
                         fetchPriority={index < 2 ? "high" : "low"}
                         onError={() => setImageError(true)}
-                        className="w-full h-auto max-h-[580px] object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                        className="w-full h-auto block object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                     />
                 ) : (
                     <div className="flex flex-col items-center justify-center p-8 min-h-60 bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200 dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-950 text-center">

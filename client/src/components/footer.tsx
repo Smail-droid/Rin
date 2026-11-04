@@ -6,18 +6,10 @@ import { Helmet } from "react-helmet";
 import { siteName } from '../utils/constants';
 import { useTranslation } from "react-i18next";
 import { buildLoginPath, HIDDEN_LOGIN_REDIRECT } from "../utils/auth-redirect";
-import { setThemeMode, useColorMode, type ThemeMode } from "../utils/darkModeUtils";
 
 function Footer() {
     const { t } = useTranslation();
     const [, setLocation] = useLocation();
-    const colorMode = useColorMode();
-
-    // 像后台一样纯净单键即时切换日间与夜间，绝无跑偏消失
-    const toggleTheme = () => {
-        const next: ThemeMode = colorMode === 'dark' ? 'light' : 'dark';
-        setThemeMode(next);
-    };
 
     const config = useContext(ClientConfigContext);
     const footerHtml = config.get<string>('footer');
@@ -111,22 +103,6 @@ function Footer() {
                         </Popup>
                     </>}
                 </p>
-
-                {/* 像后台一样纯净灵动的单键日月模式切换按钮，稳稳吸附在页脚中央，绝不消失跑偏 */}
-                <div className="w-fit-content inline-flex items-center gap-1.5 rounded-full border border-black/10 dark:border-white/10 p-1 bg-w/95 backdrop-blur-xl shadow-xs transition-all select-none">
-                    <button
-                        type="button"
-                        onClick={toggleTheme}
-                        aria-label="切换浅色/暗黑模式"
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/10 hover:scale-110 active:scale-95 transition-all text-sm shadow-2xs"
-                        title={colorMode === 'dark' ? "当前: 暗黑夜间模式 (点击切换为浅色日间)" : "当前: 浅色日间模式 (点击切换为暗黑夜间)"}
-                    >
-                        <i className={colorMode === 'dark' ? "ri-moon-line text-sky-400 text-base" : "ri-sun-line text-amber-500 text-base"} />
-                    </button>
-                    <span className="text-[11px] font-mono pr-2 font-bold text-neutral-500 dark:text-neutral-400 select-none">
-                        {colorMode === 'dark' ? "夜间" : "日间"}
-                    </span>
-                </div>
             </div>
         </footer>
     );
