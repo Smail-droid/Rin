@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { wrapTime } from "hono/timing";
 import type { AppContext } from "../core/hono-types";
 import { adminOnly } from "../core/route-boundaries";
+import { count, eq } from "drizzle-orm";
+import { comments, feeds, moments } from "../db/schema";
 import { setAIConfig, getAIConfig } from "../utils/db-config";
 import { executeAIChat, runAIPipelineProcess, testAIModel } from "../utils/ai";
 import { notify } from "../utils/webhook";
@@ -37,6 +39,65 @@ export function ConfigService(): Hono {
 
         return `globalThis.__RIN_CLIENT_CONFIG__=${serialized};`;
     }
+
+    // GET /config/dashboard/stats - 全站真实指标实时统计 (文章/草稿/动态/评论/R2文件与容量)
+    app.get('/dashboard/stats', adminOnly(async (c: AppContext) => {
+        const db = c.get('db');
+        const env = c.get('env');
+
+        try {
+            const [
+                totalFeedsRes,
+                publicFeedsRes,
+                draftFeedsRes,
+                momentsRes,
+                totalCommentsRes,
+                pendingCommentsRes,
+            ] = await Promise.all([
+                db.select({ count: count() }).from(feeds),
+                db.select({ count: count() }).from(feeds).where(eq(feeds.draft, 0)),
+                db.select({ count: count() }).from(feeds).where(eq(feeds.draft, 1)),
+                db.select({ count: count() }).from(moments),
+                db.select({ count: count() }).from(comments),
+                db.select({ count: count() }).from(comments).where(eq(comments.approved, 0)),
+            ]);
+
+            let r2ObjectsCount = 0;
+            let r2TotalBytes = 0;
+            let r2Status = "未配置";
+
+            if (env.R2_BUCKET) {
+                try {
+                    const r2Listing = await env.R2_BUCKET.list({ limit: 500 });
+                    r2ObjectsCount = r2Listing.objects.length;
+                    r2TotalBytes = r2Listing.objects.reduce((acc, obj) => acc + (obj.size || 0), 0);
+                    r2Status = "已连接正常";
+                } catch {
+                    r2Status = "连接异常";
+                }
+            }
+
+            return c.json({
+                feeds: {
+                    total: totalFeedsRes[0]?.count || 0,
+                    published: publicFeedsRes[0]?.count || 0,
+                    draft: draftFeedsRes[0]?.count || 0,
+                },
+                moments: momentsRes[0]?.count || 0,
+                comments: {
+                    total: totalCommentsRes[0]?.count || 0,
+                    pending: pendingCommentsRes[0]?.count || 0,
+                },
+                storage: {
+                    count: r2ObjectsCount,
+                    totalBytes: r2TotalBytes,
+                    status: r2Status,
+                },
+            });
+        } catch (error: any) {
+            return c.text(`Dashboard stats error: ${error?.message || String(error)}`, 500);
+        }
+    }));
 
     // POST /config/test-ai - Test AI model configuration
     // NOTE: Must be defined BEFORE /:type route to avoid being captured as a type parameter

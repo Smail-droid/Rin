@@ -524,6 +524,15 @@ class ConfigAPI {
     return this.http.get<CompatTasksResponse>("/api/config/compat-tasks");
   }
 
+  async getDashboardStats(): Promise<ApiResponse<{
+    feeds: { total: number; published: number; draft: number };
+    moments: number;
+    comments: { total: number; pending: number };
+    storage: { count: number; totalBytes: number; status: string };
+  }>> {
+    return this.http.get("/api/config/dashboard/stats");
+  }
+
   async runCompatAISummary(force = false): Promise<ApiResponse<CompatAISummaryActionResponse>> {
     return this.http.post<CompatAISummaryActionResponse>("/api/config/compat-tasks/ai-summary", { force });
   }
