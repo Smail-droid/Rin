@@ -1,5 +1,5 @@
 import { Modal, SettingsBadge, Spinner } from "@rin/ui";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link } from "wouter";
 import type { QueueStatusItem, QueueStatusResponse } from "../api/client";
@@ -78,6 +78,11 @@ export function QueueStatusPage() {
   const [sortField, setSortField] = useState<"id" | "updatedAt">("updatedAt");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // 分页控制状态 (默认 20 条/页)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(20);
+  const [jumpPageInput, setJumpPageInput] = useState<string>("");
 
   // 状态详情清单弹窗 (Modal)
   const [statusModalType, setStatusModalType] = useState<"pending" | "processing" | "completed" | "failed" | null>(null);
@@ -163,13 +168,54 @@ export function QueueStatusPage() {
     });
   }, [items, statusFilter, searchQuery, sortField, sortOrder]);
 
-  // 全选 / 取消全选
-  const toggleSelectAll = () => {
-    if (selectedIds.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredAndSortedItems.map((item) => item.id)));
+  // 切换筛选 Tab 或搜索时自动重置页码为 1
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, searchQuery, sortField, sortOrder]);
+
+  const totalCount = filteredAndSortedItems.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  // 当前分页切片数据
+  const paginatedItems = useMemo(() => {
+    const start = (safeCurrentPage - 1) * pageSize;
+    return filteredAndSortedItems.slice(start, start + pageSize);
+  }, [filteredAndSortedItems, safeCurrentPage, pageSize]);
+
+  // 动态生成页码列表（带省略号）
+  const pageNumbers = useMemo(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
+    if (safeCurrentPage <= 4) {
+      return [1, 2, 3, 4, 5, "...", totalPages];
+    }
+    if (safeCurrentPage >= totalPages - 3) {
+      return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, "...", safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, "...", totalPages];
+  }, [safeCurrentPage, totalPages]);
+
+  // 前往指定页码
+  const handleJumpPage = () => {
+    const p = parseInt(jumpPageInput.trim(), 10);
+    if (!isNaN(p) && p >= 1 && p <= totalPages) {
+      setCurrentPage(p);
+    }
+    setJumpPageInput("");
+  };
+
+  // 全选 / 取消全选（针对当前分页数据）
+  const isAllCurrentPageSelected = paginatedItems.length > 0 && paginatedItems.every((item) => selectedIds.has(item.id));
+  const toggleSelectAll = () => {
+    const next = new Set(selectedIds);
+    if (isAllCurrentPageSelected) {
+      paginatedItems.forEach((item) => next.delete(item.id));
+    } else {
+      paginatedItems.forEach((item) => next.add(item.id));
+    }
+    setSelectedIds(next);
   };
 
   // 单选
@@ -675,7 +721,7 @@ export function QueueStatusPage() {
                 <th className="py-3 px-4 w-10 text-center">
                   <input
                     type="checkbox"
-                    checked={selectedIds.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0}
+                    checked={isAllCurrentPageSelected}
                     onChange={toggleSelectAll}
                     className="h-3.5 w-3.5 rounded accent-theme cursor-pointer"
                   />
@@ -703,7 +749,7 @@ export function QueueStatusPage() {
                 {/* 4. 「最后更新时间」列前移至标题之后 (支持表头点击升降序) */}
                 <th
                   onClick={() => handleToggleSort("updatedAt")}
-                  className="py-3 px-3 w-44 cursor-pointer hover:text-theme transition"
+                  className="py-3 px-3 w-48 cursor-pointer hover:text-theme transition"
                   title="点击切换最后更新时间升降序"
                 >
                   <div className="flex items-center gap-1">
@@ -731,7 +777,7 @@ export function QueueStatusPage() {
                     <span className="ml-2">正在从边缘加载文章队列…</span>
                   </td>
                 </tr>
-              ) : filteredAndSortedItems.length === 0 ? (
+              ) : paginatedItems.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-neutral-400">
                     <i className="ri-inbox-line text-2xl block mb-1 opacity-50" />
@@ -739,10 +785,10 @@ export function QueueStatusPage() {
                   </td>
                 </tr>
               ) : (
-                filteredAndSortedItems.map((item) => {
+                paginatedItems.map((item) => {
                   const isSelected = selectedIds.has(item.id);
                   const isActing = actingId === item.id;
-                  const isTop = (item.top && item.top > 0);
+                  const isTop = Boolean(item.top && item.top > 0);
                   const statusTone =
                     item.aiSummaryStatus === "completed"
                       ? "success"
@@ -810,29 +856,30 @@ export function QueueStatusPage() {
                             </button>
                           </div>
 
-                          {/* 标题主体与徽标 (已彻底移除重复冗余的 ID: xxx) */}
+                          {/* 标题主体与徽标 (纯净无多余数字拼接) */}
                           <div className="flex flex-col min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {/* 置顶高亮 Tag */}
-                              {isTop && (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold text-[10px] shrink-0 border border-amber-500/20">
-                                  <i className="ri-pushpin-2-fill text-[9px]" />
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {/* 仅置顶文章展示「置顶」Badge，严格布尔三元运算，绝对无多余数字 0 或 1 */}
+                              {isTop ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold text-xs shrink-0 border border-amber-500/25 shadow-2xs">
+                                  <i className="ri-pushpin-2-fill text-xs" />
                                   <span>置顶</span>
                                 </span>
-                              )}
+                              ) : null}
 
+                              {/* 标题文字字号调整为 14px~15px / text-[15px] font-medium，纯净展示标题 */}
                               <Link
                                 href={`/admin/writing?id=${item.id}`}
-                                className="font-bold truncate t-primary hover:text-theme cursor-pointer transition max-w-xs sm:max-w-md"
+                                className="text-[15px] font-medium tracking-tight truncate t-primary hover:text-theme cursor-pointer transition max-w-xs sm:max-w-md lg:max-w-lg"
                                 title="点击直接在后台编辑此文章"
                               >
-                                {item.title || "无标题文章"}
+                                {item.title ? String(item.title).trim() : "无标题文章"}
                               </Link>
                             </div>
 
                             {/* 异常错误或访问权限策略提示 */}
                             {item.aiSummaryError ? (
-                              <span className="text-[10px] text-rose-500 truncate mt-0.5" title={item.aiSummaryError || ""}>
+                              <span className="text-[11px] text-rose-500 truncate mt-0.5" title={item.aiSummaryError || ""}>
                                 ⚠ 任务报错: {item.aiSummaryError}
                               </span>
                             ) : (
@@ -853,8 +900,8 @@ export function QueueStatusPage() {
                         </div>
                       </td>
 
-                      {/* 最后更新时间 (已前移) */}
-                      <td className="py-3.5 px-3 font-mono text-[11px] text-neutral-400 whitespace-nowrap">
+                      {/* 最后更新时间 (字号微调放大至 13px，文本对比度提升为中深色) */}
+                      <td className="py-3.5 px-3 font-mono text-[13px] text-neutral-600 dark:text-neutral-300 font-medium whitespace-nowrap">
                         {new Date(item.updatedAt).toLocaleString()}
                       </td>
 
@@ -975,13 +1022,110 @@ export function QueueStatusPage() {
           </table>
         </div>
 
-        {/* 表格底部汇总信息 */}
-        {generatedAt && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] text-[11px] font-mono text-neutral-400 select-none">
-            <span>显示 {filteredAndSortedItems.length} / 共 {items.length} 篇管理记录</span>
-            <span>快照同步时间: {new Date(generatedAt).toLocaleString()}</span>
+        {/* 表格底部标准分页栏 (Pagination) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] text-xs select-none">
+          {/* 左侧：总条数统计与每页条数切换下拉 */}
+          <div className="flex items-center gap-3">
+            <span className="text-neutral-500 dark:text-neutral-400 font-medium flex items-center gap-1.5">
+              <span>共 <span className="font-mono font-bold text-neutral-800 dark:text-neutral-200">{totalCount}</span> 条</span>
+              {generatedAt && (
+                <span className="text-[11px] text-neutral-400 font-mono hidden lg:inline">
+                  (同步于 {new Date(generatedAt).toLocaleTimeString()})
+                </span>
+              )}
+            </span>
+
+            <div className="relative flex items-center">
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  const newSize = Number(e.target.value);
+                  setPageSize(newSize);
+                  setCurrentPage(1);
+                }}
+                className="appearance-none rounded-lg border border-black/10 bg-white dark:bg-neutral-800 py-1 pl-2.5 pr-7 text-xs font-medium text-neutral-700 dark:text-neutral-200 outline-none focus:border-theme dark:border-white/10 cursor-pointer shadow-2xs hover:border-black/20 dark:hover:border-white/20 transition"
+              >
+                <option value={10}>10 条/页</option>
+                <option value={20}>20 条/页</option>
+                <option value={50}>50 条/页</option>
+              </select>
+              <i className="ri-arrow-down-s-line absolute right-2 pointer-events-none text-neutral-400 text-xs" />
+            </div>
           </div>
-        )}
+
+          {/* 右侧：翻页按钮、动态页码与快速跳转 */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* 上一页 */}
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={safeCurrentPage <= 1}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-black/10 bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:border-theme hover:text-theme disabled:opacity-30 disabled:pointer-events-none transition shadow-2xs text-xs dark:border-white/10"
+              title="上一页"
+            >
+              <i className="ri-arrow-left-s-line" />
+            </button>
+
+            {/* 页码与省略号 */}
+            {pageNumbers.map((p, idx) => {
+              if (p === "...") {
+                return (
+                  <span key={`ellipsis-${idx}`} className="flex h-7 w-5 items-center justify-center text-neutral-400 text-xs">
+                    ...
+                  </span>
+                );
+              }
+              const pageNum = p as number;
+              const isActive = pageNum === safeCurrentPage;
+              return (
+                <button
+                  key={`page-${pageNum}`}
+                  type="button"
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`flex h-7 min-w-[28px] px-2 items-center justify-center rounded-lg text-xs font-mono font-medium transition ${
+                    isActive
+                      ? "bg-theme text-white font-bold shadow-2xs shadow-theme/20"
+                      : "border border-black/10 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-theme hover:text-theme shadow-2xs dark:border-white/10"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+
+            {/* 下一页 */}
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={safeCurrentPage >= totalPages}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-black/10 bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:border-theme hover:text-theme disabled:opacity-30 disabled:pointer-events-none transition shadow-2xs text-xs dark:border-white/10"
+              title="下一页"
+            >
+              <i className="ri-arrow-right-s-line" />
+            </button>
+
+            {/* 快速前往 */}
+            <div className="flex items-center gap-1.5 ml-2 text-neutral-500 dark:text-neutral-400">
+              <span>前往</span>
+              <input
+                type="number"
+                min={1}
+                max={totalPages}
+                value={jumpPageInput}
+                onChange={(e) => setJumpPageInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleJumpPage();
+                  }
+                }}
+                onBlur={handleJumpPage}
+                placeholder={String(safeCurrentPage)}
+                className="h-7 w-12 rounded-lg border border-black/10 bg-white dark:bg-neutral-800 text-center font-mono text-xs text-neutral-700 dark:text-neutral-200 outline-none focus:border-theme dark:border-white/10 shadow-2xs"
+              />
+              <span>页</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ====================================================================
