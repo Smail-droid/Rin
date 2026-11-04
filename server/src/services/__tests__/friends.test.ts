@@ -277,4 +277,66 @@ describe('FriendService', () => {
             expect(res.status).toBe(404);
         });
     });
+
+    describe('POST /inspect - Auto-metadata inspection', () => {
+        it('should reject invalid or missing url', async () => {
+            const res = await app.request('/inspect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: 'not-a-url' }),
+            }, env);
+
+            expect(res.status).toBe(400);
+        });
+
+        it('should return inspected metadata and category for valid URL', async () => {
+            const res = await app.request('/inspect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: 'https://example.com' }),
+            }, env);
+
+            expect(res.status).toBe(200);
+            const data = await res.json() as any;
+            expect(data.domain).toBe('example.com');
+            expect(data.avatar).toContain('example.com');
+            expect(data.category).toBeDefined();
+        });
+    });
+
+    describe('POST /apply - Guest application', () => {
+        it('should allow guest to apply without authentication', async () => {
+            const res = await app.request('/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: 'Guest Blog',
+                    desc: '[友友们] 一个很棒的个人博客',
+                    avatar: 'https://example.com/avatar.png',
+                    url: 'https://example.com',
+                }),
+            }, env);
+
+            expect(res.status).toBe(200);
+
+            const inserted = sqlite.prepare('SELECT * FROM friends WHERE name = ?').get('Guest Blog') as any;
+            expect(inserted).toBeDefined();
+            expect(inserted.accepted).toBe(0); // 待审核
+        });
+
+        it('should validate guest input parameters', async () => {
+            const res = await app.request('/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: '',
+                    desc: '',
+                    avatar: '',
+                    url: '',
+                }),
+            }, env);
+
+            expect(res.status).toBe(400);
+        });
+    });
 });

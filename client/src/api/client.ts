@@ -431,6 +431,16 @@ class FriendAPI {
     return this.http.get<FriendListResponse>("/api/friend");
   }
 
+  // POST /api/friend/inspect
+  async inspect(url: string): Promise<ApiResponse<{ name: string; desc: string; avatar: string; url: string; domain: string; category?: string }>> {
+    return this.http.post("/api/friend/inspect", { url });
+  }
+
+  // POST /api/friend/apply
+  async apply(body: CreateFriendRequest): Promise<ApiResponse<string>> {
+    return this.http.post("/api/friend/apply", body);
+  }
+
   // POST /api/friend
   async create(body: CreateFriendRequest): Promise<ApiResponse<Friend>> {
     return this.http.post<Friend>("/api/friend", body);
