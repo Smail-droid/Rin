@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { client } from "../app/runtime";
 import { Markdown } from "./markdown";
+import { useSiteConfig } from "../hooks/useSiteConfig";
 
 export type AICopilotMessage = {
   role: "user" | "assistant" | "system";
@@ -18,69 +19,37 @@ export type AIExpertPersona = {
 export const AI_EXPERT_PERSONAS: AIExpertPersona[] = [
   {
     id: "tech_architect",
-    name: "极客架构师",
-    icon: "ri-terminal-box-line",
-    tagline: "命令排查 · 配置调优 · 零废话",
+    name: "文字侍从",
+    icon: "ri-quill-pen-line",
+    tagline: "文本清洗 · 代码梳理 · 删繁就简",
     systemInstruction:
-      "你是一位顶尖 Linux/Cloudflare/全栈技术架构师。请以精简干练的硬核风格回答技术问题：直接给出准确的代码块或命令行（必须使用 ```bash 或对应语言包裹），绝对严禁任何客套话、车轱辘话与AI口水式扩写，只输出关键要点、配置步骤与避坑说明。",
+      "你是一位专注于个人博客与画廊工坊的文字侍从（洗脚师）。你的职责是专注处理文本整理、命令纠错与排版洗练：直接给出准确的代码块或步骤（使用对应语言高亮包裹），绝对严禁任何客套废话、车轱辘话与AI口水式扩写，只输出关键要点、配置步骤与避坑说明。",
   },
   {
     id: "editor_polisher",
-    name: "金牌排版润色",
+    name: "排版校对",
     icon: "ri-edit-line",
-    tagline: "中英空格 · 语法润色 · 结构清晰",
+    tagline: "中英空格 · 语法排版 · 结构工整",
     systemInstruction:
-      "你是一位资深中文技术博客编辑。请对文本进行排版润色：规范标题层级结构、严格执行中英文混排空格（盘古之白）、修正标点符号与专业名词大小写，保持文意准确，严禁堆砌辞藻与空洞长篇扩写。",
+      "你是一位画廊随想专属排版校对助手。请对文本进行排版润色：规范标题层级结构、严格执行中英文混排空格（盘古之白）、修正标点符号与专业名词大小写，保持文意准确利落，严禁堆砌无用辞藻。",
   },
   {
     id: "security_auditor",
-    name: "命令与代码审查",
+    name: "命令审查",
     icon: "ri-shield-check-line",
-    tagline: "代码排查 · 命令语法 · 漏洞预警",
+    tagline: "语法闭合 · 字符转义 · 漏洞预警",
     systemInstruction:
-      "你是一位代码安全与命令审核专家。请深度审查输入代码与命令：重点排查括号与引号是否闭合、是否有未转义的特殊字符、是否缺少权限 sudo、是否存在安全隐患，并直接给出修正后的准确版本。",
+      "你是一位代码安全与命令语法审查助手。请深度审查输入代码与命令：重点排查括号与引号是否闭合、是否有未转义的特殊字符、是否有未闭合代码块、是否存在安全隐患，并直接给出修正后的准确版本。",
   },
   {
     id: "brainstorm_expert",
-    name: "博客创意灵感",
+    name: "灵感提炼",
     icon: "ri-lightbulb-line",
-    tagline: "大纲提炼 · 金句总结 · 视角创新",
+    tagline: "核心提纯 · 结构提纲 · 思想火花",
     systemInstruction:
-      "你是一位高口碑技术博主顾问。请为博主提供新颖的文章大纲、切入视角、画龙点睛的总结金句与关键要点，条理清晰，观点鲜明，杜绝套话。",
+      "你是一位随想灵感提炼助手。请为博主提供清晰的文章大纲、切入视角、画龙点睛的总结金句与关键要点，条理清晰，观点鲜明，杜绝套话。",
   },
 ];
-
-// 二次元萌系猫娘看板娘专属矢量 Avatar
-function AnimeChibiAvatar({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
-  const dim = size === "lg" ? "h-11 w-11" : size === "md" ? "h-9 w-9" : "h-7 w-7";
-  return (
-    <div className={`relative ${dim} shrink-0 select-none`}>
-      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
-        {/* Cat Ears */}
-        <path d="M 20 40 L 10 10 L 40 25 Z" fill="#fc466b" />
-        <path d="M 23 35 L 18 18 L 36 26 Z" fill="#ffd1dc" />
-        <path d="M 80 40 L 90 10 L 60 25 Z" fill="#fc466b" />
-        <path d="M 77 35 L 82 18 L 64 26 Z" fill="#ffd1dc" />
-        {/* Head Base */}
-        <circle cx="50" cy="55" r="38" fill="#fff5f7" stroke="#fc466b" strokeWidth="2.5" />
-        {/* Bangs */}
-        <path d="M 18 45 Q 35 32 50 48 Q 65 32 82 45 Q 75 30 50 28 Q 25 30 18 45 Z" fill="#ffb6c1" />
-        {/* Eyes (Anime Sparkle) */}
-        <ellipse cx="36" cy="56" rx="5" ry="7" fill="#4a0e2e" />
-        <circle cx="34" cy="54" r="2.2" fill="#ffffff" />
-        <ellipse cx="64" cy="56" rx="5" ry="7" fill="#4a0e2e" />
-        <circle cx="62" cy="54" r="2.2" fill="#ffffff" />
-        {/* Blush */}
-        <ellipse cx="26" cy="62" rx="4.5" ry="2.5" fill="#ff8da1" opacity="0.7" />
-        <ellipse cx="74" cy="62" rx="4.5" ry="2.5" fill="#ff8da1" opacity="0.7" />
-        {/* Smile */}
-        <path d="M 46 63 Q 50 67 54 63" fill="none" stroke="#4a0e2e" strokeWidth="2" strokeLinecap="round" />
-        {/* Ribbon Star */}
-        <path d="M 72 26 L 76 22 L 78 27 L 82 28 L 78 30 L 76 35 L 73 31 L 68 30 Z" fill="#ffd700" />
-      </svg>
-    </div>
-  );
-}
 
 export function WritingAICopilotDrawer({
   isOpen,
@@ -99,15 +68,29 @@ export function WritingAICopilotDrawer({
   onReplaceContent: (newContent: string) => void;
   onApplySummary: (summary: string) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"chat" | "pipeline">("chat");
+  const siteConfig = useSiteConfig();
+  const [activeTab, setActiveTab] = useState<"chat" | "pipeline" | "presets">("chat");
   const [selectedPersonaId, setSelectedPersonaId] = useState<string>("tech_architect");
+
+  // 从后台读取自定义提示词预设库（实现前后台双向联动）
+  const [promptPresets] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem("rin_ai_prompt_presets");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      { id: "preset_tech_std", stage: "tech", name: "教程技术命令提炼", prompt: "请提取核心执行命令与配置..." },
+      { id: "preset_format_std", stage: "format", name: "文章正文直接排版整理", prompt: "请规范标题层级与中英空格..." },
+      { id: "preset_summary_std", stage: "summary", name: "精炼置顶摘要生成", prompt: "请输出50~100字高密导读..." },
+    ];
+  });
 
   // Chat State
   const [messages, setMessages] = useState<AICopilotMessage[]>([
     {
       role: "assistant",
       content:
-        "喵呜~ 主人好！我是您的专属 AI 萌娘创作伴侣。已开启【纯硬核技术干货】模式，严禁任何废话套话。您可以随时在下方提问命令、配置、代码漏洞或排版梳理。",
+        "您好！我是画廊工坊的文字侍从。已就绪代码与排版精炼模式，请随时在此输入需要排查的命令、代码或排版需求，我将为您输出干净利落的结构化内容。",
     },
   ]);
   const [inputQuestion, setInputQuestion] = useState("");
@@ -325,7 +308,7 @@ export function WritingAICopilotDrawer({
             !position ? "right-4 sm:right-8 top-16 sm:top-20" : ""
           }`}
         >
-          {/* Draggable Header (按住可自由拖拽窗口) */}
+          {/* Draggable Header (左上角使用网站真实头像，典雅工坊侍从) */}
           <div
             onMouseDown={handleDragStart}
             onTouchStart={handleDragStart}
@@ -339,12 +322,22 @@ export function WritingAICopilotDrawer({
             title="按住鼠标可自由拖拽移动窗口位置 · 双击重置到右侧"
           >
             <div className="flex items-center gap-2.5">
-              <AnimeChibiAvatar size="sm" />
+              {siteConfig.avatar ? (
+                <img
+                  src={siteConfig.avatar}
+                  alt={siteConfig.name || "80Hou"}
+                  className="h-8 w-8 rounded-xl object-cover shadow-sm ring-1 ring-theme/20"
+                />
+              ) : (
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-theme to-pink-500 text-white font-extrabold text-[10px] shadow-sm">
+                  80H
+                </span>
+              )}
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-xs font-extrabold t-primary">{activePersona.name}</p>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold">
-                    在线
+                  <p className="text-xs font-extrabold t-primary">画廊文字侍从</p>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold font-mono">
+                    就绪
                   </span>
                   <span className="text-[10px] text-neutral-400 font-normal hidden sm:inline">
                     (可拖拽)
@@ -376,7 +369,7 @@ export function WritingAICopilotDrawer({
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="flex items-center border-b border-black/5 p-1.5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02]">
+          <div className="flex items-center border-b border-black/5 p-1.5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] gap-1">
             <button
               type="button"
               onClick={() => setActiveTab("chat")}
@@ -386,8 +379,20 @@ export function WritingAICopilotDrawer({
                   : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
               }`}
             >
-              <i className="ri-chat-smile-2-line" />
-              <span>萌娘对话</span>
+              <i className="ri-chat-1-line" />
+              <span>对话咨询</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("presets")}
+              className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-1 text-xs font-semibold transition ${
+                activeTab === "presets"
+                  ? "bg-theme text-white shadow-2xs"
+                  : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+              }`}
+            >
+              <i className="ri-list-settings-line" />
+              <span>提示词预设</span>
             </button>
             <button
               type="button"
@@ -399,7 +404,7 @@ export function WritingAICopilotDrawer({
               }`}
             >
               <i className="ri-magic-line" />
-              <span>流水线梳理</span>
+              <span>流水线</span>
             </button>
           </div>
 
@@ -553,8 +558,8 @@ export function WritingAICopilotDrawer({
                     className="w-full resize-none rounded-xl border border-black/10 bg-w px-3 py-2 text-xs leading-relaxed t-primary placeholder-neutral-400 focus:border-theme focus:ring-2 focus:ring-theme/20 outline-none dark:border-white/10"
                   />
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-neutral-400">
-                      💡 拒绝 AI 泔水文扩写 · 输出核心干货
+                    <span className="text-[10px] text-neutral-400 font-serif italic">
+                      岁月不语 · 惟石能言 · 凝结每一次灵感火花
                     </span>
                     <button
                       type="submit"
@@ -570,7 +575,44 @@ export function WritingAICopilotDrawer({
             </div>
           )}
 
-          {/* TAB 2: Pipeline Mode */}
+          {/* TAB 2: Presets Mode (后台预设联动，支持直接选用预设与插入) */}
+          {activeTab === "presets" && (
+            <div className="flex flex-1 min-h-0 flex-col p-3.5 overflow-y-auto space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+                <span className="text-xs font-bold t-primary">后台提示词预设工坊 (实时联动)</span>
+                <span className="text-[10px] text-neutral-400 font-mono">共 {promptPresets.length} 套预设</span>
+              </div>
+
+              <div className="space-y-2">
+                {promptPresets.map((preset) => (
+                  <div
+                    key={preset.id}
+                    className="p-2.5 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col gap-1.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs t-primary">{preset.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInputQuestion(preset.prompt);
+                          setActiveTab("chat");
+                          showToast("已将预设指令填入对话输入框！");
+                        }}
+                        className="px-2 py-0.5 rounded bg-theme/10 hover:bg-theme/20 text-theme text-[10px] font-bold transition"
+                      >
+                        调用此预设
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 line-clamp-2 font-mono leading-relaxed">
+                      {preset.prompt}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: Pipeline Mode */}
           {activeTab === "pipeline" && (
             <div className="flex flex-1 min-h-0 flex-col p-4 overflow-y-auto space-y-4">
               <div>
