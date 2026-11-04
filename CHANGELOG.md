@@ -69,3 +69,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mini Sidebar**: Compact 68px icon rail with hover expansion to 256px and pushpin state persistence.
 - **Polaroid Sticky Notes Wall**: Gallery homepage featuring polaroid paper textures and organic tilts (`rotate-[-1.8°]`).
 - **Comprehensive Test Suite**: 54 suites, 484 unit/integration tests passing (100% green).
+[v1.0.4]: https://github.com/Smail-droid/Rin/releases/tag/v1.0.4
