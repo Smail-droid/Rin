@@ -90,10 +90,10 @@ export function AdminLayout({
       )}
 
       {/* ====================================================================
-          1. 紧凑型专业侧边栏 (固定 60px 纯图标列，绝不暴增占据大宽度)
+          1. 紧凑型专业侧边栏 (向日葵专业暗黑风格：深炭黑底色 #18181b / #1f1f23)
           ==================================================================== */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between border-r border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] shadow-xl transition-transform duration-200 ease-in-out select-none w-16 ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between border-r border-black/10 bg-white dark:border-white/5 dark:bg-[#18181b] shadow-xl transition-transform duration-200 ease-in-out select-none w-16 ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
@@ -129,7 +129,7 @@ export function AdminLayout({
             </button>
           </div>
 
-          {/* 紧凑纯图标导航列表 (高密 py-1.5，极度贴合) */}
+          {/* 紧凑纯图标导航列表 (向日葵专业暗黑配色：未选中 #a1a1aa，选中深炭灰底 + 亮粉字) */}
           <nav className="flex flex-col gap-1 p-1.5 w-full overflow-y-auto max-h-[calc(100vh-220px)] scrollbar-none">
             {filteredNavItems.map((item) => {
               const isActive = location === item.href || location.startsWith(`${item.href}/`);
@@ -140,19 +140,21 @@ export function AdminLayout({
                   onClick={() => setMobileMenuOpen(false)}
                   className={`group relative flex flex-col items-center justify-center rounded-xl py-1.5 w-full transition-all duration-150 ${
                     isActive
-                      ? "bg-theme text-white shadow-xs font-bold"
-                      : "text-neutral-500 hover:bg-black/[0.04] hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/[0.04] dark:hover:text-neutral-100"
+                      ? "bg-theme text-white shadow-xs font-bold dark:bg-[#27272a] dark:text-[#ff4d6d] dark:shadow-inner"
+                      : "text-neutral-500 hover:bg-black/[0.04] hover:text-neutral-900 dark:text-[#a1a1aa] dark:hover:bg-[#27272a]/60 dark:hover:text-white"
                   }`}
                   title={item.label}
                 >
-                  <i className={`${item.icon} text-base shrink-0 transition-transform group-hover:scale-110`} />
+                  <i className={`${item.icon} text-base shrink-0 transition-transform group-hover:scale-110 ${
+                    isActive ? "dark:text-[#ff4d6d]" : ""
+                  }`} />
                   <span className="text-[10px] mt-0.5 tracking-tight font-medium scale-90">
                     {item.label}
                   </span>
 
-                  {/* 激活指示条 */}
+                  {/* 激活指示条 (暗黑模式下为精致的樱粉高光条) */}
                   {isActive && (
-                    <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r bg-white" />
+                    <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-white dark:bg-[#ff4d6d]" />
                   )}
                 </Link>
               );
