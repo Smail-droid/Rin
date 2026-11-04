@@ -86,7 +86,7 @@ export function AdminTagsPage() {
   const [editingName, setEditingName] = useState("");
   const [savingId, setSavingId] = useState<number | null>(null);
 
-  // 排序与选择状态 (iKuai 风格超级数据表格)
+  // 排序与选择状态 (高密单屏超级数据表格)
   const [sortField, setSortField] = useState<"id" | "name" | "feeds">("id");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -309,7 +309,7 @@ export function AdminTagsPage() {
       <ConfirmUI />
 
       {/* ====================================================================
-          1. 顶部 iKuai 风格操作与批量工具栏
+          1. 顶部操作与批量工具栏
           ==================================================================== */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs">
         {/* 左侧动作组: [添加] [批量删除] [统计信息] */}
@@ -390,7 +390,7 @@ export function AdminTagsPage() {
       </div>
 
       {/* ====================================================================
-          2. iKuai 风格超级数据表格 (Dense DataGrid)
+          2. 高密单屏超级数据表格 (Dense DataGrid)
           ==================================================================== */}
       <div className="rounded-2xl border border-black/10 bg-w dark:border-white/10 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
@@ -637,7 +637,7 @@ export function AdminTagsPage() {
         </div>
 
         {/* ====================================================================
-            3. iKuai 风格紧凑底部数据分页栏 (共X条 / 20条/页 / 数字翻页器)
+            3. 紧凑底部数据分页栏 (共X条 / 20条/页 / 数字翻页器)
             ==================================================================== */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] text-xs select-none">
           {/* 左侧总数统计 */}

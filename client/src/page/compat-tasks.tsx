@@ -150,7 +150,7 @@ export function CompatTasksPage() {
         </div>
       </div>
 
-      {/* 主体：iKuai 风格任务执行超级表格 */}
+      {/* 主体：高密单屏任务执行超级表格 */}
       <div className="rounded-2xl border border-black/10 bg-w dark:border-white/10 overflow-hidden shadow-xs">
         <div className="p-3.5 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2">

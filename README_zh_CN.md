@@ -1,59 +1,67 @@
 <div align="center">
 
-# 画廊博客
+# 🌸 画廊随想 (Gallery Blog)
 
+> **二次元微光美学 × Serverless 边缘原生全栈 × 高密单屏超级数据网格**  
 > 基于 Cloudflare Workers、Pages、D1 数据库与 R2 对象存储构建的边缘原生个人博客与知识库。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![Cloudflare Workers](https://img.shields.io/badge/Deploy-Cloudflare_Workers-f38020.svg?style=flat-square&logo=cloudflare)](https://workers.cloudflare.com/)
-[![React 18](https://img.shields.io/badge/React-18.x-61dafb.svg?style=flat-square&logo=react)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Bun](https://img.shields.io/badge/Runtime-Bun-fbf0df.svg?style=flat-square&logo=bun)](https://bun.sh/)
-[![Tests](https://img.shields.io/badge/Tests-484_Passing-brightgreen.svg?style=flat-square)]()
-[![Bundle Size](https://img.shields.io/badge/Bundle_Size-131KB-purple.svg?style=flat-square)]()
+[![Deploy: Cloudflare Workers](https://img.shields.io/badge/Deploy-Cloudflare_Workers-f38020.svg?style=flat-square&logo=cloudflare)](https://workers.cloudflare.com/)
+[![Framework: React 18](https://img.shields.io/badge/React-18.x-61dafb.svg?style=flat-square&logo=react)](https://react.dev/)
+[![TypeScript 5](https://img.shields.io/badge/TypeScript-5.x-3178c6.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Runtime: Bun](https://img.shields.io/badge/Runtime-Bun-fbf0df.svg?style=flat-square&logo=bun)](https://bun.sh/)
+[![Bundle Size: 131.42 kB](https://img.shields.io/badge/Bundle_Size-131.42_kB_(gzip:_38.37_kB)-brightgreen.svg?style=flat-square&logo=vite)](https://vitejs.dev/)
+[![Size Reduction: 97.7%](https://img.shields.io/badge/Size_Drop-97.7%25-ff4d79.svg?style=flat-square)]()
+[![Tests: 484 Passing](https://img.shields.io/badge/Tests-484_Passing_%7C_54_Suites-success.svg?style=flat-square&logo=bun)](https://bun.sh/)
+[![Security: CSP Zero Eval](https://img.shields.io/badge/Security-CSP_Zero_Eval_Hardened-blue.svg?style=flat-square&logo=shield)](https://developer.mozilla.org/)
 
-[English](README.md) · [简体中文](README_zh_CN.md) · [在线演示](https://demo.example.com) · [架构手册](ATELIER_MANUAL.md) · [更新日志](CHANGELOG.md)
+[English](README.md) · [简体中文](README_zh_CN.md) · [GitHub 仓库](https://github.com/Smail-droid/Rin) · [🌸 画廊随想架构全景词典](画廊随想.md) · [更新日志 (Changelog)](更新日志.md)
 
 </div>
 
 ---
 
-## 项目简介
+## 🌟 项目简介
 
-全站无传统物理服务器依赖，后端深度集成 Cloudflare 全栈能力（Workers、Pages、D1、R2），全球边缘节点毫秒级冷启动。前台采用路由级代码分割技术，首屏核心 JS 依赖从 5.68MB 压缩至 131 kB（gzip 后 38 kB），实现秒开访问体验。
+**画廊随想 (Gallery Blog)** 是一座融合**“一页一世界”**美学哲学与现代边缘计算架构的个人画廊博客与知识库系统。全站摒弃千篇一律的单调长列表，从第一行代码起完成全方位的深度重构：
 
-<div align="center">
-  <img src="https://img.example.com/images/preview-banner.png" alt="Gallery Preview Banner" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.12);" />
-</div>
+- **二次元微光美学体系**：拟态柔光毛玻璃（`backdrop-blur-md`）、拍立得自然错落手账质感（`rotate-[-1.8°]` 自然微倾角）、时光长河中轴脉冲轴、Mac 极客终端三色圆点容器与海报三区空间隔离飞跃弹幕。
+- **极致工程性能**：经由 Vite `manualChunks` 代码分割手术，首屏入口核心 JS 从 5.68 MB 锐减至 **131.42 kB (gzip 后 38.37 kB)**，**体积降幅达 97.7%**。Monaco 编辑器 (3.88MB)、Mermaid 引擎 (3.07MB) 及 Prism 代码高亮 (631kB) 实现 100% 动态按需懒加载。
+- **高密单屏超级数据表格 (Dense DataGrid)**：全站管理后台拒绝疲劳拖拽，单屏高密容纳所有业务指标；文章管理集成封面大图预览与快捷图床置换、Pin/Sticky 置顶优先机制、多维表头排序与标准底部分页栏。
+- **边缘 AI 智能流水线**：友链与导航画廊引入 URL 元数据自动嗅探、Worker AI 自动提炼与标签映射、高可用 Favicon 代理兜底及游客免登录申请审核流。
+- **全栈质量保证**：54 个测试套件，484 项自动化测试 100% 绿灯全通；严格 CSP (Zero Eval) 杜绝动态 eval 注入，打造坚不可摧的边缘安全堡垒。
 
 ---
 
-## 快速部署
+## 🚀 快速部署
 
 ### 方案一：GitHub Fork + Actions 自动化流水线（推荐）
 
-1. **Fork 本仓库**到你的 GitHub 个人账号。
-2. 在 Cloudflare 控制台创建 **D1 数据库** `rin` 与 **R2 存储桶** `rin`。
-3. 创建具备 Workers、Pages、D1 与 R2 读写权限的 Cloudflare API Token。
-4. 在 Fork 后的 GitHub 仓库（**Settings ➔ Secrets and variables ➔ Actions**）配置如下参数表格：
+1. **Fork 本仓库**到你的 GitHub 个人账号：
+   ```text
+   仓库主地址: https://github.com/Smail-droid/Rin
+   ```
+2. 在 Cloudflare 控制台创建 **D1 数据库**（名称推荐 `rin`）与 **R2 存储桶**（名称推荐 `rin`）。
+3. 在 Cloudflare 个人账户生成具备 Workers、Pages、D1 与 R2 读写管理权限的 **Cloudflare API Token**。
+4. 在你 Fork 后的 GitHub 仓库进入 **Settings ➔ Secrets and variables ➔ Actions**，配置如下参数：
 
 #### 1. Secrets（机密凭证配置表）
 
 | 参数名称 (Secret Name) | 必填 | 推荐填写值 / 示例 | 说明 |
 | :--- | :---: | :--- | :--- |
-| `CLOUDFLARE_API_TOKEN` | 是 | `Cloudflare_API_Token` | 在 Cloudflare 生成的具备 Workers 权限的 Token |
-| `CLOUDFLARE_ACCOUNT_ID` | 是 | `32位Account_ID` | Cloudflare 控制台获取的 32 位全局账户 ID |
-| `ADMIN_USERNAME` | 是 | `admin` | 博客首次初始化的博主超级管理员用户名 |
-| `ADMIN_PASSWORD` | 是 | `你的管理员强密码` | 博客博主超级管理员登录初始密码 |
-| `JWT_SECRET` | 否 | `32位以上随机字符串` | 用户会话与认证 Cookie 的加固签名密钥 |
+| `CLOUDFLARE_API_TOKEN` | **是** | `Cloudflare_API_Token` | 在 Cloudflare 生成的具备 Workers / Pages 部署权限的 API Token |
+| `CLOUDFLARE_ACCOUNT_ID` | **是** | `32位Account_ID` | Cloudflare 控制台右下角获取的 32 位全局账户 ID |
+| `ADMIN_USERNAME` | **是** | `admin` | 博客首次初始化的博主超级管理员用户名 |
+| `ADMIN_PASSWORD` | **是** | `你的管理员强密码` | 博客博主超级管理员登录初始密码 |
+| `JWT_SECRET` | 否 | `32位以上随机字符串` | 用户会话与认证 Cookie 的加固签名密钥（留空将自动生成） |
 
 #### 2. Variables（常规环境变量配置表）
 
 | 变量名称 (Variable Name) | 必填 | 推荐填写值 / 示例 | 说明 |
 | :--- | :---: | :--- | :--- |
-| `S3_ACCESS_HOST` | 否 | `https://img.example.com` | **R2 自定义图床加速域名（选填，按需配置）**。若未配置将默认走 Worker 内置 `/api/blob/*` 存储路由 |
+| `S3_ACCESS_HOST` | 否 | `https://img.example.com` | **R2 自定义图床加速域名（选填）**。未配置时默认走 Worker 内置 `/api/blob/*` 存储路由 |
 
-5. 进入 GitHub 仓库的 **Actions** 选项卡，手动触发一次 **Build** 工作流，系统将自动执行类型检查、前端编译、数据库迁移并发布上线。
+5. 进入 GitHub 仓库的 **Actions** 选项卡，手动触发一次 **Deploy** 工作流，系统将全自动完成 TypeScript 类型检查、前端静态编译、边缘数据库迁移与全网发布上线。
 
 ---
 
@@ -68,25 +76,26 @@ cd Rin
 docker compose up -d --build
 ```
 
-服务将运行在 `http://你的服务器IP:11498`，数据持久化保存在本地 `./data` 目录下。
+服务启动后将运行在 `http://你的服务器IP:11498`，所有文章数据与媒体配置将持久化保存在本地 `./data` 挂载目录中。
 
 ---
 
-## 技术架构
+## 🛠️ 技术架构全景
 
-| 层次 | 技术选型 | 说明 |
+| 架构分层 | 核心技术选型 | 特性与设计规范 |
 | :--- | :--- | :--- |
-| **前端应用** | React 18 / TypeScript / Vite 6 | 单页面（SPA）架构，前台极致按需懒加载代码分割 |
-| **样式与图标** | TailwindCSS / RemixIcon | 响应式布局、动态主题变量、系统浅色/深色模式 |
-| **富文本排版** | React-Markdown / Prism / Mermaid | GFM 语法支持、代码语法高亮、运行时 DOM 图表嗅探 |
-| **边缘服务端** | Cloudflare Workers (workerd) | 全球边缘无服务器运行环境，毫秒级冷启动 |
-| **持久数据库** | Cloudflare D1 (SQLite) | 分布式边缘轻量关系型数据库，读写事务安全 |
-| **对象存储** | Cloudflare R2 | S3 兼容对象存储，直链强缓存托管，出站流量永久 $0 |
-| **自动化测试** | Bun Native Test Runner (`bun:test`) | 54 个测试套件，484 项测试全部通过 |
+| **前端框架** | React 18 / TypeScript / Vite 6 | 单页面（SPA）架构，极速 manualChunks 代码分割，首屏仅 131.42 kB |
+| **设计美学** | TailwindCSS / RemixIcon | 二次元微光毛玻璃、拍立得和纸胶带、高密单屏超级数据表格 (Dense DataGrid) |
+| **内容排版** | React-Markdown / Prism / Mermaid | 30+ 语言多色语法高亮、Mac 终端代码容器、运行时 DOM 图表异步嗅探 |
+| **边缘服务** | Cloudflare Workers (`workerd`) | 全球边缘无服务器分布式运行架构，冷启动耗时低于 15ms |
+| **持久数据库** | Cloudflare D1 (SQLite) | 分布式边缘轻量关系型数据库，事务安全，读写延迟低至毫秒级 |
+| **对象存储** | Cloudflare R2 (S3 API) | 兼容 S3 协议的高性能静态资源存储，永久 $0 出站流量费用 |
+| **任务队列** | Cloudflare Task Queue | 边缘异步任务分发总线，驱动大模型 AI 摘要异步生成与错误自愈 |
+| **工程测试** | Bun Native Test Runner (`bun:test`)| 54 个测试套件，484 项自动化测试全部通过（100% Green） |
 
 ---
 
-## 开源协议与致谢
+## 📄 开源协议与致谢
 
 - 本项目基于 [MIT License](LICENSE) 协议开源。
-- 感谢官方上游项目 [openRin/Rin](https://github.com/openRin/Rin) 带来的优秀架构启发。
+- 感谢官方上游项目 [openRin/Rin](https://github.com/openRin/Rin) 带来的优秀架构启发与开源生态贡献。

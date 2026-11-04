@@ -108,7 +108,7 @@ export function HealthPage() {
         </div>
       </div>
 
-      {/* 主体：iKuai 风格高密超级诊断表格 (Dense DataGrid)，单屏直达 */}
+      {/* 主体：高密单屏超级诊断表格 (Dense DataGrid)，单屏直达 */}
       <div className="rounded-2xl border border-black/10 bg-w dark:border-white/10 overflow-hidden shadow-xs">
         <div className="p-3.5 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2">

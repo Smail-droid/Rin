@@ -351,7 +351,7 @@ export function Settings() {
               ))}
             </div>
 
-            {/* 紧凑型系统状态指标胶囊 (iKuai 状态感) */}
+            {/* 紧凑型系统状态指标胶囊 (高密状态感) */}
             <div className="hidden md:flex items-center gap-2 text-xs font-mono shrink-0 select-none">
               <span className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
@@ -449,7 +449,7 @@ export function Settings() {
                 />
               </div>
 
-              {/* 切片 2: 全站导航条位置与挂件模式 (iKuai 风格切换卡片) */}
+              {/* 切片 2: 全站导航条位置与挂件模式 (高密模块化切换卡片) */}
               <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
@@ -487,7 +487,7 @@ export function Settings() {
                 </div>
               </div>
 
-              {/* 切片 3: 全站功能总闸矩阵 (iKuai 2x3 模块化卡片切片) */}
+              {/* 切片 3: 全站功能总闸矩阵 (2x3 模块化卡片切片) */}
               <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
                 <div className="flex items-center gap-2 pb-3 border-b border-black/5 dark:border-white/5">
                   <i className="ri-toggle-line text-theme text-base" />
@@ -1600,7 +1600,7 @@ export function Settings() {
             </SettingsCard>
           </div>
 
-          {/* 画廊随想便签阵列配置 iKuai 风格超级数据表格 (Dense DataGrid) */}
+          {/* 画廊随想便签阵列配置 高密单屏超级数据表格 (Dense DataGrid) */}
           <div className="w-full flex flex-col space-y-3 ani-show">
             {/* 顶栏控制中枢 */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-2xs">
@@ -1656,7 +1656,7 @@ export function Settings() {
               </div>
             </div>
 
-            {/* iKuai 风格超级表格主体 */}
+            {/* 高密单屏超级表格主体 */}
             <div className="rounded-2xl border border-black/10 bg-w dark:border-white/10 overflow-hidden shadow-xs">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse min-w-[760px]">
