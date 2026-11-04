@@ -157,6 +157,42 @@ export function WritingPage({ id: propId }: { id?: number }) {
   const [pipelinePreviewData, setPipelinePreviewData] = useState<{ result: string; summary?: string } | null>(null);
   const [isMetaExpanded, setIsMetaExpanded] = useState(false);
   const { showAlert, AlertUI } = useAlert();
+  const [imagePickerOpen, setImagePickerOpen] = useState(false);
+  const [mediaFiles, setMediaFiles] = useState<any[]>([]);
+  const [loadingMedia, setLoadingMedia] = useState(false);
+
+  // 从后台读取自定义提示词预设库
+  const [presetsList] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem("rin_ai_prompt_presets");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      { id: "preset_tech_std", stage: "tech", name: "教程提炼", stageLabel: "① 提炼" },
+      { id: "preset_format_std", stage: "format", name: "排版整理", stageLabel: "② 排版" },
+      { id: "preset_summary_std", stage: "summary", name: "导读生成", stageLabel: "③ 导读" },
+      { id: "preset_custom_anime", stage: "custom", name: "二次元随笔", stageLabel: "④ 随笔" },
+    ];
+  });
+
+  const loadMediaLibrary = () => {
+    setLoadingMedia(true);
+    client.storage
+      .listFiles()
+      .then(({ data }) => {
+        if (data?.files && Array.isArray(data.files)) {
+          setMediaFiles(data.files);
+        }
+      })
+      .finally(() => setLoadingMedia(false));
+  };
+
+  const insertImageToContent = (url: string, name?: string) => {
+    const mdImg = `\n\n![${name || "图片"}](${url})\n\n`;
+    setContent(content ? `${content}${mdImg}` : mdImg);
+    setImagePickerOpen(false);
+    showAlert("已成功将图片 Markdown 语法插入到文章中！");
+  };
 
   useEffect(() => {
     const handleToggle = () => setCopilotOpen((p) => !p);
@@ -421,8 +457,8 @@ export function WritingPage({ id: propId }: { id?: number }) {
       <div className="mt-2 flex flex-col gap-4 t-primary sm:gap-6">
         {MetaInput({ className: "relative z-20 p-4 sm:p-5 md:p-6" })}
 
-        {/* Mac 终端 Bash 风格单行 AI 智能流水线工具条 */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-2 rounded-2xl border border-black/10 bg-[#f8fafc] dark:bg-[#161b26] dark:border-white/10 text-xs shadow-2xs select-none">
+        {/* Mac 终端 Bash 风格单行 AI 智能流水线工具条 + 图床选图插图入口 */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 px-3.5 py-1.5 rounded-xl border border-black/10 bg-[#f8fafc] dark:bg-[#161b26] dark:border-white/10 text-xs shadow-2xs select-none">
           {/* 左侧 Mac Traffic Light 圆点与终端路径 */}
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5">
@@ -432,53 +468,64 @@ export function WritingPage({ id: propId }: { id?: number }) {
             </div>
             <span className="font-mono text-[11px] font-bold text-neutral-400 flex items-center gap-1">
               <i className="ri-terminal-box-line text-theme" />
-              <span>bash ~ ai-pipeline</span>
+              <span>ai-pipeline</span>
             </span>
           </div>
 
-          {/* 中间 3 阶段勾选胶囊 */}
+          {/* 中间：联动后台提示词预设库的流水线阶段勾选 */}
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
-            {[
-              { id: "tech", label: "1. 教程提炼" },
-              { id: "format", label: "2. 正文排版" },
-              { id: "summary", label: "3. 导读生成" },
-            ].map((stage) => {
-              const isChecked = pipelineStages.includes(stage.id);
+            {presetsList.map((preset) => {
+              const isChecked = pipelineStages.includes(preset.stage);
               return (
                 <button
-                  key={stage.id}
+                  key={preset.id}
                   type="button"
-                  onClick={() => togglePipelineStage(stage.id)}
+                  onClick={() => togglePipelineStage(preset.stage)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
                     isChecked
                       ? "bg-theme text-white shadow-2xs"
                       : "bg-black/5 dark:bg-white/5 text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
                   }`}
+                  title={preset.name}
                 >
                   <i className={isChecked ? "ri-check-line text-xs" : "ri-add-line text-xs"} />
-                  <span>{stage.label}</span>
+                  <span>{preset.stageLabel || preset.name}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* 右侧自动执行开关与立即梳理按钮 */}
-          <div className="flex items-center gap-3 shrink-0">
-            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-neutral-600 dark:text-neutral-300">
+          {/* 右侧：图床选图按钮 + 自动执行开关与立即梳理按钮 */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            {/* 图床插图快捷抽屉按钮 */}
+            <button
+              type="button"
+              onClick={() => {
+                setImagePickerOpen(true);
+                loadMediaLibrary();
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:border-theme hover:text-theme text-xs font-semibold transition"
+              title="从 R2 图床相册中挑选照片或上传插入"
+            >
+              <i className="ri-image-add-line text-xs text-theme" />
+              <span>图床插图</span>
+            </button>
+
+            <label className="flex items-center gap-1 cursor-pointer text-xs font-medium text-neutral-600 dark:text-neutral-300">
               <input
                 type="checkbox"
                 checked={autoRunOnPublish}
                 onChange={(e) => setAutoRunOnPublish(e.target.checked)}
                 className="h-3.5 w-3.5 rounded accent-theme cursor-pointer"
               />
-              <span>发布时自动执行</span>
+              <span className="hidden sm:inline">自动执行</span>
             </label>
 
             <button
               type="button"
               onClick={handleRunPipeline}
               disabled={runningPipeline || !content.trim()}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-theme/10 hover:bg-theme/20 text-theme px-3 py-1.5 text-xs font-bold transition disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-lg bg-theme/10 hover:bg-theme/20 text-theme px-3 py-1 text-xs font-bold transition disabled:opacity-50"
             >
               {runningPipeline ? (
                 <>
@@ -627,6 +674,67 @@ export function WritingPage({ id: propId }: { id?: number }) {
                 ✍️ 确认应用并替换当前编辑器
               </button>
             </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 图床相册快速挑选与插入抽屉 Modal */}
+      <Modal
+        isOpen={imagePickerOpen}
+        onRequestClose={() => setImagePickerOpen(false)}
+        size="lg"
+        contentLabel="从图床中挑选插图"
+        panelClassName="p-4 sm:p-5"
+      >
+        <div className="flex flex-col gap-3 max-h-[80vh]">
+          <div className="flex items-center justify-between pb-2.5 border-b border-black/5 dark:border-white/5">
+            <div className="flex items-center gap-2">
+              <i className="ri-folder-image-line text-theme text-base" />
+              <h3 className="font-bold text-sm t-primary">从 R2 图床相册挑选插图并一键插入</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setImagePickerOpen(false)}
+              className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+            >
+              <i className="ri-close-line text-lg" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto pr-1">
+            {loadingMedia ? (
+              <div className="flex items-center justify-center py-16 text-neutral-400 text-xs">
+                <i className="ri-loader-4-line animate-spin text-xl text-theme mr-2" />
+                <span>正在加载 R2 图床相册…</span>
+              </div>
+            ) : mediaFiles.length === 0 ? (
+              <div className="py-12 text-center text-xs text-neutral-400">
+                暂未获取到图片，您可以前往【媒体】中心上传
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                {mediaFiles.map((file) => (
+                  <div
+                    key={file.key}
+                    onClick={() => insertImageToContent(file.url, file.key.split("/").pop())}
+                    className="group relative flex flex-col items-center justify-center rounded-xl border border-black/10 dark:border-white/10 p-2 cursor-pointer hover:border-theme hover:shadow-xs transition bg-black/[0.015] dark:bg-white/[0.02]"
+                    title="点击将该图片插入到当前文章正文"
+                  >
+                    <div className="h-24 w-full flex items-center justify-center overflow-hidden rounded-lg bg-black/5 dark:bg-white/5">
+                      <img
+                        src={file.url}
+                        alt={file.key}
+                        className="max-h-full max-w-full object-contain group-hover:scale-105 transition duration-200"
+                        loading="lazy"
+                      />
+                    </div>
+                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate w-full mt-1.5 text-center">
+                      {file.key.split("/").pop()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </Modal>

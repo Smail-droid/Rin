@@ -85,7 +85,7 @@ function AnimeChibiAvatar({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
 export function WritingAICopilotDrawer({
   isOpen,
   onClose,
-  onToggle,
+  onToggle: _onToggle,
   articleContent,
   onInsertText,
   onReplaceContent,
@@ -310,40 +310,7 @@ export function WritingAICopilotDrawer({
 
   return (
     <>
-      {/* 1. 左下角常驻二次元萌系看板娘触发球 (不遮挡主编辑区) */}
-      <div className="fixed left-4 sm:left-6 bottom-5 z-40 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            if (onToggle) onToggle();
-          }}
-          className={`group flex items-center gap-2 rounded-full p-1.5 pr-4 shadow-2xl transition-all duration-300 border-2 select-none ${
-            isOpen
-              ? "bg-theme text-white border-white dark:border-neutral-800 scale-105 ring-4 ring-theme/30"
-              : "bg-w/95 text-theme border-theme/40 hover:border-theme hover:bg-theme/10 hover:scale-105 dark:border-white/20 backdrop-blur-md"
-          }`}
-          title="点击展开/收回 AI 萌宠助手"
-        >
-          <AnimeChibiAvatar size="md" />
-          <div className="flex flex-col text-left">
-            <span className="text-xs font-bold leading-tight flex items-center gap-1">
-              <span>AI 萌娘伴侣</span>
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-            </span>
-            <span className="text-[10px] text-neutral-400 dark:text-neutral-300 leading-tight">
-              {isOpen ? "点击收起 (-)" : "点击咨询代码"}
-            </span>
-          </div>
-        </button>
-
-        {!isOpen && (
-          <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/5 dark:bg-white/5 text-[11px] text-neutral-400 backdrop-blur-md border border-black/5 dark:border-white/5 ani-show">
-            <span>随时提问代码与排版</span>
-          </div>
-        )}
-      </div>
-
-      {/* 2. 可自由拖拽移动的二次元画廊风浮窗 (默认停靠右侧，可随心拖放，双击重置) */}
+      {/* 2. 可自由拖拽移动的二次元画廊风浮窗 (由左侧侧边栏底部的 AI 图标统一触发呼出，彻底移除左下角遮挡气泡) */}
       {isOpen && (
         <aside
           style={

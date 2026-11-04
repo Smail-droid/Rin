@@ -97,7 +97,7 @@ export function AdminLayout({
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        {/* Top Area: 头像、月亮/太阳切换 */}
+        {/* Top Area: 头像与日夜模式切换 */}
         <div className="flex flex-col items-center">
           {/* Logo 头像 */}
           <div className="flex h-16 w-full items-center justify-center border-b border-black/5 dark:border-white/5">
@@ -117,15 +117,15 @@ export function AdminLayout({
             </Link>
           </div>
 
-          {/* 快捷月亮/太阳日夜模式切换按钮 */}
+          {/* 纯净日夜切换：无背景底色，太阳黄色，月亮粉色 */}
           <div className="py-2 w-full flex justify-center border-b border-black/5 dark:border-white/5">
             <button
               type="button"
               onClick={toggleTheme}
-              className="flex h-8 w-8 items-center justify-center rounded-xl text-neutral-500 hover:bg-black/5 dark:hover:bg-white/5 hover:text-theme transition"
+              className="flex h-8 w-8 items-center justify-center transition-transform hover:scale-115 active:scale-95"
               title={colorMode === "dark" ? "当前: 暗黑模式 (点击切换为浅色)" : "当前: 浅色模式 (点击切换为暗黑)"}
             >
-              <i className={colorMode === "dark" ? "ri-moon-line text-sky-400 text-base" : "ri-sun-line text-amber-500 text-base"} />
+              <i className={colorMode === "dark" ? "ri-moon-line text-rose-400 text-lg" : "ri-sun-line text-amber-500 text-lg"} />
             </button>
           </div>
 
@@ -194,7 +194,7 @@ export function AdminLayout({
         {/* Top Header Bar */}
         <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-black/5 bg-white/80 px-3 sm:px-6 backdrop-blur-xl dark:border-white/5 dark:bg-[#161b26]/80 select-none">
           {/* Left: Mobile Hamburger & Breadcrumbs */}
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             {/* 移动端汉堡菜单触发按钮 */}
             <button
               type="button"
@@ -203,6 +203,16 @@ export function AdminLayout({
               title="展开后台菜单"
             >
               <i className={mobileMenuOpen ? "ri-close-line text-lg" : "ri-menu-2-line text-lg"} />
+            </button>
+
+            {/* 纯净日夜切换按钮 (无背景底色，太阳黄色，月亮粉色) */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="flex h-8 w-8 items-center justify-center transition-transform hover:scale-115 active:scale-95 select-none"
+              title={colorMode === "dark" ? "当前: 暗黑模式 (点击切换为浅色)" : "当前: 浅色模式 (点击切换为暗黑)"}
+            >
+              <i className={colorMode === "dark" ? "ri-moon-line text-rose-400 text-lg" : "ri-sun-line text-amber-500 text-lg"} />
             </button>
 
             <div className="flex items-center gap-1.5 rounded-full border border-black/10 bg-black/[0.02] px-3 py-1 text-xs dark:border-white/10 dark:bg-white/[0.02]">
