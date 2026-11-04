@@ -17,7 +17,7 @@ import {
     splitConfigPayload,
 } from "./config-helpers";
 import { buildHealthCheckResponse } from "./config-health";
-import { buildQueueStatusResponse, deleteQueueStatusTask, retryQueueStatusTask } from "./config-queue-status";
+import { buildQueueStatusResponse, cancelQueueStatusTask, deleteQueueStatusTask, retryQueueStatusTask } from "./config-queue-status";
 import { profileAsync } from "../core/server-timing";
 import {
     applyBlurhashCompatUpdate,
@@ -299,6 +299,22 @@ export function ConfigService(): Hono {
 
         try {
             await wrapTime(c, 'queue_retry', retryQueueStatusTask(c.get('db'), c.get('cache'), c.get('serverConfig'), c.get('env'), id));
+            return c.json({ success: true });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            const status = message === 'Feed not found' ? 404 : 400;
+            return c.text(message, status);
+        }
+    }));
+
+    app.post('/queue-status/:id/cancel', adminOnly(async (c: AppContext) => {
+        const id = Number(c.req.param('id'));
+        if (!Number.isInteger(id) || id <= 0) {
+            return c.text('Invalid feed id', 400);
+        }
+
+        try {
+            await wrapTime(c, 'queue_cancel', cancelQueueStatusTask(c.get('db'), c.get('cache'), id));
             return c.json({ success: true });
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);

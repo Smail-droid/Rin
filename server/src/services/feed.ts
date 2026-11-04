@@ -524,6 +524,39 @@ export function FeedService(): Hono<{
         return c.text('Updated');
     }), { message: 'Permission denied', status: 403 }));
 
+    // POST /feed/cover/:id - 快捷修改/替换文章首张封面
+    app.post('/cover/:id', adminOnly(async (c) => {
+        const db = c.get('db');
+        const cache = c.get('cache');
+        const id = c.req.param('id');
+        const id_num = parseFeedId(id);
+        if (id_num === null) {
+            return c.text('Not found', 404);
+        }
+        const feed = await findFeedById(db, id_num);
+        if (!feed) {
+            return c.text('Not found', 404);
+        }
+
+        const body = await c.req.json<{ cover?: string }>().catch(() => ({ cover: "" }));
+        const newCover = (body.cover || "").trim();
+        if (!newCover) {
+            return c.text('Cover URL is required', 400);
+        }
+
+        let updatedContent = feed.content;
+        const imgRegex = /!\[.*?\]\((\S+?)(?:\s+"[^"]*")?\)/;
+        if (imgRegex.test(updatedContent)) {
+            updatedContent = updatedContent.replace(imgRegex, `![cover](${newCover})`);
+        } else {
+            updatedContent = `![cover](${newCover})\n\n${updatedContent}`;
+        }
+
+        await updateFeedById(db, feed.id, { content: updatedContent });
+        await clearFeedCache(cache, feed.id, feed.alias, feed.alias);
+        return c.json({ success: true, cover: newCover });
+    }));
+
     // DELETE /feed/:id
     app.delete('/:id', userOnly(async (c, uid) => {
         const db = c.get('db');

@@ -91,6 +91,8 @@ export interface QueueStatusItem {
   title: string | null;
   aiSummaryStatus: "idle" | "pending" | "processing" | "completed" | "failed";
   aiSummaryError: string;
+  top?: number;
+  coverImage?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -337,6 +339,11 @@ class FeedAPI {
   async setTop(id: number, top: number): Promise<ApiResponse<void>> {
     return this.http.post<void>(`/api/feed/top/${id}`, { top });
   }
+
+  // POST /api/feed/cover/:id
+  async setCover(id: number, cover: string): Promise<ApiResponse<{ success: boolean; cover: string }>> {
+    return this.http.post<{ success: boolean; cover: string }>(`/api/feed/cover/${id}`, { cover });
+  }
 }
 
 /**
@@ -557,6 +564,11 @@ class ConfigAPI {
 
   async retryQueueTask(feedId: number): Promise<ApiResponse<QueueTaskActionResponse>> {
     return this.http.post<QueueTaskActionResponse>(`/api/config/queue-status/${feedId}/retry`);
+  }
+
+  // POST /api/config/queue-status/:feedId/cancel
+  async cancelQueueTask(feedId: number): Promise<ApiResponse<QueueTaskActionResponse>> {
+    return this.http.post<QueueTaskActionResponse>(`/api/config/queue-status/${feedId}/cancel`);
   }
 
   async deleteQueueTask(feedId: number): Promise<ApiResponse<QueueTaskActionResponse>> {

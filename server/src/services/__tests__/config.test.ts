@@ -443,6 +443,26 @@ describe("ConfigService", () => {
             expect(row.ai_summary_status).toBe("idle");
             expect(row.ai_summary_error).toBe("");
         });
+
+        it("should cancel a pending/processing queue task", async () => {
+            sqlite.exec(`
+                INSERT INTO feeds (id, title, alias, summary, ai_summary_status, ai_summary_error, content, listed, draft, top, uid)
+                VALUES (2, 'Running Feed', '', 'summary', 'processing', '', 'content', 1, 0, 0, 1);
+            `);
+
+            const res = await app.request("/queue-status/2/cancel", {
+                method: "POST",
+                headers: {
+                    Authorization: "Bearer mock_token_1",
+                },
+            });
+
+            expect(res.status).toBe(200);
+
+            const row = sqlite.prepare("SELECT ai_summary_status, ai_summary_error FROM feeds WHERE id = 2").get() as any;
+            expect(row.ai_summary_status).toBe("idle");
+            expect(row.ai_summary_error).toBe("");
+        });
     });
 
     describe("POST /:type - Update config", () => {

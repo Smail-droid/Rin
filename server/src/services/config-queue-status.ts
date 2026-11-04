@@ -18,6 +18,8 @@ export interface QueueTaskItem {
   title: string | null;
   aiSummaryStatus: QueueTaskStatus;
   aiSummaryError: string;
+  top: number;
+  coverImage?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -64,7 +66,7 @@ export async function retryQueueStatusTask(
   await clearFeedCache(cache, feed.id, feed.alias, feed.alias);
 }
 
-export async function deleteQueueStatusTask(
+export async function cancelQueueStatusTask(
   db: any,
   cache: any,
   feedId: number,
@@ -77,13 +79,28 @@ export async function deleteQueueStatusTask(
     throw new Error("Feed not found");
   }
 
-  const updatedAtMs = new Date(feed.updatedAt).getTime();
-  const isStalled =
-    (feed.ai_summary_status === "pending" || feed.ai_summary_status === "processing") &&
-    Date.now() - (isNaN(updatedAtMs) ? 0 : updatedAtMs) > 60 * 1000;
+  await db
+    .update(feeds)
+    .set({
+      ai_summary_status: "idle",
+      ai_summary_error: "",
+    })
+    .where(eq(feeds.id, feedId));
 
-  if (feed.ai_summary_status !== "failed" && feed.ai_summary_status !== "completed" && !isStalled) {
-    throw new Error("任务正在处理中，如需删除请在 1 分钟后操作");
+  await clearFeedCache(cache, feed.id, feed.alias, feed.alias);
+}
+
+export async function deleteQueueStatusTask(
+  db: any,
+  cache: any,
+  feedId: number,
+) {
+  const feed = await db.query.feeds.findFirst({
+    where: eq(feeds.id, feedId),
+  });
+
+  if (!feed) {
+    throw new Error("Feed not found");
   }
 
   await db
@@ -112,8 +129,15 @@ export async function buildQueueStatusResponse(
   const allFeeds = await db.query.feeds.findMany({
     columns: {
       id: true,
+      title: true,
+      content: true,
+      top: true,
       ai_summary_status: true,
+      ai_summary_error: true,
+      updatedAt: true,
+      createdAt: true,
     },
+    orderBy: [desc(feeds.top), desc(feeds.updatedAt)],
   });
 
   for (const feed of allFeeds) {
@@ -123,38 +147,34 @@ export async function buildQueueStatusResponse(
     }
   }
 
-  const items = await db.query.feeds.findMany({
-    where: ne(feeds.ai_summary_status, "idle"),
-    columns: {
-      id: true,
-      title: true,
-      ai_summary_status: true,
-      ai_summary_error: true,
-      updatedAt: true,
-      createdAt: true,
-    },
-    orderBy: [desc(feeds.updatedAt)],
-    limit: 50,
-  });
-
   return {
     queueConfigured: Boolean(env.TASK_QUEUE),
     generatedAt: new Date().toISOString(),
     summary,
-    items: items.map((item: {
+    items: allFeeds.map((item: {
       id: number;
       title: string | null;
+      content: string;
+      top: number;
       ai_summary_status: string;
       ai_summary_error: string;
       updatedAt: Date;
       createdAt: Date;
-    }) => ({
-      id: item.id,
-      title: item.title,
-      aiSummaryStatus: item.ai_summary_status as QueueTaskStatus,
-      aiSummaryError: item.ai_summary_error,
-      updatedAt: item.updatedAt.toISOString(),
-      createdAt: item.createdAt.toISOString(),
-    })),
+    }) => {
+      // 从正文中嗅探首张封面图片
+      const match = /!\[.*?\]\((\S+?)(?:\s+"[^"]*")?\)/.exec(item.content || "");
+      const coverImage = match ? match[1] : null;
+
+      return {
+        id: item.id,
+        title: item.title,
+        top: item.top ?? 0,
+        coverImage,
+        aiSummaryStatus: item.ai_summary_status as QueueTaskStatus,
+        aiSummaryError: item.ai_summary_error,
+        updatedAt: item.updatedAt.toISOString(),
+        createdAt: item.createdAt.toISOString(),
+      };
+    }),
   };
 }
