@@ -944,12 +944,32 @@ export function FeedsPage() {
 
     // 3. 首页推荐标签高密超级表格管理 (Dense DataGrid)
     const [isTagSettingsOpen, setIsTagSettingsOpen] = useState(false);
-    const [homepageTagsConfig, setHomepageTagsConfig] = useState<{ hiddenIds: number[]; customOrder: number[] }>(() => {
+    const [draggedTagId, setDraggedTagId] = useState<number | null>(null);
+    const [dragOverTagId, setDragOverTagId] = useState<number | null>(null);
+    const [editingTagAliasId, setEditingTagAliasId] = useState<number | null>(null);
+    const [editingTagAliasText, setEditingTagAliasText] = useState("");
+
+    const [homepageTagsConfig, setHomepageTagsConfig] = useState<{
+        hiddenIds: number[];
+        customOrder: number[];
+        limit: number | "all";
+        palette: "pastel" | "macaron" | "cyber" | "theme" | "mono";
+        aliases: Record<number, string>;
+    }>(() => {
         try {
             const saved = localStorage.getItem("rin_gallery_homepage_tags_config");
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                return {
+                    hiddenIds: parsed.hiddenIds || [],
+                    customOrder: parsed.customOrder || [],
+                    limit: parsed.limit ?? 8,
+                    palette: parsed.palette || "pastel",
+                    aliases: parsed.aliases || {},
+                };
+            }
         } catch {}
-        return { hiddenIds: [], customOrder: [] };
+        return { hiddenIds: [], customOrder: [], limit: 8, palette: "pastel", aliases: {} };
     });
 
     const limit = 36;
@@ -1282,6 +1302,52 @@ export function FeedsPage() {
         }
     };
 
+    const updateTagsConfig = (updates: Partial<typeof homepageTagsConfig>) => {
+        const next = { ...homepageTagsConfig, ...updates };
+        setHomepageTagsConfig(next);
+        try {
+            localStorage.setItem("rin_gallery_homepage_tags_config", JSON.stringify(next));
+        } catch {}
+    };
+
+    const getTagColorClass = (index: number) => {
+        const p = homepageTagsConfig.palette || "pastel";
+        if (p === "theme") {
+            return "bg-theme/10 text-theme border-theme/20 hover:bg-theme/20";
+        }
+        if (p === "mono") {
+            return "bg-black/5 text-neutral-700 border-black/10 dark:bg-white/5 dark:text-neutral-300 dark:border-white/10 hover:border-theme";
+        }
+        if (p === "macaron") {
+            const macaron = [
+                "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900",
+                "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900",
+                "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900",
+                "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900",
+                "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900",
+            ];
+            return macaron[index % macaron.length];
+        }
+        if (p === "cyber") {
+            const cyber = [
+                "bg-fuchsia-500/10 text-fuchsia-600 border-fuchsia-500/30 dark:bg-fuchsia-950/50 dark:text-fuchsia-300 shadow-xs",
+                "bg-cyan-500/10 text-cyan-600 border-cyan-500/30 dark:bg-cyan-950/50 dark:text-cyan-300 shadow-xs",
+                "bg-lime-500/10 text-lime-600 border-lime-500/30 dark:bg-lime-950/50 dark:text-lime-300 shadow-xs",
+                "bg-pink-500/10 text-pink-600 border-pink-500/30 dark:bg-pink-950/50 dark:text-pink-300 shadow-xs",
+            ];
+            return cyber[index % cyber.length];
+        }
+        // "pastel" (和风五彩)
+        const pastel = [
+            "bg-amber-100/90 text-amber-900 border-amber-300/60 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800/40",
+            "bg-sky-100/90 text-sky-900 border-sky-300/60 dark:bg-sky-950/40 dark:text-sky-200 dark:border-sky-800/40",
+            "bg-rose-100/90 text-rose-900 border-rose-300/60 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-800/40",
+            "bg-emerald-100/90 text-emerald-900 border-emerald-300/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800/40",
+            "bg-purple-100/90 text-purple-900 border-purple-300/60 dark:bg-purple-950/40 dark:text-purple-200 dark:border-purple-800/40",
+        ];
+        return pastel[index % pastel.length];
+    };
+
     const displayTags = useMemo(() => {
         if (!tags || tags.length === 0) return [];
         let list = tags.filter((t) => !homepageTagsConfig.hiddenIds.includes(t.id));
@@ -1295,29 +1361,23 @@ export function FeedsPage() {
                 return idxA - idxB;
             });
         }
-        return list.slice(0, 10);
+        const limitCount = homepageTagsConfig.limit === "all" ? list.length : (homepageTagsConfig.limit || 8);
+        return list.slice(0, limitCount);
     }, [tags, homepageTagsConfig]);
 
     const handleToggleTagVisibility = (tagId: number) => {
-        const next = { ...homepageTagsConfig };
-        if (next.hiddenIds.includes(tagId)) {
-            next.hiddenIds = next.hiddenIds.filter((id) => id !== tagId);
-        } else {
-            next.hiddenIds = [...next.hiddenIds, tagId];
-        }
-        setHomepageTagsConfig(next);
-        try {
-            localStorage.setItem("rin_gallery_homepage_tags_config", JSON.stringify(next));
-        } catch {}
+        const nextHidden = homepageTagsConfig.hiddenIds.includes(tagId)
+            ? homepageTagsConfig.hiddenIds.filter((id) => id !== tagId)
+            : [...homepageTagsConfig.hiddenIds, tagId];
+        updateTagsConfig({ hiddenIds: nextHidden });
     };
 
-    const handleMoveTagStep = (tagId: number, direction: "up" | "down") => {
-        const currentIds = tags.map((t) => t.id);
+    const handleMoveTagStep = (tagId: number, direction: "up" | "down", currentList: number[]) => {
         const orderList = homepageTagsConfig.customOrder.length > 0
             ? [...homepageTagsConfig.customOrder]
-            : [...currentIds];
-        
-        currentIds.forEach((id) => {
+            : [...currentList];
+
+        currentList.forEach((id) => {
             if (!orderList.includes(id)) orderList.push(id);
         });
 
@@ -1329,16 +1389,30 @@ export function FeedsPage() {
         const nextOrder = [...orderList];
         const [moved] = nextOrder.splice(idx, 1);
         nextOrder.splice(targetIdx, 0, moved);
+        updateTagsConfig({ customOrder: nextOrder });
+    };
 
-        const nextConfig = { ...homepageTagsConfig, customOrder: nextOrder };
-        setHomepageTagsConfig(nextConfig);
-        try {
-            localStorage.setItem("rin_gallery_homepage_tags_config", JSON.stringify(nextConfig));
-        } catch {}
+    const handleTagRowDrop = (targetId: number, orderedIds: number[]) => {
+        if (!draggedTagId || draggedTagId === targetId) {
+            setDraggedTagId(null);
+            setDragOverTagId(null);
+            return;
+        }
+        const currentList = [...orderedIds];
+        const fromIdx = currentList.indexOf(draggedTagId);
+        const toIdx = currentList.indexOf(targetId);
+        if (fromIdx !== -1 && toIdx !== -1) {
+            const nextOrder = [...currentList];
+            nextOrder.splice(fromIdx, 1);
+            nextOrder.splice(toIdx, 0, draggedTagId);
+            updateTagsConfig({ customOrder: nextOrder });
+        }
+        setDraggedTagId(null);
+        setDragOverTagId(null);
     };
 
     const handleResetTagsConfig = () => {
-        const resetVal = { hiddenIds: [], customOrder: [] };
+        const resetVal = { hiddenIds: [], customOrder: [], limit: 8, palette: "pastel" as const, aliases: {} };
         setHomepageTagsConfig(resetVal);
         try {
             localStorage.removeItem("rin_gallery_homepage_tags_config");
@@ -1561,13 +1635,8 @@ export function FeedsPage() {
                                 "rotate-[-2.5deg]",
                                 "rotate-[1.5deg]",
                             ][i % 8];
-                            const bg = [
-                                "bg-amber-100/90 text-amber-900 border-amber-300/60 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800/40",
-                                "bg-sky-100/90 text-sky-900 border-sky-300/60 dark:bg-sky-950/40 dark:text-sky-200 dark:border-sky-800/40",
-                                "bg-rose-100/90 text-rose-900 border-rose-300/60 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-800/40",
-                                "bg-emerald-100/90 text-emerald-900 border-emerald-300/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800/40",
-                                "bg-purple-100/90 text-purple-900 border-purple-300/60 dark:bg-purple-950/40 dark:text-purple-200 dark:border-purple-800/40",
-                            ][i % 5];
+                            const bg = getTagColorClass(i);
+                            const tagDisplayName = homepageTagsConfig.aliases?.[tag.id] || tag.name;
                             return (
                                 <Link
                                     key={tag.id}
@@ -1575,7 +1644,7 @@ export function FeedsPage() {
                                     className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border shadow-2xs text-xs font-semibold transform ${rot} hover:rotate-0 hover:scale-110 hover:shadow-md transition-all duration-300 ${bg}`}
                                 >
                                     <span className="opacity-60 text-[10px]">🏷️</span>
-                                    <span>#{tag.name}</span>
+                                    <span>#{tagDisplayName}</span>
                                 </Link>
                             );
                         })}
@@ -2033,7 +2102,7 @@ export function FeedsPage() {
                                 </span>
                                 <div>
                                     <h3 className="text-sm font-bold t-primary">画廊首页推荐标签管理 (Dense DataGrid)</h3>
-                                    <p className="text-[11px] text-neutral-400">调整在画廊首页展示的小标签显隐与上下排列次序</p>
+                                    <p className="text-[11px] text-neutral-400">支持鼠标按住“=”手柄自由拖拽排列顺序、展示上限与色彩方案联动</p>
                                 </div>
                             </div>
                             <button
@@ -2044,15 +2113,84 @@ export function FeedsPage() {
                             </button>
                         </div>
 
-                        {/* 高密超级表格 */}
+                        {/* 顶部预设与色彩方案联动控制区 */}
+                        <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col gap-3">
+                            {/* 1. 首页展示数量预设 */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div>
+                                    <span className="font-bold text-xs t-primary">首页展示数量上限</span>
+                                    <span className="text-[11px] text-neutral-400 block sm:inline sm:ml-2">控制画廊首页前台最多推荐呈现的标签个数</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    {[
+                                        { label: "4 个", val: 4 },
+                                        { label: "6 个", val: 6 },
+                                        { label: "8 个 (默认)", val: 8 },
+                                        { label: "12 个", val: 12 },
+                                        { label: "全部", val: "all" as const },
+                                    ].map((opt) => {
+                                        const isSel = homepageTagsConfig.limit === opt.val;
+                                        return (
+                                            <button
+                                                key={String(opt.val)}
+                                                type="button"
+                                                onClick={() => updateTagsConfig({ limit: opt.val })}
+                                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition select-none ${
+                                                    isSel
+                                                        ? "bg-theme text-white shadow-2xs font-bold"
+                                                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-400 hover:bg-black/10"
+                                                }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* 2. 色彩方案联动 (参考全局主题与色彩体系) */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-black/5 dark:border-white/5">
+                                <div>
+                                    <span className="font-bold text-xs t-primary">色彩方案预设</span>
+                                    <span className="text-[11px] text-neutral-400 block sm:inline sm:ml-2">前台标签卡片飘逸色彩搭配风格</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    {[
+                                        { id: "pastel" as const, label: "和风五彩" },
+                                        { id: "macaron" as const, label: "柔和马卡龙" },
+                                        { id: "cyber" as const, label: "赛博霓虹" },
+                                        { id: "theme" as const, label: "画廊粉白" },
+                                        { id: "mono" as const, label: "极简冷萃" },
+                                    ].map((p) => {
+                                        const isSel = (homepageTagsConfig.palette || "pastel") === p.id;
+                                        return (
+                                            <button
+                                                key={p.id}
+                                                type="button"
+                                                onClick={() => updateTagsConfig({ palette: p.id })}
+                                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition select-none flex items-center gap-1 ${
+                                                    isSel
+                                                        ? "bg-theme text-white shadow-2xs font-bold"
+                                                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-400 hover:bg-black/10"
+                                                }`}
+                                            >
+                                                <span>{p.label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 高密超级表格 (支持按住手柄自由拖拽行调整顺序与就地别名重命名) */}
                         <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10 bg-w max-h-[50vh] overflow-y-auto">
                             <table className="w-full text-left text-xs border-collapse">
                                 <thead>
                                     <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-400 font-mono text-[11px]">
-                                        <th className="py-2.5 px-3 w-16 text-center">排序</th>
-                                        <th className="py-2.5 px-3">标签预览</th>
+                                        <th className="py-2.5 px-3 w-16 text-center">拖放</th>
+                                        <th className="py-2.5 px-3">标签预览与别名</th>
                                         <th className="py-2.5 px-3 w-28 text-center">首页展示</th>
-                                        <th className="py-2.5 px-3 w-32 text-right pr-4">调整次序</th>
+                                        <th className="py-2.5 px-3 w-32 text-right pr-4">微调次序</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-black/5 dark:divide-white/5">
@@ -2068,17 +2206,103 @@ export function FeedsPage() {
 
                                         return orderedTagObjects.map((t, idx) => {
                                             const isHidden = homepageTagsConfig.hiddenIds.includes(t.id);
+                                            const isDraggingRow = draggedTagId === t.id;
+                                            const isDragOverRow = dragOverTagId === t.id;
+                                            const currentAlias = homepageTagsConfig.aliases?.[t.id] || "";
+
                                             return (
-                                                <tr key={t.id} className="hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors">
-                                                    <td className="py-2 px-3 text-center font-mono font-bold text-neutral-400">
-                                                        #{idx + 1}
+                                                <tr
+                                                    key={t.id}
+                                                    draggable
+                                                    onDragStart={(e) => {
+                                                        e.dataTransfer.setData("text/plain", String(t.id));
+                                                        setDraggedTagId(t.id);
+                                                    }}
+                                                    onDragOver={(e) => {
+                                                        e.preventDefault();
+                                                        if (dragOverTagId !== t.id) setDragOverTagId(t.id);
+                                                    }}
+                                                    onDrop={(e) => {
+                                                        e.preventDefault();
+                                                        handleTagRowDrop(t.id, orderList);
+                                                    }}
+                                                    onDragEnd={() => {
+                                                        setDraggedTagId(null);
+                                                        setDragOverTagId(null);
+                                                    }}
+                                                    className={`hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-all select-none ${
+                                                        isDraggingRow ? "opacity-30 bg-theme/10" : ""
+                                                    } ${isDragOverRow ? "border-t-2 border-theme bg-theme/5" : ""}`}
+                                                >
+                                                    {/* 拖动手柄与序号 */}
+                                                    <td className="py-2 px-3 text-center">
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <span
+                                                                className="text-neutral-400 hover:text-theme cursor-grab active:cursor-grabbing p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 select-none"
+                                                                title="按住手柄自由拖放调整排序"
+                                                            >
+                                                                <i className="ri-drag-move-2-line text-sm" />
+                                                            </span>
+                                                            <span className="font-mono text-[11px] font-bold text-neutral-400">#{idx + 1}</span>
+                                                        </div>
                                                     </td>
+
+                                                    {/* 标签预览与就地别名修改 */}
                                                     <td className="py-2 px-3">
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-theme/10 text-theme font-semibold text-xs border border-theme/20">
-                                                            <span>🏷️</span>
-                                                            <span>#{t.name}</span>
-                                                        </span>
+                                                        {editingTagAliasId === t.id ? (
+                                                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                                                <input
+                                                                    type="text"
+                                                                    value={editingTagAliasText}
+                                                                    onChange={(e) => setEditingTagAliasText(e.target.value)}
+                                                                    placeholder={t.name}
+                                                                    className="w-36 px-2 py-0.5 rounded-lg border border-theme text-xs bg-w outline-none font-semibold"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const newAliases = { ...homepageTagsConfig.aliases, [t.id]: editingTagAliasText.trim() };
+                                                                        if (!editingTagAliasText.trim()) delete newAliases[t.id];
+                                                                        updateTagsConfig({ aliases: newAliases });
+                                                                        setEditingTagAliasId(null);
+                                                                    }}
+                                                                    className="px-2 py-0.5 rounded-md bg-theme text-white text-[11px] font-bold shadow-2xs"
+                                                                >
+                                                                    确定
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setEditingTagAliasId(null)}
+                                                                    className="px-1.5 py-0.5 rounded-md text-neutral-400 text-[11px]"
+                                                                >
+                                                                    取消
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center gap-1.5 group/tag">
+                                                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-semibold text-xs border ${getTagColorClass(idx)}`}>
+                                                                    <span>🏷️</span>
+                                                                    <span>#{currentAlias || t.name}</span>
+                                                                </span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setEditingTagAliasId(t.id);
+                                                                        setEditingTagAliasText(currentAlias || t.name);
+                                                                    }}
+                                                                    className="opacity-0 group-hover/tag:opacity-100 p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 transition"
+                                                                    title="修改前台展示别名"
+                                                                >
+                                                                    <i className="ri-edit-2-line text-xs" />
+                                                                </button>
+                                                                {currentAlias && (
+                                                                    <span className="text-[10px] text-neutral-400 font-mono hidden sm:inline">(原: #{t.name})</span>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </td>
+
+                                                    {/* 首页展示开关 */}
                                                     <td className="py-2 px-3 text-center">
                                                         <button
                                                             type="button"
@@ -2094,23 +2318,25 @@ export function FeedsPage() {
                                                             }`} />
                                                         </button>
                                                     </td>
+
+                                                    {/* 微调按钮组 */}
                                                     <td className="py-2 px-3 text-right pr-4">
                                                         <div className="inline-flex items-center gap-1">
                                                             <button
                                                                 type="button"
-                                                                onClick={() => handleMoveTagStep(t.id, "up")}
+                                                                onClick={() => handleMoveTagStep(t.id, "up", orderList)}
                                                                 disabled={idx === 0}
                                                                 className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition"
-                                                                title="向前移动"
+                                                                title="向前微调"
                                                             >
                                                                 <i className="ri-arrow-up-s-line text-sm" />
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => handleMoveTagStep(t.id, "down")}
+                                                                onClick={() => handleMoveTagStep(t.id, "down", orderList)}
                                                                 disabled={idx === orderedTagObjects.length - 1}
                                                                 className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition"
-                                                                title="向后移动"
+                                                                title="向后微调"
                                                             >
                                                                 <i className="ri-arrow-down-s-line text-sm" />
                                                             </button>

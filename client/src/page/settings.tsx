@@ -1685,32 +1685,71 @@ export function Settings() {
                   </div>
                 </div>
               </div>
-              <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10">
-                <SettingsCardRow
-                  header={
-                    <SettingsCardHeader
-                      title="顶部导航栏吸顶滚动行为"
-                      description="控制页面向下滚动时，顶部导航栏是固定吸顶悬浮、随页面滚出屏幕，还是向上滑动时自动呼出"
-                    />
-                  }
-                  action={
-                    <SearchableSelect
-                      placement="top"
-                      value={normalizeHeaderBehavior(String(clientConfig.get("header.behavior") ?? "fixed"))}
-                      onChange={(value) => {
-                        setConfigValue("client", "header.behavior", value);
+              <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-base font-semibold tracking-[-0.02em] t-primary">顶部导航栏吸顶与滚动控制</p>
+                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                        (clientConfig.get("header.sticky_enabled") !== false && clientConfig.get("header.sticky_enabled") !== "false")
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                      }`}>
+                        {(clientConfig.get("header.sticky_enabled") !== false && clientConfig.get("header.sticky_enabled") !== "false")
+                          ? "吸顶已启用"
+                          : "已停用吸顶 (随页面滚出/自由解耦)"}
+                      </span>
+                    </div>
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">
+                      控制是否启用前台导航条的吸顶悬浮效果。停用后导航条将随页面自然滚出，支持与首页标签、浮动挂件自由解耦搭配
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                    <span className="text-xs font-semibold t-primary">启用吸顶行为</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={clientConfig.get("header.sticky_enabled") !== false && clientConfig.get("header.sticky_enabled") !== "false"}
+                      onClick={() => {
+                        const cur = clientConfig.get("header.sticky_enabled") !== false && clientConfig.get("header.sticky_enabled") !== "false";
+                        setConfigValue("client", "header.sticky_enabled", !cur);
                       }}
-                      options={[
-                        { value: "fixed", label: "固定吸顶在顶部 (Fixed)" },
-                        { value: "static", label: "跟随页面滚动 (Static)" },
-                        { value: "reveal", label: "向上滑动时自动呼出 (Reveal)" },
-                      ]}
-                      placeholder="顶部导航栏滚动行为"
-                      emptyLabel={t("no_more")}
-                      searchable={false}
-                    />
-                  }
-                />
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                        (clientConfig.get("header.sticky_enabled") !== false && clientConfig.get("header.sticky_enabled") !== "false") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-xs transition transform mt-1 ${
+                        (clientConfig.get("header.sticky_enabled") !== false && clientConfig.get("header.sticky_enabled") !== "false") ? "translate-x-6" : "translate-x-1"
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+
+                {(clientConfig.get("header.sticky_enabled") !== false && clientConfig.get("header.sticky_enabled") !== "false") && (
+                  <div className="pt-2 border-t border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ani-show">
+                    <div>
+                      <span className="text-xs font-bold t-primary">吸顶触发模式</span>
+                      <p className="text-[11px] text-neutral-400">选择固定吸顶悬浮、向上滑动自动呼出，或跟随滚动</p>
+                    </div>
+                    <div className="w-full sm:w-64">
+                      <SearchableSelect
+                        placement="top"
+                        value={normalizeHeaderBehavior(String(clientConfig.get("header.behavior") ?? "fixed"))}
+                        onChange={(value) => {
+                          setConfigValue("client", "header.behavior", value);
+                        }}
+                        options={[
+                          { value: "fixed", label: "固定吸顶在顶部 (Fixed)" },
+                          { value: "static", label: "跟随页面滚动 (Static)" },
+                          { value: "reveal", label: "向上滑动时自动呼出 (Reveal)" },
+                        ]}
+                        placeholder="顶部导航栏滚动行为"
+                        emptyLabel={t("no_more")}
+                        searchable={false}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </SettingsCard>
           </div>

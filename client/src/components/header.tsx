@@ -13,7 +13,9 @@ export function Header({ children }: { children?: React.ReactNode }) {
   const siteConfig = useSiteConfig();
 
   const headerLayout = normalizeHeaderLayout(siteConfig.headerLayout);
-  const headerBehavior = normalizeHeaderBehavior(siteConfig.headerBehavior);
+  const headerBehavior = siteConfig.headerStickyEnabled === false
+    ? "static"
+    : normalizeHeaderBehavior(siteConfig.headerBehavior);
   const layoutDefinition = getHeaderLayoutDefinition(headerLayout);
   const [isRevealed, setIsRevealed] = useState(true);
   const [isAtTop, setIsAtTop] = useState(true);
