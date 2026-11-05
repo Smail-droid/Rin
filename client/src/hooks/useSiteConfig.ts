@@ -80,6 +80,7 @@ export const SITE_CONFIG_KEYS = {
     galleryCardSize: "gallery.card_size",
     galleryCardMaxWidth: "gallery.card_max_width",
     galleryCardGap: "gallery.card_gap",
+    galleryTiltMode: "gallery.tilt_mode", // "subtle" (自然微倾) | "pronounced" (显著错落) | "flat" (纯平对齐) | "dynamic" (随性活力)
 
     danmakuSpeed: "danmaku.speed",
 } as const;
@@ -166,12 +167,23 @@ export function useSiteConfig() {
         atelierDeckShow: config.get(SITE_CONFIG_KEYS.atelierDeckShow) !== false && config.get(SITE_CONFIG_KEYS.atelierDeckShow) !== "false",
         atelierDeckStyle: config.get<string>(SITE_CONFIG_KEYS.atelierDeckStyle) || "card",
 
-        galleryPadding: Number.parseInt(String(config.get(SITE_CONFIG_KEYS.galleryPadding) ?? 24), 10) || 24,
+        galleryPadding: (() => {
+            const padRaw = config.get(SITE_CONFIG_KEYS.galleryPadding);
+            if (padRaw === undefined || padRaw === null || padRaw === "") return 24;
+            const parsed = Number.parseInt(String(padRaw), 10);
+            return Number.isNaN(parsed) ? 24 : Math.max(0, parsed);
+        })(),
         galleryColumns: String(config.get(SITE_CONFIG_KEYS.galleryColumns) ?? "auto"),
         galleryAlign: String(config.get(SITE_CONFIG_KEYS.galleryAlign) ?? "center"),
         galleryCardSize: String(config.get(SITE_CONFIG_KEYS.galleryCardSize) ?? "medium"),
         galleryCardMaxWidth: Number.parseInt(String(config.get(SITE_CONFIG_KEYS.galleryCardMaxWidth) ?? 380), 10) || 380,
-        galleryCardGap: Number.parseInt(String(config.get(SITE_CONFIG_KEYS.galleryCardGap) ?? 24), 10) || 24,
+        galleryCardGap: (() => {
+            const gapRaw = config.get(SITE_CONFIG_KEYS.galleryCardGap);
+            if (gapRaw === undefined || gapRaw === null || gapRaw === "") return 16;
+            const parsed = Number.parseInt(String(gapRaw), 10);
+            return Number.isNaN(parsed) ? 16 : Math.max(0, parsed);
+        })(),
+        galleryTiltMode: String(config.get(SITE_CONFIG_KEYS.galleryTiltMode) ?? "subtle"),
 
         danmakuSpeed: String(config.get(SITE_CONFIG_KEYS.danmakuSpeed) ?? "normal"),
     };

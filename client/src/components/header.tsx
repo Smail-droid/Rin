@@ -5,6 +5,7 @@ import { Padding } from "./padding";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { getHeaderLayoutDefinition } from "./site-header/layout-registry";
 import { normalizeHeaderBehavior, normalizeHeaderLayout } from "./site-header/layout-options";
+import { LanguageSwitch, ThemeToggle } from "./site-header";
 
 export function Header({ children }: { children?: React.ReactNode }) {
   const [location] = useLocation();
@@ -69,7 +70,13 @@ export function Header({ children }: { children?: React.ReactNode }) {
     : siteConfig.headerShowNav === true;
 
   if (!shouldShowNav && !location.startsWith("/admin")) {
-    return null;
+    // 隐藏前台导航栏时，保留日夜模式与多语言切换浮动微挂件（图3所示）
+    return (
+      <div className="fixed top-4 right-4 z-40 flex items-center gap-2 rounded-full border border-black/10 bg-white/80 px-2.5 py-1.5 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-neutral-900/80 transition-all select-none ani-show">
+        <ThemeToggle plain />
+        <LanguageSwitch plain />
+      </div>
+    );
   }
 
   const useTopHeader = layoutDefinition.kind === "top";

@@ -6,6 +6,7 @@ import type { QueueStatusItem, QueueStatusResponse } from "../api/client";
 import { client } from "../app/runtime";
 import { useAlert, useConfirm } from "../components/dialog";
 import { ImageWithFallback } from "../components/image-with-fallback";
+import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
 import { useApiResource } from "../hooks/use-api-resource";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 
@@ -94,6 +95,7 @@ export function QueueStatusPage() {
   const [coverTarget, setCoverTarget] = useState<QueueStatusItem | null>(null);
   const [newCoverUrl, setNewCoverUrl] = useState<string>("");
   const [isUploadingCover, setIsUploadingCover] = useState<boolean>(false);
+  const [isR2PickerOpen, setIsR2PickerOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 文章独立访问权限配置状态
@@ -1339,6 +1341,16 @@ export function QueueStatusPage() {
                 />
                 <button
                   type="button"
+                  onClick={() => setIsR2PickerOpen(true)}
+                  disabled={isUploadingCover}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-theme/10 hover:bg-theme/20 text-theme text-xs font-semibold shrink-0 transition"
+                  title="从 Cloudflare R2 存储桶媒体相册中点选已有图片"
+                >
+                  <i className="ri-folder-image-line" />
+                  <span>R2 相册</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploadingCover}
                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/5 text-xs font-semibold shrink-0 transition"
@@ -1387,6 +1399,14 @@ export function QueueStatusPage() {
           </div>
         </Modal>
       )}
+
+      {/* R2 存储桶图片选择器 */}
+      <R2MediaPickerModal
+        isOpen={isR2PickerOpen}
+        onClose={() => setIsR2PickerOpen(false)}
+        onSelect={(selectedUrl) => setNewCoverUrl(selectedUrl)}
+        title="选择 R2 存储桶封面图片"
+      />
 
       {/* 4.4 文章访问控制与密码/口令配置弹窗 */}
       {permissionTarget && (

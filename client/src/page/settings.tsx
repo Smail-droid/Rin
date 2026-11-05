@@ -472,8 +472,8 @@ export function Settings() {
 
               {/* 切片 2: 全站导航条位置与挂件模式 (画中画微缩预览创意卡片) */}
               <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 gap-2">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <i className="ri-layout-top-line text-theme text-base" />
                     <h3 className="text-sm font-bold t-primary">前台导航条排布位置与挂件形态</h3>
                     <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-theme/10 text-theme">
@@ -483,10 +483,37 @@ export function Settings() {
                         ? "底部便携挂件"
                         : "顶部固定导航"}
                     </span>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                      (clientConfig.get("header.show_nav") !== false && clientConfig.get("header.show_nav") !== "false")
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    }`}>
+                      {(clientConfig.get("header.show_nav") !== false && clientConfig.get("header.show_nav") !== "false")
+                        ? "前台导航已开启"
+                        : "前台已隐藏 (保留日夜/语言浮动挂件)"}
+                    </span>
                   </div>
-                  <p className="text-xs text-neutral-400">
-                    一键切换全站前台导航排布，呈现沉浸式画廊不同视觉视角
-                  </p>
+
+                  {/* 显隐切换开关 */}
+                  <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                    <span className="text-xs font-semibold t-primary">前台显示导航条</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={clientConfig.get("header.show_nav") !== false && clientConfig.get("header.show_nav") !== "false"}
+                      onClick={() => {
+                        const cur = clientConfig.get("header.show_nav") !== false && clientConfig.get("header.show_nav") !== "false";
+                        setConfigValue("client", "header.show_nav", !cur);
+                      }}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                        (clientConfig.get("header.show_nav") !== false && clientConfig.get("header.show_nav") !== "false") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-xs transition transform mt-1 ${
+                        (clientConfig.get("header.show_nav") !== false && clientConfig.get("header.show_nav") !== "false") ? "translate-x-6" : "translate-x-1"
+                      }`} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
@@ -1001,7 +1028,41 @@ export function Settings() {
                           </div>
                         </div>
 
-                        {/* 4. 画中画实时微缩排版视窗 (Picture-in-Picture Live Preview) */}
+                        {/* 4. 画廊相纸卡片拟物旋转与微倾角 (Tilt Mode) */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-black/5 dark:border-white/5">
+                          <div>
+                            <div className="text-xs font-semibold t-primary">画廊卡片拟物旋转与微倾角</div>
+                            <div className="text-xs text-neutral-500 dark:text-neutral-400">控制首页相纸卡片的倾角幅度，支持纯平、手账微倾或显著错落</div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {[
+                              { id: "subtle", label: "自然手账微倾 (±1.5°)", icon: "ri-t-box-line" },
+                              { id: "pronounced", label: "显著艺术错落 (±3°)", icon: "ri-artboard-line" },
+                              { id: "flat", label: "纯平规整对齐 (0°)", icon: "ri-layout-line" },
+                              { id: "dynamic", label: "随性随机活力", icon: "ri-shuffle-line" },
+                            ].map((m) => {
+                              const curTilt = String(clientConfig.get("gallery.tilt_mode") ?? "subtle");
+                              const isSelected = curTilt === m.id;
+                              return (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => setConfigValue("client", "gallery.tilt_mode", m.id)}
+                                  className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition select-none ${
+                                    isSelected
+                                      ? "bg-theme text-white shadow-xs font-bold"
+                                      : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300"
+                                  }`}
+                                >
+                                  <i className={m.icon} />
+                                  <span>{m.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* 5. 画中画实时微缩排版视窗 (Picture-in-Picture Live Preview) */}
                         <div className="mt-2 p-3.5 rounded-2xl border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] flex flex-col gap-2.5">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                             <div className="flex items-center gap-2">

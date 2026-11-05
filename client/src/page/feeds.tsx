@@ -1,12 +1,14 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useLocation, useSearch } from "wouter";
+import { Modal } from "@rin/ui";
 import { client } from "../app/runtime";
 import { ProfileContext } from "../state/profile";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { siteName } from "../utils/constants";
 import { useTranslation } from "react-i18next";
 import { useAlert } from "../components/dialog";
+import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
 
 type FeedsData = {
     size: number;
@@ -48,17 +50,48 @@ function EmptyFeedsState({ listState, canWrite }: { listState: FeedType; canWrit
     );
 }
 
-// Organic tilt angles for the scattered atelier cards (Tailwind JIT arbitrary angles)
-const TILT_ANGLES = [
-    "-rotate-[1.8deg]",
-    "rotate-[1.4deg]",
-    "-rotate-[2.2deg]",
-    "rotate-[1.9deg]",
-    "-rotate-[1.2deg]",
-    "rotate-[1.6deg]",
-    "-rotate-[2.4deg]",
-    "rotate-[1.1deg]",
-];
+// Organic tilt angles for the scattered atelier cards based on galleryTiltMode
+const getTiltAngle = (index: number, tiltOffset: number, mode: string = "subtle") => {
+    if (mode === "flat") return "rotate-0";
+    if (mode === "pronounced") {
+        const angles = [
+            "-rotate-[3.2deg]",
+            "rotate-[2.6deg]",
+            "-rotate-[3.5deg]",
+            "rotate-[3deg]",
+            "-rotate-[2.2deg]",
+            "rotate-[2.8deg]",
+            "-rotate-[3.4deg]",
+            "rotate-[2.2deg]",
+        ];
+        return angles[(index + tiltOffset) % angles.length];
+    }
+    if (mode === "dynamic") {
+        const angles = [
+            "-rotate-[2.5deg]",
+            "rotate-[1.5deg]",
+            "-rotate-[3deg]",
+            "rotate-[2deg]",
+            "-rotate-[1.2deg]",
+            "rotate-[2.8deg]",
+            "-rotate-[2deg]",
+            "rotate-[1.6deg]",
+        ];
+        return angles[(index + tiltOffset) % angles.length];
+    }
+    // "subtle" (default)
+    const angles = [
+        "-rotate-[1.8deg]",
+        "rotate-[1.4deg]",
+        "-rotate-[2.2deg]",
+        "rotate-[1.9deg]",
+        "-rotate-[1.2deg]",
+        "rotate-[1.6deg]",
+        "-rotate-[2.4deg]",
+        "rotate-[1.1deg]",
+    ];
+    return angles[(index + tiltOffset) % angles.length];
+};
 
 // Translucent washi-tape accent colors
 const TAPE_COLORS = [
@@ -85,6 +118,7 @@ function AtelierPhotoCard({
     onDrop,
     onDragEnd,
     onToggleTop,
+    onEditCover,
 }: {
     feed: any;
     index: number;
@@ -98,10 +132,12 @@ function AtelierPhotoCard({
     onDrop?: (e: React.DragEvent) => void;
     onDragEnd?: () => void;
     onToggleTop?: (feedId: number, top: number) => void;
+    onEditCover?: (feed: any) => void;
 }) {
     const { t } = useTranslation();
+    const siteConfig = useSiteConfig();
     const [imageError, setImageError] = useState(false);
-    const tilt = TILT_ANGLES[(index + tiltOffset) % TILT_ANGLES.length];
+    const tilt = getTiltAngle(index, tiltOffset, siteConfig.galleryTiltMode);
     const tapeColor = TAPE_COLORS[(index + tiltOffset) % TAPE_COLORS.length];
     const readingTime = feed.readingTime || Math.max(1, Math.ceil((feed.summary?.length || 100) / 100));
 
@@ -137,16 +173,30 @@ function AtelierPhotoCard({
                 </div>
             )}
 
-            {/* Quick Admin Edit Button on top-right (Screenshot 4) */}
+            {/* Quick Admin Action Controls on top-right (更换封面 + 编辑正文) */}
             {canManage && (
-                <Link
-                    href={`/admin/writing/${feed.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    title="编辑文章与更换封面"
-                    className="absolute right-4 top-4 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme"
-                >
-                    <i className="ri-edit-line text-xs" />
-                </Link>
+                <div className="absolute right-4 top-4 z-20 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onEditCover?.(feed);
+                        }}
+                        title="快捷更换此文章封面（支持R2相册/本地上传/URL）"
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme active:scale-95"
+                    >
+                        <i className="ri-image-edit-line text-xs" />
+                    </button>
+                    <Link
+                        href={`/admin/writing/${feed.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        title="进入写作后台编辑正文"
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme"
+                    >
+                        <i className="ri-edit-line text-xs" />
+                    </Link>
+                </div>
             )}
 
             {/* Poster area: high-res, crisp, large image (图片自适应充满，移除多余硬编码min-h以杜绝留黑) */}
@@ -229,6 +279,7 @@ function StickyNoteItem({
     onDrop,
     onDragEnd,
     onMoveStep,
+    onEditNote,
 }: {
     type: "about" | "timeline" | "moments" | "friends" | "search";
     siteConfig: any;
@@ -241,6 +292,7 @@ function StickyNoteItem({
     onDrop?: (e: React.DragEvent) => void;
     onDragEnd?: (e: React.DragEvent) => void;
     onMoveStep?: (type: string, direction: "prev" | "next") => void;
+    onEditNote?: (type: string) => void;
 }) {
     const [, setLocation] = useLocation();
     const [searchKeyword, setSearchKeyword] = useState("");
@@ -258,7 +310,7 @@ function StickyNoteItem({
     }`;
 
     // 统一的便签右上角管理与拖拽/移动控制条
-    const renderAdminControls = (focusKey: string) => {
+    const renderAdminControls = (_focusKey: string) => {
         if (!canManage) return null;
         return (
             <div className="absolute right-3.5 top-3.5 z-30 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -298,13 +350,17 @@ function StickyNoteItem({
                     <i className="ri-arrow-right-s-line text-xs" />
                 </button>
 
-                <Link
-                    href={`/admin/settings?tab=atelier&focus=${focusKey}`}
-                    title="在后台超级表格中编辑此便签"
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onEditNote?.(type);
+                    }}
+                    title="在前台就地编辑此便签的文案、形态与背景"
                     className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-xs transition hover:scale-110 hover:text-theme select-none ml-0.5"
                 >
                     <i className="ri-settings-3-line text-xs" />
-                </Link>
+                </button>
             </div>
         );
     };
@@ -707,10 +763,12 @@ function NextDeckFlipCard({
     totalCount,
     siteConfig,
     canManage = false,
+    onEditDeck,
 }: {
     totalCount: number;
     siteConfig: any;
     canManage?: boolean;
+    onEditDeck?: () => void;
 }) {
     const bgImage = siteConfig?.atelierDeckBg;
     const deckUrl = siteConfig?.atelierDeckUrl || "/gallery";
@@ -771,14 +829,17 @@ function NextDeckFlipCard({
             {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
 
             {canManage && (
-                <Link
-                    href="/admin/settings?tab=atelier&focus=deck"
-                    onClick={(e) => e.stopPropagation()}
-                    title="在设置中修改此卡片背景、图标或文字"
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onEditDeck?.();
+                    }}
+                    title="在前台就地编辑记忆底卷背景与描述"
                     className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
                 >
                     <i className="ri-settings-3-line text-xs" />
-                </Link>
+                </button>
             )}
 
             <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
@@ -850,6 +911,7 @@ export function FeedsPage() {
     const siteConfig = useSiteConfig();
     const query = new URLSearchParams(useSearch());
     const profile = useContext(ProfileContext);
+    const { showAlert, AlertUI } = useAlert();
 
     const [listState, _setListState] = useState<FeedType>((query.get("type") as FeedType) || "normal");
     const [status, setStatus] = useState<"loading" | "idle">("loading");
@@ -858,6 +920,36 @@ export function FeedsPage() {
         draft: { size: 0, data: [], hasNext: false },
         unlisted: { size: 0, data: [], hasNext: false },
         normal: { size: 0, data: [], hasNext: false },
+    });
+
+    // 1. 文章快捷更换封面状态与弹窗
+    const [editingCoverFeed, setEditingCoverFeed] = useState<any | null>(null);
+    const [feedCoverUrl, setFeedCoverUrl] = useState("");
+    const [isUploadingFeedCover, setIsUploadingFeedCover] = useState(false);
+    const [isR2CoverPickerOpen, setIsR2CoverPickerOpen] = useState(false);
+    const coverFileInputRef = useRef<HTMLInputElement>(null);
+
+    // 2. 便签专属排版与内容前台就地编辑状态与弹窗
+    const [editingNoteType, setEditingNoteType] = useState<string | null>(null);
+    const [noteTitle, setNoteTitle] = useState("");
+    const [noteDesc, setNoteDesc] = useState("");
+    const [noteStyle, setNoteStyle] = useState("card");
+    const [noteBg, setNoteBg] = useState("");
+    const [noteUrl, setNoteUrl] = useState("");
+    const [noteShow, setNoteShow] = useState(true);
+    const [isR2NoteBgPickerOpen, setIsR2NoteBgPickerOpen] = useState(false);
+    const [isUploadingNoteBg, setIsUploadingNoteBg] = useState(false);
+    const [isSavingNote, setIsSavingNote] = useState(false);
+    const noteBgFileInputRef = useRef<HTMLInputElement>(null);
+
+    // 3. 首页推荐标签高密超级表格管理 (Dense DataGrid)
+    const [isTagSettingsOpen, setIsTagSettingsOpen] = useState(false);
+    const [homepageTagsConfig, setHomepageTagsConfig] = useState<{ hiddenIds: number[]; customOrder: number[] }>(() => {
+        try {
+            const saved = localStorage.getItem("rin_gallery_homepage_tags_config");
+            if (saved) return JSON.parse(saved);
+        } catch {}
+        return { hiddenIds: [], customOrder: [] };
     });
 
     const limit = 36;
@@ -1002,6 +1094,254 @@ export function FeedsPage() {
         setStreamOrder(nextOrder);
         try {
             localStorage.setItem("rin_gallery_stream_order", JSON.stringify(nextOrder));
+        } catch {}
+    };
+
+    // 快捷打开文章封面置换
+    const openCoverModal = (feed: any) => {
+        setEditingCoverFeed(feed);
+        setFeedCoverUrl(feed.avatar || "");
+    };
+
+    const handleCoverFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            showAlert("请选择图片格式文件");
+            return;
+        }
+        setIsUploadingFeedCover(true);
+        try {
+            const { data, error } = await client.storage.upload(file);
+            if (error || !data?.url) {
+                showAlert(typeof error === "string" ? error : (error?.value as string) || "图片上传失败");
+            } else {
+                setFeedCoverUrl(data.url);
+            }
+        } catch (err: any) {
+            showAlert(err.message || "上传异常");
+        } finally {
+            setIsUploadingFeedCover(false);
+            if (coverFileInputRef.current) coverFileInputRef.current.value = "";
+        }
+    };
+
+    const handleSaveFeedCover = async () => {
+        if (!editingCoverFeed) return;
+        const finalUrl = feedCoverUrl.trim();
+        if (!finalUrl) {
+            showAlert("请输入封面图片链接或上传本地图片");
+            return;
+        }
+
+        try {
+            const { error } = await client.feed.setCover(editingCoverFeed.id, finalUrl);
+            if (error) {
+                showAlert(typeof error === "string" ? error : (error.value as string) || "更换封面失败");
+            } else {
+                setFeeds((prev) => ({
+                    ...prev,
+                    [listState]: {
+                        ...prev[listState],
+                        data: prev[listState].data.map((f) =>
+                            f.id === editingCoverFeed.id ? { ...f, avatar: finalUrl } : f
+                        ),
+                    },
+                }));
+                showAlert(`文章 #${editingCoverFeed.id}「${editingCoverFeed.title}」封面已成功更换！`);
+                setEditingCoverFeed(null);
+            }
+        } catch (err: any) {
+            showAlert(err.message || "更新封面异常");
+        }
+    };
+
+    // 快捷打开便签前台就地设置
+    const openNoteSettingsModal = (type: string) => {
+        setEditingNoteType(type);
+        if (type === "about") {
+            setNoteTitle(siteConfig.name || "80hou");
+            setNoteDesc(siteConfig.atelierAboutDesc || "");
+            setNoteStyle(siteConfig.atelierAboutStyle || "card");
+            setNoteBg(siteConfig.atelierAboutBg || "");
+            setNoteUrl(siteConfig.atelierAboutUrl || "/about");
+            setNoteShow(siteConfig.atelierAboutShow !== false);
+        } else if (type === "timeline") {
+            setNoteTitle("岁月轨迹");
+            setNoteDesc(siteConfig.atelierTimelineDesc || "");
+            setNoteStyle(siteConfig.atelierTimelineStyle || "card");
+            setNoteBg(siteConfig.atelierTimelineBg || "");
+            setNoteUrl(siteConfig.atelierTimelineUrl || "/timeline");
+            setNoteShow(siteConfig.atelierTimelineShow !== false);
+        } else if (type === "moments") {
+            setNoteTitle("朋友圈动态");
+            setNoteDesc(siteConfig.atelierMomentsDesc || "");
+            setNoteStyle(siteConfig.atelierMomentsStyle || "card");
+            setNoteBg(siteConfig.atelierMomentsBg || "");
+            setNoteUrl(siteConfig.atelierMomentsUrl || "/moments");
+            setNoteShow(siteConfig.atelierMomentsShow !== false);
+        } else if (type === "friends") {
+            setNoteTitle("邻家友链");
+            setNoteDesc(siteConfig.atelierFriendsDesc || "");
+            setNoteStyle(siteConfig.atelierFriendsStyle || "card");
+            setNoteBg(siteConfig.atelierFriendsBg || "");
+            setNoteUrl(siteConfig.atelierFriendsUrl || "/friends");
+            setNoteShow(siteConfig.atelierFriendsShow !== false);
+        } else if (type === "search") {
+            setNoteTitle("随心探索");
+            setNoteDesc(siteConfig.atelierSearchDesc || "");
+            setNoteStyle(siteConfig.atelierSearchStyle || "card");
+            setNoteBg(siteConfig.atelierSearchBg || "");
+            setNoteUrl(siteConfig.atelierSearchUrl || "/search");
+            setNoteShow(siteConfig.atelierSearchShow !== false);
+        } else if (type === "deck") {
+            setNoteTitle("记忆翻动底卷");
+            setNoteDesc(siteConfig.atelierDeckDesc || "");
+            setNoteStyle("card");
+            setNoteBg(siteConfig.atelierDeckBg || "");
+            setNoteUrl(siteConfig.atelierDeckUrl || "/gallery");
+            setNoteShow(siteConfig.atelierDeckShow !== false);
+        }
+    };
+
+    const handleNoteBgFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            showAlert("请选择图片格式文件");
+            return;
+        }
+        setIsUploadingNoteBg(true);
+        try {
+            const { data, error } = await client.storage.upload(file);
+            if (error || !data?.url) {
+                showAlert(typeof error === "string" ? error : (error?.value as string) || "图片上传失败");
+            } else {
+                setNoteBg(data.url);
+            }
+        } catch (err: any) {
+            showAlert(err.message || "上传异常");
+        } finally {
+            setIsUploadingNoteBg(false);
+            if (noteBgFileInputRef.current) noteBgFileInputRef.current.value = "";
+        }
+    };
+
+    const handleSaveNoteSettings = async () => {
+        if (!editingNoteType) return;
+        setIsSavingNote(true);
+        const updates: Record<string, any> = {};
+
+        if (editingNoteType === "about") {
+            updates["atelier.about_desc"] = noteDesc;
+            updates["atelier.about_style"] = noteStyle;
+            updates["atelier.about_bg"] = noteBg;
+            updates["atelier.about_url"] = noteUrl;
+            updates["atelier.about_show"] = noteShow;
+        } else if (editingNoteType === "timeline") {
+            updates["atelier.timeline_desc"] = noteDesc;
+            updates["atelier.timeline_style"] = noteStyle;
+            updates["atelier.timeline_bg"] = noteBg;
+            updates["atelier.timeline_url"] = noteUrl;
+            updates["atelier.timeline_show"] = noteShow;
+        } else if (editingNoteType === "moments") {
+            updates["atelier.moments_desc"] = noteDesc;
+            updates["atelier.moments_style"] = noteStyle;
+            updates["atelier.moments_bg"] = noteBg;
+            updates["atelier.moments_url"] = noteUrl;
+            updates["atelier.moments_show"] = noteShow;
+        } else if (editingNoteType === "friends") {
+            updates["atelier.friends_desc"] = noteDesc;
+            updates["atelier.friends_style"] = noteStyle;
+            updates["atelier.friends_bg"] = noteBg;
+            updates["atelier.friends_url"] = noteUrl;
+            updates["atelier.friends_show"] = noteShow;
+        } else if (editingNoteType === "search") {
+            updates["atelier.search_desc"] = noteDesc;
+            updates["atelier.search_style"] = noteStyle;
+            updates["atelier.search_bg"] = noteBg;
+            updates["atelier.search_url"] = noteUrl;
+            updates["atelier.search_show"] = noteShow;
+        } else if (editingNoteType === "deck") {
+            updates["atelier.deck_desc"] = noteDesc;
+            updates["atelier.deck_bg"] = noteBg;
+            updates["atelier.deck_url"] = noteUrl;
+            updates["atelier.deck_show"] = noteShow;
+        }
+
+        try {
+            await client.config.update("client", updates);
+            showAlert("便签配置已保存并在前台即刻生效！", () => {
+                setEditingNoteType(null);
+                window.location.reload();
+            });
+        } catch (e: any) {
+            showAlert(e.message || "保存失败");
+        } finally {
+            setIsSavingNote(false);
+        }
+    };
+
+    const displayTags = useMemo(() => {
+        if (!tags || tags.length === 0) return [];
+        let list = tags.filter((t) => !homepageTagsConfig.hiddenIds.includes(t.id));
+        if (homepageTagsConfig.customOrder.length > 0) {
+            list = [...list].sort((a, b) => {
+                const idxA = homepageTagsConfig.customOrder.indexOf(a.id);
+                const idxB = homepageTagsConfig.customOrder.indexOf(b.id);
+                if (idxA === -1 && idxB === -1) return 0;
+                if (idxA === -1) return 1;
+                if (idxB === -1) return -1;
+                return idxA - idxB;
+            });
+        }
+        return list.slice(0, 10);
+    }, [tags, homepageTagsConfig]);
+
+    const handleToggleTagVisibility = (tagId: number) => {
+        const next = { ...homepageTagsConfig };
+        if (next.hiddenIds.includes(tagId)) {
+            next.hiddenIds = next.hiddenIds.filter((id) => id !== tagId);
+        } else {
+            next.hiddenIds = [...next.hiddenIds, tagId];
+        }
+        setHomepageTagsConfig(next);
+        try {
+            localStorage.setItem("rin_gallery_homepage_tags_config", JSON.stringify(next));
+        } catch {}
+    };
+
+    const handleMoveTagStep = (tagId: number, direction: "up" | "down") => {
+        const currentIds = tags.map((t) => t.id);
+        const orderList = homepageTagsConfig.customOrder.length > 0
+            ? [...homepageTagsConfig.customOrder]
+            : [...currentIds];
+        
+        currentIds.forEach((id) => {
+            if (!orderList.includes(id)) orderList.push(id);
+        });
+
+        const idx = orderList.indexOf(tagId);
+        if (idx === -1) return;
+        const targetIdx = direction === "up" ? Math.max(0, idx - 1) : Math.min(orderList.length - 1, idx + 1);
+        if (targetIdx === idx) return;
+
+        const nextOrder = [...orderList];
+        const [moved] = nextOrder.splice(idx, 1);
+        nextOrder.splice(targetIdx, 0, moved);
+
+        const nextConfig = { ...homepageTagsConfig, customOrder: nextOrder };
+        setHomepageTagsConfig(nextConfig);
+        try {
+            localStorage.setItem("rin_gallery_homepage_tags_config", JSON.stringify(nextConfig));
+        } catch {}
+    };
+
+    const handleResetTagsConfig = () => {
+        const resetVal = { hiddenIds: [], customOrder: [] };
+        setHomepageTagsConfig(resetVal);
+        try {
+            localStorage.removeItem("rin_gallery_homepage_tags_config");
         } catch {}
     };
 
@@ -1208,9 +1548,9 @@ export function FeedsPage() {
                 </div>
 
                 {/* 🏷️ Floating Washi Tape Charms (Scattered delicately around the whitespace) */}
-                {tags.length > 0 && listState === "normal" && (
+                {displayTags.length > 0 && listState === "normal" && (
                     <div className="flex flex-wrap items-center justify-center gap-3 my-4 px-2 select-none ani-show">
-                        {tags.slice(0, 8).map((tag, i) => {
+                        {displayTags.map((tag, i) => {
                             const rot = [
                                 "rotate-[-3deg]",
                                 "rotate-[2.5deg]",
@@ -1239,6 +1579,17 @@ export function FeedsPage() {
                                 </Link>
                             );
                         })}
+                        {Boolean(profile?.permission) && (
+                            <button
+                                type="button"
+                                onClick={() => setIsTagSettingsOpen(true)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-neutral-800/80 hover:bg-theme/10 hover:text-theme text-xs font-semibold t-primary border border-black/10 dark:border-white/10 shadow-2xs transition select-none active:scale-95"
+                                title="管理画廊首页推荐标签展示与顺序 (Dense DataGrid)"
+                            >
+                                <i className="ri-settings-3-line text-xs" />
+                                <span>设置首页标签</span>
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -1297,6 +1648,7 @@ export function FeedsPage() {
                                             setDragOverStreamItem(null);
                                         }}
                                         onToggleTop={handleToggleTop}
+                                        onEditCover={openCoverModal}
                                     />
                                 );
                             }
@@ -1313,6 +1665,7 @@ export function FeedsPage() {
                                         isDragging={draggedStreamItem === itemK}
                                         isDragOver={dragOverStreamItem === itemK}
                                         onMoveStep={(nt, dir) => moveNoteStep(nt, dir, currentFirstPageKeys)}
+                                        onEditNote={(nt) => openNoteSettingsModal(nt)}
                                         onDragStart={(e) => {
                                             e.dataTransfer.setData("text/plain", itemK);
                                             setDraggedStreamItem(itemK);
@@ -1339,6 +1692,7 @@ export function FeedsPage() {
                                     totalCount={currentFeeds.size}
                                     siteConfig={siteConfig}
                                     canManage={Boolean(profile?.permission)}
+                                    onEditDeck={() => openNoteSettingsModal("deck")}
                                 />
                             );
                         })}
@@ -1362,6 +1716,448 @@ export function FeedsPage() {
                     </div>
                 )}
             </main>
+
+            {/* 1. 快捷更换文章封面 Modal (前台就地直接置换，不跳后台) */}
+            {editingCoverFeed && (
+                <Modal
+                    isOpen={!!editingCoverFeed}
+                    onRequestClose={() => !isUploadingFeedCover && setEditingCoverFeed(null)}
+                    contentLabel="快捷更换文章封面"
+                    panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-md w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
+                >
+                    <div className="flex flex-col gap-4 text-xs">
+                        <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+                            <div>
+                                <h3 className="text-sm font-bold t-primary">快捷更换文章封面</h3>
+                                <p className="text-[11px] text-neutral-400 truncate max-w-xs mt-0.5">
+                                    #{editingCoverFeed.id} {editingCoverFeed.title || "无标题文章"}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setEditingCoverFeed(null)}
+                                disabled={isUploadingFeedCover}
+                                className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                            >
+                                <i className="ri-close-line text-lg" />
+                            </button>
+                        </div>
+
+                        {/* 封面实时预览区 */}
+                        <div className="flex flex-col items-center justify-center p-3 rounded-xl border border-dashed border-black/15 dark:border-white/15 bg-black/[0.02] dark:bg-white/[0.02]">
+                            {feedCoverUrl.trim() ? (
+                                <div className="relative h-36 w-full rounded-lg overflow-hidden group/img">
+                                    <img
+                                        src={feedCoverUrl}
+                                        alt="cover preview"
+                                        className="h-full w-full object-cover rounded-lg shadow-inner"
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition flex items-center justify-center">
+                                        <span className="text-white text-xs font-bold">封面实时预览</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="py-8 flex flex-col items-center justify-center text-neutral-400">
+                                    <i className="ri-image-line text-3xl mb-1 opacity-40" />
+                                    <span>暂无封面，请输入网络链接或选择媒体图片</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 图片链接输入与来源选择 */}
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
+                                封面图片地址 (URL)
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={feedCoverUrl}
+                                    onChange={(e) => setFeedCoverUrl(e.target.value)}
+                                    placeholder="https://example.com/cover.jpg"
+                                    className="flex-1 rounded-xl border border-black/10 bg-transparent px-3 py-1.5 text-xs outline-none focus:border-theme dark:border-white/10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setIsR2CoverPickerOpen(true)}
+                                    disabled={isUploadingFeedCover}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-theme/10 hover:bg-theme/20 text-theme text-xs font-semibold shrink-0 transition"
+                                    title="从 Cloudflare R2 存储桶中点选已有相册图片"
+                                >
+                                    <i className="ri-folder-image-line" />
+                                    <span>R2 相册</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => coverFileInputRef.current?.click()}
+                                    disabled={isUploadingFeedCover}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/5 text-xs font-semibold shrink-0 transition"
+                                >
+                                    {isUploadingFeedCover ? (
+                                        <i className="ri-loader-4-line animate-spin text-sm" />
+                                    ) : (
+                                        <i className="ri-upload-cloud-line text-sm" />
+                                    )}
+                                </button>
+                                <input
+                                    ref={coverFileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleCoverFileSelected}
+                                    className="hidden"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/5">
+                            <button
+                                type="button"
+                                onClick={() => setEditingCoverFeed(null)}
+                                disabled={isUploadingFeedCover}
+                                className="px-3.5 py-1.5 rounded-xl text-neutral-500 hover:bg-black/5 font-semibold"
+                            >
+                                取消
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSaveFeedCover}
+                                disabled={isUploadingFeedCover || !feedCoverUrl.trim()}
+                                className="px-5 py-1.5 rounded-xl bg-theme text-white font-bold shadow-xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition"
+                            >
+                                更新封面
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {/* 2. 便签专属排版与内容前台就地设置 Modal (图6) */}
+            {editingNoteType && (
+                <Modal
+                    isOpen={!!editingNoteType}
+                    onRequestClose={() => !isSavingNote && setEditingNoteType(null)}
+                    contentLabel={`便签设置 · ${noteTitle}`}
+                    panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-lg w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
+                >
+                    <div className="flex flex-col gap-4 text-xs">
+                        <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+                            <div className="flex items-center gap-2">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-base shadow-2xs">
+                                    <i className="ri-equalizer-line" />
+                                </span>
+                                <div>
+                                    <h3 className="text-sm font-bold t-primary">便签专属排版与内容设置 · {noteTitle}</h3>
+                                    <p className="text-[11px] text-neutral-400">在前台就地修改便签的文案、形态、背景与跳转链接</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setEditingNoteType(null)}
+                                disabled={isSavingNote}
+                                className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                            >
+                                <i className="ri-close-line text-lg" />
+                            </button>
+                        </div>
+
+                        {/* 首页展示开关 */}
+                        <div className="p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between">
+                            <div>
+                                <span className="font-bold text-xs t-primary block">在画廊首页展示此便签</span>
+                                <span className="text-[11px] text-neutral-400">开启后此便签将在首页首屏相纸流中呈现</span>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={noteShow}
+                                onClick={() => setNoteShow(!noteShow)}
+                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                                    noteShow ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                                }`}
+                            >
+                                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-xs transition transform mt-1 ${
+                                    noteShow ? "translate-x-6" : "translate-x-1"
+                                }`} />
+                            </button>
+                        </div>
+
+                        {/* 视觉形态选择 (除 deck 外均可三段切换) */}
+                        {editingNoteType !== "deck" && (
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
+                                    便签视觉形态
+                                </label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[
+                                        { id: "card", label: "经典长条", icon: "ri-postcard-line", desc: "拍立得长纸质感" },
+                                        { id: "circle", label: "精致小圆盘", icon: "ri-record-circle-line", desc: "立体微光徽章" },
+                                        { id: "capsule", label: "极简小胶囊", icon: "ri-capsule-line", desc: "单行圆角药丸" },
+                                    ].map((v) => (
+                                        <button
+                                            key={v.id}
+                                            type="button"
+                                            onClick={() => setNoteStyle(v.id)}
+                                            className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition select-none ${
+                                                noteStyle === v.id
+                                                    ? "border-theme bg-theme/10 ring-1 ring-theme/30 text-theme font-bold shadow-2xs"
+                                                    : "border-black/10 dark:border-white/10 bg-black/[0.01] hover:bg-black/5 text-neutral-600 dark:text-neutral-400"
+                                            }`}
+                                        >
+                                            <i className={`${v.icon} text-base mb-0.5`} />
+                                            <span className="text-xs">{v.label}</span>
+                                            <span className="text-[9px] text-neutral-400 scale-90">{v.desc}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 描述文案 */}
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
+                                情绪寄语 / 描述文案
+                            </label>
+                            <textarea
+                                rows={2}
+                                value={noteDesc}
+                                onChange={(e) => setNoteDesc(e.target.value)}
+                                placeholder="写下这篇便签的随想或引导语..."
+                                className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.015] dark:bg-white/[0.02] px-3 py-2 text-xs t-primary outline-hidden focus:border-theme resize-none"
+                            />
+                        </div>
+
+                        {/* 背景图片 */}
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
+                                专属背景图片 (支持R2相册/本地上传/URL)
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={noteBg}
+                                    onChange={(e) => setNoteBg(e.target.value)}
+                                    placeholder="https://... 或留空使用默认清新纸张"
+                                    className="flex-1 rounded-xl border border-black/10 bg-transparent px-3 py-1.5 text-xs outline-none focus:border-theme dark:border-white/10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setIsR2NoteBgPickerOpen(true)}
+                                    disabled={isUploadingNoteBg}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-theme/10 hover:bg-theme/20 text-theme text-xs font-semibold shrink-0 transition"
+                                    title="从 Cloudflare R2 存储桶中选取背景图片"
+                                >
+                                    <i className="ri-folder-image-line" />
+                                    <span>R2 相册</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => noteBgFileInputRef.current?.click()}
+                                    disabled={isUploadingNoteBg}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/5 text-xs font-semibold shrink-0 transition"
+                                >
+                                    {isUploadingNoteBg ? (
+                                        <i className="ri-loader-4-line animate-spin text-sm" />
+                                    ) : (
+                                        <i className="ri-upload-cloud-line text-sm" />
+                                    )}
+                                </button>
+                                <input
+                                    ref={noteBgFileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleNoteBgFileSelected}
+                                    className="hidden"
+                                />
+                            </div>
+                            {noteBg.trim() && (
+                                <div className="relative h-20 w-full rounded-xl overflow-hidden border border-black/10 dark:border-white/10 mt-1">
+                                    <img src={noteBg} alt="background preview" className="h-full w-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={() => setNoteBg("")}
+                                        className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] hover:bg-black/80 transition"
+                                    >
+                                        清空背景
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 跳转目标链接 */}
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
+                                点击跳转目标链接 (URL)
+                            </label>
+                            <input
+                                type="text"
+                                value={noteUrl}
+                                onChange={(e) => setNoteUrl(e.target.value)}
+                                placeholder="/about 或 https://..."
+                                className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.015] dark:bg-white/[0.02] px-3 py-1.5 text-xs t-primary outline-hidden focus:border-theme font-mono"
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/5">
+                            <button
+                                type="button"
+                                onClick={() => setEditingNoteType(null)}
+                                disabled={isSavingNote}
+                                className="px-3.5 py-1.5 rounded-xl text-neutral-500 hover:bg-black/5 font-semibold"
+                            >
+                                取消
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSaveNoteSettings}
+                                disabled={isSavingNote}
+                                className="px-5 py-1.5 rounded-xl bg-theme text-white font-bold shadow-xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition"
+                            >
+                                {isSavingNote ? "保存中..." : "保存并在前台生效"}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {/* 3. 首页推荐标签高密超级表格管理 Modal (图4) */}
+            {isTagSettingsOpen && (
+                <Modal
+                    isOpen={isTagSettingsOpen}
+                    onRequestClose={() => setIsTagSettingsOpen(false)}
+                    contentLabel="首页推荐标签管理 (Dense DataGrid)"
+                    panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-2xl w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
+                >
+                    <div className="flex flex-col gap-3.5 max-h-[82vh]">
+                        <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
+                            <div className="flex items-center gap-2">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-base shadow-2xs">
+                                    <i className="ri-price-tag-3-line" />
+                                </span>
+                                <div>
+                                    <h3 className="text-sm font-bold t-primary">画廊首页推荐标签管理 (Dense DataGrid)</h3>
+                                    <p className="text-[11px] text-neutral-400">调整在画廊首页展示的小标签显隐与上下排列次序</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsTagSettingsOpen(false)}
+                                className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                            >
+                                <i className="ri-close-line text-lg" />
+                            </button>
+                        </div>
+
+                        {/* 高密超级表格 */}
+                        <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10 bg-w max-h-[50vh] overflow-y-auto">
+                            <table className="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-400 font-mono text-[11px]">
+                                        <th className="py-2.5 px-3 w-16 text-center">排序</th>
+                                        <th className="py-2.5 px-3">标签预览</th>
+                                        <th className="py-2.5 px-3 w-28 text-center">首页展示</th>
+                                        <th className="py-2.5 px-3 w-32 text-right pr-4">调整次序</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                                    {(() => {
+                                        const currentIds = tags.map((t) => t.id);
+                                        const orderList = homepageTagsConfig.customOrder.length > 0 ? [...homepageTagsConfig.customOrder] : [...currentIds];
+                                        currentIds.forEach((id) => {
+                                            if (!orderList.includes(id)) orderList.push(id);
+                                        });
+                                        const orderedTagObjects = orderList
+                                            .map((id) => tags.find((t) => t.id === id))
+                                            .filter(Boolean) as { id: number; name: string }[];
+
+                                        return orderedTagObjects.map((t, idx) => {
+                                            const isHidden = homepageTagsConfig.hiddenIds.includes(t.id);
+                                            return (
+                                                <tr key={t.id} className="hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors">
+                                                    <td className="py-2 px-3 text-center font-mono font-bold text-neutral-400">
+                                                        #{idx + 1}
+                                                    </td>
+                                                    <td className="py-2 px-3">
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-theme/10 text-theme font-semibold text-xs border border-theme/20">
+                                                            <span>🏷️</span>
+                                                            <span>#{t.name}</span>
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-2 px-3 text-center">
+                                                        <button
+                                                            type="button"
+                                                            role="switch"
+                                                            aria-checked={!isHidden}
+                                                            onClick={() => handleToggleTagVisibility(t.id)}
+                                                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                                                                !isHidden ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                                                            }`}
+                                                        >
+                                                            <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
+                                                                !isHidden ? "translate-x-4.5" : "translate-x-1"
+                                                            }`} />
+                                                        </button>
+                                                    </td>
+                                                    <td className="py-2 px-3 text-right pr-4">
+                                                        <div className="inline-flex items-center gap-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleMoveTagStep(t.id, "up")}
+                                                                disabled={idx === 0}
+                                                                className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition"
+                                                                title="向前移动"
+                                                            >
+                                                                <i className="ri-arrow-up-s-line text-sm" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleMoveTagStep(t.id, "down")}
+                                                                disabled={idx === orderedTagObjects.length - 1}
+                                                                className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition"
+                                                                title="向后移动"
+                                                            >
+                                                                <i className="ri-arrow-down-s-line text-sm" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        });
+                                    })()}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-black/5 dark:border-white/5">
+                            <button
+                                type="button"
+                                onClick={handleResetTagsConfig}
+                                className="text-xs text-neutral-400 hover:text-theme transition"
+                            >
+                                恢复系统默认排序
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsTagSettingsOpen(false)}
+                                className="px-5 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover transition"
+                            >
+                                完成
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {/* R2 媒体库选择器 (用于文章封面与便签背景) */}
+            <R2MediaPickerModal
+                isOpen={isR2CoverPickerOpen}
+                onClose={() => setIsR2CoverPickerOpen(false)}
+                onSelect={(url) => setFeedCoverUrl(url)}
+                title="选择文章封面图片"
+            />
+            <R2MediaPickerModal
+                isOpen={isR2NoteBgPickerOpen}
+                onClose={() => setIsR2NoteBgPickerOpen(false)}
+                onSelect={(url) => setNoteBg(url)}
+                title="选择便签背景图片"
+            />
+            <AlertUI />
         </>
     );
 }
