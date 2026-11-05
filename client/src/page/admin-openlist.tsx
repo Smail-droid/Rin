@@ -10,18 +10,20 @@ export function AdminOpenListPage() {
   const [saving, setSaving] = useState(false);
 
   // OpenList 挂载配置
-  const [workerUrl, setWorkerUrl] = useState("");
-  const [showInNav, setShowInNav] = useState(false);
-  const [navTitle, setNavTitle] = useState("资源列表");
+  const [workerUrl, setWorkerUrl] = useState(() => siteConfig.openlistWorkerUrl || "");
+  const [showInNav, setShowInNav] = useState(() => siteConfig.openlistShowInNav ?? false);
+  const [navTitle, setNavTitle] = useState(() => siteConfig.openlistNavTitle || "资源列表");
 
+  // 仅在基本类型配置真正变更时同步，避免对象引用引发每字输入重置
   useEffect(() => {
-    const url = siteConfig.openlistWorkerUrl || "";
-    const inNav = siteConfig.openlistShowInNav ?? false;
-    const title = siteConfig.openlistNavTitle || "资源列表";
-    setWorkerUrl(url);
-    setShowInNav(inNav);
-    setNavTitle(title);
-  }, [siteConfig]);
+    setWorkerUrl(siteConfig.openlistWorkerUrl || "");
+    setShowInNav(siteConfig.openlistShowInNav ?? false);
+    setNavTitle(siteConfig.openlistNavTitle || "资源列表");
+  }, [
+    siteConfig.openlistWorkerUrl,
+    siteConfig.openlistShowInNav,
+    siteConfig.openlistNavTitle,
+  ]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -40,7 +42,7 @@ export function AdminOpenListPage() {
   };
 
   return (
-    <div className="flex w-full flex-col gap-4 ani-show select-none">
+    <div className="flex w-full flex-col gap-4 ani-show">
       <Helmet>
         <title>{`资源列表 · OpenList 挂载中心 - ${siteConfig.name}`}</title>
       </Helmet>
@@ -107,7 +109,7 @@ export function AdminOpenListPage() {
               value={workerUrl}
               onChange={(e) => setWorkerUrl(e.target.value)}
               placeholder="https://your-openlist.workers.dev"
-              className="w-full rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] px-3 py-2 text-xs font-mono t-primary outline-none focus:border-theme transition"
+              className="w-full rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] px-3.5 py-2.5 text-xs font-mono t-primary outline-none focus:border-theme focus:ring-1 focus:ring-theme/30 transition select-text"
             />
             <span className="text-[10px] text-neutral-400 block">
               填写在 Cloudflare Workers 上独立部署的 OpenList 路由完整访问地址
@@ -123,7 +125,7 @@ export function AdminOpenListPage() {
               value={navTitle}
               onChange={(e) => setNavTitle(e.target.value)}
               placeholder="资源列表 / 资源仓库 / 知识库"
-              className="w-full rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] px-3 py-2 text-xs t-primary outline-none focus:border-theme transition"
+              className="w-full rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] px-3.5 py-2.5 text-xs t-primary outline-none focus:border-theme focus:ring-1 focus:ring-theme/30 transition select-text"
             />
             <span className="text-[10px] text-neutral-400 block">
               在前台顶栏导航显示的汉字名称（如：资源、网盘、文件库等）
