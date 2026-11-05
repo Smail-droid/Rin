@@ -405,4 +405,50 @@ export async function persistTrackToR2(track: { url: string; trackId: string | n
   }
 }
 
+/**
+ * 从 Cloudflare R2 存储桶中删除已转存的音频文件
+ */
+export async function deleteR2Track(key: string): Promise<boolean> {
+  try {
+    const token = localStorage.getItem("rin_token") || "";
+    const resp = await fetch(`/api/music/persist-r2?key=${encodeURIComponent(key)}`, {
+      method: "DELETE",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    return resp.ok;
+  } catch {
+    return false;
+  }
+}
+
+export interface R2MusicFileItem {
+  key: string;
+  fileName: string;
+  displayName: string;
+  size: number;
+  uploaded: string;
+  url: string;
+}
+
+/**
+ * 获取 Cloudflare R2 存储桶中已持久化存储的全部音乐列表 (Navidrome 曲库视图)
+ */
+export async function fetchR2MusicFiles(): Promise<R2MusicFileItem[]> {
+  try {
+    const token = localStorage.getItem("rin_token") || "";
+    const resp = await fetch("/api/music/r2-files", {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!resp.ok) return [];
+    const json = await resp.json();
+    return json.files || [];
+  } catch {
+    return [];
+  }
+}
+
 export const gdMusicService = new GdMusicService();

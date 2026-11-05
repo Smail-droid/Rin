@@ -242,5 +242,74 @@ export function MusicService(): Hono {
     }
   });
 
+  // 5. 从 R2 对象存储桶删除已转存的音频文件
+  app.delete("/persist-r2", async (c: AppContext) => {
+    const admin = c.get("admin");
+    const env = c.get("env");
+
+    if (!admin) {
+      return c.text("Forbidden", 403);
+    }
+
+    if (!env.R2_BUCKET) {
+      return c.json({ error: "R2 bucket is not configured" }, 400);
+    }
+
+    const key = c.req.query("key");
+    if (!key) {
+      return c.json({ error: "Missing key" }, 400);
+    }
+
+    try {
+      await env.R2_BUCKET.delete(key);
+      return c.json({ success: true, key });
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  // 6. 检索 R2 对象存储桶中所有已存储的音乐文件 (Navidrome 曲库视图支持)
+  app.get("/r2-files", async (c: AppContext) => {
+    const admin = c.get("admin");
+    const env = c.get("env");
+
+    if (!admin) {
+      return c.text("Forbidden", 403);
+    }
+
+    if (!env.R2_BUCKET) {
+      return c.json({ files: [] });
+    }
+
+    try {
+      const listing = await env.R2_BUCKET.list({
+        prefix: "music/",
+        limit: 100,
+      });
+
+      const origin = new URL(c.req.url).origin;
+      const files = listing.objects.map((obj) => {
+        const fileName = obj.key.replace(/^music\//, "");
+        const rawName = fileName.replace(/\.[a-zA-Z0-9]+$/, "");
+        const parts = rawName.split("_");
+        const displayName = parts[0] || rawName;
+        const url = `${origin}/api/blob/${encodeURIComponent(obj.key)}`;
+
+        return {
+          key: obj.key,
+          fileName,
+          displayName,
+          size: obj.size,
+          uploaded: obj.uploaded,
+          url,
+        };
+      });
+
+      return c.json({ files });
+    } catch (e: any) {
+      return c.json({ files: [], error: e.message });
+    }
+  });
+
   return app;
 }

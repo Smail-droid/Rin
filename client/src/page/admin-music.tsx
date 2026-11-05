@@ -9,7 +9,10 @@ import {
   GD_MUSIC_SOURCES,
   syncOpenListFiles,
   persistTrackToR2,
+  deleteR2Track,
+  fetchR2MusicFiles,
   type GdSearchResultItem,
+  type R2MusicFileItem,
 } from "../services/music-api";
 import type { MusicTrack } from "../components/music-player/types";
 
@@ -103,6 +106,16 @@ export function AdminMusicPage() {
   const [syncCount, setSyncCount] = useState<number>(0);
   const [autoPersistR2, setAutoPersistR2] = useState<boolean>(true);
   const [persistR2Status, setPersistR2Status] = useState<"idle" | "saving" | "done">("idle");
+
+  // 右侧视图模式：播放队列 或 R2 云端存储桶曲库 (Navidrome 风格)
+  const [rightViewMode, setRightViewMode] = useState<"queue" | "r2">("queue");
+  const [r2Files, setR2Files] = useState<R2MusicFileItem[]>([]);
+  const [loadingR2, setLoadingR2] = useState<boolean>(false);
+
+  // 播放队列行拖拽排序状态
+  const [draggedTrackId, setDraggedTrackId] = useState<string | number | null>(null);
+  const [dragOverTrackId, setDragOverTrackId] = useState<string | number | null>(null);
+  const [persistingTrackId, setPersistingTrackId] = useState<string | number | null>(null);
 
   const [unplayableIds, setUnplayableIds] = useState<Set<string | number>>(new Set());
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string | number>>(new Set());
@@ -382,7 +395,7 @@ export function AdminMusicPage() {
     }
   };
 
-  // 批量操作
+  // 批量操作 (全选/反选/删除/移动)
   const handleToggleSelectAll = () => {
     if (selectedTrackIds.size === displayedPlaylist.length && displayedPlaylist.length > 0) setSelectedTrackIds(new Set());
     else setSelectedTrackIds(new Set(displayedPlaylist.map((t) => t.id)));
@@ -392,10 +405,140 @@ export function AdminMusicPage() {
     displayedPlaylist.forEach((t) => { if (!selectedTrackIds.has(t.id)) s.add(t.id); });
     setSelectedTrackIds(s);
   };
-  const handleBatchDelete = () => {
+  const handleBatchDelete = async () => {
     if (!selectedTrackIds.size) return;
+    const toDelete = player.playlist.filter((t) => selectedTrackIds.has(t.id));
+    for (const t of toDelete) {
+      if (t.source === "r2" || t.url.includes("/api/blob/")) {
+        const parts = t.url.split("/api/blob/");
+        const storageKey = parts.length > 1 ? decodeURIComponent(parts[1]) : "";
+        if (storageKey) {
+          deleteR2Track(storageKey).catch(() => {});
+        }
+      }
+    }
     player.setPlaylist(player.playlist.filter((t) => !selectedTrackIds.has(t.id)));
     setSelectedTrackIds(new Set());
+  };
+
+  // 单曲手动转存至 R2
+  const handleSingleTrackPersist = async (track: MusicTrack) => {
+    if (track.source === "r2" || track.url.includes("/api/blob/music/")) return;
+    setPersistingTrackId(track.id);
+    try {
+      const permanentUrl = await persistTrackToR2({
+        url: track.url,
+        trackId: track.id,
+        name: `${track.artist} - ${track.name}`,
+      });
+      if (permanentUrl) {
+        const updated = player.playlist.map((t) =>
+          t.id === track.id ? { ...t, url: permanentUrl, source: "r2", sourceName: "R2已有" } : t
+        );
+        player.setPlaylist(updated);
+        try {
+          await client.config.update("client", { "music.playlist": JSON.stringify(updated) });
+        } catch {}
+      }
+    } catch (e) {
+      console.warn("Single persist failed:", e);
+    } finally {
+      setPersistingTrackId(null);
+    }
+  };
+
+  // 播放队列删除单曲 (同步清理 R2 物理文件)
+  const handleDeleteTrack = async (track: MusicTrack) => {
+    if (track.source === "r2" || track.url.includes("/api/blob/")) {
+      const parts = track.url.split("/api/blob/");
+      const storageKey = parts.length > 1 ? decodeURIComponent(parts[1]) : "";
+      if (storageKey) {
+        deleteR2Track(storageKey).catch(() => {});
+      }
+    }
+    player.removeTrack(track.id);
+  };
+
+  // 播放队列行拖拽排序手柄 (=) 换位
+  const handlePlaylistRowDrop = (targetId: string | number) => {
+    if (!draggedTrackId || draggedTrackId === targetId) {
+      setDraggedTrackId(null);
+      setDragOverTrackId(null);
+      return;
+    }
+    const list = [...player.playlist];
+    const fromIdx = list.findIndex((t) => t.id === draggedTrackId);
+    const toIdx = list.findIndex((t) => t.id === targetId);
+    if (fromIdx !== -1 && toIdx !== -1) {
+      const [moved] = list.splice(fromIdx, 1);
+      list.splice(toIdx, 0, moved);
+      player.setPlaylist(list);
+    }
+    setDraggedTrackId(null);
+    setDragOverTrackId(null);
+  };
+
+  // 加载 R2 云端存储桶音乐文件列表
+  const loadR2Files = async () => {
+    setLoadingR2(true);
+    try {
+      const files = await fetchR2MusicFiles();
+      setR2Files(files);
+    } catch {
+      setR2Files([]);
+    } finally {
+      setLoadingR2(false);
+    }
+  };
+
+  // 从 R2 物理删除文件
+  const handleDeleteR2PhysicalFile = async (file: R2MusicFileItem) => {
+    const success = await deleteR2Track(file.key);
+    if (success) {
+      setR2Files((prev) => prev.filter((f) => f.key !== file.key));
+      const remaining = player.playlist.filter((t) => !t.url.includes(file.key));
+      if (remaining.length !== player.playlist.length) {
+        player.setPlaylist(remaining);
+      }
+    }
+  };
+
+  // 将 R2 文件单首或全部导入播放队列
+  const handleImportR2ToQueue = (file: R2MusicFileItem) => {
+    const parts = file.displayName.split("-").map((s) => s.trim());
+    const artist = parts.length > 1 ? parts[0] : "R2曲库";
+    const songName = parts.length > 1 ? parts.slice(1).join("-") : parts[0];
+    const track: MusicTrack = {
+      id: `r2_${file.key}`,
+      name: songName,
+      artist,
+      album: "R2对象存储",
+      url: file.url,
+      source: "r2",
+      sourceName: "R2已有",
+      group: "R2曲库",
+    };
+    player.addTrack(track, false);
+  };
+
+  const handleImportAllR2ToQueue = () => {
+    if (r2Files.length === 0) return;
+    const newTracks: MusicTrack[] = r2Files.map((file) => {
+      const parts = file.displayName.split("-").map((s) => s.trim());
+      const artist = parts.length > 1 ? parts[0] : "R2曲库";
+      const songName = parts.length > 1 ? parts.slice(1).join("-") : parts[0];
+      return {
+        id: `r2_${file.key}`,
+        name: songName,
+        artist,
+        album: "R2对象存储",
+        url: file.url,
+        source: "r2",
+        sourceName: "R2已有",
+        group: "R2曲库",
+      };
+    });
+    player.setPlaylist([...player.playlist, ...newTracks]);
   };
   const handleBatchMove = (dir: "up" | "down") => {
     if (!selectedTrackIds.size) return;
@@ -946,38 +1089,59 @@ export function AdminMusicPage() {
           </div>
         </div>
 
-        {/* 右栏: 播放队列管理 (支持自定义分组、复选框、批量全选/反选/删除/移动、歌手/专辑分类) */}
+        {/* 右栏: 播放队列管理 (支持自定义分组、复选框、批量全选/反选/删除/移动、歌手/专辑分类、手柄拖动与 R2 转存状态) */}
         <div className="xl:col-span-6 p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-black/5 dark:border-white/5 gap-2">
-            <div className="flex items-center gap-2">
-              <i className="ri-play-list-line text-theme" />
-              <h3 className="font-bold text-xs t-primary">播放队列 ({player.playlist.length} 首)</h3>
+            <div className="flex items-center gap-1 rounded-lg bg-black/5 dark:bg-white/5 p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setRightViewMode("queue")}
+                className={`px-2.5 py-0.5 rounded-md font-semibold transition ${
+                  rightViewMode === "queue" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-400"
+                }`}
+              >
+                播放队列 ({player.playlist.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRightViewMode("r2");
+                  loadR2Files();
+                }}
+                className={`px-2.5 py-0.5 rounded-md font-semibold transition ${
+                  rightViewMode === "r2" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-400"
+                }`}
+              >
+                R2云端存储桶曲库 ({r2Files.length})
+              </button>
             </div>
 
-            <div className="flex items-center gap-1 text-xs">
-              {[
-                { id: "all", label: "全部" },
-                { id: "group", label: "自定义分组" },
-                { id: "artist", label: "按歌手" },
-                { id: "album", label: "按专辑" },
-              ].map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => {
-                    setPlaylistFilterMode(m.id as any);
-                    setSelectedGroupTag("");
-                  }}
-                  className={`px-2 py-0.5 rounded-md font-semibold transition ${
-                    playlistFilterMode === m.id
-                      ? "bg-theme text-white font-bold shadow-2xs"
-                      : "text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
-                  }`}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
+            {rightViewMode === "queue" && (
+              <div className="flex items-center gap-1 text-xs">
+                {[
+                  { id: "all", label: "全部" },
+                  { id: "group", label: "自定义分组" },
+                  { id: "artist", label: "按歌手" },
+                  { id: "album", label: "按专辑" },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      setPlaylistFilterMode(m.id as any);
+                      setSelectedGroupTag("");
+                    }}
+                    className={`px-2 py-0.5 rounded-md font-semibold transition ${
+                      playlistFilterMode === m.id
+                        ? "bg-theme text-white font-bold shadow-2xs"
+                        : "text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 分组 / 歌手 / 专辑 过滤栏 */}
@@ -1140,163 +1304,317 @@ export function AdminMusicPage() {
             </div>
           </div>
 
-          {/* 播放队列表格 */}
-          <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10 bg-w max-h-[50vh] overflow-y-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] text-neutral-400 font-mono text-[11px]">
-                  <th className="py-2 px-2 w-8 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedTrackIds.size === displayedPlaylist.length && displayedPlaylist.length > 0}
-                      onChange={handleToggleSelectAll}
-                      className="accent-theme cursor-pointer"
-                    />
-                  </th>
-                  <th className="py-2 px-2 w-10 text-center">#</th>
-                  <th className="py-2 px-2">曲目 / 歌手</th>
-                  <th className="py-2 px-2 w-20">分组</th>
-                  <th className="py-2 px-2 w-20">音源</th>
-                  <th className="py-2 px-2 text-right pr-3 w-16">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                {displayedPlaylist.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-neutral-400">
-                      播放队列为空，请在左侧检索并收录
-                    </td>
-                  </tr>
-                ) : (
-                  displayedPlaylist.map((track, idx) => {
-                    const isCur = player.currentTrack?.id === track.id;
-                    const isSel = selectedTrackIds.has(track.id);
-
-                    return (
-                      <tr
-                        key={track.id || idx}
-                        className={`transition ${
-                          isSel
-                            ? "bg-theme/[0.04]"
-                            : isCur
-                            ? "bg-theme/[0.02]"
-                            : "hover:bg-black/[0.015] dark:hover:bg-white/[0.015]"
-                        }`}
-                      >
-                        <td className="py-1.5 px-2 text-center">
-                          <input
-                            type="checkbox"
-                            checked={isSel}
-                            onChange={(e) => {
-                              const s = new Set(selectedTrackIds);
-                              if (e.target.checked) s.add(track.id);
-                              else s.delete(track.id);
-                              setSelectedTrackIds(s);
-                            }}
-                            className="accent-theme cursor-pointer"
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 text-center font-mono text-neutral-400">
-                          {isCur && player.isPlaying ? (
-                            <span className="text-theme font-bold">▶</span>
-                          ) : (
-                            `#${idx + 1}`
-                          )}
-                        </td>
-                        <td className="py-1.5 px-2">
-                          <div className="flex items-center gap-2">
-                            <VinylDiscArt
-                              isPlaying={isCur && player.isPlaying}
-                              coverUrl={track.pic}
-                              className="h-6 w-6 rounded-md shrink-0"
-                            />
-                            <div className="truncate">
-                              <span className={`font-bold block truncate ${isCur ? "text-theme" : "t-primary"}`}>
-                                {track.name}
-                              </span>
-                              <span className="text-[10px] text-neutral-400 block truncate">
-                                {track.artist}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-1.5 px-2">
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-theme/5 text-theme font-bold">
-                            {track.group || "默认"}
-                          </span>
-                        </td>
-                        <td className="py-1.5 px-2">
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/5 text-neutral-500">
-                            {track.sourceName || track.source || "自定义"}
-                          </span>
-                        </td>
-                        <td className="py-1.5 px-2 text-right pr-3">
-                          <div className="inline-flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => player.play(track)}
-                              className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 transition"
-                              title="播放"
-                            >
-                              <i className="ri-play-fill text-xs" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => player.removeTrack(track.id)}
-                              className="p-1 rounded-md text-neutral-400 hover:text-red-500 hover:bg-black/5 transition"
-                              title="删除"
-                            >
-                              <i className="ri-delete-bin-line text-xs" />
-                            </button>
-                          </div>
+          {/* 视图分支：播放队列 (DataGrid) 或 R2 存储桶曲库 (Navidrome 风格) */}
+          {rightViewMode === "queue" ? (
+            <>
+              {/* 播放队列表格 */}
+              <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10 bg-w max-h-[50vh] overflow-y-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] text-neutral-400 font-mono text-[11px]">
+                      <th className="py-2 px-1 w-6 text-center"></th>
+                      <th className="py-2 px-2 w-8 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedTrackIds.size === displayedPlaylist.length && displayedPlaylist.length > 0}
+                          onChange={handleToggleSelectAll}
+                          className="accent-theme cursor-pointer"
+                        />
+                      </th>
+                      <th className="py-2 px-1 w-8 text-center">#</th>
+                      <th className="py-2 px-2">曲目 / 歌手</th>
+                      <th className="py-2 px-2 w-16">分组</th>
+                      <th className="py-2 px-2 w-16">音源</th>
+                      <th className="py-2 px-2 w-20 text-center">转存状态</th>
+                      <th className="py-2 px-2 text-right pr-3 w-16">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                    {displayedPlaylist.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-12 text-center text-neutral-400">
+                          播放队列为空，请在左侧检索并收录
                         </td>
                       </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                    ) : (
+                      displayedPlaylist.map((track, idx) => {
+                        const isCur = player.currentTrack?.id === track.id;
+                        const isSel = selectedTrackIds.has(track.id);
+                        const isR2 = track.source === "r2" || track.url.includes("/api/blob/music/");
 
-          {/* 手动录入直链 */}
-          <div className="p-3 rounded-xl border border-dashed border-black/15 dark:border-white/15 bg-black/[0.01] dark:bg-white/[0.01] space-y-2 text-xs">
-            <span className="font-bold text-[11px] t-primary block">手动录入音频直链 (OpenList / CDN)</span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <input
-                type="text"
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                placeholder="歌曲名称 (必填)"
-                className="rounded-lg border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-800 px-2.5 py-1 text-xs outline-none focus:border-theme"
-              />
-              <input
-                type="text"
-                value={customArtist}
-                onChange={(e) => setCustomArtist(e.target.value)}
-                placeholder="歌手 (选填)"
-                className="rounded-lg border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-800 px-2.5 py-1 text-xs outline-none focus:border-theme"
-              />
-              <input
-                type="url"
-                value={customUrl}
-                onChange={(e) => setCustomUrl(e.target.value)}
-                placeholder="音频直链 URL (必填)"
-                className="sm:col-span-2 rounded-lg border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-800 px-2.5 py-1 font-mono text-xs outline-none focus:border-theme"
-              />
+                        return (
+                          <tr
+                            key={track.id || idx}
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData("text/plain", String(track.id));
+                              setDraggedTrackId(track.id);
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              if (dragOverTrackId !== track.id) setDragOverTrackId(track.id);
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              handlePlaylistRowDrop(track.id);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedTrackId(null);
+                              setDragOverTrackId(null);
+                            }}
+                            className={`transition select-none ${
+                              draggedTrackId === track.id ? "opacity-30 bg-theme/10" : ""
+                            } ${
+                              dragOverTrackId === track.id ? "border-t-2 border-theme bg-theme/5" : ""
+                            } ${
+                              isSel
+                                ? "bg-theme/[0.04]"
+                                : isCur
+                                ? "bg-theme/[0.02]"
+                                : "hover:bg-black/[0.015] dark:hover:bg-white/[0.015]"
+                            }`}
+                          >
+                            {/* 排序拖拽手柄 (=) */}
+                            <td className="py-1.5 px-1 text-center cursor-grab active:cursor-grabbing text-neutral-400 hover:text-theme">
+                              <i className="ri-drag-move-2-line text-xs" />
+                            </td>
+                            {/* 选择框 */}
+                            <td className="py-1.5 px-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSel}
+                                onChange={(e) => {
+                                  const s = new Set(selectedTrackIds);
+                                  if (e.target.checked) s.add(track.id);
+                                  else s.delete(track.id);
+                                  setSelectedTrackIds(s);
+                                }}
+                                className="accent-theme cursor-pointer"
+                              />
+                            </td>
+                            {/* 序号 / 播放中指示 */}
+                            <td className="py-1.5 px-1 text-center font-mono text-neutral-400">
+                              {isCur && player.isPlaying ? (
+                                <span className="text-theme font-bold">▶</span>
+                              ) : (
+                                `#${idx + 1}`
+                              )}
+                            </td>
+                            {/* 曲目名与艺术家 */}
+                            <td className="py-1.5 px-2">
+                              <div className="flex items-center gap-2">
+                                <VinylDiscArt
+                                  isPlaying={isCur && player.isPlaying}
+                                  coverUrl={track.pic}
+                                  className="h-6 w-6 rounded-md shrink-0"
+                                />
+                                <div className="truncate">
+                                  <span className={`font-bold block truncate ${isCur ? "text-theme" : "t-primary"}`}>
+                                    {track.name}
+                                  </span>
+                                  <span className="text-[10px] text-neutral-400 block truncate">
+                                    {track.artist}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            {/* 分组 */}
+                            <td className="py-1.5 px-2">
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-theme/5 text-theme font-bold">
+                                {track.group || "默认"}
+                              </span>
+                            </td>
+                            {/* 音源 */}
+                            <td className="py-1.5 px-2">
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/5 text-neutral-500">
+                                {track.sourceName || track.source || "自定义"}
+                              </span>
+                            </td>
+                            {/* 转存状态与手动转存按钮 (图 1 升级) */}
+                            <td className="py-1.5 px-2 text-center">
+                              {isR2 ? (
+                                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/20 select-none">
+                                  <i className="ri-check-line text-xs" />
+                                  <span>已有</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSingleTrackPersist(track)}
+                                  disabled={persistingTrackId === track.id}
+                                  className="px-2 py-0.5 rounded-md bg-theme/10 hover:bg-theme/20 text-theme text-xs font-semibold transition inline-flex items-center gap-1 select-none"
+                                  title="下载并将此曲永久转存至 R2 对象存储桶"
+                                >
+                                  {persistingTrackId === track.id ? (
+                                    <i className="ri-loader-4-line animate-spin text-xs" />
+                                  ) : (
+                                    <i className="ri-download-cloud-line text-xs" />
+                                  )}
+                                  <span>{persistingTrackId === track.id ? "转存中" : "转存R2"}</span>
+                                </button>
+                              )}
+                            </td>
+                            {/* 操作 (删除时同步清理 R2 存储) */}
+                            <td className="py-1.5 px-2 text-right pr-3">
+                              <div className="inline-flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => player.play(track)}
+                                  className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 transition"
+                                  title="播放"
+                                >
+                                  <i className="ri-play-fill text-xs" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTrack(track)}
+                                  className="p-1 rounded-md text-neutral-400 hover:text-red-500 hover:bg-black/5 transition"
+                                  title="删除 (若已存入 R2 将同步清理文件)"
+                                >
+                                  <i className="ri-delete-bin-line text-xs" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 手动录入直链 */}
+              <div className="p-3 rounded-xl border border-dashed border-black/15 dark:border-white/15 bg-black/[0.01] dark:bg-white/[0.01] space-y-2 text-xs">
+                <span className="font-bold text-[11px] t-primary block">手动录入音频直链 (OpenList / CDN)</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder="歌曲名称 (必填)"
+                    className="rounded-lg border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-800 px-2.5 py-1 text-xs outline-none focus:border-theme"
+                  />
+                  <input
+                    type="text"
+                    value={customArtist}
+                    onChange={(e) => setCustomArtist(e.target.value)}
+                    placeholder="歌手 (选填)"
+                    className="rounded-lg border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-800 px-2.5 py-1 text-xs outline-none focus:border-theme"
+                  />
+                  <input
+                    type="url"
+                    value={customUrl}
+                    onChange={(e) => setCustomUrl(e.target.value)}
+                    placeholder="音频直链 URL (必填)"
+                    className="sm:col-span-2 rounded-lg border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-800 px-2.5 py-1 font-mono text-xs outline-none focus:border-theme"
+                  />
+                </div>
+                <div className="flex items-center justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={handleAddCustomTrack}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                      customStatus === "done" ? "bg-emerald-500 text-white" : "bg-black/5 dark:bg-white/5 hover:bg-theme hover:text-white"
+                    }`}
+                  >
+                    {customStatus === "done" ? <i className="ri-check-line" /> : <i className="ri-add-line" />}
+                    <span>{customStatus === "done" ? "已加入 ✓" : "添加至队列"}</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Navidrome 风格 R2 云端存储桶曲库视图 */
+            <div className="space-y-3 ani-show">
+              <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+                <div className="flex items-center gap-2">
+                  <i className="ri-database-2-line text-theme" />
+                  <h4 className="font-bold text-xs t-primary">R2 对象存储桶已存曲库 ({r2Files.length} 首)</h4>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={loadR2Files}
+                    disabled={loadingR2}
+                    className="text-xs text-neutral-400 hover:text-theme flex items-center gap-1"
+                  >
+                    <i className={`ri-refresh-line ${loadingR2 ? "animate-spin" : ""}`} />
+                    <span>刷新</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleImportAllR2ToQueue}
+                    disabled={r2Files.length === 0}
+                    className="px-2.5 py-1 rounded-lg bg-theme text-white text-xs font-bold hover:bg-theme-hover transition flex items-center gap-1"
+                  >
+                    <i className="ri-play-list-add-line" />
+                    <span>全量导入播放队列</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10 bg-w max-h-[50vh] overflow-y-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] text-neutral-400 font-mono text-[11px]">
+                      <th className="py-2 px-2 w-8 text-center">#</th>
+                      <th className="py-2 px-2">曲目名称 / 文件名</th>
+                      <th className="py-2 px-2 w-20">大小</th>
+                      <th className="py-2 px-2 w-28">上传时间</th>
+                      <th className="py-2 px-2 text-right pr-3 w-24">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                    {r2Files.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-12 text-center text-neutral-400">
+                          {loadingR2 ? "正在检索 R2 存储桶文件..." : "R2 存储桶中暂无持久化音乐文件"}
+                        </td>
+                      </tr>
+                    ) : (
+                      r2Files.map((file, idx) => (
+                        <tr key={file.key} className="hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition">
+                          <td className="py-2 px-2 text-center font-mono text-neutral-400">#{idx + 1}</td>
+                          <td className="py-2 px-2">
+                            <div className="flex items-center gap-2">
+                              <VinylDiscArt className="h-6 w-6 rounded-md shrink-0" />
+                              <span className="font-bold t-primary truncate max-w-xs">{file.displayName}</span>
+                            </div>
+                          </td>
+                          <td className="py-2 px-2 font-mono text-neutral-500">
+                            {(file.size / (1024 * 1024)).toFixed(2)} MB
+                          </td>
+                          <td className="py-2 px-2 font-mono text-neutral-400 text-[11px]">
+                            {file.uploaded ? new Date(file.uploaded).toLocaleDateString() : "-"}
+                          </td>
+                          <td className="py-2 px-2 text-right pr-3">
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleImportR2ToQueue(file)}
+                                className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 hover:bg-theme hover:text-white transition text-xs font-semibold"
+                                title="导入前台队列"
+                              >
+                                入库
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteR2PhysicalFile(file)}
+                                className="p-1 rounded-md text-neutral-400 hover:text-red-500 transition"
+                                title="从 R2 永久物理删除"
+                              >
+                                <i className="ri-delete-bin-line text-xs" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div className="flex items-center justify-end pt-1">
-              <button
-                type="button"
-                onClick={handleAddCustomTrack}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                  customStatus === "done" ? "bg-emerald-500 text-white" : "bg-black/5 dark:bg-white/5 hover:bg-theme hover:text-white"
-                }`}
-              >
-                {customStatus === "done" ? <i className="ri-check-line" /> : <i className="ri-add-line" />}
-                <span>{customStatus === "done" ? "已加入队列 ✓" : "添加至队列"}</span>
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
