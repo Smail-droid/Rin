@@ -134,6 +134,11 @@ export function AdminMusicPage() {
   const [customPic, setCustomPic] = useState("");
   const [customLyric, setCustomLyric] = useState("");
 
+  // 深度扫描与自动排除受限状态
+  const [deepScanning, setDeepScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState<{ totalFound: number; verified: number; excluded: number } | null>(null);
+  const [deepVerifiedTracks, setDeepVerifiedTracks] = useState<MusicTrack[]>([]);
+
   // 歌手过滤
   const filteredArtists = useMemo(() => ARTIST_DIRECTORY.filter((a) => {
     const matchCat = selectedArtistCat === "all" || a.cat === selectedArtistCat;
@@ -242,6 +247,46 @@ export function AdminMusicPage() {
         if (track?.url) player.addTrack(track, false);
       } catch {}
     }
+    setBatchStatus("done");
+    setTimeout(() => setBatchStatus("idle"), 2500);
+  };
+
+  // 深度翻页扫描并自动排除受限曲目 (检索多页并逐一探测音频可用性)
+  const handleDeepScanAndVerify = async (pages = 3) => {
+    const kw = searchKeyword.trim();
+    if (!kw) return;
+    setDeepScanning(true);
+    setScanProgress({ totalFound: 0, verified: 0, excluded: 0 });
+    setDeepVerifiedTracks([]);
+    gdMusicService.setEndpoint(gdApi.trim());
+
+    try {
+      const { validTracks, excludedCount } = await gdMusicService.deepScanAndVerify(
+        kw,
+        gdSource,
+        pages,
+        (totalFound, verified, excluded) => {
+          setScanProgress({ totalFound, verified, excluded });
+        }
+      );
+      setDeepVerifiedTracks(validTracks);
+      setScanProgress({
+        totalFound: validTracks.length + excludedCount,
+        verified: validTracks.length,
+        excluded: excludedCount,
+      });
+    } catch (e) {
+      console.warn("Deep scan failed:", e);
+    } finally {
+      setDeepScanning(false);
+    }
+  };
+
+  // 一键将所有已验证 100% 可播的曲目全量入库
+  const handleImportAllVerified = () => {
+    if (deepVerifiedTracks.length === 0) return;
+    player.setPlaylist([...player.playlist, ...deepVerifiedTracks]);
+    setDeepVerifiedTracks([]);
     setBatchStatus("done");
     setTimeout(() => setBatchStatus("idle"), 2500);
   };
@@ -642,8 +687,8 @@ export function AdminMusicPage() {
             </div>
           </div>
 
-          {/* 搜索框 */}
-          <div className="flex gap-2 text-xs">
+          {/* 搜索框与深度扫描触发 */}
+          <div className="flex flex-col sm:flex-row gap-2 text-xs">
             <input
               type="text"
               value={searchKeyword}
@@ -652,16 +697,54 @@ export function AdminMusicPage() {
               placeholder={searchMode === "album" ? "输入专辑/歌单名称..." : "输入曲名、歌手或点击上方快捷检索..."}
               className="flex-1 rounded-xl border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-800 px-3 py-2 text-xs t-primary outline-none focus:border-theme transition"
             />
-            <button
-              type="button"
-              onClick={() => handleSearch()}
-              disabled={isSearching}
-              className="px-4 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition flex items-center gap-1"
-            >
-              {isSearching ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-search-line" />}
-              <span>{isSearching ? "检索..." : "检索"}</span>
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleSearch()}
+                disabled={isSearching || deepScanning}
+                className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 text-xs font-bold transition flex items-center gap-1 select-none"
+              >
+                {isSearching ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-search-line" />}
+                <span>{isSearching ? "检索..." : "常规搜索"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeepScanAndVerify(3)}
+                disabled={deepScanning || isSearching}
+                className="px-3.5 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition flex items-center gap-1 select-none"
+                title="连续翻页检索并逐首探测可用性，自动剔除全部受限/失效曲目"
+              >
+                {deepScanning ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-shield-check-line" />}
+                <span>{deepScanning ? "深度探测中..." : "深度扫描并剔除受限"}</span>
+              </button>
+            </div>
           </div>
+
+          {/* 深度扫描进度与一键导入栏 */}
+          {scanProgress && (
+            <div className="p-2.5 rounded-xl bg-theme/5 border border-theme/20 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 ani-show">
+              <div className="flex items-center gap-2">
+                {deepScanning ? (
+                  <i className="ri-loader-4-line animate-spin text-theme text-sm" />
+                ) : (
+                  <i className="ri-checkbox-circle-fill text-emerald-500 text-sm" />
+                )}
+                <span className="text-neutral-700 dark:text-neutral-200">
+                  共探测 {scanProgress.totalFound} 首候选 · <strong className="text-emerald-600 dark:text-emerald-400">{scanProgress.verified} 首 100% 可播</strong> · <span className="text-neutral-400">已排除 {scanProgress.excluded} 首受限</span>
+                </span>
+              </div>
+              {deepVerifiedTracks.length > 0 && !deepScanning && (
+                <button
+                  type="button"
+                  onClick={handleImportAllVerified}
+                  className="px-3 py-1 rounded-lg bg-emerald-500 text-white font-bold text-xs shadow-2xs hover:bg-emerald-600 transition flex items-center gap-1 shrink-0 self-end sm:self-auto"
+                >
+                  <i className="ri-play-list-add-line" />
+                  <span>一键全量入库 ({deepVerifiedTracks.length} 首)</span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* 搜索结果 */}
           <div className="rounded-xl border border-black/10 dark:border-white/10 bg-w overflow-hidden text-xs">

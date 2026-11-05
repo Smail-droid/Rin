@@ -270,6 +270,62 @@ export class GdMusicService {
 
     return { track: null };
   }
+
+  /**
+   * 深度全盘连续翻页扫描，并发探测并排除受限无效曲目
+   */
+  async deepScanAndVerify(
+    keyword: string,
+    source = "all",
+    maxPages = 3,
+    onProgress?: (totalFound: number, verified: number, excluded: number) => void
+  ): Promise<{ validTracks: MusicTrack[]; excludedCount: number }> {
+    const candidateItems: GdSearchResultItem[] = [];
+    const seen = new Set<string>();
+
+    // 1. 多页并发检索聚合
+    const pagePromises = Array.from({ length: maxPages }, (_, i) => i + 1).map((page) =>
+      this.search(keyword, source, page, 25)
+    );
+    const pageSettled = await Promise.allSettled(pagePromises);
+
+    for (const res of pageSettled) {
+      if (res.status === "fulfilled" && Array.isArray(res.value)) {
+        for (const item of res.value) {
+          const key = `${item.name}-${Array.isArray(item.artist) ? item.artist.join("/") : item.artist}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            candidateItems.push(item);
+          }
+        }
+      }
+    }
+
+    // 2. 并发探测并排除受限曲目 (分批并发，兼顾速度与防频控)
+    const validTracks: MusicTrack[] = [];
+    let excludedCount = 0;
+    const batchSize = 4;
+
+    for (let i = 0; i < candidateItems.length; i += batchSize) {
+      const batch = candidateItems.slice(i, i + batchSize);
+      const probePromises = batch.map((item) => this.resolveTrackWithFallback(item, 128));
+      const settled = await Promise.allSettled(probePromises);
+
+      settled.forEach((pRes) => {
+        if (pRes.status === "fulfilled" && pRes.value.track && pRes.value.track.url) {
+          validTracks.push(pRes.value.track);
+        } else {
+          excludedCount++;
+        }
+      });
+
+      if (onProgress) {
+        onProgress(candidateItems.length, validTracks.length, excludedCount);
+      }
+    }
+
+    return { validTracks, excludedCount };
+  }
 }
 
 /**
