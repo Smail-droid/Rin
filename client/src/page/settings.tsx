@@ -171,6 +171,19 @@ export function Settings() {
     configKey: string;
   } | null>(null);
   const [activeEmojiPopover, setActiveEmojiPopover] = useState<string | null>(null);
+  const [previewFeeds, setPreviewFeeds] = useState<any[]>([]);
+
+  // 预拉取真实文章供首页排版画中画微缩视窗实时呈现
+  useEffect(() => {
+    client.feed
+      .list({ limit: 8 })
+      .then(({ data }) => {
+        if (data?.data && Array.isArray(data.data)) {
+          setPreviewFeeds(data.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // URL tab change synchronizer
   useEffect(() => {
@@ -875,6 +888,7 @@ export function Settings() {
                     const currentCol = String(clientConfig.get("gallery.columns") ?? "auto");
                     const currentAlign = String(clientConfig.get("gallery.align") ?? "center");
                     const currentCardGap = parseConfigInt(clientConfig.get("gallery.card_gap"), 16);
+                    const curTilt = String(clientConfig.get("gallery.tilt_mode") ?? "subtle");
 
                     return (
                       <>
@@ -1082,49 +1096,93 @@ export function Settings() {
                           </div>
 
                           {/* 模拟浏览器前台视窗画布 */}
-                          <div className="w-full bg-neutral-200/50 dark:bg-neutral-900/90 rounded-xl p-3 border border-black/5 dark:border-white/5 overflow-hidden transition-all duration-300">
+                          <div className="w-full bg-neutral-200/60 dark:bg-neutral-900/90 rounded-2xl p-3.5 border border-black/5 dark:border-white/5 overflow-hidden transition-all duration-300 shadow-inner">
                             <div
                               style={{
-                                paddingLeft: `${Math.min(48, currentPadding * 0.4)}px`,
-                                paddingRight: `${Math.min(48, currentPadding * 0.4)}px`,
+                                paddingLeft: `${Math.min(50, currentPadding * 0.4)}px`,
+                                paddingRight: `${Math.min(50, currentPadding * 0.4)}px`,
                               }}
-                              className={`w-full transition-all duration-300 ${currentAlign === "center" ? "max-w-xl mx-auto" : "w-full"}`}
+                              className={`w-full transition-all duration-300 ${currentAlign === "center" ? "max-w-[88%] mx-auto" : "w-full"}`}
                             >
                               <div
                                 style={{
                                   display: "grid",
                                   gridTemplateColumns: `repeat(${currentCol === "auto" ? 4 : parseInt(currentCol, 10)}, minmax(0, 1fr))`,
-                                  gap: `${Math.max(4, currentCardGap * 0.35)}px`,
+                                  gap: `${Math.max(6, currentCardGap * 0.4)}px`,
                                 }}
                                 className="transition-all duration-300"
                               >
-                                {[
-                                  { title: "二次元随笔", tag: "随想", tilt: "rotate-[-1.5deg]", aspect: "h-14" },
-                                  { title: "架构重构指南", tag: "技术", tilt: "rotate-[1.2deg]", aspect: "h-20" },
-                                  { title: "微光画廊相册", tag: "摄影", tilt: "rotate-[-2deg]", aspect: "h-16" },
-                                  { title: "边缘部署手册", tag: "运维", tilt: "rotate-[1.8deg]", aspect: "h-14" },
-                                  { title: "关于与便签", tag: "便签", tilt: "rotate-[-1.2deg]", aspect: "h-16", isNote: true },
-                                  { title: "探针监控数据", tag: "极客", tilt: "rotate-[1.5deg]", aspect: "h-14" },
-                                  { title: "生活碎碎念", tag: "动态", tilt: "rotate-[-2.2deg]", aspect: "h-18" },
-                                  { title: "画廊文字侍从", tag: "灵感", tilt: "rotate-[1deg]", aspect: "h-14" },
-                                ].slice(0, currentCol === "2" ? 4 : currentCol === "3" ? 6 : 8).map((card, i) => (
-                                  <div
-                                    key={i}
-                                    className={`rounded-lg p-1.5 shadow-xs border transition-all duration-300 transform ${card.tilt} flex flex-col justify-between ${
-                                      card.isNote
-                                        ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300/40 dark:border-amber-700/40"
-                                        : "bg-white dark:bg-neutral-800 border-black/10 dark:border-white/10"
-                                    } ${card.aspect}`}
-                                  >
-                                    <div className="w-full h-2/3 rounded-md bg-neutral-200/80 dark:bg-neutral-700/60 mb-1 flex items-center justify-center">
-                                      <span className="text-[8px] font-mono text-neutral-400">P{i + 1}</span>
+                                {(previewFeeds.length > 0 ? previewFeeds : [
+                                  { title: "基于 Cloudflare 边缘架构实战", summary: "技术", avatar: previewSiteAvatar },
+                                  { title: "强制 WireGuard 原生 IPv6 调优", summary: "网络", avatar: previewSiteAvatar },
+                                  { title: "画廊随想二次元微光美学演进", summary: "美学", avatar: previewSiteAvatar },
+                                  { title: "高密单屏超级数据网格设计", summary: "工程", avatar: previewSiteAvatar },
+                                  { title: "关于我与随想便签", summary: "便签", isNote: true },
+                                  { title: "探针监控与性能优化指南", summary: "运维", avatar: previewSiteAvatar },
+                                  { title: "生活碎碎念与日常记录", summary: "动态", avatar: previewSiteAvatar },
+                                  { title: "画廊文字侍从全场景协同", summary: "侍从", avatar: previewSiteAvatar },
+                                ]).slice(0, currentCol === "2" ? 4 : currentCol === "3" ? 6 : 8).map((card: any, i: number) => {
+                                  // 动态响应所选旋转风格，倾角随模式实时驱动
+                                  const tiltStyle = (() => {
+                                    if (curTilt === "flat") return { transform: "rotate(0deg)" };
+                                    if (curTilt === "pronounced") {
+                                      const degs = [-3.2, 2.8, -3.5, 3.0, -2.5, 2.6, -3.0, 2.2];
+                                      return { transform: `rotate(${degs[i % degs.length]}deg)` };
+                                    }
+                                    if (curTilt === "dynamic") {
+                                      const degs = [-2.5, 1.8, -3.0, 2.2, -1.5, 2.8, -2.0, 1.6];
+                                      return { transform: `rotate(${degs[i % degs.length]}deg)` };
+                                    }
+                                    // "subtle" (default ±1.5°)
+                                    const degs = [-1.8, 1.4, -2.2, 1.9, -1.2, 1.6, -2.4, 1.1];
+                                    return { transform: `rotate(${degs[i % degs.length]}deg)` };
+                                  })();
+
+                                  const hasImg = Boolean(card.avatar);
+
+                                  return (
+                                    <div
+                                      key={card.id || i}
+                                      style={{
+                                        ...tiltStyle,
+                                        transition: "all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                                      }}
+                                      className={`group relative rounded-2xl p-2 pb-2.5 shadow-md border flex flex-col justify-between overflow-hidden select-none ${
+                                        card.isNote
+                                          ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300/40 dark:border-amber-700/40"
+                                          : "bg-white dark:bg-neutral-800 border-black/10 dark:border-white/10"
+                                      }`}
+                                    >
+                                      {/* Washi Tape Pin Mock */}
+                                      <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-8 h-2.5 bg-theme/30 rounded-xs rotate-[-2deg] pointer-events-none z-10" />
+
+                                      {/* Cover Image */}
+                                      <div className="w-full h-16 sm:h-20 rounded-xl overflow-hidden bg-black/5 dark:bg-white/5 mb-1.5 flex items-center justify-center relative shadow-inner">
+                                        {hasImg ? (
+                                          <img
+                                            src={card.avatar}
+                                            alt=""
+                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-tr from-theme/10 to-pink-500/10 text-theme font-bold text-xs">
+                                            {card.isNote ? "📌" : "🎨"}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Title & Badge */}
+                                      <div className="flex items-center justify-between gap-1 w-full">
+                                        <span className="text-[10px] font-bold t-primary truncate max-w-[70%]">
+                                          {card.title || "画廊文章"}
+                                        </span>
+                                        <span className="text-[8px] font-mono px-1.5 py-0.2 rounded-full bg-theme/10 text-theme font-semibold shrink-0">
+                                          {card.summary ? String(card.summary).slice(0, 4) : "文章"}
+                                        </span>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-[7px] font-bold t-primary truncate max-w-[60%]">{card.title}</span>
-                                      <span className="text-[6px] font-mono px-1 rounded bg-theme/10 text-theme scale-90">{card.tag}</span>
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           </div>
