@@ -33,9 +33,11 @@
 
 ---
 
-## 🚀 快速部署
+## 🚀 快速部署 (Multi-Platform Deployment)
 
-### 方案一：GitHub Fork + Actions 自动化流水线（推荐）
+### 方案一：GitHub Fork + Actions 自动化流水线（强烈推荐 ⭐）
+
+适合不想维护物理服务器、享受全球 CDN 毫秒级加速的博主：
 
 1. **Fork 本仓库**到你的 GitHub 个人账号：
    ```text
@@ -67,9 +69,11 @@
 
 ### 方案二：VPS 容器化部署（Docker Compose）
 
+适合习惯 Docker 容器生态、便于跨环境整体迁移的服务器环境：
+
 ```bash
 # 1. 克隆代码仓库
-git clone https://github.com/your-username/Rin.git
+git clone https://github.com/Smail-droid/Rin.git
 cd Rin
 
 # 2. 一键构建并后台启动
@@ -77,6 +81,109 @@ docker compose up -d --build
 ```
 
 服务启动后将运行在 `http://你的服务器IP:11498`，所有文章数据与媒体配置将持久化保存在本地 `./data` 挂载目录中。
+
+---
+
+### 方案三：Debian / Ubuntu 原生轻量部署（Bun + Systemd + Nginx / Caddy）
+
+**低配小鸡首选（极度节省内存）**：相比 Docker 镜像，原生运行常驻内存仅需 **60MB ~ 120MB**，即使在 512MB / 1GB 内存的廉价 VPS 上也能极速流畅跑满！
+
+#### 1. 环境准备
+```bash
+# 安装基础工具与 Nginx
+sudo apt update && sudo apt install -y curl git unzip build-essential nginx certbot python3-certbot-nginx
+
+# 安装官方 Bun 极速运行时
+curl -fsSL https://bun.sh/install | bash
+source ~/.bashrc
+```
+
+#### 2. 代码拉取与编译
+```bash
+cd /var/www
+git clone https://github.com/Smail-droid/Rin.git
+cd Rin
+
+# 安装依赖并编译全栈静态资源
+bun install
+bun run build
+
+# 初始化环境变量并执行本地 SQLite 迁移
+bun run dev:setup
+bun run db:migrate
+```
+*(注：可编辑生成的 `.dev.vars` 自定义 `ADMIN_USERNAME` 与 `ADMIN_PASSWORD`)*
+
+#### 3. 配置 Systemd 开机自启守护进程
+创建服务单元 `/etc/systemd/system/rin.service`：
+```ini
+[Unit]
+Description=Rin Gallery Blog Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/Rin
+ExecStart=/root/.bun/bin/bun cli/bin/rin.ts dev --port 11498
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=HOST=0.0.0.0
+Environment=PORT=11498
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+```
+启动并开启自启：
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable --now rin
+```
+
+#### 4. 配置 Nginx 反向代理与自动 HTTPS 证书
+编辑 `/etc/nginx/sites-available/rin.conf`：
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    client_max_body_size 50M;
+
+    location / {
+        proxy_pass http://127.0.0.1:11498;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+启用站点并一键配置证书：
+```bash
+sudo ln -s /etc/nginx/sites-available/rin.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d your-domain.com
+```
+
+---
+
+### 方案四：本地终端 CLI 边缘直推部署（无需 GitHub Actions）
+
+在本地电脑或任意 Linux 终端通过命令行一键直接上传至 Cloudflare，无需公开或 Fork 仓库：
+
+```bash
+# 1. 注入 Cloudflare 凭证
+export CLOUDFLARE_API_TOKEN="你的_API_Token"
+export CLOUDFLARE_ACCOUNT_ID="你的_32位Account_ID"
+export ADMIN_USERNAME="admin"
+export ADMIN_PASSWORD="你的管理员密码"
+
+# 2. 一键编译并直传边缘端（自动创建 Pages、绑定 Workers 与 D1 数据库）
+bun run deploy
+```
 
 ---
 

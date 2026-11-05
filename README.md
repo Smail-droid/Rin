@@ -33,50 +33,152 @@
 
 ---
 
-## 🚀 快速部署 (Quick Deployment)
+## 🚀 Quick Deployment (Multi-Platform)
 
-### 方案一：GitHub Fork + Actions 自动化流水线（推荐）
+### Option 1: GitHub Fork + Actions Automation Pipeline (Strongly Recommended ⭐)
 
-1. **Fork 本仓库**到你的 GitHub 个人账号：
+Best for bloggers who prefer zero physical server maintenance while enjoying global Cloudflare edge CDN acceleration:
+
+1. **Fork this repository** to your personal GitHub account:
    ```text
-   仓库主地址: https://github.com/Smail-droid/Rin
+   Repository URL: https://github.com/Smail-droid/Rin
    ```
-2. 在 Cloudflare 控制台创建 **D1 数据库**（名称推荐 `rin`）与 **R2 存储桶**（名称推荐 `rin`）。
-3. 在 Cloudflare 个人账户生成具备 Workers、Pages、D1 与 R2 读写管理权限的 **Cloudflare API Token**。
-4. 在你 Fork 后的 GitHub 仓库进入 **Settings ➔ Secrets and variables ➔ Actions**，配置如下参数：
+2. Create a **D1 Database** (recommended name: `rin`) and an **R2 Bucket** (recommended name: `rin`) in your Cloudflare dashboard.
+3. Generate a **Cloudflare API Token** with edit permissions for Workers, Pages, D1, and R2.
+4. In your forked GitHub repository, go to **Settings ➔ Secrets and variables ➔ Actions** and configure the following parameters:
 
-#### 1. Secrets（机密凭证配置表）
+#### 1. Secrets Configuration
 
-| 参数名称 (Secret Name) | 必填 | 推荐填写值 / 示例 | 说明 |
+| Secret Name | Required | Example / Recommended Value | Description |
 | :--- | :---: | :--- | :--- |
-| `CLOUDFLARE_API_TOKEN` | **是** | `Cloudflare_API_Token` | 在 Cloudflare 生成的具备 Workers / Pages 部署权限的 API Token |
-| `CLOUDFLARE_ACCOUNT_ID` | **是** | `32位Account_ID` | Cloudflare 控制台右下角获取的 32 位全局账户 ID |
-| `ADMIN_USERNAME` | **是** | `admin` | 博客首次初始化的博主超级管理员用户名 |
-| `ADMIN_PASSWORD` | **是** | `你的管理员强密码` | 博客博主超级管理员登录初始密码 |
-| `JWT_SECRET` | 否 | `32位以上随机字符串` | 用户会话与认证 Cookie 的加固签名密钥（留空将自动生成） |
+| `CLOUDFLARE_API_TOKEN` | **Yes** | `Cloudflare_API_Token` | API Token with deployment permissions generated in Cloudflare |
+| `CLOUDFLARE_ACCOUNT_ID` | **Yes** | `32-char Account_ID` | Global 32-character Account ID from Cloudflare dashboard |
+| `ADMIN_USERNAME` | **Yes** | `admin` | Superadmin username for initial blog setup |
+| `ADMIN_PASSWORD` | **Yes** | `your_strong_password` | Superadmin initial login password |
+| `JWT_SECRET` | No | `32+ char random string` | Secret key for signing authentication sessions and tokens |
 
-#### 2. Variables（常规环境变量配置表）
+#### 2. Variables Configuration
 
-| 变量名称 (Variable Name) | 必填 | 推荐填写值 / 示例 | 说明 |
+| Variable Name | Required | Example / Recommended Value | Description |
 | :--- | :---: | :--- | :--- |
-| `S3_ACCESS_HOST` | 否 | `https://img.example.com` | **R2 自定义图床加速域名（选填）**。未配置时默认走 Worker 内置 `/api/blob/*` 存储路由 |
+| `S3_ACCESS_HOST` | No | `https://img.example.com` | **Custom domain for R2 image acceleration (optional)**. Falls back to Worker `/api/blob/*` route if unconfigured |
 
-5. 进入 GitHub 仓库的 **Actions** 选项卡，手动触发一次 **Deploy** 流水线，系统将全自动完成 TypeScript 类型检查、前端静态编译、边缘数据库迁移与全网发布上线。
+5. Navigate to the **Actions** tab in your repository and manually trigger the **Deploy** workflow to automatically run TypeScript checks, frontend build, database migrations, and deploy globally.
 
 ---
 
-### 方案二：VPS 容器化部署（Docker Compose）
+### Option 2: VPS Containerized Deployment (Docker Compose)
+
+Best for users who prefer standard Docker container workflows:
 
 ```bash
-# 1. 克隆代码仓库
-git clone https://github.com/your-username/Rin.git
+# 1. Clone repository
+git clone https://github.com/Smail-droid/Rin.git
 cd Rin
 
-# 2. 一键构建并后台启动
+# 2. Build and launch in background
 docker compose up -d --build
 ```
 
-服务启动后将运行在 `http://YOUR_SERVER_IP:11498`，所有文章数据与媒体配置将持久化保存在本地 `./data` 挂载目录中。
+The service will run on `http://YOUR_SERVER_IP:11498`. All articles, settings, and database storage persist in `./data`.
+
+---
+
+### Option 3: Debian / Ubuntu Native Lightweight Deployment (Bun + Systemd + Nginx / Caddy)
+
+**Best for low-spec VPS (ultra-low memory footprint)**: Compared to Docker, native Bun execution requires only **60MB ~ 120MB RAM**, running blazingly fast even on cheap 512MB or 1GB VPS instances!
+
+#### 1. Install Essentials & Bun Runtime
+```bash
+sudo apt update && sudo apt install -y curl git unzip build-essential nginx certbot python3-certbot-nginx
+curl -fsSL https://bun.sh/install | bash
+source ~/.bashrc
+```
+
+#### 2. Clone & Build
+```bash
+cd /var/www
+git clone https://github.com/Smail-droid/Rin.git
+cd Rin
+
+bun install
+bun run build
+
+# Generate local configuration and run SQLite database migration
+bun run dev:setup
+bun run db:migrate
+```
+*(Tip: You can edit `.dev.vars` to customize `ADMIN_USERNAME` and `ADMIN_PASSWORD`)*
+
+#### 3. Setup Systemd Service
+Create service file `/etc/systemd/system/rin.service`:
+```ini
+[Unit]
+Description=Rin Gallery Blog Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/Rin
+ExecStart=/root/.bun/bin/bun cli/bin/rin.ts dev --port 11498
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=HOST=0.0.0.0
+Environment=PORT=11498
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+```
+Enable and start the service:
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable --now rin
+```
+
+#### 4. Configure Nginx Reverse Proxy with Auto SSL
+Create `/etc/nginx/sites-available/rin.conf`:
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    client_max_body_size 50M;
+
+    location / {
+        proxy_pass http://127.0.0.1:11498;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+Enable site and obtain free Let's Encrypt SSL certificate:
+```bash
+sudo ln -s /etc/nginx/sites-available/rin.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d your-domain.com
+```
+
+---
+
+### Option 4: Direct CLI Edge Deployment (Without GitHub Actions)
+
+Deploy directly to Cloudflare Pages & Workers from your local machine or Linux terminal:
+
+```bash
+export CLOUDFLARE_API_TOKEN="your_token"
+export CLOUDFLARE_ACCOUNT_ID="your_account_id"
+export ADMIN_USERNAME="admin"
+export ADMIN_PASSWORD="your_password"
+
+# Directly build and deploy to Cloudflare edge network
+bun run deploy
+```
 
 ---
 

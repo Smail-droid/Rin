@@ -58,9 +58,9 @@ export function MomentItem({
             <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e] inline-block shadow-2xs hover:scale-110 transition-transform" />
             <span className="h-2.5 w-2.5 rounded-full bg-[#27c93f] inline-block shadow-2xs hover:scale-110 transition-transform" />
           </div>
-          <span className="ml-2 font-mono text-[11px] font-bold tracking-wider text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
-            <i className="ri-terminal-box-line text-theme" />
-            <span>bash ~ moments/log_{moment.id}.sh</span>
+          <span className="ml-2 font-mono text-[11px] font-bold tracking-wider text-neutral-400 dark:text-neutral-500 flex items-center gap-1 truncate max-w-[150px] sm:max-w-none">
+            <i className="ri-terminal-box-line text-theme shrink-0" />
+            <span className="truncate">bash ~ moments/log_{moment.id}.sh</span>
           </span>
         </div>
 

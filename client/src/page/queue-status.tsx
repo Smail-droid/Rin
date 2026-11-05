@@ -1025,7 +1025,7 @@ export function QueueStatusPage() {
         {/* 表格底部标准分页栏 (Pagination) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] text-xs select-none">
           {/* 左侧：总条数统计与每页条数切换下拉 */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
             <span className="text-neutral-500 dark:text-neutral-400 font-medium flex items-center gap-1.5">
               <span>共 <span className="font-mono font-bold text-neutral-800 dark:text-neutral-200">{totalCount}</span> 条</span>
               {generatedAt && (
@@ -1054,7 +1054,7 @@ export function QueueStatusPage() {
           </div>
 
           {/* 右侧：翻页按钮、动态页码与快速跳转 */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap justify-center sm:justify-end w-full sm:w-auto">
             {/* 上一页 */}
             <button
               type="button"
@@ -1138,7 +1138,7 @@ export function QueueStatusPage() {
           isOpen={!!statusModalType}
           onRequestClose={() => setStatusModalType(null)}
           contentLabel={`${statusModalType.toUpperCase()} 状态任务清单`}
-          panelClassName="p-6 max-w-2xl w-full"
+          panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-2xl w-full"
         >
           <div className="flex flex-col gap-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
@@ -1243,7 +1243,7 @@ export function QueueStatusPage() {
           isOpen={!!previewCover}
           onRequestClose={() => setPreviewCover(null)}
           contentLabel="封面大图预览"
-          panelClassName="p-4 max-w-2xl w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl"
+          panelClassName="p-3 sm:p-4 max-w-[94vw] sm:max-w-2xl w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl"
         >
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
@@ -1284,7 +1284,7 @@ export function QueueStatusPage() {
           isOpen={!!coverTarget}
           onRequestClose={() => !isUploadingCover && setCoverTarget(null)}
           contentLabel="快捷更换文章封面"
-          panelClassName="p-6 max-w-md w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl"
+          panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-md w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl"
         >
           <div className="flex flex-col gap-4 text-xs">
             <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
@@ -1394,7 +1394,7 @@ export function QueueStatusPage() {
           isOpen={!!permissionTarget}
           onRequestClose={() => setPermissionTarget(null)}
           contentLabel={`文章 #${permissionTarget.id} 访问权限配置`}
-          panelClassName="p-6 max-w-lg w-full"
+          panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-lg w-full"
         >
           <div className="flex flex-col gap-4 text-xs">
             <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">

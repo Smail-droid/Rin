@@ -30,7 +30,7 @@ import {
 } from "../utils/theme-color";
 import { getStoredThemeMode, setThemeMode, type ThemeMode } from "../utils/darkModeUtils";
 import { AISummarySettings } from "./settings-ai";
-import { ItemButton, ItemImageInput, ItemInput, ItemSwitch, ItemTitle, ItemWithUpload } from "./settings-items";
+import { ItemImageInput, ItemWithUpload } from "./settings-items";
 import { ImageUploadInput } from "../components/image-upload-input";
 import {
   areSettingsDraftsEqual,
@@ -402,39 +402,54 @@ export function Settings() {
                   <h3 className="font-bold text-sm t-primary">站点身份与展示规范 (Branding)</h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <ItemInput
-                    title={t("settings.site.name.title")}
-                    description={t("settings.site.name.desc")}
-                    configKeyTitle={t("settings.site.name.label")}
-                    value={String(clientConfig.get("site.name") ?? "")}
-                    placeholder={String(clientConfig.default("site.name") ?? t("settings.site.name.label"))}
-                    onChange={(value) => {
-                      setConfigValue("client", "site.name", value);
-                    }}
-                  />
-                  <ItemInput
-                    title={t("settings.site.page_size.title")}
-                    description={t("settings.site.page_size.desc")}
-                    configKeyTitle={t("settings.site.page_size.label")}
-                    value={String(clientConfig.get("site.page_size") ?? "")}
-                    placeholder={String(clientConfig.default("site.page_size") ?? t("settings.site.page_size.label"))}
-                    onChange={(value) => {
-                      setConfigValue("client", "site.page_size", value);
-                    }}
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  <div className="flex flex-col gap-1 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold t-primary">{t("settings.site.name.title")}</label>
+                      <span className="text-[10px] text-neutral-400 font-mono">site.name</span>
+                    </div>
+                    <p className="text-[11px] text-neutral-400">{t("settings.site.name.desc")}</p>
+                    <input
+                      type="text"
+                      value={String(clientConfig.get("site.name") ?? "")}
+                      placeholder={String(clientConfig.default("site.name") ?? t("settings.site.name.label"))}
+                      onChange={(e) => setConfigValue("client", "site.name", e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-black/10 dark:border-white/10 bg-w px-3 py-2 text-xs t-primary outline-hidden focus:border-theme transition"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold t-primary">{t("settings.site.page_size.title")}</label>
+                      <span className="text-[10px] text-neutral-400 font-mono">site.page_size</span>
+                    </div>
+                    <p className="text-[11px] text-neutral-400">{t("settings.site.page_size.desc")}</p>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={String(clientConfig.get("site.page_size") ?? "")}
+                      placeholder={String(clientConfig.default("site.page_size") ?? "12")}
+                      onChange={(e) => setConfigValue("client", "site.page_size", parseInt(e.target.value, 10) || 12)}
+                      className="mt-1 w-full rounded-xl border border-black/10 dark:border-white/10 bg-w px-3 py-2 text-xs t-primary outline-hidden focus:border-theme transition font-mono"
+                    />
+                  </div>
                 </div>
 
-                <ItemInput
-                  title={t("settings.site.description.title")}
-                  description={t("settings.site.description.desc")}
-                  configKeyTitle={t("settings.site.description.label")}
-                  value={String(clientConfig.get("site.description") ?? "")}
-                  placeholder={String(clientConfig.default("site.description") ?? t("settings.site.description.label"))}
-                  onChange={(value) => {
-                    setConfigValue("client", "site.description", value);
-                  }}
-                />
+                <div className="flex flex-col gap-1 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold t-primary">{t("settings.site.description.title")}</label>
+                    <span className="text-[10px] text-neutral-400 font-mono">site.description</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-400">{t("settings.site.description.desc")}</p>
+                  <textarea
+                    rows={2}
+                    value={String(clientConfig.get("site.description") ?? "")}
+                    placeholder={String(clientConfig.default("site.description") ?? t("settings.site.description.label"))}
+                    onChange={(e) => setConfigValue("client", "site.description", e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-black/10 dark:border-white/10 bg-w px-3 py-2 text-xs t-primary outline-hidden focus:border-theme transition resize-none"
+                  />
+                </div>
 
                 <ItemImageInput
                   title={t("settings.site.avatar.title")}
@@ -634,15 +649,20 @@ export function Settings() {
                   onFileChange={handleFaviconChange}
                 />
 
-                <ItemInput
-                  title={t("settings.footer.title")}
-                  description={t("settings.footer.desc")}
-                  configKeyTitle="Footer HTML"
-                  value={String(clientConfig.get("footer") ?? "")}
-                  onChange={(value) => {
-                    setConfigValue("client", "footer", value);
-                  }}
-                />
+                <div className="flex flex-col gap-1 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold t-primary">{t("settings.footer.title")}</label>
+                    <span className="text-[10px] text-neutral-400 font-mono">Footer HTML</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-400">{t("settings.footer.desc")}</p>
+                  <textarea
+                    rows={3}
+                    value={String(clientConfig.get("footer") ?? "")}
+                    placeholder="<div>Custom footer content, scripts, or badges...</div>"
+                    onChange={(e) => setConfigValue("client", "footer", e.target.value)}
+                    className="mt-1 w-full font-mono rounded-xl border border-black/10 dark:border-white/10 bg-w px-3 py-2 text-xs t-primary outline-hidden focus:border-theme transition"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -650,7 +670,17 @@ export function Settings() {
           {/* Tab 2: Theme & Layout Settings */}
           {activeCategory === "theme" && (
             <div className="w-full flex flex-col space-y-3 ani-show">
-              <ItemTitle title={t("settings.personalization.title")} />
+              <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-theme/10 text-theme text-xl shadow-2xs">
+                    <i className="ri-palette-line" />
+                  </span>
+                  <div>
+                    <h2 className="text-base font-bold t-primary">{t("settings.personalization.title")}</h2>
+                    <p className="text-xs text-neutral-400 mt-0.5">调控全站导航排布、画廊瀑布流留白、文章卡片风貌与 18 款主题色调</p>
+                  </div>
+                </div>
+              </div>
           <div className="w-full">
             <SettingsCard>
               <SettingsCardRow
@@ -1371,17 +1401,28 @@ export function Settings() {
       {/* Tab 3: Atelier & Sticky Notes Settings */}
       {activeCategory === "atelier" && (
         <div className="w-full flex flex-col space-y-3 ani-show">
-          <ItemTitle title="进阶设置 · 画廊随想与便签定制" />
-          <ItemInput
-            title="画廊主标题"
-            description="首页画廊顶部展示的艺术标题"
-            configKeyTitle="atelier.title"
-            value={String(clientConfig.get("atelier.title") ?? "画廊随想")}
-            placeholder="画廊随想"
-            onChange={(value) => {
-              setConfigValue("client", "atelier.title", value);
-            }}
-          />
+          {/* 画廊主标题控制切片 */}
+          <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <i className="ri-quill-pen-line text-theme text-base" />
+                <h3 className="font-bold text-sm t-primary">画廊主标题</h3>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-theme/10 text-theme">
+                  首页专属
+                </span>
+              </div>
+              <p className="text-xs text-neutral-400 mt-0.5">首页画廊顶部展示的艺术主标题文本</p>
+            </div>
+            <div className="w-full sm:w-72">
+              <input
+                type="text"
+                value={String(clientConfig.get("atelier.title") ?? "画廊随想")}
+                placeholder="画廊随想"
+                onChange={(e) => setConfigValue("client", "atelier.title", e.target.value)}
+                className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] px-3.5 py-2 text-xs font-bold t-primary outline-hidden focus:border-theme transition"
+              />
+            </div>
+          </div>
 
           {/* Artistic Gallery Title Customizer */}
           <div className="w-full">
@@ -1912,163 +1953,304 @@ export function Settings() {
         </div>
       )}
 
-      {/* Tab 4: Extensions & Services Settings */}
+      {/* Tab 4: Extensions & Services Settings (全站服务、通知与维护中枢) */}
       {activeCategory === "services" && (
-        <div className="w-full flex flex-col space-y-3 ani-show">
-          <ItemTitle title={t("settings.webhook.title")} />
-          <ItemInput
-            title={t("settings.webhook.url.title")}
-            description={t("settings.webhook.url.desc")}
-            configKeyTitle="WEBHOOK_URL"
-            value={String(serverConfig.get("webhook_url") ?? "")}
-            placeholder="https://example.com/webhook"
-            onChange={(value) => {
-              setConfigValue("server", "webhook_url", value);
-            }}
-          />
-          <div className="w-full">
-            <SettingsCard>
-              <SettingsCardRow
-                header={
-                  <SettingsCardHeader
-                    title={t("settings.webhook.method.title")}
-                    description={t("settings.webhook.method.desc")}
-                  />
-                }
-                action={
+        <div className="w-full flex flex-col space-y-4 ani-show">
+          {/* 切片 1: Webhook 外部通知广播中枢 */}
+          <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 gap-2">
+              <div className="flex items-center gap-2">
+                <i className="ri-broadcast-line text-theme text-base" />
+                <h3 className="font-bold text-sm t-primary">{t("settings.webhook.title")}</h3>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                  serverConfig.get("webhook_url") ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-neutral-500/10 text-neutral-400"
+                }`}>
+                  {serverConfig.get("webhook_url") ? "已配置" : "未启用"}
+                </span>
+              </div>
+              <p className="text-xs text-neutral-400">文章发布、友链申请与新评论实时外部 Webhook 广播推送</p>
+            </div>
+
+            {/* URL 与 请求方法组合条 */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 flex flex-col gap-1 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold t-primary">{t("settings.webhook.url.title")}</label>
+                  <span className="text-[10px] text-neutral-400 font-mono">WEBHOOK_URL</span>
+                </div>
+                <p className="text-[11px] text-neutral-400">{t("settings.webhook.url.desc")}</p>
+                <input
+                  type="text"
+                  value={String(serverConfig.get("webhook_url") ?? "")}
+                  placeholder="https://example.com/webhook"
+                  onChange={(e) => setConfigValue("server", "webhook_url", e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-black/10 dark:border-white/10 bg-w px-3 py-2 text-xs t-primary outline-hidden focus:border-theme transition font-mono"
+                />
+              </div>
+
+              <div className="w-full sm:w-48 flex flex-col gap-1 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+                <label className="text-xs font-bold t-primary">{t("settings.webhook.method.title")}</label>
+                <p className="text-[11px] text-neutral-400">HTTP 请求方法</p>
+                <div className="mt-1">
                   <SearchableSelect
-                    value={String(serverConfig.get("webhook.method") ?? "")}
-                    onChange={(value) => {
-                      setConfigValue("server", "webhook.method", value);
-                    }}
+                    value={String(serverConfig.get("webhook.method") ?? "POST")}
+                    onChange={(value) => setConfigValue("server", "webhook.method", value)}
                     options={WEBHOOK_METHOD_OPTIONS}
-                    placeholder={String(serverConfig.default("webhook.method") ?? "POST")}
-                    searchPlaceholder={t("settings.webhook.method.title")}
+                    placeholder="POST"
+                    searchPlaceholder="请求方法"
                     emptyLabel={t("no_more")}
-                    allowCustomValue
-                    customValueLabel={(value) => `${t("update.title")}: ${value}`}
+                    searchable={false}
                   />
-                }
+                </div>
+              </div>
+            </div>
+
+            {/* Content-Type 与 Headers 2 列网格 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div className="flex flex-col gap-1 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold t-primary">{t("settings.webhook.content_type.title")}</label>
+                  <span className="text-[10px] text-neutral-400 font-mono">Content-Type</span>
+                </div>
+                <p className="text-[11px] text-neutral-400">{t("settings.webhook.content_type.desc")}</p>
+                <input
+                  type="text"
+                  value={String(serverConfig.get("webhook.content_type") ?? "")}
+                  placeholder={String(serverConfig.default("webhook.content_type") ?? "application/json")}
+                  onChange={(e) => setConfigValue("server", "webhook.content_type", e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-black/10 dark:border-white/10 bg-w px-3 py-2 text-xs t-primary outline-hidden focus:border-theme transition font-mono"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold t-primary">{t("settings.webhook.headers.title")}</label>
+                  <span className="text-[10px] text-neutral-400 font-mono">Custom Headers (JSON)</span>
+                </div>
+                <p className="text-[11px] text-neutral-400">{t("settings.webhook.headers.desc")}</p>
+                <input
+                  type="text"
+                  value={String(serverConfig.get("webhook.headers") ?? "")}
+                  placeholder={String(serverConfig.default("webhook.headers") ?? "{}")}
+                  onChange={(e) => setConfigValue("server", "webhook.headers", e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-black/10 dark:border-white/10 bg-w px-3 py-2 text-xs t-primary outline-hidden focus:border-theme transition font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Body Payload 模板 */}
+            <div className="flex flex-col gap-1.5 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <label className="text-xs font-bold t-primary">{t("settings.webhook.body_template.title")}</label>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-neutral-400">可用占位变量:</span>
+                  {["${event}", "${title}", "${message}", "${url}", "${username}"].map((v) => (
+                    <span
+                      key={v}
+                      onClick={() => {
+                        const cur = String(serverConfig.get("webhook.body_template") ?? "");
+                        setConfigValue("server", "webhook.body_template", cur + (cur ? " " : "") + v);
+                      }}
+                      className="cursor-pointer px-1.5 py-0.5 rounded-md bg-theme/10 hover:bg-theme/20 text-theme font-mono text-[10px] font-semibold transition"
+                      title="点击插入此变量"
+                    >
+                      {v}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <p className="text-[11px] text-neutral-400">{t("settings.webhook.body_template.desc")}</p>
+              <textarea
+                rows={3}
+                value={String(serverConfig.get("webhook.body_template") ?? "")}
+                placeholder={String(serverConfig.default("webhook.body_template") ?? '{"msg_type":"text","content":{"text":"${message}"}}')}
+                onChange={(e) => setConfigValue("server", "webhook.body_template", e.target.value)}
+                className="mt-1 w-full font-mono rounded-xl border border-black/10 dark:border-white/10 bg-w px-3 py-2 text-xs t-primary outline-hidden focus:border-theme transition"
               />
-            </SettingsCard>
-          </div>
-          <ItemInput
-            title={t("settings.webhook.content_type.title")}
-            description={t("settings.webhook.content_type.desc")}
-            configKeyTitle="Content-Type"
-            value={String(serverConfig.get("webhook.content_type") ?? "")}
-            placeholder={String(serverConfig.default("webhook.content_type") ?? "application/json")}
-            onChange={(value) => {
-              setConfigValue("server", "webhook.content_type", value);
-            }}
-          />
-          <ItemInput
-            title={t("settings.webhook.headers.title")}
-            description={t("settings.webhook.headers.desc")}
-            configKeyTitle={t("settings.webhook.headers.label")}
-            value={String(serverConfig.get("webhook.headers") ?? "")}
-            placeholder={String(serverConfig.default("webhook.headers") ?? "{}")}
-            onChange={(value) => {
-              setConfigValue("server", "webhook.headers", value);
-            }}
-          />
-          <ItemInput
-            title={t("settings.webhook.body_template.title")}
-            description={t("settings.webhook.body_template.desc")}
-            configKeyTitle={t("settings.webhook.body_template.label")}
-            value={String(serverConfig.get("webhook.body_template") ?? "")}
-            placeholder={String(serverConfig.default("webhook.body_template") ?? "")}
-            onChange={(value) => {
-              setConfigValue("server", "webhook.body_template", value);
-            }}
-          />
-          <div className="w-full">
-            <SettingsCard>
-              <SettingsCardRow
-                header={
-                  <SettingsCardHeader
-                    title={t("settings.webhook.test.title")}
-                    description={t("settings.webhook.test.desc")}
-                  />
-                }
-                action={
-                  <Button
-                    title={testingWebhook ? t("settings.webhook.test.sending") : t("settings.webhook.test.button")}
-                    onClick={handleTestWebhook}
-                    disabled={testingWebhook}
-                  />
-                }
-              />
-              <SettingsCardBody>
-                <textarea
+            </div>
+
+            {/* 实时 Webhook 测试控制台 */}
+            <div className="p-3.5 rounded-xl border border-dashed border-black/15 dark:border-white/15 bg-black/[0.01] dark:bg-white/[0.01] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex-1">
+                <span className="text-xs font-bold t-primary block">{t("settings.webhook.test.title")}</span>
+                <p className="text-[11px] text-neutral-400 mt-0.5">{t("settings.webhook.test.desc")}</p>
+                <input
+                  type="text"
                   value={webhookTestMessage}
                   placeholder={t("settings.webhook.test.placeholder")}
-                  onChange={(event) => {
-                    setWebhookTestMessage(event.target.value);
-                  }}
-                  className="min-h-28 w-full rounded-xl border border-black/10 bg-w px-4 py-3 text-sm t-primary outline-none transition-colors placeholder:text-neutral-400 focus:border-black/20 focus:ring-2 focus:ring-theme/10 dark:border-white/10 dark:placeholder:text-neutral-500 dark:focus:border-white/20"
+                  onChange={(e) => setWebhookTestMessage(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-black/10 dark:border-white/10 bg-w px-3 py-1.5 text-xs t-primary outline-hidden focus:border-theme transition"
                 />
-              </SettingsCardBody>
-            </SettingsCard>
+              </div>
+              <div className="self-end sm:self-center shrink-0">
+                <button
+                  type="button"
+                  onClick={handleTestWebhook}
+                  disabled={testingWebhook || !serverConfig.get("webhook_url")}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition"
+                >
+                  {testingWebhook ? (
+                    <>
+                      <i className="ri-loader-4-line animate-spin" />
+                      <span>{t("settings.webhook.test.sending")}</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="ri-send-plane-fill" />
+                      <span>{t("settings.webhook.test.button")}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
 
-          <ItemTitle title={t("settings.friend.title")} />
-          <ItemSwitch
-            title={t("settings.friend.apply.title")}
-            description={t("settings.friend.apply.desc")}
-            checked={Boolean(clientConfig.get("friend_apply_enable"))}
-            onChange={(checked) => {
-              setConfigValue("client", "friend_apply_enable", checked);
-            }}
-          />
-          <ItemSwitch
-            title={t("settings.friend.health.title")}
-            description={t("settings.friend.health.desc")}
-            checked={Boolean(serverConfig.get("friend_crontab"))}
-            onChange={(checked) => {
-              setConfigValue("server", "friend_crontab", checked);
-            }}
-          />
-          <ItemInput
-            title={t("settings.friend.health.ua.title")}
-            description={t("settings.friend.health.ua.desc")}
-            configKeyTitle="User-Agent"
-            value={String(serverConfig.get("friend_ua") ?? "")}
-            placeholder={String(serverConfig.default("friend_ua") ?? "User-Agent")}
-            onChange={(value) => {
-              setConfigValue("server", "friend_ua", value);
-            }}
-          />
+          {/* 切片 2: 邻家友链健康巡检与申请治理 */}
+          <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-black/5 dark:border-white/5">
+              <i className="ri-heart-pulse-line text-theme text-base" />
+              <h3 className="font-bold text-sm t-primary">{t("settings.friend.title")}</h3>
+            </div>
 
-          <ItemTitle title={t("settings.maintenance.title")} />
-          <ItemSwitch
-            title={t("settings.cache.enabled.title")}
-            description={t("settings.cache.enabled.desc")}
-            checked={Boolean(clientConfig.getBoolean("cache.enabled"))}
-            onChange={(checked) => {
-              setConfigValue("client", "cache.enabled", checked);
-            }}
-          />
-          <ItemButton
-            title={t("settings.cache.clear.title")}
-            description="仅清空边缘 KV 缓存与预渲染结果，绝不影响数据库、已发布文章与上传的图片，用于修改配置后强制刷新边缘节点"
-            buttonTitle={t("clear")}
-            onConfirm={async () => {
-              await client.config.clearCache().then(({ error }) => {
-                if (error) {
-                  showAlert(t("settings.cache.clear_failed$message", { message: error.value }));
-                }
-              });
-            }}
-            alertTitle={t("settings.cache.clear.confirm.title")}
-            alertDescription="确定要清除所有边缘缓存吗？该操作不会删除任何文章或文件数据。"
-          />
-          <ItemWithUpload
-            title={t("settings.wordpress.title")}
-            description="从 WordPress 导入（上传从 WordPress 后台导出的 WXR .xml 文件，将历史文章、分类及标签无损迁移到本博客系统中）"
-            accept="application/xml"
-            onFileChange={onFileChange}
-          />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {/* 开关 1: 开放申请 */}
+              <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="font-bold text-xs t-primary block truncate">{t("settings.friend.apply.title")}</span>
+                  <span className="text-[11px] text-neutral-400 block truncate">{t("settings.friend.apply.desc")}</span>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={Boolean(clientConfig.get("friend_apply_enable"))}
+                  onClick={() => setConfigValue("client", "friend_apply_enable", !clientConfig.get("friend_apply_enable"))}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                    clientConfig.get("friend_apply_enable") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                  }`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
+                    clientConfig.get("friend_apply_enable") ? "translate-x-4.5" : "translate-x-1"
+                  }`} />
+                </button>
+              </div>
+
+              {/* 开关 2: 自动健康巡检 Crontab */}
+              <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="font-bold text-xs t-primary block truncate">{t("settings.friend.health.title")}</span>
+                  <span className="text-[11px] text-neutral-400 block truncate">{t("settings.friend.health.desc")}</span>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={Boolean(serverConfig.get("friend_crontab"))}
+                  onClick={() => setConfigValue("server", "friend_crontab", !serverConfig.get("friend_crontab"))}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                    serverConfig.get("friend_crontab") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                  }`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
+                    serverConfig.get("friend_crontab") ? "translate-x-4.5" : "translate-x-1"
+                  }`} />
+                </button>
+              </div>
+
+              {/* 输入: User-Agent */}
+              <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="font-bold text-xs t-primary block truncate">{t("settings.friend.health.ua.title")}</span>
+                  <span className="text-[11px] text-neutral-400 block truncate">{t("settings.friend.health.ua.desc")}</span>
+                </div>
+                <input
+                  type="text"
+                  value={String(serverConfig.get("friend_ua") ?? "")}
+                  placeholder={String(serverConfig.default("friend_ua") ?? "User-Agent")}
+                  onChange={(e) => setConfigValue("server", "friend_ua", e.target.value)}
+                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-w px-2.5 py-1 text-xs font-mono t-primary outline-hidden focus:border-theme"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 切片 3: 边缘性能维护与数据迁移 */}
+          <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-black/5 dark:border-white/5">
+              <i className="ri-tools-line text-theme text-base" />
+              <h3 className="font-bold text-sm t-primary">{t("settings.maintenance.title")}</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {/* 缓存治理 */}
+              <div className="p-4 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col justify-between gap-3">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs t-primary">{t("settings.cache.enabled.title")}</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={Boolean(clientConfig.getBoolean("cache.enabled"))}
+                      onClick={() => setConfigValue("client", "cache.enabled", !clientConfig.getBoolean("cache.enabled"))}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                        clientConfig.getBoolean("cache.enabled") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                      }`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
+                        clientConfig.getBoolean("cache.enabled") ? "translate-x-4.5" : "translate-x-1"
+                      }`} />
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-neutral-400 mt-1">
+                    {t("settings.cache.enabled.desc")} · 开启后文章与列表由边缘分布式缓存加速响应
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between">
+                  <span className="text-[11px] text-neutral-400 font-mono">强制刷新边缘节点</span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await client.config.clearCache().then(({ error }) => {
+                        if (error) {
+                          showAlert(t("settings.cache.clear_failed$message", { message: error.value }));
+                        } else {
+                          showAlert("边缘 KV 缓存与预渲染结果已成功清空！");
+                        }
+                      });
+                    }}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white font-bold text-xs transition"
+                  >
+                    <i className="ri-delete-bin-line" />
+                    <span>{t("clear")}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* WordPress 导入 */}
+              <div className="p-4 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col justify-between gap-3">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs t-primary">{t("settings.wordpress.title")}</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-black/5 dark:bg-white/5 text-neutral-400">WXR .xml</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-400 mt-1">
+                    从 WordPress 导出文件无损导入历史文章、分类及标签到本画廊博客中
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between">
+                  <span className="text-[11px] text-neutral-400 font-mono">支持 50MB 以内 XML</span>
+                  <ItemWithUpload
+                    title=""
+                    description=""
+                    accept="application/xml"
+                    onFileChange={onFileChange}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 切片 4: AI 智能导读与大模型引擎 */}
 
           <AISummarySettings
             value={aiValue}

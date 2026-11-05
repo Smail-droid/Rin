@@ -174,7 +174,7 @@ function MarkdownImage({
         }}
         onLoad={onLoad}
         onError={onError}
-        className={`mx-auto max-w-full cursor-zoom-in transition-opacity ${roundedClass} ${className || ""} ${
+        className={`mx-auto max-w-full h-auto cursor-zoom-in transition-opacity ${roundedClass} ${className || ""} ${
           failed ? "hidden" : blurhash && !loaded ? "opacity-0" : "opacity-100"
         }`}
       />

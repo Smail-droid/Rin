@@ -507,7 +507,7 @@ export function FriendsPage() {
                 isOpen={isAddModalOpen}
                 onRequestClose={() => !isSniffing && !isSubmitting && setIsAddModalOpen(false)}
                 contentLabel="推荐站点 / 申请友链"
-                panelClassName="overflow-visible p-6 sm:p-7 max-w-lg w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
+                panelClassName="overflow-visible p-4 sm:p-7 max-w-[94vw] sm:max-w-lg w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
             >
                 <div className="flex flex-col w-full">
                     {/* 弹窗头部 */}
@@ -949,7 +949,7 @@ function EditFriendModal({
             isOpen={true}
             onRequestClose={onClose}
             contentLabel={`编辑友链 - ${friend.name}`}
-            panelClassName="overflow-visible p-6 sm:p-7 max-w-lg w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
+            panelClassName="overflow-visible p-4 sm:p-7 max-w-[94vw] sm:max-w-lg w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
         >
             <div className="flex flex-col w-full">
                 <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">

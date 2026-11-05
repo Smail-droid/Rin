@@ -402,9 +402,9 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         />
                       </div>
 
-                      {/* 纯净左右双向微光流动弹幕系统：无生硬顶轨，随机倾角/字号/流速，向中央加速并在边缘微光破碎消融 */}
+                      {/* 纯净左右双向微光流动弹幕系统：仅在平板与桌面端展开，移动端绝对留白以保护画作与标题 */}
                       {isDanmakuEnabled && (
-                        <div className="absolute inset-0 z-20 pointer-events-none select-none overflow-hidden">
+                        <div className="hidden sm:block absolute inset-0 z-20 pointer-events-none select-none overflow-hidden">
                           {/* 左翼微光灵感区 (显著随机手绘大倾角、随机字号 12~15px，向中心加速游动并粒子消散) */}
                           <div className="absolute left-2 sm:left-4 inset-y-10 w-44 sm:w-64 pointer-events-none">
                             {dualFlankDanmaku.leftItems.map((dm, i) => (

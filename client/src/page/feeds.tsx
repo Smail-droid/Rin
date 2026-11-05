@@ -96,7 +96,7 @@ function AtelierPhotoCard({
     return (
         <Link
             href={`/feed/${feed.id}`}
-            className={`group relative break-inside-avoid block w-full rounded-[26px] border border-black/10 bg-white p-3 pb-3.5 shadow-md hover:shadow-2xl transition-all duration-400 transform ${tilt} hover:rotate-0 hover:scale-[1.03] hover:z-30 dark:border-white/10 dark:bg-neutral-900`}
+            className={`group relative break-inside-avoid block w-full mb-5 sm:mb-6 rounded-[26px] border border-black/10 bg-white p-3 pb-3.5 shadow-md hover:shadow-2xl transition-all duration-400 transform ${tilt} hover:rotate-0 hover:scale-[1.03] hover:z-30 dark:border-white/10 dark:bg-neutral-900`}
         >
             {/* Washi tape pin on top */}
             <div
