@@ -45,7 +45,8 @@ export function SearchableSelect({
         const rect = rootRef.current.getBoundingClientRect();
         const spaceBelow = window.innerHeight - rect.bottom;
         const spaceAbove = rect.top;
-        setOpenUpward(spaceBelow < 280 && spaceAbove > 200);
+        // 预留底部吸顶栏与屏幕安全区（~340px），确保靠近底部的下拉菜单自动向上展开，绝不被遮挡
+        setOpenUpward(spaceBelow < 340 && spaceAbove > 140);
       }
     }
     setIsOpen((current) => !current);
@@ -90,7 +91,7 @@ export function SearchableSelect({
   const buttonLabel = selectedOption?.label ?? value ?? placeholder ?? "";
 
   return (
-    <div ref={rootRef} className={`relative w-full min-w-0 sm:min-w-[15rem] ${isOpen ? "z-50" : "z-10"} ${className ?? ""}`}>
+    <div ref={rootRef} className={`relative w-full min-w-0 sm:min-w-[15rem] ${isOpen ? "z-[999]" : "z-10"} ${className ?? ""}`}>
       <button
         type="button"
         className="flex w-full items-center justify-between gap-3 rounded-xl border border-black/10 bg-w px-4 py-3 text-left text-sm t-primary transition-colors hover:border-black/20 focus:outline-none focus:ring-2 focus:ring-theme/20 dark:border-white/10 dark:hover:border-white/20"
@@ -104,7 +105,7 @@ export function SearchableSelect({
 
       {isOpen && (
         <div
-          className={`absolute left-0 right-0 z-50 rounded-xl border border-black/10 bg-w p-3 shadow-2xl backdrop-blur-md dark:border-white/10 ${
+          className={`absolute left-0 right-0 z-[999] rounded-xl border border-black/10 bg-w p-3 shadow-2xl backdrop-blur-md dark:border-white/10 max-h-64 overflow-y-auto ${
             openUpward ? "bottom-[calc(100%+0.5rem)]" : "top-[calc(100%+0.5rem)]"
           }`}
         >

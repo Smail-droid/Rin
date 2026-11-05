@@ -48,16 +48,16 @@ function EmptyFeedsState({ listState, canWrite }: { listState: FeedType; canWrit
     );
 }
 
-// Random organic tilt angles for the scattered atelier cards
+// Organic tilt angles for the scattered atelier cards (Tailwind JIT arbitrary angles)
 const TILT_ANGLES = [
-    "-rotate-1.5",
-    "rotate-1",
-    "-rotate-2",
-    "rotate-2",
-    "-rotate-0.5",
-    "rotate-1.5",
-    "-rotate-2.5",
-    "rotate-0.5",
+    "-rotate-[1.8deg]",
+    "rotate-[1.4deg]",
+    "-rotate-[2.2deg]",
+    "rotate-[1.9deg]",
+    "-rotate-[1.2deg]",
+    "rotate-[1.6deg]",
+    "-rotate-[2.4deg]",
+    "rotate-[1.1deg]",
 ];
 
 // Translucent washi-tape accent colors
@@ -77,12 +77,26 @@ function AtelierPhotoCard({
     index,
     tiltOffset = 0,
     canManage = false,
+    draggable = false,
+    isDragging = false,
+    isDragOver = false,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
     onToggleTop,
 }: {
     feed: any;
     index: number;
     tiltOffset?: number;
     canManage?: boolean;
+    draggable?: boolean;
+    isDragging?: boolean;
+    isDragOver?: boolean;
+    onDragStart?: (e: React.DragEvent) => void;
+    onDragOver?: (e: React.DragEvent) => void;
+    onDrop?: (e: React.DragEvent) => void;
+    onDragEnd?: () => void;
     onToggleTop?: (feedId: number, top: number) => void;
 }) {
     const { t } = useTranslation();
@@ -96,12 +110,32 @@ function AtelierPhotoCard({
     return (
         <Link
             href={`/feed/${feed.id}`}
-            className={`group relative break-inside-avoid block w-full mb-5 sm:mb-6 rounded-[26px] border border-black/10 bg-white p-3 pb-3.5 shadow-md hover:shadow-2xl transition-all duration-400 transform ${tilt} hover:rotate-0 hover:scale-[1.03] hover:z-30 dark:border-white/10 dark:bg-neutral-900`}
+            draggable={draggable && canManage}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            onDragEnd={onDragEnd}
+            className={`group relative break-inside-avoid block w-full mb-5 sm:mb-6 rounded-[26px] border bg-white p-3 pb-3.5 shadow-md hover:shadow-2xl transition-all duration-400 transform ${tilt} hover:rotate-0 hover:scale-[1.03] hover:z-30 dark:bg-neutral-900 ${
+                isDragging ? "opacity-35 scale-95 border-theme border-dashed ring-2 ring-theme/40" : ""
+            } ${
+                isDragOver ? "ring-4 ring-theme/40 border-theme scale-[1.02] shadow-xl" : "border-black/10 dark:border-white/10"
+            }`}
         >
             {/* Washi tape pin on top */}
             <div
                 className={`absolute -top-2.5 left-1/2 -translate-x-1/2 w-14 h-4 ${tapeColor} rounded-xs shadow-2xs rotate-[-2deg] pointer-events-none z-10 opacity-90`}
             />
+
+            {/* Quick Admin Drag Handle on top-left */}
+            {canManage && (
+                <div
+                    onClick={(e) => e.stopPropagation()}
+                    title="按住拖拽调整此文章在画廊中的摆放位置"
+                    className="absolute left-4 top-4 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme cursor-grab active:cursor-grabbing"
+                >
+                    <i className="ri-drag-move-2-line text-xs" />
+                </div>
+            )}
 
             {/* Quick Admin Edit Button on top-right (Screenshot 4) */}
             {canManage && (
@@ -904,12 +938,12 @@ export function FeedsPage() {
         }).catch(() => {});
     }, []);
 
-    // 首页便签自由拖拽摆放与持久化排序
-    const [draggedNote, setDraggedNote] = useState<string | null>(null);
-    const [dragOverNote, setDragOverNote] = useState<string | null>(null);
-    const [notesOrder, setNotesOrder] = useState<string[]>(() => {
+    // 画廊首页全流（文章 + 便签）自由混排拖拽与持久化排序
+    const [draggedStreamItem, setDraggedStreamItem] = useState<string | null>(null);
+    const [dragOverStreamItem, setDragOverStreamItem] = useState<string | null>(null);
+    const [streamOrder, setStreamOrder] = useState<string[]>(() => {
         try {
-            const saved = localStorage.getItem("rin_atelier_notes_order");
+            const saved = localStorage.getItem("rin_gallery_stream_order");
             if (saved) {
                 const parsed = JSON.parse(saved);
                 if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -918,70 +952,56 @@ export function FeedsPage() {
         return [];
     });
 
-    const resetNotesOrder = () => {
-        setNotesOrder([]);
+    const resetStreamOrder = () => {
+        setStreamOrder([]);
         try {
+            localStorage.removeItem("rin_gallery_stream_order");
             localStorage.removeItem("rin_atelier_notes_order");
         } catch {}
     };
 
-    const handleNoteDrop = (targetType: string) => {
-        if (!draggedNote || draggedNote === targetType) {
-            setDraggedNote(null);
-            setDragOverNote(null);
-            return;
-        }
-        const allTypes = ["about", "timeline", "moments", "friends", "search"];
-        const currentList = [...allTypes];
-        if (notesOrder.length > 0) {
-            currentList.sort((a, b) => {
-                const idxA = notesOrder.indexOf(a);
-                const idxB = notesOrder.indexOf(b);
-                if (idxA === -1 && idxB === -1) return 0;
-                if (idxA === -1) return 1;
-                if (idxB === -1) return -1;
-                return idxA - idxB;
-            });
-        }
-        const fromIdx = currentList.indexOf(draggedNote);
-        const toIdx = currentList.indexOf(targetType);
-        if (fromIdx !== -1 && toIdx !== -1) {
-            const nextOrder = [...currentList];
-            nextOrder.splice(fromIdx, 1);
-            nextOrder.splice(toIdx, 0, draggedNote);
-            setNotesOrder(nextOrder);
-            try {
-                localStorage.setItem("rin_atelier_notes_order", JSON.stringify(nextOrder));
-            } catch {}
-        }
-        setDraggedNote(null);
-        setDragOverNote(null);
+    const getItemKey = (item: { type: "photo" | "note" | "deck"; data?: any; noteType?: any }) => {
+        if (item.type === "photo") return `feed:${item.data.id}`;
+        if (item.type === "note") return `note:${item.noteType}`;
+        return "deck";
     };
 
-    const moveNoteStep = (targetType: string, direction: "prev" | "next") => {
-        const allTypes = ["about", "timeline", "moments", "friends", "search"];
-        const currentList = [...allTypes];
-        if (notesOrder.length > 0) {
-            currentList.sort((a, b) => {
-                const idxA = notesOrder.indexOf(a);
-                const idxB = notesOrder.indexOf(b);
-                if (idxA === -1 && idxB === -1) return 0;
-                if (idxA === -1) return 1;
-                if (idxB === -1) return -1;
-                return idxA - idxB;
-            });
+    const handleStreamDrop = (targetKey: string, firstPageKeys: string[]) => {
+        if (!draggedStreamItem || draggedStreamItem === targetKey) {
+            setDraggedStreamItem(null);
+            setDragOverStreamItem(null);
+            return;
         }
-        const idx = currentList.indexOf(targetType);
+
+        let effectiveKeys = [...firstPageKeys];
+        const fromIdx = effectiveKeys.indexOf(draggedStreamItem);
+        const toIdx = effectiveKeys.indexOf(targetKey);
+        if (fromIdx !== -1 && toIdx !== -1) {
+            const nextOrder = [...effectiveKeys];
+            nextOrder.splice(fromIdx, 1);
+            nextOrder.splice(toIdx, 0, draggedStreamItem);
+            setStreamOrder(nextOrder);
+            try {
+                localStorage.setItem("rin_gallery_stream_order", JSON.stringify(nextOrder));
+            } catch {}
+        }
+        setDraggedStreamItem(null);
+        setDragOverStreamItem(null);
+    };
+
+    const moveNoteStep = (targetType: string, direction: "prev" | "next", currentKeys: string[]) => {
+        const targetKey = `note:${targetType}`;
+        const idx = currentKeys.indexOf(targetKey);
         if (idx === -1) return;
-        const targetIdx = direction === "prev" ? Math.max(0, idx - 1) : Math.min(currentList.length - 1, idx + 1);
+        const targetIdx = direction === "prev" ? Math.max(0, idx - 1) : Math.min(currentKeys.length - 1, idx + 1);
         if (targetIdx === idx) return;
 
-        const nextOrder = [...currentList];
+        const nextOrder = [...currentKeys];
         const item = nextOrder.splice(idx, 1)[0];
         nextOrder.splice(targetIdx, 0, item);
-        setNotesOrder(nextOrder);
+        setStreamOrder(nextOrder);
         try {
-            localStorage.setItem("rin_atelier_notes_order", JSON.stringify(nextOrder));
+            localStorage.setItem("rin_gallery_stream_order", JSON.stringify(nextOrder));
         } catch {}
     };
 
@@ -1026,23 +1046,14 @@ export function FeedsPage() {
         const layoutMode = siteConfig.atelierNotesLayout || "grid";
 
         let orderedNotes = [...activeNoteTypes];
-        if (notesOrder.length > 0) {
-            orderedNotes.sort((a, b) => {
-                const idxA = notesOrder.indexOf(a);
-                const idxB = notesOrder.indexOf(b);
-                if (idxA === -1 && idxB === -1) return 0;
-                if (idxA === -1) return 1;
-                if (idxB === -1) return -1;
-                return idxA - idxB;
-            });
-        } else if (layoutMode === "random") {
+        if (layoutMode === "random") {
             orderedNotes = orderedNotes.sort(() => Math.sin(firstPageFeeds.length) - 0.5);
         }
 
         let noteIdx = 0;
         const totalNotes = orderedNotes.length;
 
-        // 计算便签在首屏文章间的插入槽位索引
+        // 计算便签在首屏文章间的默认插入槽位索引
         const insertionSlots = new Set<number>();
         if (firstPageFeeds.length <= 2) {
             insertionSlots.add(0);
@@ -1059,25 +1070,43 @@ export function FeedsPage() {
             });
         }
 
+        const rawFirstPageItems: Array<{ type: "photo" | "note" | "deck"; data?: any; noteType?: any }> = [];
+
         // 将首屏文章与便签交错混合
         firstPageFeeds.forEach((feed, i) => {
-            items.push({ type: "photo", data: feed });
+            rawFirstPageItems.push({ type: "photo", data: feed });
             if (insertionSlots.has(i) && noteIdx < totalNotes) {
-                items.push({ type: "note", noteType: orderedNotes[noteIdx] });
+                rawFirstPageItems.push({ type: "note", noteType: orderedNotes[noteIdx] });
                 noteIdx++;
             }
         });
 
         // 如果首屏文章太少没放完所有便签，在首屏末尾一次性补充完毕
         while (noteIdx < totalNotes) {
-            items.push({ type: "note", noteType: orderedNotes[noteIdx] });
+            rawFirstPageItems.push({ type: "note", noteType: orderedNotes[noteIdx] });
             noteIdx++;
         }
 
         // 记忆翻动卡片（仅当后台开启展示时，在首屏末尾呈现一次）
         if (siteConfig.atelierDeckShow !== false) {
-            items.push({ type: "deck" });
+            rawFirstPageItems.push({ type: "deck" });
         }
+
+        // 如果开启了自定义全局混排（支持文章与便签跨界自由拖拽重排）
+        if (streamOrder.length > 0) {
+            rawFirstPageItems.sort((a, b) => {
+                const keyA = getItemKey(a);
+                const keyB = getItemKey(b);
+                const idxA = streamOrder.indexOf(keyA);
+                const idxB = streamOrder.indexOf(keyB);
+                if (idxA === -1 && idxB === -1) return 0;
+                if (idxA === -1) return 1;
+                if (idxB === -1) return -1;
+                return idxA - idxB;
+            });
+        }
+
+        items.push(...rawFirstPageItems);
 
         // 第一页之后（翻页/加载更多追加进来的所有文章）：100% 纯照片文章卡片，绝无任何便签污染！
         subsequentFeeds.forEach((feed) => {
@@ -1088,7 +1117,7 @@ export function FeedsPage() {
     }, [
         currentFeedData,
         listState,
-        notesOrder,
+        streamOrder,
         siteConfig.pageSize,
         siteConfig.atelierNotesLayout,
         siteConfig.atelierAboutShow,
@@ -1129,15 +1158,15 @@ export function FeedsPage() {
                                 ({currentFeeds.size})
                             </span>
                         </h1>
-                        {Boolean(profile?.permission) && notesOrder.length > 0 && (
+                        {Boolean(profile?.permission) && streamOrder.length > 0 && (
                             <button
                                 type="button"
-                                onClick={resetNotesOrder}
-                                title="重置便签为系统默认排布次序"
-                                className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition select-none"
+                                onClick={resetStreamOrder}
+                                title="恢复文章与便签为默认排布次序"
+                                className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 shadow-2xs border border-amber-500/20 transition select-none active:scale-95"
                             >
                                 <i className="ri-restart-line text-xs" />
-                                <span>已自定义便签顺序 · 恢复默认</span>
+                                <span>已启用画廊自定义混排顺序 · 点击恢复默认</span>
                             </button>
                         )}
                     </div>
@@ -1237,7 +1266,10 @@ export function FeedsPage() {
                         className={`${getColumnsClass(siteConfig.galleryColumns)} space-y-6 ani-show`}
                     >
                         {interleavedItems.map((item, idx) => {
+                            const currentFirstPageKeys = interleavedItems.map(getItemKey);
+
                             if (item.type === "photo") {
+                                const itemK = `feed:${item.data.id}`;
                                 return (
                                     <AtelierPhotoCard
                                         key={item.data.id}
@@ -1245,12 +1277,32 @@ export function FeedsPage() {
                                         index={idx}
                                         tiltOffset={shuffleSeed}
                                         canManage={Boolean(profile?.permission)}
+                                        draggable={Boolean(profile?.permission)}
+                                        isDragging={draggedStreamItem === itemK}
+                                        isDragOver={dragOverStreamItem === itemK}
+                                        onDragStart={(e) => {
+                                            e.dataTransfer.setData("text/plain", itemK);
+                                            setDraggedStreamItem(itemK);
+                                        }}
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            if (dragOverStreamItem !== itemK) setDragOverStreamItem(itemK);
+                                        }}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            handleStreamDrop(itemK, currentFirstPageKeys);
+                                        }}
+                                        onDragEnd={() => {
+                                            setDraggedStreamItem(null);
+                                            setDragOverStreamItem(null);
+                                        }}
                                         onToggleTop={handleToggleTop}
                                     />
                                 );
                             }
 
                             if (item.type === "note") {
+                                const itemK = `note:${item.noteType}`;
                                 return (
                                     <StickyNoteItem
                                         key={`note-${item.noteType}-${idx}`}
@@ -1258,26 +1310,24 @@ export function FeedsPage() {
                                         siteConfig={siteConfig}
                                         canManage={Boolean(profile?.permission)}
                                         draggable={Boolean(profile?.permission)}
-                                        isDragging={draggedNote === item.noteType}
-                                        isDragOver={dragOverNote === item.noteType}
-                                        onMoveStep={moveNoteStep}
+                                        isDragging={draggedStreamItem === itemK}
+                                        isDragOver={dragOverStreamItem === itemK}
+                                        onMoveStep={(nt, dir) => moveNoteStep(nt, dir, currentFirstPageKeys)}
                                         onDragStart={(e) => {
-                                            e.dataTransfer.setData("text/plain", item.noteType);
-                                            setDraggedNote(item.noteType);
+                                            e.dataTransfer.setData("text/plain", itemK);
+                                            setDraggedStreamItem(itemK);
                                         }}
                                         onDragOver={(e) => {
                                             e.preventDefault();
-                                            if (dragOverNote !== item.noteType) {
-                                                setDragOverNote(item.noteType);
-                                            }
+                                            if (dragOverStreamItem !== itemK) setDragOverStreamItem(itemK);
                                         }}
                                         onDrop={(e) => {
                                             e.preventDefault();
-                                            handleNoteDrop(item.noteType);
+                                            handleStreamDrop(itemK, currentFirstPageKeys);
                                         }}
                                         onDragEnd={() => {
-                                            setDraggedNote(null);
-                                            setDragOverNote(null);
+                                            setDraggedStreamItem(null);
+                                            setDragOverStreamItem(null);
                                         }}
                                     />
                                 );

@@ -52,6 +52,12 @@ const WEBHOOK_METHOD_OPTIONS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD",
   value,
 }));
 
+function parseConfigInt(val: unknown, fallback: number): number {
+  if (val === undefined || val === null || val === "") return fallback;
+  const num = Number.parseInt(String(val), 10);
+  return Number.isNaN(num) ? fallback : Math.max(0, num);
+}
+
 const ABOUT_PRESET_EMOJIS = ["🐾", "🐱", "🐶", "🦊", "🐼", "🐨", "🦁", "🐯", "🦄", "☕", "🍵", "🍀", "🌿", "🌸", "🎧", "🎮", "💻", "🎨", "🌟", "👑", "✨", "🌻", "🐣", "🍧"];
 const TIMELINE_PRESET_EMOJIS = ["⏳", "⌛", "⏰", "⏱️", "🕰️", "📅", "📆", "🗓️", "📜", "🧭", "⚓", "🏹", "🛸", "🚀", "🌠", "🌌", "🪐", "🍂", "🍁", "🌊", "🏛️", "⛩️", "🕯️", "🔮"];
 const MOMENTS_PRESET_EMOJIS = ["💭", "💬", "🫧", "💡", "☕", "🍃", "🌤️", "🌈", "🎈", "🎵", "📖", "📝", "📮", "💌", "🍺", "🥂", "🥐", "🍰", "🧁", "🌻", "🧸", "🪁", "🎐", "🍬"];
@@ -464,39 +470,134 @@ export function Settings() {
                 />
               </div>
 
-              {/* 切片 2: 全站导航条位置与挂件模式 (高密模块化切换卡片) */}
-              <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
+              {/* 切片 2: 全站导航条位置与挂件模式 (画中画微缩预览创意卡片) */}
+              <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 gap-2">
                   <div className="flex items-center gap-2">
                     <i className="ri-layout-top-line text-theme text-base" />
                     <h3 className="text-sm font-bold t-primary">前台导航条排布位置与挂件形态</h3>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-theme/10 text-theme">
+                      {String(clientConfig.get("header.position") || "top") === "float"
+                        ? "居中浮动胶囊"
+                        : String(clientConfig.get("header.position") || "top") === "bottom"
+                        ? "底部便携挂件"
+                        : "顶部固定导航"}
+                    </span>
                   </div>
-                  <p className="text-xs text-neutral-400 mt-1">
-                    支持一键切换为顶部常规导航条、居中悬浮极光胶囊或底部轻便挂件，提供不同的视觉沉浸感
+                  <p className="text-xs text-neutral-400">
+                    一键切换全站前台导航排布，呈现沉浸式画廊不同视觉视角
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto">
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                   {[
-                    { id: "top", label: "顶部固定", icon: "ri-layout-top-line" },
-                    { id: "float", label: "居中浮动胶囊", icon: "ri-capsule-line" },
-                    { id: "bottom", label: "底部便携挂件", icon: "ri-layout-bottom-line" },
+                    {
+                      id: "top",
+                      title: "顶部固定",
+                      badge: "CLASSIC FIXED",
+                      desc: "常驻屏幕最顶端，融入毛玻璃与呼吸微光，沉浸大气",
+                      icon: "ri-layout-top-line",
+                      preview: (
+                        <div className="w-full h-20 rounded-xl bg-neutral-100 dark:bg-neutral-900/80 p-2 border border-black/5 dark:border-white/5 flex flex-col justify-between relative overflow-hidden group-hover:border-theme/30 transition-colors">
+                          {/* Top Nav Bar Mock */}
+                          <div className="w-full h-4 rounded-lg bg-white dark:bg-neutral-800 shadow-2xs border border-black/5 dark:border-white/5 flex items-center justify-between px-2">
+                            <span className="h-1.5 w-6 rounded-full bg-theme" />
+                            <div className="flex items-center gap-1">
+                              <span className="h-1.5 w-3 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+                              <span className="h-1.5 w-3 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+                              <span className="h-1.5 w-3 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+                            </div>
+                          </div>
+                          {/* Content Lines */}
+                          <div className="space-y-1 px-1">
+                            <div className="h-1.5 w-1/2 rounded bg-neutral-200 dark:bg-neutral-800" />
+                            <div className="h-1.5 w-3/4 rounded bg-neutral-200/60 dark:bg-neutral-800/60" />
+                          </div>
+                        </div>
+                      ),
+                    },
+                    {
+                      id: "float",
+                      title: "居中浮动胶囊",
+                      badge: "DYNAMIC ISLAND",
+                      desc: "灵动岛般悬浮于中央半空，内容在其下方穿梭流动",
+                      icon: "ri-capsule-line",
+                      preview: (
+                        <div className="w-full h-20 rounded-xl bg-neutral-100 dark:bg-neutral-900/80 p-2 border border-black/5 dark:border-white/5 flex flex-col items-center justify-between relative overflow-hidden group-hover:border-theme/30 transition-colors">
+                          {/* Floating Capsule Mock */}
+                          <div className="w-24 h-4 rounded-full bg-white dark:bg-neutral-800 shadow-md border border-theme/30 flex items-center justify-between px-2.5">
+                            <span className="h-1.5 w-2 rounded-full bg-theme animate-pulse" />
+                            <div className="flex items-center gap-1">
+                              <span className="h-1.5 w-2.5 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+                              <span className="h-1.5 w-2.5 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+                            </div>
+                          </div>
+                          {/* Content Lines flowing underneath */}
+                          <div className="w-full space-y-1 px-1 pb-1">
+                            <div className="h-1.5 w-2/3 rounded bg-neutral-200 dark:bg-neutral-800" />
+                            <div className="h-1.5 w-5/6 rounded bg-neutral-200/60 dark:bg-neutral-800/60" />
+                          </div>
+                        </div>
+                      ),
+                    },
+                    {
+                      id: "bottom",
+                      title: "底部便携挂件",
+                      badge: "BOTTOM DOCK",
+                      desc: "移至屏幕下方打造单手掌控操作岛，顶部纯净极目远眺",
+                      icon: "ri-layout-bottom-line",
+                      preview: (
+                        <div className="w-full h-20 rounded-xl bg-neutral-100 dark:bg-neutral-900/80 p-2 border border-black/5 dark:border-white/5 flex flex-col justify-between relative overflow-hidden group-hover:border-theme/30 transition-colors">
+                          {/* Top Clean Content */}
+                          <div className="space-y-1 px-1 pt-1">
+                            <div className="h-1.5 w-1/2 rounded bg-neutral-200 dark:bg-neutral-800" />
+                            <div className="h-1.5 w-4/5 rounded bg-neutral-200/60 dark:bg-neutral-800/60" />
+                          </div>
+                          {/* Bottom Dock Bar Mock */}
+                          <div className="w-32 mx-auto h-4 rounded-full bg-white dark:bg-neutral-800 shadow-md border border-black/10 dark:border-white/10 flex items-center justify-around px-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-theme" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                          </div>
+                        </div>
+                      ),
+                    },
                   ].map((pos) => {
                     const currentPos = String(clientConfig.get("header.position") || "top");
                     const isSelected = currentPos === pos.id;
                     return (
-                      <button
+                      <div
                         key={pos.id}
-                        type="button"
                         onClick={() => setConfigValue("client", "header.position", pos.id)}
-                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition select-none ${
+                        className={`group relative flex flex-col justify-between p-3.5 rounded-xl border cursor-pointer transition-all duration-200 select-none ${
                           isSelected
-                            ? "bg-theme text-white shadow-xs font-bold scale-102"
-                            : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                            ? "border-theme bg-theme/[0.04] ring-2 ring-theme/20 shadow-md shadow-theme/10 -translate-y-0.5"
+                            : "border-black/10 dark:border-white/10 bg-w hover:border-theme/40 hover:bg-black/[0.01] dark:hover:bg-white/[0.01]"
                         }`}
                       >
-                        <i className={pos.icon} />
-                        <span>{pos.label}</span>
-                      </button>
+                        {/* Preview Area */}
+                        {pos.preview}
+
+                        <div className="mt-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <i className={`${pos.icon} ${isSelected ? "text-theme" : "text-neutral-500"} text-sm`} />
+                              <span className={`font-bold text-xs ${isSelected ? "text-theme" : "t-primary"}`}>
+                                {pos.title}
+                              </span>
+                            </div>
+                            <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                              isSelected ? "bg-theme text-white" : "bg-black/5 dark:bg-white/10 text-neutral-400"
+                            }`}>
+                              {pos.badge}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-neutral-400 mt-1 line-clamp-2 leading-relaxed">
+                            {pos.desc}
+                          </p>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -741,137 +842,235 @@ export function Settings() {
                     </div>
                   </div>
 
-                  {/* Padding Slider & Shortcuts */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-black/5 dark:border-white/5">
-                    <div>
-                      <div className="text-xs font-semibold t-primary">首页两侧留白边距</div>
-                      <div className="text-xs text-neutral-500 dark:text-neutral-400">控制首页主体内容距离屏幕左右两侧的留白空隙</div>
-                    </div>
-                    <div className="flex flex-col items-start sm:items-end gap-1.5">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="range"
-                          min={0}
-                          max={120}
-                          step={4}
-                          value={Number.parseInt(String(clientConfig.get("gallery.padding") ?? 24), 10) || 24}
-                          onChange={(e) => {
-                            const val = Number.parseInt(e.target.value, 10);
-                            setConfigValue("client", "gallery.padding", val);
-                          }}
-                          className="h-2 w-32 sm:w-44 cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-theme dark:bg-white/15"
-                        />
-                        <span className="min-w-14 text-right font-mono text-xs font-bold text-theme">
-                          {Number.parseInt(String(clientConfig.get("gallery.padding") ?? 24), 10) || 24}px
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {[0, 12, 24, 48, 80].map((px) => {
-                          const currentVal = Number.parseInt(String(clientConfig.get("gallery.padding") ?? 24), 10) || 24;
-                          const isSelected = currentVal === px;
-                          return (
-                            <button
-                              key={px}
-                              type="button"
-                              onClick={() => setConfigValue("client", "gallery.padding", px)}
-                              className={`rounded-md px-2 py-0.5 text-[11px] font-semibold transition select-none ${
-                                isSelected
-                                  ? "bg-theme text-white shadow-2xs"
-                                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300"
-                              }`}
-                            >
-                              {px === 0 ? "无边距" : `${px}px`}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
+                  {/* Padding, Columns, Gap & PiP Live Preview */}
+                  {(() => {
+                    const currentPadding = parseConfigInt(clientConfig.get("gallery.padding"), 24);
+                    const currentCol = String(clientConfig.get("gallery.columns") ?? "auto");
+                    const currentAlign = String(clientConfig.get("gallery.align") ?? "center");
+                    const currentCardGap = parseConfigInt(clientConfig.get("gallery.card_gap"), 16);
 
-                  {/* Gallery Columns & Alignment */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-black/5 dark:border-white/5">
-                    <div>
-                      <div className="text-xs font-semibold t-primary mb-1.5">画廊列数控制</div>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {[
-                          { label: "自适应 Auto", value: "auto" },
-                          { label: "2 列", value: "2" },
-                          { label: "3 列", value: "3" },
-                          { label: "4 列", value: "4" },
-                          { label: "5 列", value: "5" },
-                        ].map((col) => {
-                          const currentCol = String(clientConfig.get("gallery.columns") ?? "auto");
-                          const isSelected = currentCol === col.value;
-                          return (
-                            <button
-                              key={col.value}
-                              type="button"
-                              onClick={() => setConfigValue("client", "gallery.columns", col.value)}
-                              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition select-none ${
-                                isSelected
-                                  ? "bg-theme text-white shadow-xs"
-                                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300"
-                              }`}
-                            >
-                              {col.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
+                    return (
+                      <>
+                        {/* 1. 两侧留白滑块与预设 */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-black/5 dark:border-white/5">
+                          <div>
+                            <div className="text-xs font-semibold t-primary">首页两侧留白边距</div>
+                            <div className="text-xs text-neutral-500 dark:text-neutral-400">控制首页主体内容距离屏幕左右两侧的留白空隙</div>
+                          </div>
+                          <div className="flex flex-col items-start sm:items-end gap-1.5">
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="range"
+                                min={0}
+                                max={120}
+                                step={4}
+                                value={currentPadding}
+                                onChange={(e) => {
+                                  const val = parseConfigInt(e.target.value, 24);
+                                  setConfigValue("client", "gallery.padding", val);
+                                }}
+                                className="h-2 w-32 sm:w-44 cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-theme dark:bg-white/15"
+                              />
+                              <span className="min-w-14 text-right font-mono text-xs font-bold text-theme">
+                                {currentPadding}px
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {[0, 12, 24, 48, 80].map((px) => {
+                                const isSelected = currentPadding === px;
+                                return (
+                                  <button
+                                    key={px}
+                                    type="button"
+                                    onClick={() => setConfigValue("client", "gallery.padding", px)}
+                                    className={`rounded-md px-2 py-0.5 text-[11px] font-semibold transition select-none ${
+                                      isSelected
+                                        ? "bg-theme text-white shadow-2xs font-bold"
+                                        : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300"
+                                    }`}
+                                  >
+                                    {px === 0 ? "无边距" : `${px}px`}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
 
-                    <div>
-                      <div className="text-xs font-semibold t-primary mb-1.5">画廊排版对齐方式</div>
-                      <div className="flex items-center gap-1.5">
-                        {[
-                          { label: "居中聚拢 (Center)", value: "center" },
-                          { label: "撑满两端 (Fluid)", value: "fluid" },
-                        ].map((align) => {
-                          const currentAlign = String(clientConfig.get("gallery.align") ?? "center");
-                          const isSelected = currentAlign === align.value;
-                          return (
-                            <button
-                              key={align.value}
-                              type="button"
-                              onClick={() => setConfigValue("client", "gallery.align", align.value)}
-                              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition select-none ${
-                                isSelected
-                                  ? "bg-theme text-white shadow-xs"
-                                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300"
-                              }`}
-                            >
-                              {align.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
+                        {/* 2. 列数与对齐 */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-black/5 dark:border-white/5">
+                          <div>
+                            <div className="text-xs font-semibold t-primary mb-1.5">画廊列数控制</div>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {[
+                                { label: "自适应 Auto", value: "auto" },
+                                { label: "2 列", value: "2" },
+                                { label: "3 列", value: "3" },
+                                { label: "4 列", value: "4" },
+                                { label: "5 列", value: "5" },
+                              ].map((col) => {
+                                const isSelected = currentCol === col.value;
+                                return (
+                                  <button
+                                    key={col.value}
+                                    type="button"
+                                    onClick={() => setConfigValue("client", "gallery.columns", col.value)}
+                                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition select-none ${
+                                      isSelected
+                                        ? "bg-theme text-white shadow-xs font-bold"
+                                        : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300"
+                                    }`}
+                                  >
+                                    {col.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
 
-                  {/* Card Gap & Max Width Fine-tuning */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-black/5 dark:border-white/5">
-                    <div>
-                      <div className="text-xs font-semibold t-primary">卡片列间距与间隙</div>
-                      <div className="text-xs text-neutral-500 dark:text-neutral-400">调节瀑布流每列卡片之间的水平与垂直间隙</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="range"
-                        min={12}
-                        max={48}
-                        step={4}
-                        value={Number.parseInt(String(clientConfig.get("gallery.card_gap") ?? 24), 10) || 24}
-                        onChange={(e) => {
-                          const val = Number.parseInt(e.target.value, 10);
-                          setConfigValue("client", "gallery.card_gap", val);
-                        }}
-                        className="h-2 w-32 sm:w-44 cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-theme dark:bg-white/15"
-                      />
-                      <span className="min-w-14 text-right font-mono text-xs font-bold text-theme">
-                        {Number.parseInt(String(clientConfig.get("gallery.card_gap") ?? 24), 10) || 24}px
-                      </span>
-                    </div>
-                  </div>
+                          <div>
+                            <div className="text-xs font-semibold t-primary mb-1.5">画廊排版对齐方式</div>
+                            <div className="flex items-center gap-1.5">
+                              {[
+                                { label: "居中聚拢 (Center)", value: "center" },
+                                { label: "撑满两端 (Fluid)", value: "fluid" },
+                              ].map((align) => {
+                                const isSelected = currentAlign === align.value;
+                                return (
+                                  <button
+                                    key={align.value}
+                                    type="button"
+                                    onClick={() => setConfigValue("client", "gallery.align", align.value)}
+                                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition select-none ${
+                                      isSelected
+                                        ? "bg-theme text-white shadow-xs font-bold"
+                                        : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300"
+                                    }`}
+                                  >
+                                    {align.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 3. 卡片列间距与间隙（默认优化为更加紧凑微润的 16px） */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-black/5 dark:border-white/5">
+                          <div>
+                            <div className="text-xs font-semibold t-primary">卡片列间距与间隙</div>
+                            <div className="text-xs text-neutral-500 dark:text-neutral-400">调节瀑布流每列卡片之间的水平与垂直间隙（默认 16px 紧凑呈现）</div>
+                          </div>
+                          <div className="flex flex-col items-start sm:items-end gap-1.5">
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="range"
+                                min={8}
+                                max={48}
+                                step={4}
+                                value={currentCardGap}
+                                onChange={(e) => {
+                                  const val = parseConfigInt(e.target.value, 16);
+                                  setConfigValue("client", "gallery.card_gap", val);
+                                }}
+                                className="h-2 w-32 sm:w-44 cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-theme dark:bg-white/15"
+                              />
+                              <span className="min-w-14 text-right font-mono text-xs font-bold text-theme">
+                                {currentCardGap}px
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {[8, 12, 16, 24, 32].map((gapPx) => {
+                                const isSelected = currentCardGap === gapPx;
+                                return (
+                                  <button
+                                    key={gapPx}
+                                    type="button"
+                                    onClick={() => setConfigValue("client", "gallery.card_gap", gapPx)}
+                                    className={`rounded-md px-2 py-0.5 text-[11px] font-semibold transition select-none ${
+                                      isSelected
+                                        ? "bg-theme text-white shadow-2xs font-bold"
+                                        : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-white/5 dark:text-neutral-300"
+                                    }`}
+                                  >
+                                    {gapPx === 16 ? "16px (默认)" : `${gapPx}px`}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 4. 画中画实时微缩排版视窗 (Picture-in-Picture Live Preview) */}
+                        <div className="mt-2 p-3.5 rounded-2xl border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] flex flex-col gap-2.5">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1">
+                                <span className="h-2 w-2 rounded-full bg-[#ff5f56] inline-block shadow-2xs" />
+                                <span className="h-2 w-2 rounded-full bg-[#ffbd2e] inline-block shadow-2xs" />
+                                <span className="h-2 w-2 rounded-full bg-[#27c93f] inline-block shadow-2xs" />
+                              </div>
+                              <span className="text-xs font-bold t-primary">画中画实时微缩排版视窗 (Live PiP Preview)</span>
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-theme/10 text-theme font-mono font-bold">
+                                REALTIME
+                              </span>
+                            </div>
+                            <span className="text-[11px] font-mono text-neutral-400">
+                              两侧留白 {currentPadding}px · {currentCol === "auto" ? "自适应列" : `${currentCol}列`} · 间距 {currentCardGap}px · {currentAlign === "center" ? "居中聚拢" : "撑满两端"}
+                            </span>
+                          </div>
+
+                          {/* 模拟浏览器前台视窗画布 */}
+                          <div className="w-full bg-neutral-200/50 dark:bg-neutral-900/90 rounded-xl p-3 border border-black/5 dark:border-white/5 overflow-hidden transition-all duration-300">
+                            <div
+                              style={{
+                                paddingLeft: `${Math.min(48, currentPadding * 0.4)}px`,
+                                paddingRight: `${Math.min(48, currentPadding * 0.4)}px`,
+                              }}
+                              className={`w-full transition-all duration-300 ${currentAlign === "center" ? "max-w-xl mx-auto" : "w-full"}`}
+                            >
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns: `repeat(${currentCol === "auto" ? 4 : parseInt(currentCol, 10)}, minmax(0, 1fr))`,
+                                  gap: `${Math.max(4, currentCardGap * 0.35)}px`,
+                                }}
+                                className="transition-all duration-300"
+                              >
+                                {[
+                                  { title: "二次元随笔", tag: "随想", tilt: "rotate-[-1.5deg]", aspect: "h-14" },
+                                  { title: "架构重构指南", tag: "技术", tilt: "rotate-[1.2deg]", aspect: "h-20" },
+                                  { title: "微光画廊相册", tag: "摄影", tilt: "rotate-[-2deg]", aspect: "h-16" },
+                                  { title: "边缘部署手册", tag: "运维", tilt: "rotate-[1.8deg]", aspect: "h-14" },
+                                  { title: "关于与便签", tag: "便签", tilt: "rotate-[-1.2deg]", aspect: "h-16", isNote: true },
+                                  { title: "探针监控数据", tag: "极客", tilt: "rotate-[1.5deg]", aspect: "h-14" },
+                                  { title: "生活碎碎念", tag: "动态", tilt: "rotate-[-2.2deg]", aspect: "h-18" },
+                                  { title: "画廊文字侍从", tag: "灵感", tilt: "rotate-[1deg]", aspect: "h-14" },
+                                ].slice(0, currentCol === "2" ? 4 : currentCol === "3" ? 6 : 8).map((card, i) => (
+                                  <div
+                                    key={i}
+                                    className={`rounded-lg p-1.5 shadow-xs border transition-all duration-300 transform ${card.tilt} flex flex-col justify-between ${
+                                      card.isNote
+                                        ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300/40 dark:border-amber-700/40"
+                                        : "bg-white dark:bg-neutral-800 border-black/10 dark:border-white/10"
+                                    } ${card.aspect}`}
+                                  >
+                                    <div className="w-full h-2/3 rounded-md bg-neutral-200/80 dark:bg-neutral-700/60 mb-1 flex items-center justify-center">
+                                      <span className="text-[8px] font-mono text-neutral-400">P{i + 1}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[7px] font-bold t-primary truncate max-w-[60%]">{card.title}</span>
+                                      <span className="text-[6px] font-mono px-1 rounded bg-theme/10 text-theme scale-90">{card.tag}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
               <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10">
@@ -1377,6 +1576,7 @@ export function Settings() {
                   }
                   action={
                     <SearchableSelect
+                      placement="top"
                       value={normalizeHeaderBehavior(String(clientConfig.get("header.behavior") ?? "fixed"))}
                       onChange={(value) => {
                         setConfigValue("client", "header.behavior", value);
