@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
+import { useSiteConfig } from "../../../hooks/useSiteConfig";
 
 export function NavBar({
   menu,
@@ -12,6 +13,7 @@ export function NavBar({
 }) {
   const [location] = useLocation();
   const { t } = useTranslation();
+  const siteConfig = useSiteConfig();
 
   return (
     <>
@@ -21,6 +23,18 @@ export function NavBar({
       <NavItem menu={menu} onClick={onClick} itemClassName={itemClassName} title={t("hashtags")} selected={location === "/hashtags"} href="/hashtags" />
       <NavItem menu={menu} onClick={onClick} itemClassName={itemClassName} title={t("friends.title")} selected={location === "/friends"} href="/friends" />
       <NavItem menu={menu} onClick={onClick} itemClassName={itemClassName} title={t("about.title")} selected={location === "/about"} href="/about" />
+      {siteConfig.openlistShowInNav && Boolean(siteConfig.openlistWorkerUrl) && (
+        <a
+          href={siteConfig.openlistWorkerUrl}
+          target="_blank"
+          rel="noreferrer"
+          className={`${menu ? "" : "hidden"} md:inline-flex items-center gap-1 cursor-pointer hover:text-theme duration-300 px-2 py-4 md:p-4 text-sm dark:text-white ${itemClassName}`}
+          onClick={onClick}
+        >
+          <span>{siteConfig.openlistNavTitle || "资源列表"}</span>
+          <i className="ri-external-link-line text-xs opacity-60" />
+        </a>
+      )}
     </>
   );
 }

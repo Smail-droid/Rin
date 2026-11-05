@@ -15,9 +15,9 @@ export function AdminOpenListPage() {
   const [navTitle, setNavTitle] = useState("资源列表");
 
   useEffect(() => {
-    const url = (siteConfig as any).openlistWorkerUrl || "";
-    const inNav = (siteConfig as any).openlistShowInNav ?? false;
-    const title = (siteConfig as any).openlistNavTitle || "资源列表";
+    const url = siteConfig.openlistWorkerUrl || "";
+    const inNav = siteConfig.openlistShowInNav ?? false;
+    const title = siteConfig.openlistNavTitle || "资源列表";
     setWorkerUrl(url);
     setShowInNav(inNav);
     setNavTitle(title);
