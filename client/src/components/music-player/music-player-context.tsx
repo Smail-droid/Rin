@@ -89,9 +89,28 @@ function parseLrc(lrcString: string): LyricLine[] {
   return result.sort((a, b) => a.time - b.time);
 }
 
+export function getPlayableAudioUrl(url: string): string {
+  if (!url) return "";
+  // 移动端 HTTPS 混合内容 (Mixed Content) 与防盗链中继自愈
+  if (url.startsWith("http://")) {
+    if (
+      url.includes("music.126.net") ||
+      url.includes("qq.com") ||
+      url.includes("bilibili.com") ||
+      url.includes("bilivideo.com")
+    ) {
+      return url.replace(/^http:\/\//i, "https://");
+    }
+    // 其它第三方 http 音频源通过本站 Worker 边缘代理中继为安全 https
+    return `/api/music/stream?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
 export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const siteConfig = useSiteConfig();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const consecutiveErrorsRef = useRef<number>(0);
 
   // 播放列表状态
   const [playlist, setPlaylistState] = useState<MusicTrack[]>(() => {
@@ -343,14 +362,21 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [volume, isMuted]);
 
-  // 歌曲切换时载入音频
+  // 歌曲切换时载入音频 (经过 HTTPS 与防盗链自愈转换)
   useEffect(() => {
     if (!audioRef.current || !currentTrack?.url) return;
     const audio = audioRef.current;
-    audio.src = currentTrack.url;
+    const finalUrl = getPlayableAudioUrl(currentTrack.url);
+    audio.src = finalUrl;
     audio.load();
     if (isPlaying) {
-      audio.play().catch(() => setIsPlaying(false));
+      audio.play().catch((err) => {
+        if (err.name === "NotAllowedError") {
+          setIsPlaying(false);
+          return;
+        }
+        setIsPlaying(false);
+      });
     }
   }, [currentTrack]);
 
@@ -378,18 +404,34 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const handlePlaying = () => {
+    consecutiveErrorsRef.current = 0;
+    setLoadError(null);
+  };
+
   const handleError = () => {
     console.warn("[MusicPlayer] Audio play failed for:", currentTrack?.url);
     setIsPlaying(false);
-    const trackName = currentTrack?.name || "未知曲目";
-    setLoadError(`音频加载失败（${trackName}），可能由于源站防盗链拦截或文件失效。正在自动切至下一首...`);
-    setTimeout(() => setLoadError(null), 5000);
 
-    // 若队列中还有其他歌曲，自动跳下一首
+    consecutiveErrorsRef.current += 1;
+    const trackName = currentTrack?.name || "未知曲目";
+
+    // 连续失败次数达到歌单长度时立刻熔断，停止无休止的自动切歌循环
+    if (consecutiveErrorsRef.current >= Math.max(1, playlist.length)) {
+      consecutiveErrorsRef.current = 0;
+      setLoadError("歌单曲目受源站防盗链拦截，已暂停自动切歌。请在后台使用全网聚合搜索重新收录有效音源。");
+      setTimeout(() => setLoadError(null), 6000);
+      return;
+    }
+
+    setLoadError(`音频加载受限（${trackName}），正在尝试切至下一首...`);
+    setTimeout(() => setLoadError(null), 3500);
+
+    // 仅在未达到熔断阈值且队列有多首时尝试切下一首
     if (playlist.length > 1) {
       setTimeout(() => {
         next();
-      }, 1000);
+      }, 1200);
     }
   };
 
@@ -433,6 +475,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
+        onPlaying={handlePlaying}
         onEnded={handleEnded}
         onError={handleError}
         preload="metadata"

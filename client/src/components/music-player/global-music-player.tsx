@@ -61,18 +61,32 @@ export function GlobalMusicPlayer() {
   });
   const hasMovedRef = useRef(false);
 
-  // 视口边界保护与初始化
+  // 视口边界保护与初始化 (确保展开时向上抬起，绝不超出屏幕底部)
   const getSafePosition = (x: number, y: number, isExp = isExpanded) => {
     if (typeof window === "undefined") return { x, y };
     const winW = window.innerWidth;
     const winH = window.innerHeight;
     const widgetW = isExp ? Math.min(360, winW - 24) : 200;
-    const widgetH = isExp ? 440 : 56;
+    const widgetH = isExp ? Math.min(480, winH * 0.82) : 56;
 
     const safeX = Math.max(12, Math.min(winW - widgetW - 12, x));
-    const safeY = Math.max(60, Math.min(winH - widgetH - 12, y));
+    // 关键：展开时若底部超出视口，自动向上回弹至贴合底端安全距离
+    let safeY = y;
+    if (safeY + widgetH > winH - 16) {
+      safeY = winH - widgetH - 16;
+    }
+    safeY = Math.max(60, safeY);
     return { x: safeX, y: safeY };
   };
+
+  // 当从折叠切换为展开时，自动向上回弹校准，防止面板掉入屏幕下方
+  useEffect(() => {
+    if (typeof window === "undefined" || !position) return;
+    setPosition((prev) => {
+      if (!prev) return null;
+      return getSafePosition(prev.x, prev.y, isExpanded);
+    });
+  }, [isExpanded]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -262,8 +276,8 @@ export function GlobalMusicPlayer() {
           </div>
         </div>
       ) : (
-        /* 2. 展开式微光交互电台面板 (支持顶部按住自由拖拽) */
-        <div className="w-[320px] sm:w-[360px] rounded-3xl bg-white/95 dark:bg-neutral-900/95 border border-black/10 dark:border-white/10 shadow-2xl backdrop-blur-2xl p-4 flex flex-col gap-3 text-neutral-800 dark:text-neutral-100 transition-all">
+        /* 2. 展开式微光交互电台面板 (支持顶部按住自由拖拽，移动端自适应高度防溢出) */
+        <div className="w-[320px] sm:w-[360px] max-h-[82vh] overflow-y-auto rounded-3xl bg-white/95 dark:bg-neutral-900/95 border border-black/10 dark:border-white/10 shadow-2xl backdrop-blur-2xl p-4 flex flex-col gap-3 text-neutral-800 dark:text-neutral-100 transition-all scrollbar-thin">
           {/* Header 顶栏 (按住此处可任意拖拽面板) */}
           <div
             onPointerDown={handlePointerDown}
