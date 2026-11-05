@@ -8,6 +8,7 @@ export interface MusicTrack {
   lyric?: string;
   source?: string; // "gdstudio" | "openlist" | "custom"
   sourceName?: string; // "网易云" | "5T网盘" | "自定义"
+  group?: string; // 自定义分组标签，例如 "5T云盘" | "华语" | "车载" | "收藏"
 }
 
 export type PlayMode = "loop" | "single" | "random";
