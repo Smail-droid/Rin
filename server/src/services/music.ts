@@ -4,15 +4,57 @@ import type { AppContext } from "../core/hono-types";
 export function MusicService(): Hono {
   const app = new Hono();
 
-  // 1. 代理搜索 GD Studio 音乐
+  // 1. 代理搜索 GD Studio 音乐 (支持全网聚合)
   app.get("/search", async (c: AppContext) => {
     const q = c.req.query("keyword") || c.req.query("name") || "";
-    const source = c.req.query("source") || "netease";
+    const source = c.req.query("source") || "all";
     const page = c.req.query("pages") || c.req.query("page") || "1";
     const count = c.req.query("count") || "15";
 
     if (!q) {
       return c.json({ error: "Missing keyword" }, 400);
+    }
+
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    };
+
+    // 全网聚合搜索：并发查询活跃稳定的音源
+    if (source === "all") {
+      const activeSources = ["netease", "bilibili", "joox", "tencent"];
+      const fetchPromises = activeSources.map(async (src) => {
+        const gdUrl = new URL("https://music-api.gdstudio.xyz/api.php");
+        gdUrl.searchParams.set("types", "search");
+        gdUrl.searchParams.set("source", src);
+        gdUrl.searchParams.set("name", q);
+        gdUrl.searchParams.set("pages", page);
+        gdUrl.searchParams.set("count", "8");
+        const resp = await fetch(gdUrl.toString(), { headers });
+        if (!resp.ok) return [];
+        const json = await resp.json();
+        return Array.isArray(json) ? json.map((item: any) => ({ ...item, source: src })) : [];
+      });
+
+      try {
+        const settled = await Promise.allSettled(fetchPromises);
+        const aggregated: any[] = [];
+        const seen = new Set<string>();
+
+        for (const res of settled) {
+          if (res.status === "fulfilled" && Array.isArray(res.value)) {
+            for (const item of res.value) {
+              const key = `${item.name}-${Array.isArray(item.artist) ? item.artist.join("/") : item.artist}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                aggregated.push(item);
+              }
+            }
+          }
+        }
+        return c.json(aggregated);
+      } catch (e: any) {
+        return c.json({ error: e.message || "Failed to search music" }, 500);
+      }
     }
 
     const gdUrl = new URL("https://music-api.gdstudio.xyz/api.php");
@@ -23,11 +65,7 @@ export function MusicService(): Hono {
     gdUrl.searchParams.set("count", count);
 
     try {
-      const resp = await fetch(gdUrl.toString(), {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        },
-      });
+      const resp = await fetch(gdUrl.toString(), { headers });
       if (!resp.ok) {
         return c.json({ error: "GD API response error", status: resp.status }, 502);
       }

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { client } from "../app/runtime";
-import { useAlert } from "../components/dialog";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { useMusicPlayer, DEFAULT_PRESET_TRACKS } from "../components/music-player/music-player-context";
 import {
@@ -11,12 +10,61 @@ import {
 } from "../services/music-api";
 import type { MusicTrack } from "../components/music-player/types";
 
+// 热门榜单与精选风格预设标签
+const HOT_CHART_PRESETS = [
+  { label: "🔥 全网热歌榜", query: "热歌榜", source: "all" },
+  { label: "🌸 二次元/ACG经典", query: "ACG经典", source: "all" },
+  { label: "🌙 深夜微光 Lofi", query: "Lofi Chill", source: "all" },
+  { label: "🎸 经典华语流行", query: "华语金曲", source: "netease" },
+  { label: "⚡ 赛博电子律动", query: "Cyberpunk", source: "all" },
+  { label: "🎹 治愈轻音乐", query: "治愈纯音乐", source: "all" },
+  { label: "✨ 周杰伦精选", query: "周杰伦", source: "all" },
+  { label: "🍃 经典动漫原声", query: "动漫原声", source: "bilibili" },
+];
+
+// 画廊随想精选殿堂级试听曲目库（保底稳定、开箱即用）
+const GALLERY_HALL_OF_FAME_TRACKS: MusicTrack[] = [
+  {
+    id: "fame_1",
+    name: "春の微光 (Twilight Piano & Synth)",
+    artist: "Atelier Soundworks",
+    album: "Gallery Memories",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    pic: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&q=80",
+    lyric: "[00:00.00]微光拂过相纸的边缘\n[00:05.00]记忆在画廊随想中悄然流淌\n[00:15.00]♪ 唯美原声，静候灵感发生 ♪",
+    source: "gallery",
+    sourceName: "画廊精选",
+  },
+  {
+    id: "fame_2",
+    name: "City of Starlight (Dreamy Lofi)",
+    artist: "Lofi Breeze",
+    album: "Midnight Chill",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    pic: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&q=80",
+    lyric: "[00:00.00]深夜星芒\n[00:06.00]夜幕低垂，屏幕前微光闪烁\n[00:20.00]♪ 随心漫游，灵感常驻 ♪",
+    source: "gallery",
+    sourceName: "画廊精选",
+  },
+  {
+    id: "fame_3",
+    name: "Dreamy Evening Groove",
+    artist: "Acoustic Garden",
+    album: "Sunset Horizons",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    pic: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
+    lyric: "[00:00.00]落日余晖\n[00:08.00]轻盈旋律漫过每一个页面\n[00:25.00]♪ 全站跨页面沉浸流转 ♪",
+    source: "gallery",
+    sourceName: "画廊精选",
+  },
+];
+
 export function AdminMusicPage() {
   const siteConfig = useSiteConfig();
-  const { showAlert, AlertUI } = useAlert();
   const player = useMusicPlayer();
 
   const [saving, setSaving] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; type: "success" | "warn" | "error" } | null>(null);
 
   // 1. 全局基础配置
   const [musicEnabled, setMusicEnabled] = useState(() => siteConfig.musicEnabled);
@@ -24,25 +72,33 @@ export function AdminMusicPage() {
   const [musicPosition, setMusicPosition] = useState(() => siteConfig.musicPosition || "bottom-right");
   const [musicSourceType, setMusicSourceType] = useState(() => siteConfig.musicSourceType || "gdstudio");
 
-  // 2. GD Studio API 配置
+  // 2. GD Studio API 配置 (默认全网聚合)
   const [gdApi, setGdApi] = useState(() => siteConfig.musicGdApi || "https://music-api.gdstudio.xyz/api.php");
-  const [gdSource, setGdSource] = useState(() => siteConfig.musicGdSource || "netease");
+  const [gdSource, setGdSource] = useState(() => siteConfig.musicGdSource || "all");
 
   // 3. OpenList 5T 挂载配置
   const [openlistMusicUrl, setOpenlistMusicUrl] = useState(() => siteConfig.musicOpenlistUrl || "");
 
-  // 4. GD Studio 实时搜索体验器
+  // 4. GD Studio 实时搜索与榜单
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [searchMode, setSearchMode] = useState<"song" | "album">("song");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<GdSearchResultItem[]>([]);
   const [resolvingId, setResolvingId] = useState<string | number | null>(null);
 
-  // 5. 手动添加自定义单曲表单弹窗
+  // 5. 手动添加自定义单曲表单
   const [customName, setCustomName] = useState("");
   const [customArtist, setCustomArtist] = useState("");
   const [customUrl, setCustomUrl] = useState("");
   const [customPic, setCustomPic] = useState("");
   const [customLyric, setCustomLyric] = useState("");
+
+  const showToast = (text: string, type: "success" | "warn" | "error" = "success") => {
+    setFeedbackMsg({ text, type });
+    setTimeout(() => {
+      setFeedbackMsg(null);
+    }, 3500);
+  };
 
   // 同步基础配置
   useEffect(() => {
@@ -51,7 +107,7 @@ export function AdminMusicPage() {
     setMusicPosition(siteConfig.musicPosition || "bottom-right");
     setMusicSourceType(siteConfig.musicSourceType || "gdstudio");
     setGdApi(siteConfig.musicGdApi || "https://music-api.gdstudio.xyz/api.php");
-    setGdSource(siteConfig.musicGdSource || "netease");
+    setGdSource(siteConfig.musicGdSource || "all");
     setOpenlistMusicUrl(siteConfig.musicOpenlistUrl || "");
   }, [
     siteConfig.musicEnabled,
@@ -77,63 +133,90 @@ export function AdminMusicPage() {
         "music.openlist_url": openlistMusicUrl.trim(),
         "music.playlist": JSON.stringify(player.playlist),
       });
-      showAlert("✨ 全站音乐电台配置已成功保存！前台所有页面均可无缝跨页沉浸收听。");
+      showToast("✨ 全站音乐电台配置已成功保存！前台所有页面均可无缝跨页沉浸收听。", "success");
     } catch (err: any) {
-      showAlert(`保存失败: ${err.message || "网络异常"}`);
+      showToast(`保存失败: ${err.message || "网络异常"}`, "error");
     } finally {
       setSaving(false);
     }
   };
 
-  // 触发 GD Studio 搜索
-  const handleSearch = async () => {
-    const kw = searchKeyword.trim();
+  // 触发 GD Studio 搜索 (支持全网聚合 & 专辑模式)
+  const handleSearch = async (overrideKw?: string, overrideSource?: string) => {
+    const kw = (overrideKw ?? searchKeyword).trim();
     if (!kw) {
-      showAlert("请输入搜索关键字（歌曲名、歌手或专辑）");
+      showToast("请输入搜索关键字（歌曲名、歌手、榜单或专辑）", "warn");
       return;
     }
+    const targetSource = overrideSource ?? gdSource;
     setIsSearching(true);
     gdMusicService.setEndpoint(gdApi.trim());
     try {
-      const items = await gdMusicService.search(kw, gdSource, 1, 15);
+      const finalSource = searchMode === "album" && targetSource !== "all" ? `${targetSource}_album` : targetSource;
+      const items = await gdMusicService.search(kw, finalSource, 1, 20);
       setSearchResults(items);
       if (items.length === 0) {
-        showAlert("未找到匹配歌曲，建议切换音乐源重试（如网易云、QQ音乐或哔哩哔哩）");
+        showToast("该音源暂未搜到曲目，建议点击上方【全网聚合】或切换音源再次搜索", "warn");
+      } else {
+        showToast(`已聚合为您检索到 ${items.length} 首高匹配曲目`, "success");
       }
     } catch (err: any) {
-      showAlert(`搜索异常: ${err.message || "网络连接超时"}`);
+      showToast(`搜索异常: ${err.message || "网络连接超时"}`, "error");
     } finally {
       setIsSearching(false);
     }
   };
 
-  // 试听或添加单曲
+  // 试听或添加单曲（绝不弹窗打扰！直接原地亮色切换）
   const handleResolveAndPlay = async (item: GdSearchResultItem, playNow = true) => {
     setResolvingId(item.id);
     gdMusicService.setEndpoint(gdApi.trim());
     try {
       const track = await gdMusicService.resolveTrack(item, 320);
       if (!track || !track.url) {
-        showAlert(`无法获取「${item.name}」的播放音频流，可能受地区或版权限制，请尝试切换音乐源。`);
+        showToast(`「${item.name}」音频解析受源站防盗链保护，请尝试切换其他音源版本`, "warn");
         return;
       }
       player.addTrack(track, playNow);
-      showAlert(
+      showToast(
         playNow
-          ? `🎶 正在播放「${track.name} - ${track.artist}」并已收录至前台播放列表！`
-          : `✅ 已将「${track.name}」加入前台电台列表！`
+          ? `🎶 正在播放「${track.name}」`
+          : `✓ 已收录「${track.name}」至前台播放队列`,
+        "success"
       );
     } catch (err: any) {
-      showAlert(`解析失败: ${err.message || "网络超时"}`);
+      showToast(`解析失败: ${err.message || "网络超时"}`, "error");
     } finally {
       setResolvingId(null);
     }
   };
 
+  // 一键全量收录当前搜索结果
+  const handleBatchCollect = async () => {
+    if (searchResults.length === 0) return;
+    setIsSearching(true);
+    let successCount = 0;
+    gdMusicService.setEndpoint(gdApi.trim());
+
+    // 批量解析前 8 首
+    const candidates = searchResults.slice(0, 8);
+    for (const item of candidates) {
+      try {
+        const track = await gdMusicService.resolveTrack(item, 320);
+        if (track && track.url) {
+          player.addTrack(track, false);
+          successCount++;
+        }
+      } catch {}
+    }
+    setIsSearching(false);
+    showToast(`🎉 成功批量收录 ${successCount} 首热门曲目至前台歌单！`, "success");
+  };
+
   // 添加自定义单曲
   const handleAddCustomTrack = () => {
     if (!customName.trim() || !customUrl.trim()) {
-      showAlert("歌曲名称和音频直链 URL 不能为空！");
+      showToast("歌曲名称和音频直链 URL 不能为空！", "warn");
       return;
     }
     const newTrack: MusicTrack = {
@@ -152,20 +235,20 @@ export function AdminMusicPage() {
     setCustomUrl("");
     setCustomPic("");
     setCustomLyric("");
-    showAlert(`已成功添加「${newTrack.name}」并开始播放！记得点击右上角保存配置以持久生效。`);
+    showToast(`已成功添加「${newTrack.name}」并开始播放！点击右上角可保存配置。`, "success");
   };
 
   // 从已挂载的 OpenList 音频目录一键添加曲目
   const handleAddFromOpenList = () => {
     const base = openlistMusicUrl.trim() || siteConfig.openlistWorkerUrl;
     if (!base) {
-      showAlert("请先填写 OpenList 音频直链地址或在网盘页面绑定 OpenList Worker！");
+      showToast("请先在网盘页面绑定 OpenList Worker 或填写直链！", "warn");
       return;
     }
     setCustomUrl(base.endsWith("/") ? `${base}your_song.mp3` : `${base}/your_song.mp3`);
     setCustomName("5T 云盘精选原声");
     setCustomArtist("Google One 云端音乐库");
-    showAlert("已自动回填 OpenList 示例地址，请将文件名修改为您 5T 网盘里的实际音频文件名！");
+    showToast("已自动回填 OpenList 路径，请将文件名改为实际音频文件名！", "success");
   };
 
   return (
@@ -173,7 +256,30 @@ export function AdminMusicPage() {
       <Helmet>
         <title>{`全站音乐电台 · 媒体中枢 - ${siteConfig.name}`}</title>
       </Helmet>
-      <AlertUI />
+
+      {/* 优雅轻量全局反馈浮条 (非阻塞，绝不弹大窗打扰) */}
+      {feedbackMsg && (
+        <div
+          className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full shadow-2xl backdrop-blur-xl border text-xs font-bold flex items-center gap-2 ani-show ${
+            feedbackMsg.type === "success"
+              ? "bg-emerald-500/90 text-white border-emerald-400"
+              : feedbackMsg.type === "warn"
+              ? "bg-amber-500/90 text-white border-amber-400"
+              : "bg-rose-500/90 text-white border-rose-400"
+          }`}
+        >
+          <i
+            className={
+              feedbackMsg.type === "success"
+                ? "ri-checkbox-circle-fill"
+                : feedbackMsg.type === "warn"
+                ? "ri-error-warning-fill"
+                : "ri-close-circle-fill"
+            }
+          />
+          <span>{feedbackMsg.text}</span>
+        </div>
+      )}
 
       {/* 顶部运行状态切片中枢 */}
       <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -191,7 +297,7 @@ export function AdminMusicPage() {
               </span>
             </div>
             <p className="text-xs text-neutral-400 mt-0.5">
-              原生 SPA 跨页面无缝播放 · 对接 GD Studio 聚合音乐 API 与 OpenList 5T 音频目录直链
+              原生 SPA 跨页面无缝播放 · 全网聚合搜索 · 对接 GD Studio 与 OpenList 5T 音频目录直链
             </p>
           </div>
         </div>
@@ -287,7 +393,7 @@ export function AdminMusicPage() {
         </div>
       </div>
 
-      {/* 模块 2: GD Studio 聚合音乐 API 对接中枢 */}
+      {/* 模块 2: GD Studio 聚合在线音乐平台对接中枢 (全网聚合 + 热歌榜单 + 歌单检索) */}
       <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-black/5 dark:border-white/5 gap-2">
           <div className="flex items-center gap-2">
@@ -296,7 +402,7 @@ export function AdminMusicPage() {
             </span>
             <h3 className="font-bold text-xs t-primary">GD Studio 聚合在线音乐平台对接</h3>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-theme/10 text-theme font-bold">
-              API DOCKED
+              全网聚合
             </span>
           </div>
           <span className="text-[11px] font-mono text-neutral-400">
@@ -304,138 +410,297 @@ export function AdminMusicPage() {
           </span>
         </div>
 
-        {/* API 核心参数 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-theme">
-              GD Studio API 端点 URL
-            </label>
-            <input
-              type="url"
-              value={gdApi}
-              onChange={(e) => setGdApi(e.target.value)}
-              placeholder="https://music-api.gdstudio.xyz/api.php"
-              className="w-full rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] px-3.5 py-2 text-xs font-mono t-primary outline-none focus:border-theme transition"
-            />
-            <span className="text-[10px] text-neutral-400 block">
-              GD 音乐台官方在线解析端点，支持多源跨平台无损音频检索
+        {/* 热门榜单与精选风格快速入口 */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
+              <i className="ri-fire-fill text-amber-500" />
+              <span>热门榜单与精选风格快速检索</span>
             </span>
+            <span className="text-[10px] text-neutral-400">点击任意标签即刻调取聚合搜索</span>
           </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-theme">
-              默认音源平台 (Source)
-            </label>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {GD_MUSIC_SOURCES.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setGdSource(s.id)}
-                  className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition select-none flex items-center gap-1 ${
-                    gdSource === s.id
-                      ? "bg-theme text-white shadow-2xs font-bold"
-                      : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-400 hover:bg-black/10"
-                  }`}
-                >
-                  <span>{s.name}</span>
-                  {s.stable && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block" />}
-                </button>
-              ))}
-            </div>
-            <span className="text-[10px] text-neutral-400 block mt-1">
-              推荐使用绿点稳定音源（网易云、QQ音乐、B站视频原声）
-            </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {HOT_CHART_PRESETS.map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => {
+                  setSearchKeyword(preset.query);
+                  setGdSource(preset.source);
+                  void handleSearch(preset.query, preset.source);
+                }}
+                className="px-2.5 py-1 rounded-full text-xs font-semibold bg-black/[0.03] dark:bg-white/[0.04] hover:bg-theme/10 hover:text-theme border border-black/5 dark:border-white/5 transition select-none active:scale-95"
+              >
+                {preset.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* 实时点歌台与试听验证器 */}
-        <div className="p-4 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold t-primary flex items-center gap-1.5">
-              <i className="ri-search-eye-line text-theme" />
-              <span>在线试听与一键收录点歌台</span>
-            </span>
-            <span className="text-[11px] text-neutral-400">直接搜歌试听并加进博客播放列表</span>
+        {/* 音乐源切换与单曲/专辑模式 */}
+        <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] space-y-3 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span className="font-bold text-xs t-primary">音乐源平台选择</span>
+              <span className="text-[10px] text-neutral-400 block mt-0.5">
+                默认推荐【全网聚合搜索】，一次性并发检索网易云、QQ音乐、B站视频音频与JOOX
+              </span>
+            </div>
+            <div className="flex items-center gap-1 rounded-xl bg-black/5 dark:bg-white/5 p-1">
+              <button
+                type="button"
+                onClick={() => setSearchMode("song")}
+                className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold transition ${
+                  searchMode === "song" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-400"
+                }`}
+              >
+                单曲模式
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchMode("album")}
+                className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold transition ${
+                  searchMode === "album" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-400"
+                }`}
+              >
+                歌单/专辑模式
+              </button>
+            </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {GD_MUSIC_SOURCES.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setGdSource(s.id)}
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition select-none flex items-center gap-1 ${
+                  gdSource === s.id
+                    ? "bg-theme text-white shadow-2xs font-bold"
+                    : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-400 hover:bg-black/10"
+                }`}
+              >
+                <span>{s.name}</span>
+                {s.stable && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block" />}
+                {!s.stable && <span className="text-[9px] text-neutral-400">(维护中)</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 实时搜索输入框与一键批量收录 */}
+        <div className="space-y-3">
+          <div className="flex gap-2 text-xs">
             <input
               type="text"
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="输入曲目名、歌手或专辑名（例如：周杰伦、海阔天空、Lofi）..."
+              placeholder={searchMode === "album" ? "输入专辑/歌单名称（如：叶惠美、跨时代）..." : "输入曲目名、歌手或热词（例如：周杰伦、海阔天空、Lofi）..."}
               className="flex-1 rounded-xl border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-800 px-3.5 py-2 text-xs t-primary outline-none focus:border-theme transition"
             />
             <button
               type="button"
-              onClick={handleSearch}
+              onClick={() => handleSearch()}
               disabled={isSearching}
-              className="px-4 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition flex items-center gap-1.5"
+              className="px-5 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition flex items-center gap-1.5"
             >
               {isSearching ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-search-line" />}
-              <span>{isSearching ? "检索中..." : "在线搜索"}</span>
+              <span>{isSearching ? "检索中..." : "聚合搜索"}</span>
             </button>
           </div>
 
-          {/* 搜索结果列表 */}
+          {/* 搜索结果展示与行内状态变换 (无任何弹窗打扰) */}
           {searchResults.length > 0 && (
-            <div className="mt-3 max-h-60 overflow-y-auto rounded-xl border border-black/10 dark:border-white/10 bg-w divide-y divide-black/5 dark:divide-white/5 text-xs">
-              {searchResults.map((item) => {
-                const isResolving = resolvingId === item.id;
-                return (
-                  <div
-                    key={item.id}
-                    className="p-2.5 flex items-center justify-between gap-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-theme/10 text-theme text-xs font-mono font-bold">
-                        ♪
-                      </span>
-                      <div className="truncate">
-                        <span className="font-bold t-primary truncate block">{item.name}</span>
-                        <span className="text-[11px] text-neutral-400 truncate block">
-                          {Array.isArray(item.artist) ? item.artist.join(" / ") : item.artist}
-                          {item.album && ` · 《${item.album}》`}
+            <div className="rounded-xl border border-black/10 dark:border-white/10 bg-w overflow-hidden text-xs">
+              <div className="p-2.5 bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/5 dark:border-white/5 flex items-center justify-between text-neutral-400">
+                <span className="font-mono text-[11px]">共检索到 {searchResults.length} 条曲目</span>
+                <button
+                  type="button"
+                  onClick={handleBatchCollect}
+                  disabled={isSearching}
+                  className="px-2.5 py-1 rounded-lg bg-theme/10 hover:bg-theme/20 text-theme text-xs font-bold transition flex items-center gap-1"
+                  title="一键将前 8 首全量添加到前台播放队列"
+                >
+                  <i className="ri-play-list-add-line" />
+                  <span>一键全收录前 8 首</span>
+                </button>
+              </div>
+
+              <div className="max-h-72 overflow-y-auto divide-y divide-black/5 dark:divide-white/5">
+                {searchResults.map((item) => {
+                  const isResolving = resolvingId === item.id;
+                  const artistStr = Array.isArray(item.artist) ? item.artist.join(" / ") : item.artist;
+                  const isCollected = player.playlist.some(
+                    (p) => String(p.id).includes(String(item.id)) || (p.name === item.name && p.artist === artistStr)
+                  );
+                  const isPlayingThis = player.isPlaying && player.currentTrack?.name === item.name;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-2.5 flex items-center justify-between gap-3 transition ${
+                        isCollected ? "bg-emerald-500/[0.02]" : "hover:bg-black/[0.015] dark:hover:bg-white/[0.015]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-mono font-bold ${
+                          isCollected ? "bg-emerald-500/10 text-emerald-600" : "bg-theme/10 text-theme"
+                        }`}>
+                          ♪
                         </span>
+                        <div className="truncate">
+                          <span className={`font-bold truncate block ${isCollected ? "text-emerald-700 dark:text-emerald-300" : "t-primary"}`}>
+                            {item.name}
+                          </span>
+                          <span className="text-[11px] text-neutral-400 truncate block">
+                            {artistStr} {item.album && ` · 《${item.album}》`}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/5 text-neutral-400 uppercase">
+                          {item.source}
+                        </span>
+
+                        {/* 试听按钮 (原地播放动效) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isPlayingThis) {
+                              player.pause();
+                            } else {
+                              handleResolveAndPlay(item, true);
+                            }
+                          }}
+                          disabled={isResolving}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 select-none ${
+                            isPlayingThis
+                              ? "bg-theme text-white shadow-2xs font-bold animate-pulse"
+                              : "bg-theme/10 hover:bg-theme/20 text-theme"
+                          }`}
+                          title="试听这首"
+                        >
+                          {isResolving ? (
+                            <i className="ri-loader-4-line animate-spin" />
+                          ) : isPlayingThis ? (
+                            <i className="ri-pause-fill" />
+                          ) : (
+                            <i className="ri-play-fill" />
+                          )}
+                          <span>{isPlayingThis ? "播放中" : "试听"}</span>
+                        </button>
+
+                        {/* 收录按钮 (亮色变更为已收录，绝不弹窗打扰！) */}
+                        {isCollected ? (
+                          <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20 text-xs flex items-center gap-1 select-none">
+                            <i className="ri-check-line" />
+                            <span>已收录</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleResolveAndPlay(item, false)}
+                            disabled={isResolving}
+                            className="px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-theme hover:text-white text-neutral-600 dark:text-neutral-300 text-xs font-semibold transition flex items-center gap-1 select-none active:scale-95"
+                            title="一键收录到前台播放歌单"
+                          >
+                            <i className="ri-add-line" />
+                            <span>收录</span>
+                          </button>
+                        )}
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/5 text-neutral-400 uppercase">
-                        {item.source}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleResolveAndPlay(item, true)}
-                        disabled={isResolving}
-                        className="px-2.5 py-1 rounded-lg bg-theme/10 hover:bg-theme/20 text-theme text-xs font-semibold transition flex items-center gap-1"
-                        title="立即试听并加入播放器"
-                      >
-                        {isResolving ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-play-fill" />}
-                        <span>试听</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleResolveAndPlay(item, false)}
-                        disabled={isResolving}
-                        className="px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 text-neutral-600 dark:text-neutral-300 text-xs font-semibold transition flex items-center gap-1"
-                        title="收录至博客固定歌单"
-                      >
-                        <i className="ri-add-line" />
-                        <span>收录</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* 模块 3: OpenList 5T 音频目录直链对接 */}
+      {/* 模块 3: 二次元画廊精选殿堂级推荐歌单 (Gallery Picks) */}
+      <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-black/5 dark:border-white/5 gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500 text-xs">
+              <i className="ri-sparkling-fill" />
+            </span>
+            <h3 className="font-bold text-xs t-primary">二次元画廊精选殿堂级微光歌单</h3>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold">
+              CURATED
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              GALLERY_HALL_OF_FAME_TRACKS.forEach((t) => player.addTrack(t, false));
+              showToast("🎉 已将全部二次元画廊精选殿堂级曲目一键载入前台队列！", "success");
+            }}
+            className="text-xs text-theme hover:underline font-bold flex items-center gap-1"
+          >
+            <i className="ri-download-cloud-line" />
+            <span>一键全量载入精选曲目</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {GALLERY_HALL_OF_FAME_TRACKS.map((t) => {
+            const isPlayingThis = player.isPlaying && player.currentTrack?.name === t.name;
+            const isCollected = player.playlist.some((p) => p.name === t.name);
+            return (
+              <div
+                key={t.id}
+                className="p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-2.5"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <img src={t.pic} alt="" className="h-9 w-9 rounded-lg object-cover shrink-0" />
+                  <div className="truncate">
+                    <span className="font-bold text-xs t-primary truncate block">{t.name}</span>
+                    <span className="text-[10px] text-neutral-400 truncate block">{t.artist}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isPlayingThis) player.pause();
+                      else player.addTrack(t, true);
+                    }}
+                    className={`p-1.5 rounded-lg text-xs transition ${
+                      isPlayingThis ? "bg-theme text-white" : "bg-theme/10 text-theme hover:bg-theme/20"
+                    }`}
+                    title={isPlayingThis ? "暂停" : "试听"}
+                  >
+                    <i className={isPlayingThis ? "ri-pause-fill" : "ri-play-fill"} />
+                  </button>
+                  {isCollected ? (
+                    <span className="p-1 rounded-lg text-emerald-500 text-xs" title="已在队列中">
+                      <i className="ri-check-line" />
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        player.addTrack(t, false);
+                        showToast(`已收录「${t.name}」`, "success");
+                      }}
+                      className="p-1.5 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 text-xs text-neutral-500"
+                      title="收录此曲"
+                    >
+                      <i className="ri-add-line" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 模块 4: OpenList 5T 音频目录直链对接 */}
       <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center gap-2">
@@ -474,7 +739,7 @@ export function AdminMusicPage() {
         </div>
       </div>
 
-      {/* 模块 4: 当前前台播放队列高密超级表格管理 (Dense DataGrid) */}
+      {/* 模块 5: 当前前台播放队列高密超级表格管理 (Dense DataGrid) */}
       <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-black/5 dark:border-white/5 gap-2">
           <div className="flex items-center gap-2">
@@ -488,7 +753,7 @@ export function AdminMusicPage() {
               type="button"
               onClick={() => {
                 player.setPlaylist(DEFAULT_PRESET_TRACKS);
-                showAlert("已恢复系统默认唯美二次元画廊氛围曲目！");
+                showToast("已恢复系统默认唯美二次元画廊氛围曲目！", "success");
               }}
               className="text-xs text-neutral-400 hover:text-theme transition"
             >
@@ -498,7 +763,7 @@ export function AdminMusicPage() {
               type="button"
               onClick={() => {
                 player.clearPlaylist();
-                showAlert("播放列表已清空！");
+                showToast("播放列表已清空！", "warn");
               }}
               className="text-xs text-red-500 hover:underline"
             >
@@ -578,7 +843,10 @@ export function AdminMusicPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => player.removeTrack(track.id)}
+                            onClick={() => {
+                              player.removeTrack(track.id);
+                              showToast(`已从队列移除「${track.name}」`, "warn");
+                            }}
                             className="p-1 rounded-md text-neutral-400 hover:text-red-500 hover:bg-black/5 transition"
                             title="从队列删除"
                           >

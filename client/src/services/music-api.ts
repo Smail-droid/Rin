@@ -11,10 +11,11 @@ export interface GdSearchResultItem {
 }
 
 export const GD_MUSIC_SOURCES = [
+  { id: "all", name: "🌟 全网聚合搜索 (默认推荐)", stable: true },
   { id: "netease", name: "网易云音乐 (Netease)", stable: true },
-  { id: "tencent", name: "QQ 音乐 (Tencent)", stable: true },
   { id: "bilibili", name: "哔哩哔哩音频 (Bilibili)", stable: true },
   { id: "joox", name: "JOOX 音乐", stable: true },
+  { id: "tencent", name: "QQ 音乐 (Tencent)", stable: true },
   { id: "kuwo", name: "酷我音乐 (Kuwo)", stable: false },
   { id: "apple", name: "Apple Music", stable: false },
   { id: "spotify", name: "Spotify", stable: false },
