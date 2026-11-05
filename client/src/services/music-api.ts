@@ -382,4 +382,27 @@ export async function syncOpenListFiles(openlistMusicUrl: string): Promise<Music
   }
 }
 
+/**
+ * 将第三方临时音频直链高速转存至本站 Cloudflare R2 存储桶，获取永久 HTTPS 直链
+ */
+export async function persistTrackToR2(track: { url: string; trackId: string | number; name: string }): Promise<string | null> {
+  try {
+    const token = localStorage.getItem("rin_token") || "";
+    const resp = await fetch("/api/music/persist-r2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(track),
+    });
+    if (!resp.ok) return null;
+    const json = await resp.json();
+    return json.permanentUrl || null;
+  } catch (e) {
+    console.warn("Persist to R2 failed:", e);
+    return null;
+  }
+}
+
 export const gdMusicService = new GdMusicService();

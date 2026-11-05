@@ -8,6 +8,7 @@ import {
   gdMusicService,
   GD_MUSIC_SOURCES,
   syncOpenListFiles,
+  persistTrackToR2,
   type GdSearchResultItem,
 } from "../services/music-api";
 import type { MusicTrack } from "../components/music-player/types";
@@ -100,6 +101,8 @@ export function AdminMusicPage() {
   const [customStatus, setCustomStatus] = useState<"idle" | "done">("idle");
   const [openListSyncStatus, setOpenListSyncStatus] = useState<"idle" | "syncing" | "done">("idle");
   const [syncCount, setSyncCount] = useState<number>(0);
+  const [autoPersistR2, setAutoPersistR2] = useState<boolean>(true);
+  const [persistR2Status, setPersistR2Status] = useState<"idle" | "saving" | "done">("idle");
 
   const [unplayableIds, setUnplayableIds] = useState<Set<string | number>>(new Set());
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string | number>>(new Set());
@@ -219,7 +222,7 @@ export function AdminMusicPage() {
     }
   };
 
-  // 试听或收录 (带自动跨音源降级兜底)
+  // 试听或收录 (带自动跨音源降级兜底与 R2 永久转存)
   const handleResolveAndPlay = async (item: GdSearchResultItem, playNow = true) => {
     setResolvingId(item.id);
     gdMusicService.setEndpoint(gdApi.trim());
@@ -229,6 +232,21 @@ export function AdminMusicPage() {
         setUnplayableIds((prev) => new Set(prev).add(item.id));
         return;
       }
+
+      // 如果开启了自动转存至 R2 对象存储桶，下载并生成永久直链
+      if (autoPersistR2 && track.url && !track.url.includes("/api/blob/")) {
+        const permanentUrl = await persistTrackToR2({
+          url: track.url,
+          trackId: track.id,
+          name: `${track.artist} - ${track.name}`,
+        });
+        if (permanentUrl) {
+          track.url = permanentUrl;
+          track.source = "r2";
+          track.sourceName = "R2永久";
+        }
+      }
+
       player.addTrack(track, playNow);
     } catch {
       setUnplayableIds((prev) => new Set(prev).add(item.id));
@@ -237,7 +255,7 @@ export function AdminMusicPage() {
     }
   };
 
-  // 一键全收录当前结果
+  // 一键全收录当前结果 (支持 R2 自动固化)
   const handleBatchCollect = async () => {
     if (!searchResults.length) return;
     setBatchStatus("batching");
@@ -245,11 +263,63 @@ export function AdminMusicPage() {
     for (const item of searchResults.slice(0, 8)) {
       try {
         const { track } = await gdMusicService.resolveTrackWithFallback(item, 320);
-        if (track?.url) player.addTrack(track, false);
+        if (track?.url) {
+          if (autoPersistR2 && !track.url.includes("/api/blob/")) {
+            const r2Url = await persistTrackToR2({
+              url: track.url,
+              trackId: track.id,
+              name: `${track.artist} - ${track.name}`,
+            });
+            if (r2Url) {
+              track.url = r2Url;
+              track.source = "r2";
+              track.sourceName = "R2永久";
+            }
+          }
+          player.addTrack(track, false);
+        }
       } catch {}
     }
     setBatchStatus("done");
     setTimeout(() => setBatchStatus("idle"), 2500);
+  };
+
+  // 一键将播放队列中所有非 R2 的动态外链歌曲全部下载转存至 R2 对象存储桶
+  const handleBatchPersistR2 = async () => {
+    const list = [...player.playlist];
+    const targets = list.filter((t) => t.source !== "r2" && !t.url.includes("/api/blob/"));
+    if (targets.length === 0) return;
+
+    setPersistR2Status("saving");
+    for (let i = 0; i < list.length; i++) {
+      const t = list[i];
+      if (t.source !== "r2" && !t.url.includes("/api/blob/")) {
+        const r2Url = await persistTrackToR2({
+          url: t.url,
+          trackId: t.id,
+          name: `${t.artist} - ${t.name}`,
+        });
+        if (r2Url) {
+          list[i] = {
+            ...t,
+            url: r2Url,
+            source: "r2",
+            sourceName: "R2永久",
+          };
+        }
+      }
+    }
+
+    player.setPlaylist(list);
+    setPersistR2Status("done");
+    setTimeout(() => setPersistR2Status("idle"), 2500);
+
+    // 自动保存配置
+    try {
+      await client.config.update("client", {
+        "music.playlist": JSON.stringify(list),
+      });
+    } catch {}
   };
 
   // 深度翻页扫描并自动排除受限曲目 (检索多页并逐一探测音频可用性)
@@ -566,25 +636,37 @@ export function AdminMusicPage() {
               <i className="ri-search-line text-theme" />
               <h3 className="font-bold text-xs t-primary">曲库检索</h3>
             </div>
-            <div className="flex items-center gap-1 rounded-lg bg-black/5 dark:bg-white/5 p-0.5 text-xs">
-              <button
-                type="button"
-                onClick={() => setSearchMode("song")}
-                className={`px-2.5 py-0.5 rounded-md font-semibold transition ${
-                  searchMode === "song" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-400"
-                }`}
-              >
-                单曲
-              </button>
-              <button
-                type="button"
-                onClick={() => setSearchMode("album")}
-                className={`px-2.5 py-0.5 rounded-md font-semibold transition ${
-                  searchMode === "album" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-400"
-                }`}
-              >
-                专辑歌单
-              </button>
+            <div className="flex items-center gap-2">
+              <label className="inline-flex items-center gap-1 cursor-pointer select-none text-[11px] text-neutral-500 hover:text-theme transition">
+                <input
+                  type="checkbox"
+                  checked={autoPersistR2}
+                  onChange={(e) => setAutoPersistR2(e.target.checked)}
+                  className="accent-theme cursor-pointer"
+                />
+                <span>自动转存R2</span>
+              </label>
+
+              <div className="flex items-center gap-1 rounded-lg bg-black/5 dark:bg-white/5 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setSearchMode("song")}
+                  className={`px-2.5 py-0.5 rounded-md font-semibold transition ${
+                    searchMode === "song" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-400"
+                  }`}
+                >
+                  单曲
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSearchMode("album")}
+                  className={`px-2.5 py-0.5 rounded-md font-semibold transition ${
+                    searchMode === "album" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-400"
+                  }`}
+                >
+                  专辑歌单
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1022,6 +1104,22 @@ export function AdminMusicPage() {
                 title="下移"
               >
                 <i className="ri-arrow-down-s-line text-xs" />
+              </button>
+              <button
+                type="button"
+                onClick={handleBatchPersistR2}
+                disabled={persistR2Status === "saving"}
+                className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 ${
+                  persistR2Status === "done"
+                    ? "bg-emerald-500 text-white font-bold"
+                    : "bg-theme/10 hover:bg-theme/20 text-theme"
+                }`}
+                title="将播放队列中的临时动态外链下载并永久存储在 Cloudflare R2，永不失效"
+              >
+                {persistR2Status === "saving" && <i className="ri-loader-4-line animate-spin" />}
+                {persistR2Status === "done" && <i className="ri-check-line" />}
+                {persistR2Status === "idle" && <i className="ri-save-line" />}
+                <span>{persistR2Status === "saving" ? "转存中..." : persistR2Status === "done" ? "已转存R2 ✓" : "转存R2永久"}</span>
               </button>
               <button
                 type="button"

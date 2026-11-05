@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { AppContext } from "../core/hono-types";
+import { putStorageObjectAtKey } from "../utils/storage";
 
 export function MusicService(): Hono {
   const app = new Hono();
@@ -179,6 +180,65 @@ export function MusicService(): Hono {
       });
     } catch (e: any) {
       return c.text(`Stream failed: ${e.message}`, 502);
+    }
+  });
+
+  // 4. 将音频永久转存至 Cloudflare R2 对象存储桶 (彻底消灭动态链接过期与防盗链 403)
+  app.post("/persist-r2", async (c: AppContext) => {
+    const admin = c.get("admin");
+    const env = c.get("env");
+
+    if (!admin) {
+      return c.text("Forbidden", 403);
+    }
+
+    if (!env.R2_BUCKET && !env.S3_BUCKET) {
+      return c.json({ error: "R2 bucket is not configured" }, 400);
+    }
+
+    let body: any;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.text("Invalid JSON", 400);
+    }
+
+    const { url, trackId, name } = body || {};
+    if (!url || typeof url !== "string") {
+      return c.json({ error: "Missing audio url" }, 400);
+    }
+
+    try {
+      const audioResp = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+      });
+
+      if (!audioResp.ok) {
+        return c.json({ error: `Upstream error: ${audioResp.status}` }, 502);
+      }
+
+      const audioBuffer = await audioResp.arrayBuffer();
+      const contentType = audioResp.headers.get("content-type") || "audio/mpeg";
+
+      const safeName = (name || "track")
+        .replace(/[^\w\u4e00-\u9fa5\-]/g, "_")
+        .slice(0, 50);
+      const safeId = String(trackId || Date.now()).replace(/[^\w\-]/g, "");
+      const ext = contentType.includes("flac") ? "flac" : contentType.includes("wav") ? "wav" : "mp3";
+      const storageKey = `music/${safeName}_${safeId}.${ext}`;
+
+      const origin = new URL(c.req.url).origin;
+      const result = await putStorageObjectAtKey(env, storageKey, audioBuffer, contentType, origin);
+
+      return c.json({
+        success: true,
+        key: storageKey,
+        permanentUrl: result.url,
+      });
+    } catch (e: any) {
+      return c.json({ error: e.message || "Failed to persist to R2" }, 500);
     }
   });
 
