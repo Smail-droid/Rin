@@ -187,6 +187,7 @@ export function AdminDashboardPage() {
             { href: "/admin/access", icon: "ri-shield-keyhole-line", title: "文章隐私锁定", tag: "LOCK", color: "text-indigo-500 bg-indigo-500/10" },
             { href: "/admin/tokens", icon: "ri-key-2-line", title: "口令生成工坊", tag: "AUTH", color: "text-teal-500 bg-teal-500/10" },
             { href: "/admin/ai", icon: "ri-sparkling-fill", title: "提示词预设库", tag: "PROMPT", color: "text-orange-500 bg-orange-500/10" },
+            { href: "/admin/music", icon: "ri-disc-line", title: "微光音乐台", tag: "MUSIC", color: "text-rose-500 bg-rose-500/10" },
             { href: "/admin/openlist", icon: "ri-hard-drive-2-line", title: "OpenList网盘", tag: "DISK", color: "text-cyan-500 bg-cyan-500/10" },
             { href: "/sitemap.xml", icon: "ri-map-2-line", title: "Sitemap 地图", tag: "XML", color: "text-lime-600 bg-lime-500/10", external: true },
             { href: "/timeline", icon: "ri-time-line", title: "时光长河前台", tag: "TIMELINE", color: "text-violet-500 bg-violet-500/10", external: true },

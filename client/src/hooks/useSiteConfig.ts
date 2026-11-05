@@ -25,6 +25,16 @@ export const SITE_CONFIG_KEYS = {
     openlistWorkerUrl: "openlist.worker_url",
     openlistShowInNav: "openlist.show_in_nav",
     openlistNavTitle: "openlist.nav_title",
+
+    // 全站沉浸式音乐播放器配置
+    musicEnabled: "music.enabled",
+    musicAutoPlay: "music.auto_play",
+    musicSourceType: "music.source_type", // "gdstudio" | "openlist" | "custom"
+    musicGdApi: "music.gd_api",
+    musicGdSource: "music.gd_source",
+    musicOpenlistUrl: "music.openlist_url",
+    musicPlaylist: "music.playlist",
+    musicPosition: "music.position", // "bottom-right" | "bottom-left"
     atelierTitle: "atelier.title",
     atelierTitleStyle: "atelier.title_style",
     hashtagsTitleStyle: "atelier.hashtags_title_style",
@@ -123,6 +133,15 @@ export function useSiteConfig() {
         openlistWorkerUrl: config.get<string>(SITE_CONFIG_KEYS.openlistWorkerUrl) || "",
         openlistShowInNav: config.get(SITE_CONFIG_KEYS.openlistShowInNav) === true || config.get(SITE_CONFIG_KEYS.openlistShowInNav) === "true",
         openlistNavTitle: config.get<string>(SITE_CONFIG_KEYS.openlistNavTitle) || "资源列表",
+
+        musicEnabled: config.get(SITE_CONFIG_KEYS.musicEnabled) === true || config.get(SITE_CONFIG_KEYS.musicEnabled) === "true",
+        musicAutoPlay: config.get(SITE_CONFIG_KEYS.musicAutoPlay) === true || config.get(SITE_CONFIG_KEYS.musicAutoPlay) === "true",
+        musicSourceType: config.get<string>(SITE_CONFIG_KEYS.musicSourceType) || "gdstudio",
+        musicGdApi: config.get<string>(SITE_CONFIG_KEYS.musicGdApi) || "https://music-api.gdstudio.xyz/api.php",
+        musicGdSource: config.get<string>(SITE_CONFIG_KEYS.musicGdSource) || "netease",
+        musicOpenlistUrl: config.get<string>(SITE_CONFIG_KEYS.musicOpenlistUrl) || "",
+        musicPlaylist: config.get<string>(SITE_CONFIG_KEYS.musicPlaylist) || "",
+        musicPosition: config.get<string>(SITE_CONFIG_KEYS.musicPosition) || "bottom-right",
         atelierTitle: config.get<string>(SITE_CONFIG_KEYS.atelierTitle) || "画廊随想",
         atelierTitleStyle: config.get<string>(SITE_CONFIG_KEYS.atelierTitleStyle) || "aurora_flow",
         hashtagsTitleStyle: config.get<string>(SITE_CONFIG_KEYS.hashtagsTitleStyle) || "aurora_flow",

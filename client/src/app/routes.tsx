@@ -40,6 +40,7 @@ const WritingPage = lazy(() => import("../page/writing").then((m) => ({ default:
 const AdminFilesPage = lazy(() => import("../page/admin-files").then((m) => ({ default: m.AdminFilesPage })));
 const AdminDashboardPage = lazy(() => import("../page/admin-dashboard").then((m) => ({ default: m.AdminDashboardPage })));
 const AdminOpenListPage = lazy(() => import("../page/admin-openlist").then((m) => ({ default: m.AdminOpenListPage })));
+const AdminMusicPage = lazy(() => import("../page/admin-music").then((m) => ({ default: m.AdminMusicPage })));
 const AdminTokensPage = lazy(() => import("../page/admin-tokens").then((m) => ({ default: m.AdminTokensPage })));
 const AdminAccessPage = lazy(() => import("../page/admin-access").then((m) => ({ default: m.AdminAccessPage })));
 
@@ -94,6 +95,10 @@ export function AppRoutes() {
 
       <AdminRoute path="/admin/openlist" requirePermission title="资源" description="OpenList 边缘存储目录索引挂载 · 支持网盘聚合与前台按需展示">
         <AdminOpenListPage />
+      </AdminRoute>
+
+      <AdminRoute path="/admin/music" requirePermission title="音乐" description="全站沉浸式微光音乐电台 · 对接 GD Studio 聚合音乐 API 与 OpenList 5T 音频目录直链">
+        <AdminMusicPage />
       </AdminRoute>
 
       <AdminRoute path="/admin/access" requirePermission title="权限" description="文章隐私与特定内容保护 · 一键加锁与授权验证">

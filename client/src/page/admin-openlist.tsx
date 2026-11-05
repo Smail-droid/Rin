@@ -156,6 +156,68 @@ export function AdminOpenListPage() {
           </button>
         </div>
       </div>
+
+      {/* 官方文档与 Cloudflare Workers 分离式部署指引卡片 */}
+      <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3">
+        <div className="flex items-center gap-2 pb-2 border-b border-black/5 dark:border-white/5">
+          <i className="ri-book-read-line text-theme" />
+          <h3 className="font-bold text-xs t-primary">OpenList 官方文档与部署指南</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <a
+            href="https://doc.oplist.org/"
+            target="_blank"
+            rel="noreferrer"
+            className="group flex flex-col justify-between p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] hover:border-theme/40 hover:bg-theme/[0.03] transition-all"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5 font-bold t-primary text-xs group-hover:text-theme transition">
+                  <i className="ri-book-2-line text-theme" />
+                  <span>OpenList 官方全功能文档</span>
+                </div>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/5 text-neutral-400">
+                  DOCS
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-400 leading-relaxed">
+                查阅 OpenList 网盘系统架构、多驱动存储接入指南、账号权限控制及高级设置手册。
+              </p>
+            </div>
+            <div className="mt-3 flex items-center gap-1 text-[11px] text-theme font-semibold">
+              <span>https://doc.oplist.org</span>
+              <i className="ri-arrow-right-up-line text-xs" />
+            </div>
+          </a>
+
+          <a
+            href="https://doc.oplist.org/ecosystem/official_worker/guide_cfw"
+            target="_blank"
+            rel="noreferrer"
+            className="group flex flex-col justify-between p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] hover:border-theme/40 hover:bg-theme/[0.03] transition-all"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5 font-bold t-primary text-xs group-hover:text-theme transition">
+                  <i className="ri-cloud-line text-amber-500" />
+                  <span>Deploy to Cloudflare Workers 分离式指南</span>
+                </div>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  SERVERLESS
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-400 leading-relaxed">
+                学习如何将 OpenList 作为独立 Serverless Worker 部署在 Cloudflare 边缘端并绑定 KV/D1 与 Google Drive。
+              </p>
+            </div>
+            <div className="mt-3 flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
+              <span>查看 CF Worker 分离部署指南</span>
+              <i className="ri-arrow-right-up-line text-xs" />
+            </div>
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
