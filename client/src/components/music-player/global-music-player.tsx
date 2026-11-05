@@ -25,6 +25,7 @@ export function GlobalMusicPlayer() {
     showPlaylist,
     currentLyricText,
     parsedLyrics,
+    loadError,
     togglePlay,
     next,
     prev,
@@ -173,7 +174,13 @@ export function GlobalMusicPlayer() {
             </div>
           </div>
 
-          {/* 歌词视窗 (若展开) */}
+          {/* 异常提示横幅 (防盗链 / 链接 404 自愈提示) */}
+          {loadError && (
+            <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-[11px] leading-tight flex items-start gap-1.5 ani-show">
+              <i className="ri-error-warning-line text-xs shrink-0 mt-0.5" />
+              <span>{loadError}</span>
+            </div>
+          )}
           {showLyrics && (
             <div className="h-32 overflow-y-auto rounded-xl p-2.5 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 text-center flex flex-col gap-1.5 scrollbar-thin">
               {parsedLyrics.length > 0 ? (

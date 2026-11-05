@@ -11,31 +11,57 @@ import {
 import type { LyricLine, MusicPlayerContextType, MusicTrack, PlayMode } from "./types";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 
-// 预置几首唯美轻柔的二次元画廊微光氛围背景原声（保底开箱即用）
+// 预置唯美轻柔的二次元画廊微光氛围背景原声（高可用公共 CDN，杜绝防盗链 404）
 export const DEFAULT_PRESET_TRACKS: MusicTrack[] = [
   {
     id: "preset_1",
-    name: "春の微光 (Spring Twilight)",
+    name: "春の微光 (Twilight Piano & Synth)",
     artist: "Atelier Soundworks",
     album: "Gallery Memories",
-    url: "https://music.163.com/song/media/outer/url?id=1407551413.mp3",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
     pic: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&q=80",
-    lyric: "[00:00.00]微光拂过相纸的边缘\n[00:05.00]记忆在画廊随想中悄然流淌\n[00:12.00]♪ 纯音乐，静候灵感发生 ♪",
+    lyric: "[00:00.00]微光拂过相纸的边缘\n[00:05.00]记忆在画廊随想中悄然流淌\n[00:15.00]♪ 唯美原声，静候灵感发生 ♪\n[01:00.00]♪ 沉浸式伴奏 ♪",
     source: "preset",
     sourceName: "画廊随想",
   },
   {
     id: "preset_2",
-    name: "City of Starlight",
+    name: "City of Starlight (Dreamy Lofi)",
     artist: "Lofi Breeze",
     album: "Midnight Chill",
-    url: "https://music.163.com/song/media/outer/url?id=1481164962.mp3",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
     pic: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&q=80",
-    lyric: "[00:00.00]深夜星芒\n[00:06.00]夜幕低垂，屏幕前微光闪烁\n[00:15.00]♪ 沉浸式伴奏 ♪",
+    lyric: "[00:00.00]深夜星芒\n[00:06.00]夜幕低垂，屏幕前微光闪烁\n[00:20.00]♪ 随心漫游，灵感常驻 ♪",
+    source: "preset",
+    sourceName: "画廊随想",
+  },
+  {
+    id: "preset_3",
+    name: "Dreamy Evening Groove",
+    artist: "Acoustic Garden",
+    album: "Sunset Horizons",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    pic: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
+    lyric: "[00:00.00]落日余晖\n[00:08.00]轻盈旋律漫过每一个页面\n[00:25.00]♪ 全站跨页面沉浸流转 ♪",
     source: "preset",
     sourceName: "画廊随想",
   },
 ];
+
+function sanitizePlaylist(list: MusicTrack[]): MusicTrack[] {
+  return list.map((t, idx) => {
+    // 自动置换已失效的旧版网易云防盗链外链
+    if (t.url.includes("music.163.com/song/media/outer/url")) {
+      const fallback = DEFAULT_PRESET_TRACKS[idx % DEFAULT_PRESET_TRACKS.length];
+      return {
+        ...t,
+        url: fallback.url,
+        pic: t.pic || fallback.pic,
+      };
+    }
+    return t;
+  });
+}
 
 const MusicPlayerContext = createContext<MusicPlayerContextType | null>(null);
 
@@ -73,7 +99,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     if (siteConfig.musicPlaylist) {
       try {
         const parsed = JSON.parse(siteConfig.musicPlaylist);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return sanitizePlaylist(parsed);
       } catch {}
     }
     // 其次读取本地缓存歌单
@@ -81,7 +107,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem("rin_music_playlist");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return sanitizePlaylist(parsed);
       }
     } catch {}
     return DEFAULT_PRESET_TRACKS;
@@ -110,6 +136,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [showLyrics, setShowLyrics] = useState<boolean>(false);
   const [showPlaylist, setShowPlaylist] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const currentTrack = useMemo(() => {
     if (!playlist || playlist.length === 0) return null;
@@ -273,11 +300,14 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [pause]);
 
-  // 同步音量到 audio 元素
+  // 同步音量与设置 no-referrer 避免源站防盗链
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume;
       audioRef.current.muted = isMuted;
+      try {
+        (audioRef.current as any).referrerPolicy = "no-referrer";
+      } catch {}
     }
   }, [volume, isMuted]);
 
@@ -319,6 +349,16 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const handleError = () => {
     console.warn("[MusicPlayer] Audio play failed for:", currentTrack?.url);
     setIsPlaying(false);
+    const trackName = currentTrack?.name || "未知曲目";
+    setLoadError(`音频加载失败（${trackName}），可能由于源站防盗链拦截或文件失效。正在自动切至下一首...`);
+    setTimeout(() => setLoadError(null), 5000);
+
+    // 若队列中还有其他歌曲，自动跳下一首
+    if (playlist.length > 1) {
+      setTimeout(() => {
+        next();
+      }, 1000);
+    }
   };
 
   return (
@@ -337,6 +377,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         showPlaylist,
         currentLyricText,
         parsedLyrics,
+        loadError,
         play,
         pause,
         togglePlay,

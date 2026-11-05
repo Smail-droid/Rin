@@ -31,6 +31,7 @@ export interface MusicPlayerContextType {
   showPlaylist: boolean;
   currentLyricText: string;
   parsedLyrics: LyricLine[];
+  loadError: string | null;
 
   play: (track?: MusicTrack) => void;
   pause: () => void;

@@ -34,7 +34,7 @@ export class GdMusicService {
   }
 
   /**
-   * 搜索歌曲列表
+   * 搜索歌曲列表 (带边缘 Worker 双通道自动降级兜底)
    */
   async search(keyword: string, source = "netease", page = 1, count = 15): Promise<GdSearchResultItem[]> {
     const q = new URLSearchParams({
@@ -45,30 +45,48 @@ export class GdMusicService {
       count: String(count),
     });
 
+    // 优先尝试直连端点
     try {
       const resp = await fetch(`${this.baseEndpoint}?${q.toString()}`);
-      if (!resp.ok) return [];
-      const data = await resp.json();
-      if (Array.isArray(data)) {
-        return data.map((item) => ({
-          id: item.id,
-          name: item.name || "未知曲目",
-          artist: Array.isArray(item.artist) ? item.artist.join(" / ") : String(item.artist || "群星"),
-          album: item.album || "",
-          pic_id: item.pic_id,
-          lyric_id: item.lyric_id || item.id,
-          source: item.source || source,
-        }));
+      if (resp.ok) {
+        const data = await resp.json();
+        if (Array.isArray(data)) {
+          return this.normalizeResults(data, source);
+        }
       }
-      return [];
-    } catch (e) {
-      console.warn("[GdMusicService] Search request failed:", e);
-      return [];
+    } catch {
+      // 直连失败，平滑降级至本站 Worker 边缘代理服务
     }
+
+    try {
+      const fallbackUrl = `/api/music/search?${q.toString()}`;
+      const resp = await fetch(fallbackUrl);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (Array.isArray(data)) {
+          return this.normalizeResults(data, source);
+        }
+      }
+    } catch (e) {
+      console.warn("[GdMusicService] Both direct and proxy search failed:", e);
+    }
+    return [];
+  }
+
+  private normalizeResults(data: any[], source: string): GdSearchResultItem[] {
+    return data.map((item) => ({
+      id: item.id,
+      name: item.name || "未知曲目",
+      artist: Array.isArray(item.artist) ? item.artist.join(" / ") : String(item.artist || "群星"),
+      album: item.album || "",
+      pic_id: item.pic_id,
+      lyric_id: item.lyric_id || item.id,
+      source: item.source || source,
+    }));
   }
 
   /**
-   * 获取音频真实播放直链
+   * 获取音频真实播放直链 (带边缘 Worker 自动兜底)
    */
   async getSongUrl(id: string | number, source = "netease", br = 320): Promise<string> {
     const q = new URLSearchParams({
@@ -80,12 +98,22 @@ export class GdMusicService {
 
     try {
       const resp = await fetch(`${this.baseEndpoint}?${q.toString()}`);
-      if (!resp.ok) return "";
-      const data = await resp.json();
-      return data?.url || "";
-    } catch {
-      return "";
-    }
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data?.url) return data.url;
+      }
+    } catch {}
+
+    try {
+      const fallbackUrl = `/api/music/song?${q.toString()}`;
+      const resp = await fetch(fallbackUrl);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data?.url) return data.url;
+      }
+    } catch {}
+
+    return "";
   }
 
   /**
@@ -102,12 +130,21 @@ export class GdMusicService {
 
     try {
       const resp = await fetch(`${this.baseEndpoint}?${q.toString()}`);
-      if (!resp.ok) return "";
-      const data = await resp.json();
-      return data?.url || "";
-    } catch {
-      return "";
-    }
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data?.url) return data.url;
+      }
+    } catch {}
+
+    try {
+      const resp = await fetch(`/api/music/pic?${q.toString()}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data?.url) return data.url;
+      }
+    } catch {}
+
+    return "";
   }
 
   /**
@@ -123,12 +160,21 @@ export class GdMusicService {
 
     try {
       const resp = await fetch(`${this.baseEndpoint}?${q.toString()}`);
-      if (!resp.ok) return "";
-      const data = await resp.json();
-      return data?.lyric || "";
-    } catch {
-      return "";
-    }
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data?.lyric) return data.lyric;
+      }
+    } catch {}
+
+    try {
+      const resp = await fetch(`/api/music/lyric?${q.toString()}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data?.lyric) return data.lyric;
+      }
+    } catch {}
+
+    return "";
   }
 
   /**
