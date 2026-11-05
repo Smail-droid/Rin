@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
@@ -63,17 +63,20 @@ export function AdminMusicPage() {
   const siteConfig = useSiteConfig();
   const player = useMusicPlayer();
 
-  const [saving, setSaving] = useState(false);
-  const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; type: "success" | "warn" | "error" } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [batchStatus, setBatchStatus] = useState<"idle" | "batching" | "done">("idle");
+  const [curatedStatus, setCuratedStatus] = useState<"idle" | "done">("idle");
+  const [customStatus, setCustomStatus] = useState<"idle" | "done">("idle");
+  const [unplayableIds, setUnplayableIds] = useState<Set<string | number>>(new Set());
 
   // 1. 全局基础配置
   const [musicEnabled, setMusicEnabled] = useState(() => siteConfig.musicEnabled);
   const [musicAutoPlay, setMusicAutoPlay] = useState(() => siteConfig.musicAutoPlay);
   const [musicPosition, setMusicPosition] = useState(() => siteConfig.musicPosition || "bottom-right");
-  const [musicSourceType, setMusicSourceType] = useState(() => siteConfig.musicSourceType || "gdstudio");
+  const [musicSourceType] = useState(() => siteConfig.musicSourceType || "gdstudio");
 
   // 2. GD Studio API 配置 (默认全网聚合)
-  const [gdApi, setGdApi] = useState(() => siteConfig.musicGdApi || "https://music-api.gdstudio.xyz/api.php");
+  const [gdApi] = useState(() => siteConfig.musicGdApi || "https://music-api.gdstudio.xyz/api.php");
   const [gdSource, setGdSource] = useState(() => siteConfig.musicGdSource || "all");
 
   // 3. OpenList 5T 挂载配置
@@ -93,35 +96,9 @@ export function AdminMusicPage() {
   const [customPic, setCustomPic] = useState("");
   const [customLyric, setCustomLyric] = useState("");
 
-  const showToast = (text: string, type: "success" | "warn" | "error" = "success") => {
-    setFeedbackMsg({ text, type });
-    setTimeout(() => {
-      setFeedbackMsg(null);
-    }, 3500);
-  };
-
-  // 同步基础配置
-  useEffect(() => {
-    setMusicEnabled(siteConfig.musicEnabled);
-    setMusicAutoPlay(siteConfig.musicAutoPlay);
-    setMusicPosition(siteConfig.musicPosition || "bottom-right");
-    setMusicSourceType(siteConfig.musicSourceType || "gdstudio");
-    setGdApi(siteConfig.musicGdApi || "https://music-api.gdstudio.xyz/api.php");
-    setGdSource(siteConfig.musicGdSource || "all");
-    setOpenlistMusicUrl(siteConfig.musicOpenlistUrl || "");
-  }, [
-    siteConfig.musicEnabled,
-    siteConfig.musicAutoPlay,
-    siteConfig.musicPosition,
-    siteConfig.musicSourceType,
-    siteConfig.musicGdApi,
-    siteConfig.musicGdSource,
-    siteConfig.musicOpenlistUrl,
-  ]);
-
-  // 保存全部音乐配置
+  // 保存全部音乐配置 (无弹窗打扰，按钮原生状态流转)
   const handleSave = async () => {
-    setSaving(true);
+    setSaveStatus("saving");
     try {
       await client.config.update("client", {
         "music.enabled": musicEnabled ? "true" : "false",
@@ -133,21 +110,18 @@ export function AdminMusicPage() {
         "music.openlist_url": openlistMusicUrl.trim(),
         "music.playlist": JSON.stringify(player.playlist),
       });
-      showToast("✨ 全站音乐电台配置已成功保存！前台所有页面均可无缝跨页沉浸收听。", "success");
-    } catch (err: any) {
-      showToast(`保存失败: ${err.message || "网络异常"}`, "error");
-    } finally {
-      setSaving(false);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2500);
+    } catch {
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
     }
   };
 
-  // 触发 GD Studio 搜索 (支持全网聚合 & 专辑模式)
+  // 触发 GD Studio 搜索 (支持全网聚合 & 专辑模式，无弹窗打扰)
   const handleSearch = async (overrideKw?: string, overrideSource?: string) => {
     const kw = (overrideKw ?? searchKeyword).trim();
-    if (!kw) {
-      showToast("请输入搜索关键字（歌曲名、歌手、榜单或专辑）", "warn");
-      return;
-    }
+    if (!kw) return;
     const targetSource = overrideSource ?? gdSource;
     setIsSearching(true);
     gdMusicService.setEndpoint(gdApi.trim());
@@ -155,47 +129,35 @@ export function AdminMusicPage() {
       const finalSource = searchMode === "album" && targetSource !== "all" ? `${targetSource}_album` : targetSource;
       const items = await gdMusicService.search(kw, finalSource, 1, 20);
       setSearchResults(items);
-      if (items.length === 0) {
-        showToast("该音源暂未搜到曲目，建议点击上方【全网聚合】或切换音源再次搜索", "warn");
-      } else {
-        showToast(`已聚合为您检索到 ${items.length} 首高匹配曲目`, "success");
-      }
-    } catch (err: any) {
-      showToast(`搜索异常: ${err.message || "网络连接超时"}`, "error");
+    } catch (e) {
+      console.warn("Search failed:", e);
     } finally {
       setIsSearching(false);
     }
   };
 
-  // 试听或添加单曲（绝不弹窗打扰！直接原地亮色切换）
+  // 试听或添加单曲（绝不弹窗打扰！原地亮色变更为已收录 / 播放中）
   const handleResolveAndPlay = async (item: GdSearchResultItem, playNow = true) => {
     setResolvingId(item.id);
     gdMusicService.setEndpoint(gdApi.trim());
     try {
       const track = await gdMusicService.resolveTrack(item, 320);
       if (!track || !track.url) {
-        showToast(`「${item.name}」音频解析受源站防盗链保护，请尝试切换其他音源版本`, "warn");
+        setUnplayableIds((prev) => new Set(prev).add(item.id));
         return;
       }
       player.addTrack(track, playNow);
-      showToast(
-        playNow
-          ? `🎶 正在播放「${track.name}」`
-          : `✓ 已收录「${track.name}」至前台播放队列`,
-        "success"
-      );
-    } catch (err: any) {
-      showToast(`解析失败: ${err.message || "网络超时"}`, "error");
+    } catch {
+      setUnplayableIds((prev) => new Set(prev).add(item.id));
     } finally {
       setResolvingId(null);
     }
   };
 
-  // 一键全量收录当前搜索结果
+  // 一键全量收录当前搜索结果 (按钮直接状态流转)
   const handleBatchCollect = async () => {
     if (searchResults.length === 0) return;
-    setIsSearching(true);
-    let successCount = 0;
+    setBatchStatus("batching");
     gdMusicService.setEndpoint(gdApi.trim());
 
     // 批量解析前 8 首
@@ -205,20 +167,16 @@ export function AdminMusicPage() {
         const track = await gdMusicService.resolveTrack(item, 320);
         if (track && track.url) {
           player.addTrack(track, false);
-          successCount++;
         }
       } catch {}
     }
-    setIsSearching(false);
-    showToast(`🎉 成功批量收录 ${successCount} 首热门曲目至前台歌单！`, "success");
+    setBatchStatus("done");
+    setTimeout(() => setBatchStatus("idle"), 2500);
   };
 
-  // 添加自定义单曲
+  // 添加自定义单曲 (无弹窗打扰)
   const handleAddCustomTrack = () => {
-    if (!customName.trim() || !customUrl.trim()) {
-      showToast("歌曲名称和音频直链 URL 不能为空！", "warn");
-      return;
-    }
+    if (!customName.trim() || !customUrl.trim()) return;
     const newTrack: MusicTrack = {
       id: `custom_${Date.now()}`,
       name: customName.trim(),
@@ -235,20 +193,17 @@ export function AdminMusicPage() {
     setCustomUrl("");
     setCustomPic("");
     setCustomLyric("");
-    showToast(`已成功添加「${newTrack.name}」并开始播放！点击右上角可保存配置。`, "success");
+    setCustomStatus("done");
+    setTimeout(() => setCustomStatus("idle"), 2500);
   };
 
   // 从已挂载的 OpenList 音频目录一键添加曲目
   const handleAddFromOpenList = () => {
     const base = openlistMusicUrl.trim() || siteConfig.openlistWorkerUrl;
-    if (!base) {
-      showToast("请先在网盘页面绑定 OpenList Worker 或填写直链！", "warn");
-      return;
-    }
+    if (!base) return;
     setCustomUrl(base.endsWith("/") ? `${base}your_song.mp3` : `${base}/your_song.mp3`);
     setCustomName("5T 云盘精选原声");
     setCustomArtist("Google One 云端音乐库");
-    showToast("已自动回填 OpenList 路径，请将文件名改为实际音频文件名！", "success");
   };
 
   return (
@@ -256,30 +211,6 @@ export function AdminMusicPage() {
       <Helmet>
         <title>{`全站音乐电台 · 媒体中枢 - ${siteConfig.name}`}</title>
       </Helmet>
-
-      {/* 优雅轻量全局反馈浮条 (非阻塞，绝不弹大窗打扰) */}
-      {feedbackMsg && (
-        <div
-          className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full shadow-2xl backdrop-blur-xl border text-xs font-bold flex items-center gap-2 ani-show ${
-            feedbackMsg.type === "success"
-              ? "bg-emerald-500/90 text-white border-emerald-400"
-              : feedbackMsg.type === "warn"
-              ? "bg-amber-500/90 text-white border-amber-400"
-              : "bg-rose-500/90 text-white border-rose-400"
-          }`}
-        >
-          <i
-            className={
-              feedbackMsg.type === "success"
-                ? "ri-checkbox-circle-fill"
-                : feedbackMsg.type === "warn"
-                ? "ri-error-warning-fill"
-                : "ri-close-circle-fill"
-            }
-          />
-          <span>{feedbackMsg.text}</span>
-        </div>
-      )}
 
       {/* 顶部运行状态切片中枢 */}
       <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -306,10 +237,26 @@ export function AdminMusicPage() {
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving}
-            className="px-5 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition"
+            disabled={saveStatus === "saving"}
+            className={`px-5 py-2 rounded-xl text-xs font-bold shadow-2xs transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-60 ${
+              saveStatus === "saved"
+                ? "bg-emerald-500 text-white shadow-emerald-500/20"
+                : saveStatus === "error"
+                ? "bg-rose-500 text-white"
+                : "bg-theme text-white hover:bg-theme-hover"
+            }`}
           >
-            {saving ? "保存中..." : "保存全部配置"}
+            {saveStatus === "saving" && <i className="ri-loader-4-line animate-spin" />}
+            {saveStatus === "saved" && <i className="ri-check-line" />}
+            <span>
+              {saveStatus === "saving"
+                ? "保存中..."
+                : saveStatus === "saved"
+                ? "配置已保存 ✓"
+                : saveStatus === "error"
+                ? "保存失败，点击重试"
+                : "保存全部配置"}
+            </span>
           </button>
         </div>
       </div>
@@ -518,12 +465,18 @@ export function AdminMusicPage() {
                 <button
                   type="button"
                   onClick={handleBatchCollect}
-                  disabled={isSearching}
-                  className="px-2.5 py-1 rounded-lg bg-theme/10 hover:bg-theme/20 text-theme text-xs font-bold transition flex items-center gap-1"
+                  disabled={batchStatus === "batching"}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                    batchStatus === "done"
+                      ? "bg-emerald-500 text-white shadow-2xs"
+                      : "bg-theme/10 hover:bg-theme/20 text-theme"
+                  }`}
                   title="一键将前 8 首全量添加到前台播放队列"
                 >
-                  <i className="ri-play-list-add-line" />
-                  <span>一键全收录前 8 首</span>
+                  {batchStatus === "batching" && <i className="ri-loader-4-line animate-spin" />}
+                  {batchStatus === "done" && <i className="ri-check-line" />}
+                  {batchStatus === "idle" && <i className="ri-play-list-add-line" />}
+                  <span>{batchStatus === "batching" ? "收录中..." : batchStatus === "done" ? "已批量收录前 8 首 ✓" : "一键全收录前 8 首"}</span>
                 </button>
               </div>
 
@@ -556,6 +509,11 @@ export function AdminMusicPage() {
                           <span className="text-[11px] text-neutral-400 truncate block">
                             {artistStr} {item.album && ` · 《${item.album}》`}
                           </span>
+                          {unplayableIds.has(item.id) && (
+                            <span className="text-[10px] text-amber-500 font-medium block truncate mt-0.5">
+                              ⚠️ 该版本受源站保护暂无法试听，建议选择下方其他版本
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -564,33 +522,43 @@ export function AdminMusicPage() {
                           {item.source}
                         </span>
 
-                        {/* 试听按钮 (原地播放动效) */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (isPlayingThis) {
-                              player.pause();
-                            } else {
-                              handleResolveAndPlay(item, true);
-                            }
-                          }}
-                          disabled={isResolving}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 select-none ${
-                            isPlayingThis
-                              ? "bg-theme text-white shadow-2xs font-bold animate-pulse"
-                              : "bg-theme/10 hover:bg-theme/20 text-theme"
-                          }`}
-                          title="试听这首"
-                        >
-                          {isResolving ? (
-                            <i className="ri-loader-4-line animate-spin" />
-                          ) : isPlayingThis ? (
-                            <i className="ri-pause-fill" />
-                          ) : (
-                            <i className="ri-play-fill" />
-                          )}
-                          <span>{isPlayingThis ? "播放中" : "试听"}</span>
-                        </button>
+                        {/* 试听按钮 (原地播放动效，遇源站受限则直接静默提示) */}
+                        {unplayableIds.has(item.id) ? (
+                          <span
+                            className="px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/5 text-neutral-400 text-xs flex items-center gap-1 select-none"
+                            title="该版本受源站保护暂无法试听"
+                          >
+                            <i className="ri-forbid-line text-xs" />
+                            <span>源站受限</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isPlayingThis) {
+                                player.pause();
+                              } else {
+                                handleResolveAndPlay(item, true);
+                              }
+                            }}
+                            disabled={isResolving}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 select-none ${
+                              isPlayingThis
+                                ? "bg-theme text-white shadow-2xs font-bold animate-pulse"
+                                : "bg-theme/10 hover:bg-theme/20 text-theme"
+                            }`}
+                            title="试听这首"
+                          >
+                            {isResolving ? (
+                              <i className="ri-loader-4-line animate-spin" />
+                            ) : isPlayingThis ? (
+                              <i className="ri-pause-fill" />
+                            ) : (
+                              <i className="ri-play-fill" />
+                            )}
+                            <span>{isPlayingThis ? "播放中" : "试听"}</span>
+                          </button>
+                        )}
 
                         {/* 收录按钮 (亮色变更为已收录，绝不弹窗打扰！) */}
                         {isCollected ? (
@@ -636,12 +604,15 @@ export function AdminMusicPage() {
             type="button"
             onClick={() => {
               GALLERY_HALL_OF_FAME_TRACKS.forEach((t) => player.addTrack(t, false));
-              showToast("🎉 已将全部二次元画廊精选殿堂级曲目一键载入前台队列！", "success");
+              setCuratedStatus("done");
+              setTimeout(() => setCuratedStatus("idle"), 2500);
             }}
-            className="text-xs text-theme hover:underline font-bold flex items-center gap-1"
+            className={`text-xs font-bold flex items-center gap-1 transition-all ${
+              curatedStatus === "done" ? "text-emerald-500 font-extrabold" : "text-theme hover:underline"
+            }`}
           >
-            <i className="ri-download-cloud-line" />
-            <span>一键全量载入精选曲目</span>
+            {curatedStatus === "done" ? <i className="ri-check-line" /> : <i className="ri-download-cloud-line" />}
+            <span>{curatedStatus === "done" ? "已全部载入歌单 ✓" : "一键全量载入精选曲目"}</span>
           </button>
         </div>
 
@@ -685,7 +656,6 @@ export function AdminMusicPage() {
                       type="button"
                       onClick={() => {
                         player.addTrack(t, false);
-                        showToast(`已收录「${t.name}」`, "success");
                       }}
                       className="p-1.5 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 text-xs text-neutral-500"
                       title="收录此曲"
@@ -753,7 +723,6 @@ export function AdminMusicPage() {
               type="button"
               onClick={() => {
                 player.setPlaylist(DEFAULT_PRESET_TRACKS);
-                showToast("已恢复系统默认唯美二次元画廊氛围曲目！", "success");
               }}
               className="text-xs text-neutral-400 hover:text-theme transition"
             >
@@ -763,7 +732,6 @@ export function AdminMusicPage() {
               type="button"
               onClick={() => {
                 player.clearPlaylist();
-                showToast("播放列表已清空！", "warn");
               }}
               className="text-xs text-red-500 hover:underline"
             >
@@ -845,7 +813,6 @@ export function AdminMusicPage() {
                             type="button"
                             onClick={() => {
                               player.removeTrack(track.id);
-                              showToast(`已从队列移除「${track.name}」`, "warn");
                             }}
                             className="p-1 rounded-md text-neutral-400 hover:text-red-500 hover:bg-black/5 transition"
                             title="从队列删除"
@@ -899,10 +866,14 @@ export function AdminMusicPage() {
             <button
               type="button"
               onClick={handleAddCustomTrack}
-              className="px-4 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-theme hover:text-white text-xs font-bold transition flex items-center gap-1"
+              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                customStatus === "done"
+                  ? "bg-emerald-500 text-white"
+                  : "bg-black/5 dark:bg-white/5 hover:bg-theme hover:text-white"
+              }`}
             >
-              <i className="ri-add-line" />
-              <span>添加至播放队列并开播</span>
+              {customStatus === "done" ? <i className="ri-check-line" /> : <i className="ri-add-line" />}
+              <span>{customStatus === "done" ? "已成功添加至队列 ✓" : "添加至播放队列并开播"}</span>
             </button>
           </div>
         </div>

@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { client } from "../app/runtime";
-import { useAlert } from "../components/dialog";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 
 export function AdminOpenListPage() {
   const siteConfig = useSiteConfig();
-  const { showAlert, AlertUI } = useAlert();
-  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
 
   // OpenList 挂载配置
   const [workerUrl, setWorkerUrl] = useState(() => siteConfig.openlistWorkerUrl || "");
@@ -26,18 +25,21 @@ export function AdminOpenListPage() {
   ]);
 
   const handleSave = async () => {
-    setSaving(true);
+    setSaveStatus("saving");
+    setErrorMessage("");
     try {
       await client.config.update("client", {
         "openlist.worker_url": workerUrl.trim(),
         "openlist.show_in_nav": showInNav ? "true" : "false",
         "openlist.nav_title": navTitle.trim() || "资源列表",
       });
-      showAlert("✨ OpenList 挂载配置已保存！若开启前台显示，前台顶栏导航即可直达资源目录。");
+      setSaveStatus("saved");
+      setTimeout(() => {
+        setSaveStatus("idle");
+      }, 2500);
     } catch (err: any) {
-      showAlert(`保存失败: ${err.message || "网络异常"}`);
-    } finally {
-      setSaving(false);
+      setSaveStatus("error");
+      setErrorMessage(err.message || "网络异常");
     }
   };
 
@@ -46,7 +48,6 @@ export function AdminOpenListPage() {
       <Helmet>
         <title>{`资源列表 · OpenList 挂载中心 - ${siteConfig.name}`}</title>
       </Helmet>
-      <AlertUI />
 
       {/* 顶部运行状态切片中枢 */}
       <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -70,6 +71,11 @@ export function AdminOpenListPage() {
         </div>
 
         <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+          {errorMessage && (
+            <span className="text-xs text-rose-500 font-semibold ani-show">
+              {errorMessage}
+            </span>
+          )}
           {workerUrl && (
             <a
               href={workerUrl}
@@ -84,10 +90,26 @@ export function AdminOpenListPage() {
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition"
+            disabled={saveStatus === "saving"}
+            className={`px-4 py-1.5 rounded-xl text-xs font-bold shadow-2xs transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-60 ${
+              saveStatus === "saved"
+                ? "bg-emerald-500 text-white shadow-emerald-500/20"
+                : saveStatus === "error"
+                ? "bg-rose-500 text-white"
+                : "bg-theme text-white hover:bg-theme-hover"
+            }`}
           >
-            {saving ? "保存中..." : "保存配置"}
+            {saveStatus === "saving" && <i className="ri-loader-4-line animate-spin" />}
+            {saveStatus === "saved" && <i className="ri-check-line" />}
+            <span>
+              {saveStatus === "saving"
+                ? "保存中..."
+                : saveStatus === "saved"
+                ? "配置已保存 ✓"
+                : saveStatus === "error"
+                ? "保存失败，点击重试"
+                : "保存配置"}
+            </span>
           </button>
         </div>
       </div>
