@@ -1,4 +1,5 @@
 import type { MusicTrack } from "../components/music-player/types";
+import { getAuthToken } from "../utils/auth";
 
 export interface GdSearchResultItem {
   id: string | number;
@@ -387,16 +388,20 @@ export async function syncOpenListFiles(openlistMusicUrl: string): Promise<Music
  */
 export async function persistTrackToR2(track: { url: string; trackId: string | number; name: string }): Promise<string | null> {
   try {
-    const token = localStorage.getItem("rin_token") || "";
+    const token = getAuthToken() || "";
     const resp = await fetch("/api/music/persist-r2", {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(track),
     });
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      console.warn("Persist to R2 failed with status:", resp.status);
+      return null;
+    }
     const json = await resp.json();
     return json.permanentUrl || null;
   } catch (e) {
@@ -410,9 +415,10 @@ export async function persistTrackToR2(track: { url: string; trackId: string | n
  */
 export async function deleteR2Track(key: string): Promise<boolean> {
   try {
-    const token = localStorage.getItem("rin_token") || "";
+    const token = getAuthToken() || "";
     const resp = await fetch(`/api/music/persist-r2?key=${encodeURIComponent(key)}`, {
       method: "DELETE",
+      credentials: "include",
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
@@ -437,16 +443,21 @@ export interface R2MusicFileItem {
  */
 export async function fetchR2MusicFiles(): Promise<R2MusicFileItem[]> {
   try {
-    const token = localStorage.getItem("rin_token") || "";
+    const token = getAuthToken() || "";
     const resp = await fetch("/api/music/r2-files", {
+      credentials: "include",
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
-    if (!resp.ok) return [];
+    if (!resp.ok) {
+      console.warn("Fetch R2 files failed with status:", resp.status);
+      return [];
+    }
     const json = await resp.json();
     return json.files || [];
-  } catch {
+  } catch (e) {
+    console.warn("Fetch R2 files exception:", e);
     return [];
   }
 }

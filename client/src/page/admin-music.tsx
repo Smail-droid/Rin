@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
@@ -15,6 +15,21 @@ import {
   type R2MusicFileItem,
 } from "../services/music-api";
 import type { MusicTrack } from "../components/music-player/types";
+
+// 简短中文音源格式化 (严禁英文和自动降级后缀，保持纯粹简洁)
+function formatCleanSourceName(track: MusicTrack): string {
+  if (track.source === "r2" || (track.url && track.url.includes("/api/blob/"))) {
+    return "R2存储";
+  }
+  const raw = `${track.sourceName || ""} ${track.source || ""}`.toLowerCase();
+  if (raw.includes("126") || raw.includes("netease")) return "网易云";
+  if (raw.includes("bilibili") || raw.includes("bili")) return "哔哩哔哩";
+  if (raw.includes("qq") || raw.includes("tencent")) return "QQ音乐";
+  if (raw.includes("joox")) return "JOOX";
+  if (raw.includes("openlist") || raw.includes("5t")) return "5T网盘";
+  if (raw.includes("gallery") || raw.includes("preset")) return "精选";
+  return "网络源";
+}
 
 // 纯文本音乐流派标签 (严禁 Emoji，极简纯净风格)
 const GENRE_TAGS = ["华语", "流行", "摇滚", "民谣", "电子", "爵士", "说唱", "原声", "轻音乐", "古风"];
@@ -157,6 +172,11 @@ export function AdminMusicPage() {
   const [deepVerifiedTracks, setDeepVerifiedTracks] = useState<MusicTrack[]>([]);
 
   // 歌手过滤
+  // 自动在加载时读取 R2 存储桶文件列表
+  useEffect(() => {
+    loadR2Files();
+  }, []);
+
   const filteredArtists = useMemo(() => ARTIST_DIRECTORY.filter((a) => {
     const matchCat = selectedArtistCat === "all" || a.cat === selectedArtistCat;
     const matchInitial = selectedInitial === "全部" || a.initial === selectedInitial;
@@ -931,7 +951,7 @@ export function AdminMusicPage() {
                 className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 text-xs font-bold transition flex items-center gap-1 select-none"
               >
                 {isSearching ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-search-line" />}
-                <span>{isSearching ? "检索..." : "常规搜索"}</span>
+                <span>{isSearching ? "检索..." : "搜索"}</span>
               </button>
               <button
                 type="button"
@@ -941,7 +961,7 @@ export function AdminMusicPage() {
                 title="连续翻页检索并逐首探测可用性，自动剔除全部受限/失效曲目"
               >
                 {deepScanning ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-shield-check-line" />}
-                <span>{deepScanning ? "深度探测中..." : "深度扫描并剔除受限"}</span>
+                <span>{deepScanning ? "嗅探中..." : "深度嗅探"}</span>
               </button>
             </div>
           </div>
@@ -1112,7 +1132,7 @@ export function AdminMusicPage() {
                   rightViewMode === "r2" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-400"
                 }`}
               >
-                R2云端存储桶曲库 ({r2Files.length})
+                R2曲库 ({r2Files.length})
               </button>
             </div>
 
@@ -1283,7 +1303,7 @@ export function AdminMusicPage() {
                 {persistR2Status === "saving" && <i className="ri-loader-4-line animate-spin" />}
                 {persistR2Status === "done" && <i className="ri-check-line" />}
                 {persistR2Status === "idle" && <i className="ri-save-line" />}
-                <span>{persistR2Status === "saving" ? "转存中..." : persistR2Status === "done" ? "已转存R2 ✓" : "转存R2永久"}</span>
+                <span>{persistR2Status === "saving" ? "转存中..." : persistR2Status === "done" ? "已转存 ✓" : "全部转存"}</span>
               </button>
               <button
                 type="button"
@@ -1299,7 +1319,7 @@ export function AdminMusicPage() {
                 onClick={() => player.setPlaylist(DEFAULT_PRESET_TRACKS)}
                 className="px-2 py-1 rounded-md text-neutral-400 hover:text-theme transition"
               >
-                恢复默认
+                重置
               </button>
             </div>
           </div>
@@ -1427,49 +1447,58 @@ export function AdminMusicPage() {
                             {/* 音源 */}
                             <td className="py-1.5 px-2">
                               <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/5 text-neutral-500">
-                                {track.sourceName || track.source || "自定义"}
+                                {formatCleanSourceName(track)}
                               </span>
                             </td>
-                            {/* 转存状态与手动转存按钮 (图 1 升级) */}
+                            {/* 转存状态与手动转存按钮 (纯图标 + 悬浮提示，不带破坏美感的文字) */}
                             <td className="py-1.5 px-2 text-center">
                               {isR2 ? (
-                                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/20 select-none">
-                                  <i className="ri-check-line text-xs" />
-                                  <span>已有</span>
+                                <span title="已永久转存至 R2 对象存储" className="inline-flex items-center justify-center text-emerald-500 select-none">
+                                  <i className="ri-checkbox-circle-fill text-sm" />
                                 </span>
                               ) : (
                                 <button
                                   type="button"
                                   onClick={() => handleSingleTrackPersist(track)}
                                   disabled={persistingTrackId === track.id}
-                                  className="px-2 py-0.5 rounded-md bg-theme/10 hover:bg-theme/20 text-theme text-xs font-semibold transition inline-flex items-center gap-1 select-none"
-                                  title="下载并将此曲永久转存至 R2 对象存储桶"
+                                  className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/5 transition inline-flex items-center justify-center select-none"
+                                  title="点击下载并转存至 R2 永久存储"
                                 >
                                   {persistingTrackId === track.id ? (
-                                    <i className="ri-loader-4-line animate-spin text-xs" />
+                                    <i className="ri-loader-4-line animate-spin text-xs text-theme" />
                                   ) : (
-                                    <i className="ri-download-cloud-line text-xs" />
+                                    <i className="ri-download-cloud-line text-sm" />
                                   )}
-                                  <span>{persistingTrackId === track.id ? "转存中" : "转存R2"}</span>
                                 </button>
                               )}
                             </td>
-                            {/* 操作 (删除时同步清理 R2 存储) */}
+                            {/* 操作 (配套播放/暂停切换，删除时同步清理 R2 存储) */}
                             <td className="py-1.5 px-2 text-right pr-3">
                               <div className="inline-flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => player.play(track)}
-                                  className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 transition"
-                                  title="播放"
-                                >
-                                  <i className="ri-play-fill text-xs" />
-                                </button>
+                                {isCur && player.isPlaying ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => player.pause()}
+                                    className="p-1 rounded-md text-theme hover:bg-theme/10 transition"
+                                    title="暂停"
+                                  >
+                                    <i className="ri-pause-fill text-xs" />
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => player.play(track)}
+                                    className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 transition"
+                                    title="播放"
+                                  >
+                                    <i className="ri-play-fill text-xs" />
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteTrack(track)}
                                   className="p-1 rounded-md text-neutral-400 hover:text-red-500 hover:bg-black/5 transition"
-                                  title="删除 (若已存入 R2 将同步清理文件)"
+                                  title="删除 (若在R2将同步清理文件)"
                                 >
                                   <i className="ri-delete-bin-line text-xs" />
                                 </button>
