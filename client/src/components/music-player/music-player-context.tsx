@@ -138,6 +138,38 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [showPlaylist, setShowPlaylist] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  // 当后台配置的歌单从服务端或配置中心到达时，自动响应并更新播放列表
+  useEffect(() => {
+    if (siteConfig.musicPlaylist) {
+      try {
+        const parsed = JSON.parse(siteConfig.musicPlaylist);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const sanitized = sanitizePlaylist(parsed);
+          setPlaylistState(sanitized);
+          try {
+            localStorage.setItem("rin_music_playlist", JSON.stringify(sanitized));
+          } catch {}
+        }
+      } catch {}
+    }
+  }, [siteConfig.musicPlaylist]);
+
+  // 监听跨标签页或本地储存歌单变更
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "rin_music_playlist" && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setPlaylistState(sanitizePlaylist(parsed));
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
   const currentTrack = useMemo(() => {
     if (!playlist || playlist.length === 0) return null;
     return playlist[currentTrackIndex] || playlist[0] || null;

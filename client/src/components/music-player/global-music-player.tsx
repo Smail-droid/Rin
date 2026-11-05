@@ -234,7 +234,7 @@ export function GlobalMusicPlayer() {
           </div>
 
           {/* 简易歌名与动态音波 */}
-          <div className="flex flex-col max-w-[120px] sm:max-w-[150px] pointer-events-none">
+          <div className="flex flex-col max-w-[110px] sm:max-w-[140px] pointer-events-none">
             <span className="text-xs font-bold t-primary truncate">
               {currentTrack?.name || "画廊随想电台"}
             </span>
@@ -249,6 +249,11 @@ export function GlobalMusicPlayer() {
               <span className="truncate">{currentTrack?.artist || "随心漫游"}</span>
             </span>
           </div>
+
+          {/* 队列歌曲数量小标 */}
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-theme/10 text-theme font-bold shrink-0 ml-0.5 pointer-events-none">
+            {playlist.length}首
+          </span>
 
           {/* 拖拽手柄与展开指示微图标 */}
           <div className="flex items-center gap-0.5 text-neutral-400 ml-1 text-xs">
@@ -299,14 +304,15 @@ export function GlobalMusicPlayer() {
               <button
                 type="button"
                 onClick={() => setShowPlaylist(!showPlaylist)}
-                className={`p-1.5 rounded-lg text-xs transition ${
+                className={`px-2 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
                   showPlaylist
                     ? "bg-theme text-white shadow-2xs font-bold"
-                    : "text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5"
+                    : "text-neutral-500 hover:bg-black/5 dark:hover:bg-white/5"
                 }`}
                 title="查看播放队列"
               >
                 <i className="ri-play-list-line" />
+                <span className="font-mono text-[11px]">{playlist.length}首</span>
               </button>
               <button
                 type="button"
@@ -420,6 +426,23 @@ export function GlobalMusicPlayer() {
               )}
             </div>
           </div>
+
+          {/* 未展开抽屉时的直观队列引导条 */}
+          {!showPlaylist && !showLyrics && (
+            <div
+              onClick={() => setShowPlaylist(true)}
+              className="no-drag flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] hover:bg-theme/5 border border-black/5 dark:border-white/5 transition cursor-pointer text-[11px] text-neutral-500 hover:text-theme"
+              title="点击展开查看当前全部播放队列"
+            >
+              <div className="flex items-center gap-1.5 truncate">
+                <i className="ri-play-list-line text-theme" />
+                <span>播放队列共 {playlist.length} 首</span>
+              </div>
+              <span className="text-[10px] text-theme font-semibold shrink-0">
+                展开队列 ➔
+              </span>
+            </div>
+          )}
 
           {/* 进度条与播放时间 */}
           <div className="space-y-1 no-drag">
