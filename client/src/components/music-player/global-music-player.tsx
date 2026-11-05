@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 import { useMusicPlayer } from "./music-player-context";
+import { VinylDiscArt } from "./vinyl-disc-art";
 
 function formatSeconds(secs: number): string {
   if (isNaN(secs) || secs < 0) return "00:00";
@@ -42,67 +43,200 @@ export function GlobalMusicPlayer() {
 
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
 
+  // 自由拖拽定位坐标状态 (记忆持久化在本地 localStorage)
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(() => {
+    try {
+      const saved = localStorage.getItem("rin_music_player_pos");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  });
+
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number }>({
+    startX: 0,
+    startY: 0,
+    initX: 0,
+    initY: 0,
+  });
+  const hasMovedRef = useRef(false);
+
+  // 视口边界保护与初始化
+  const getSafePosition = (x: number, y: number, isExp = isExpanded) => {
+    if (typeof window === "undefined") return { x, y };
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+    const widgetW = isExp ? Math.min(360, winW - 24) : 200;
+    const widgetH = isExp ? 440 : 56;
+
+    const safeX = Math.max(12, Math.min(winW - widgetW - 12, x));
+    const safeY = Math.max(60, Math.min(winH - widgetH - 12, y));
+    return { x: safeX, y: safeY };
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleResize = () => {
+      const winW = window.innerWidth;
+      const winH = window.innerHeight;
+      const isLeft = siteConfig.musicPosition === "bottom-left";
+      const defaultX = isLeft ? 16 : Math.max(16, winW - 220);
+      const defaultY = Math.max(60, winH - 76);
+
+      setPosition((prev) => {
+        if (!prev) return { x: defaultX, y: defaultY };
+        return getSafePosition(prev.x, prev.y);
+      });
+    };
+
+    if (position === null) {
+      handleResize();
+    }
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [position, siteConfig.musicPosition, isExpanded]);
+
+  // 开始按住拖拽 (兼容鼠标与触屏设备)
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const target = e.target as HTMLElement;
+    // 如果点击的是按钮、滑块、音量等操作组件，则不触发外层卡片拖拽
+    if (target.closest("button") || target.closest("input") || target.closest(".no-drag")) {
+      return;
+    }
+
+    hasMovedRef.current = false;
+    setIsDragging(true);
+
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    const curX = position?.x ?? (typeof window !== "undefined" ? window.innerWidth - 220 : 100);
+    const curY = position?.y ?? (typeof window !== "undefined" ? window.innerHeight - 80 : 500);
+
+    dragStartRef.current = {
+      startX: clientX,
+      startY: clientY,
+      initX: curX,
+      initY: curY,
+    };
+
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+
+    const deltaX = e.clientX - dragStartRef.current.startX;
+    const deltaY = e.clientY - dragStartRef.current.startY;
+
+    if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+      hasMovedRef.current = true;
+    }
+
+    const nextX = dragStartRef.current.initX + deltaX;
+    const nextY = dragStartRef.current.initY + deltaY;
+    const safe = getSafePosition(nextX, nextY);
+
+    setPosition(safe);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {}
+
+    if (position) {
+      try {
+        localStorage.setItem("rin_music_player_pos", JSON.stringify(position));
+      } catch {}
+    }
+  };
+
+  // 双击气泡复位到屏幕推荐角
+  const handleResetPosition = () => {
+    if (typeof window === "undefined") return;
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+    const isLeft = siteConfig.musicPosition === "bottom-left";
+    const defaultX = isLeft ? 16 : Math.max(16, winW - 220);
+    const defaultY = Math.max(60, winH - 76);
+    const pos = { x: defaultX, y: defaultY };
+    setPosition(pos);
+    try {
+      localStorage.setItem("rin_music_player_pos", JSON.stringify(pos));
+    } catch {}
+  };
+
   // 如果后台未启用音乐播放器且当前列表无曲目，则不渲染前台挂件
   if (!siteConfig.musicEnabled && playlist.length === 0) {
     return null;
   }
 
-  const isBottomLeft = siteConfig.musicPosition === "bottom-left";
-  const positionClass = isBottomLeft
-    ? "bottom-4 left-4"
-    : "bottom-4 right-4 sm:bottom-6 sm:right-6";
-
   const percent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  const currentCoords = position || {
+    x: typeof window !== "undefined" ? window.innerWidth - 220 : 100,
+    y: typeof window !== "undefined" ? window.innerHeight - 80 : 500,
+  };
+
   return (
-    <div className={`fixed ${positionClass} z-50 select-none ani-show`}>
-      {/* 1. 迷你唱片悬浮球状态 (Collapsed Mini Disc Bubble) */}
+    <div
+      style={{
+        transform: `translate3d(${currentCoords.x}px, ${currentCoords.y}px, 0)`,
+        touchAction: "none",
+      }}
+      className={`fixed top-0 left-0 z-50 select-none ${
+        isDragging ? "cursor-grabbing opacity-90 transition-none" : "transition-transform duration-75"
+      }`}
+    >
+      {/* 1. 迷你唱片悬浮球状态 (支持自由拖拽移动、双击复位) */}
       {!isExpanded ? (
         <div
-          onClick={() => setIsExpanded(true)}
-          className="group relative flex items-center gap-2.5 p-1.5 pr-3.5 rounded-full bg-white/90 dark:bg-neutral-900/90 border border-black/10 dark:border-white/10 shadow-xl backdrop-blur-xl hover:scale-105 active:scale-95 transition-all cursor-pointer"
-          title={currentTrack ? `正在播放: ${currentTrack.name} - ${currentTrack.artist}` : "打开画廊随想音乐电台"}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onDoubleClick={handleResetPosition}
+          onClick={() => {
+            if (!hasMovedRef.current) {
+              setIsExpanded(true);
+            }
+          }}
+          className={`group relative flex items-center gap-2.5 p-1.5 pr-3.5 rounded-full bg-white/90 dark:bg-neutral-900/90 border border-black/10 dark:border-white/10 shadow-xl backdrop-blur-xl transition-all cursor-grab active:cursor-grabbing ${
+            isDragging ? "scale-95 ring-2 ring-theme/50 shadow-2xl" : "hover:scale-105"
+          }`}
+          title={
+            currentTrack
+              ? `正在播放: ${currentTrack.name} - ${currentTrack.artist} (按住可任意拖拽，双击复位)`
+              : "打开画廊随想音乐电台 (按住可任意拖拽，双击复位)"
+          }
         >
-          {/* 旋转黑胶唱片 */}
-          <div className="relative h-10 w-10 shrink-0 rounded-full overflow-hidden bg-neutral-900 flex items-center justify-center shadow-md">
-            {currentTrack?.pic ? (
-              <img
-                src={currentTrack.pic}
-                alt="cover"
-                style={{
-                  animationPlayState: isPlaying ? "running" : "paused",
-                }}
-                className="h-full w-full object-cover rounded-full animate-spin"
-              />
-            ) : (
-              <div
-                style={{
-                  animationPlayState: isPlaying ? "running" : "paused",
-                }}
-                className="h-full w-full rounded-full bg-gradient-to-tr from-theme to-pink-500 flex items-center justify-center animate-spin"
-              >
-                <i className="ri-disc-line text-white text-lg" />
-              </div>
-            )}
-            {/* 唱片黑胶中心圆心 */}
-            <div className="absolute h-3 w-3 rounded-full bg-white dark:bg-neutral-800 border-2 border-neutral-900 z-10" />
+          {/* 精雕微光黑胶唱片质感原盘 (兜底与待机图标) */}
+          <div className="relative h-10 w-10 shrink-0">
+            <VinylDiscArt
+              isPlaying={isPlaying}
+              coverUrl={currentTrack?.pic}
+              className="h-10 w-10"
+            />
 
-            {/* 播放微角标 */}
+            {/* 播放微角标悬浮交互 */}
             <div
               onClick={(e) => {
                 e.stopPropagation();
                 togglePlay();
               }}
-              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full text-white text-xs z-20"
+              className="no-drag absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full text-white text-xs z-20 cursor-pointer"
             >
               <i className={isPlaying ? "ri-pause-fill" : "ri-play-fill"} />
             </div>
           </div>
 
           {/* 简易歌名与动态音波 */}
-          <div className="flex flex-col max-w-[130px] sm:max-w-[160px]">
+          <div className="flex flex-col max-w-[120px] sm:max-w-[150px] pointer-events-none">
             <span className="text-xs font-bold t-primary truncate">
-              {currentTrack?.name || "画廊微光电台"}
+              {currentTrack?.name || "画廊随想电台"}
             </span>
             <span className="text-[10px] text-neutral-400 truncate flex items-center gap-1">
               {isPlaying && (
@@ -116,29 +250,40 @@ export function GlobalMusicPlayer() {
             </span>
           </div>
 
-          {/* 展开指示微按钮 */}
-          <span className="text-neutral-400 hover:text-theme transition ml-1 text-xs">
-            <i className="ri-fullscreen-line" />
-          </span>
+          {/* 拖拽手柄与展开指示微图标 */}
+          <div className="flex items-center gap-0.5 text-neutral-400 ml-1 text-xs">
+            <i className="ri-drag-move-2-line opacity-50 group-hover:opacity-100" />
+            <i className="ri-fullscreen-line group-hover:text-theme transition" />
+          </div>
         </div>
       ) : (
-        /* 2. 展开式微光交互电台面板 (Expanded Frosted Glass Player) */
+        /* 2. 展开式微光交互电台面板 (支持顶部按住自由拖拽) */
         <div className="w-[320px] sm:w-[360px] rounded-3xl bg-white/95 dark:bg-neutral-900/95 border border-black/10 dark:border-white/10 shadow-2xl backdrop-blur-2xl p-4 flex flex-col gap-3 text-neutral-800 dark:text-neutral-100 transition-all">
-          {/* Header 顶栏 */}
-          <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+          {/* Header 顶栏 (按住此处可任意拖拽面板) */}
+          <div
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onDoubleClick={handleResetPosition}
+            className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5 cursor-grab active:cursor-grabbing select-none"
+            title="按住顶栏可任意拖动电台面板，双击复位"
+          >
             <div className="flex items-center gap-2">
               <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-theme/10 text-theme text-sm">
                 <i className="ri-disc-line" />
               </span>
               <div>
-                <span className="text-xs font-bold t-primary block leading-none">画廊微光电台</span>
+                <span className="text-xs font-bold t-primary block leading-none flex items-center gap-1">
+                  <span>画廊微光电台</span>
+                  <i className="ri-drag-move-2-line text-[10px] text-neutral-400 opacity-60" />
+                </span>
                 <span className="text-[9px] font-mono text-neutral-400">
                   {currentTrack?.sourceName || "GD Studio / OpenList"}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 no-drag">
               <button
                 type="button"
                 onClick={() => setShowLyrics(!showLyrics)}
@@ -181,8 +326,10 @@ export function GlobalMusicPlayer() {
               <span>{loadError}</span>
             </div>
           )}
+
+          {/* 歌词视窗 (若展开) */}
           {showLyrics && (
-            <div className="h-32 overflow-y-auto rounded-xl p-2.5 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 text-center flex flex-col gap-1.5 scrollbar-thin">
+            <div className="no-drag h-32 overflow-y-auto rounded-xl p-2.5 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 text-center flex flex-col gap-1.5 scrollbar-thin">
               {parsedLyrics.length > 0 ? (
                 parsedLyrics.map((line, idx) => {
                   const isCurrent = currentLyricText === line.text;
@@ -209,7 +356,7 @@ export function GlobalMusicPlayer() {
 
           {/* 播放队列抽屉 (若展开) */}
           {showPlaylist && (
-            <div className="max-h-40 overflow-y-auto rounded-xl p-1 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex flex-col gap-1">
+            <div className="no-drag max-h-40 overflow-y-auto rounded-xl p-1 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex flex-col gap-1">
               {playlist.length === 0 ? (
                 <p className="text-center text-xs text-neutral-400 py-4">播放队列为空</p>
               ) : (
@@ -250,18 +397,13 @@ export function GlobalMusicPlayer() {
 
           {/* 唱片封面 + 歌曲标题 + 实时歌词 */}
           <div className="flex items-center gap-3">
-            <div className="relative h-16 w-16 shrink-0 rounded-2xl overflow-hidden bg-neutral-900 shadow-md">
-              {currentTrack?.pic ? (
-                <img
-                  src={currentTrack.pic}
-                  alt=""
-                  className="h-full w-full object-cover rounded-2xl"
-                />
-              ) : (
-                <div className="h-full w-full rounded-2xl bg-gradient-to-tr from-theme to-pink-500 flex items-center justify-center text-white">
-                  <i className="ri-music-2-line text-xl" />
-                </div>
-              )}
+            {/* 精雕微光黑胶唱片高保真封面 (带唱针与金属轴心) */}
+            <div className="relative h-16 w-16 shrink-0 rounded-full shadow-lg bg-neutral-900 flex items-center justify-center">
+              <VinylDiscArt
+                isPlaying={isPlaying}
+                coverUrl={currentTrack?.pic}
+                className="h-16 w-16"
+              />
             </div>
 
             <div className="flex-1 min-w-0">
@@ -280,7 +422,7 @@ export function GlobalMusicPlayer() {
           </div>
 
           {/* 进度条与播放时间 */}
-          <div className="space-y-1">
+          <div className="space-y-1 no-drag">
             <div className="relative w-full h-1.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden cursor-pointer">
               <div
                 style={{ width: `${percent}%` }}
@@ -302,7 +444,7 @@ export function GlobalMusicPlayer() {
           </div>
 
           {/* 核心控制栏 (上一曲 / 播放 / 下一曲 / 循环模式 / 音量) */}
-          <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center justify-between pt-1 no-drag">
             {/* 循环模式 */}
             <button
               type="button"
@@ -379,8 +521,8 @@ export function GlobalMusicPlayer() {
             </div>
           </div>
 
-          {/* 授权与版权声明底栏 (CC BY-NC 4.0 GD音乐台) */}
-          <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-neutral-400 font-mono">
+          {/* 授权与版权声明底栏 */}
+          <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-neutral-400 font-mono no-drag">
             <span>全站跨页沉浸流转</span>
             <a
               href="https://music.gdstudio.xyz"

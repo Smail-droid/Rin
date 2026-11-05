@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet";
 import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { useMusicPlayer, DEFAULT_PRESET_TRACKS } from "../components/music-player/music-player-context";
+import { VinylDiscArt } from "../components/music-player/vinyl-disc-art";
 import {
   gdMusicService,
   GD_MUSIC_SOURCES,
@@ -1106,13 +1107,11 @@ export function AdminMusicPage() {
                         </td>
                         <td className="py-1.5 px-2">
                           <div className="flex items-center gap-2">
-                            {track.pic ? (
-                              <img src={track.pic} alt="" className="h-6 w-6 rounded-md object-cover shrink-0" />
-                            ) : (
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-black/5 dark:bg-white/5 text-neutral-400 text-xs">
-                                <i className="ri-music-line" />
-                              </span>
-                            )}
+                            <VinylDiscArt
+                              isPlaying={isCur && player.isPlaying}
+                              coverUrl={track.pic}
+                              className="h-6 w-6 rounded-md shrink-0"
+                            />
                             <div className="truncate">
                               <span className={`font-bold block truncate ${isCur ? "text-theme" : "t-primary"}`}>
                                 {track.name}
