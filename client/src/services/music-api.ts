@@ -480,6 +480,27 @@ export async function renameR2Track(key: string, newName: string): Promise<boole
   }
 }
 
+/**
+ * 更新 R2 存储桶中音频的封面图片直链
+ */
+export async function updateR2TrackCover(key: string, pic: string): Promise<boolean> {
+  try {
+    const token = getAuthToken() || "";
+    const resp = await fetch("/api/music/update-cover-r2", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ key, pic }),
+    });
+    return resp.ok;
+  } catch {
+    return false;
+  }
+}
+
 export interface R2MusicFileItem {
   key: string;
   fileName: string;

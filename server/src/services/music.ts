@@ -410,5 +410,44 @@ export function MusicService(): Hono {
     }
   });
 
+  // 9. 更新/置换 R2 音频封面元数据
+  app.post("/update-cover-r2", async (c: AppContext) => {
+    const admin = c.get("admin");
+    const env = c.get("env");
+
+    if (!admin) {
+      return c.text("Forbidden", 403);
+    }
+
+    if (!env.R2_BUCKET) {
+      return c.json({ error: "R2 bucket is not configured" }, 400);
+    }
+
+    try {
+      const { key, pic } = await c.req.json();
+      if (!key) {
+        return c.json({ error: "Missing key" }, 400);
+      }
+
+      const obj = await env.R2_BUCKET.get(key);
+      if (!obj) {
+        return c.json({ error: "Object not found" }, 404);
+      }
+
+      const buf = await obj.arrayBuffer();
+      const meta = obj.customMetadata || {};
+      meta.pic = (pic || "").trim();
+
+      await env.R2_BUCKET.put(key, buf, {
+        httpMetadata: obj.httpMetadata,
+        customMetadata: meta,
+      });
+
+      return c.json({ success: true, key, pic: meta.pic });
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
   return app;
 }

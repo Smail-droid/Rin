@@ -17,7 +17,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/writing", icon: "ri-quill-pen-line", label: "撰写" },
   { href: "/admin/tags", icon: "ri-price-tag-3-line", label: "内容" },
   { href: "/admin/files", icon: "ri-folder-image-line", label: "媒体" },
-  { href: "/admin/music", icon: "ri-disc-line", label: "音乐" },
+  { href: "/admin/music", icon: "ri-disc-line", label: "音廊" },
   { href: "/admin/openlist", icon: "ri-hard-drive-2-line", label: "网盘" },
   { href: "/admin/queue-status", icon: "ri-todo-line", label: "调度" },
   { href: "/admin/settings", icon: "ri-equalizer-line", label: "设置" },

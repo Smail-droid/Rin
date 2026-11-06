@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 import { useMusicPlayer } from "./music-player-context";
-import { VinylDiscArt } from "./vinyl-disc-art";
 
 export function GlobalMusicPlayer() {
   const siteConfig = useSiteConfig();
@@ -9,27 +8,37 @@ export function GlobalMusicPlayer() {
     currentTrack,
     playlist,
     isPlaying,
+    currentTime,
+    duration,
     playMode,
     currentLyricText,
     loadError,
     togglePlay,
     next,
     prev,
+    seek,
     setPlayMode,
     play,
     removeTrack,
   } = useMusicPlayer();
 
-  // 迷你播放器状态控制 (浮空歌词、悬浮抽屉列表、贴边微缩折叠)
-  const [showLyrics, setShowLyrics] = useState(false);
-  const [showPlaylistDrawer, setShowPlaylistDrawer] = useState(false);
-  const [isDocked, setIsDocked] = useState<boolean>(() => {
+  // 展开与折叠控制 (默认折叠为可爱 38px 悬浮音符)
+  const [isExpanded, setIsExpanded] = useState<boolean>(() => {
     try {
-      return localStorage.getItem("rin_music_docked") === "true";
+      return localStorage.getItem("rin_music_expanded") === "true";
     } catch {
       return false;
     }
   });
+
+  // 悬浮 LRC 歌词与迷你选歌单展开
+  const [showLyrics, setShowLyrics] = useState(false);
+  const [showPlaylistDrawer, setShowPlaylistDrawer] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  // 播放列表外层点击监听 Ref (Click-outside 防遮挡正文)
+  const playlistDrawerRef = useRef<HTMLDivElement>(null);
+  const playlistToggleBtnRef = useRef<HTMLButtonElement>(null);
 
   // 自由拖拽定位坐标状态 (记忆持久化在本地 localStorage，默认固定左下角，阅读文章绝不上跳)
   const [position, setPosition] = useState<{ x: number; y: number } | null>(() => {
@@ -54,8 +63,8 @@ export function GlobalMusicPlayer() {
     if (typeof window === "undefined") return { x, y };
     const winW = window.innerWidth;
     const winH = window.innerHeight;
-    const widgetW = isDocked ? 44 : 260;
-    const widgetH = 48;
+    const widgetW = isExpanded ? 280 : 42;
+    const widgetH = 46;
 
     const safeX = Math.max(12, Math.min(winW - widgetW - 12, x));
     const safeY = Math.max(60, Math.min(winH - widgetH - 16, y));
@@ -67,7 +76,6 @@ export function GlobalMusicPlayer() {
 
     const handleResize = () => {
       const winH = window.innerHeight;
-      // 默认左下角安全坐标
       const defaultX = 20;
       const defaultY = Math.max(60, winH - 68);
 
@@ -83,7 +91,31 @@ export function GlobalMusicPlayer() {
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [position, isDocked]);
+  }, [position, isExpanded]);
+
+  // Click-outside 监听器：点击歌单外部区域自动收起，避免遮挡博客阅读
+  useEffect(() => {
+    if (!showPlaylistDrawer) return;
+
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (
+        playlistDrawerRef.current &&
+        !playlistDrawerRef.current.contains(target) &&
+        playlistToggleBtnRef.current &&
+        !playlistToggleBtnRef.current.contains(target)
+      ) {
+        setShowPlaylistDrawer(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [showPlaylistDrawer]);
 
   // 开始按住拖拽 (兼容鼠标与触屏设备)
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -135,15 +167,6 @@ export function GlobalMusicPlayer() {
     } catch {}
 
     if (position) {
-      // 贴边检测：如果拖到屏幕左侧或右侧贴边 (< 25px 或 > winW - 60px)，自动微缩折叠为贴边音符
-      if (typeof window !== "undefined") {
-        if (position.x <= 28) {
-          setIsDocked(true);
-          try {
-            localStorage.setItem("rin_music_docked", "true");
-          } catch {}
-        }
-      }
       try {
         localStorage.setItem("rin_music_player_pos", JSON.stringify(position));
       } catch {}
@@ -156,18 +179,17 @@ export function GlobalMusicPlayer() {
     const winH = window.innerHeight;
     const pos = { x: 20, y: Math.max(60, winH - 68) };
     setPosition(pos);
-    setIsDocked(false);
     try {
       localStorage.setItem("rin_music_player_pos", JSON.stringify(pos));
-      localStorage.setItem("rin_music_docked", "false");
     } catch {}
   };
 
-  const toggleDock = () => {
-    const nextState = !isDocked;
-    setIsDocked(nextState);
+  const toggleExpanded = () => {
+    if (hasMovedRef.current) return;
+    const nextVal = !isExpanded;
+    setIsExpanded(nextVal);
     try {
-      localStorage.setItem("rin_music_docked", String(nextState));
+      localStorage.setItem("rin_music_expanded", String(nextVal));
     } catch {}
   };
 
@@ -180,6 +202,8 @@ export function GlobalMusicPlayer() {
     y: typeof window !== "undefined" ? window.innerHeight - 68 : 500,
   };
 
+  const progressPercent = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
+
   return (
     <div
       style={{
@@ -190,81 +214,275 @@ export function GlobalMusicPlayer() {
         isDragging ? "cursor-grabbing opacity-90 transition-none" : "transition-transform duration-75"
       }`}
     >
-      {/* 状态 A: 贴边自动隐藏的极简 🎶 音符小圆点 */}
-      {isDocked ? (
-        <button
-          type="button"
-          onClick={toggleDock}
-          className="group relative flex h-10 w-10 items-center justify-center rounded-full bg-black/40 hover:bg-black/70 text-white shadow-xl backdrop-blur-xl border border-white/20 transition-all hover:scale-110 active:scale-95 cursor-pointer"
-          title="点击展开画廊音乐播放器"
+      {/* 状态 1: 折叠状态 (日系可爱 38px 悬浮音符圆形按钮，粉白柔和渐变，可拖拽贴边) */}
+      {!isExpanded ? (
+        <div
+          className="relative group"
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
         >
-          <span className="text-base select-none">🎶</span>
-          {isPlaying && (
-            <span className="absolute -inset-1 rounded-full border border-theme/60 animate-ping pointer-events-none" />
+          {/* 轻量悬浮 Tooltip (显示当前歌名与歌手) */}
+          {showTooltip && (
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full bg-[#FFFAFC]/90 text-[#503E42] text-[11px] font-bold shadow-md border border-[#FFD0DA]/60 pointer-events-none ani-show backdrop-blur-md truncate max-w-[180px]">
+              {currentTrack ? `${currentTrack.name} · ${currentTrack.artist}` : "画廊随想电台"}
+            </div>
           )}
-        </button>
+
+          <button
+            type="button"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onDoubleClick={handleResetPosition}
+            onClick={toggleExpanded}
+            style={{
+              background: "linear-gradient(135deg, #FFF5F7 0%, #FFE2E8 50%, #FFD0DA 100%)",
+              boxShadow: isPlaying
+                ? "0 0 16px rgba(255, 126, 149, 0.55), 0 4px 12px rgba(255, 126, 149, 0.25)"
+                : "0 4px 12px rgba(255, 126, 149, 0.2)",
+            }}
+            className={`relative flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[#FFD0DA] transition-all hover:scale-110 active:scale-95 cursor-grab active:cursor-grabbing ${
+              isDragging ? "ring-2 ring-[#FF7E95]/60" : ""
+            }`}
+            title="点击展开可爱播放器 (按住可拖拽，双击复位)"
+          >
+            {/* 播放时微弱粉色呼吸光圈 */}
+            {isPlaying && (
+              <span
+                style={{ borderColor: "#FF7E95" }}
+                className="absolute -inset-1 rounded-full border border-dashed opacity-75 animate-spin duration-[10000ms] pointer-events-none"
+              />
+            )}
+
+            {/* 音符图标：播放时顺时针缓慢旋转 (8s)，暂停时静止 */}
+            <span
+              style={{
+                color: "#FF7E95",
+                animation: isPlaying ? "spin 8s linear infinite" : "none",
+              }}
+              className="text-base select-none flex items-center justify-center"
+            >
+              🎶
+            </span>
+          </button>
+        </div>
       ) : (
-        /* 状态 B: 极简通透毛玻璃独立按键迷你播放器 (无大窗占用、浮空歌词、宽指距防误触) */
+        /* 状态 2: 展开状态 (日系奶油粉白微光卡片，去除黑深灰色块，嵌入极细粉色半透明进度条) */
         <div
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onDoubleClick={handleResetPosition}
-          className={`relative flex items-center gap-3.5 px-3.5 py-2 rounded-full bg-black/40 dark:bg-black/60 border border-white/20 shadow-2xl backdrop-blur-2xl transition-all cursor-grab active:cursor-grabbing ${
-            isDragging ? "scale-95 ring-2 ring-theme/50" : "hover:bg-black/50"
+          style={{
+            background: "rgba(255, 250, 252, 0.82)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            border: "1px solid rgba(255, 208, 218, 0.7)",
+            boxShadow: "0 8px 28px rgba(255, 126, 149, 0.16)",
+          }}
+          className={`relative flex flex-col rounded-full pl-2 pr-3.5 pt-1.5 pb-2 min-w-[270px] max-w-[320px] transition-all cursor-grab active:cursor-grabbing ani-show ${
+            isDragging ? "scale-95 ring-2 ring-[#FF7E95]/50" : "hover:shadow-xl"
           }`}
         >
-          {/* 1. 浮空曲目名称 (置于按键上方，不挤占控制栏宽度) */}
-          <div className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-bold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] pointer-events-none select-none max-w-[220px] truncate">
-            {currentTrack?.name || "画廊随想"} · {currentTrack?.artist || "随心漫游"}
+          {/* 上层浮空文字区 (无底色，居中显示当前歌曲名与歌词，温润深棕色 #503E42) */}
+          <div className="flex flex-col items-center justify-center w-full px-2 pointer-events-none select-none text-center">
+            {/* 浮动 LRC 歌词行 (深棕色 #503E42 / 高亮 #FF7E95) */}
+            {showLyrics && currentLyricText && (
+              <div
+                style={{ color: "#FF7E95" }}
+                className="text-[11px] font-bold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-[240px] ani-show"
+              >
+                ♫ {currentLyricText}
+              </div>
+            )}
+
+            {/* 歌曲名与歌手 */}
+            <div
+              style={{ color: "#503E42" }}
+              className="text-xs font-bold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-[230px]"
+            >
+              ♫ {currentTrack?.name || "画廊随想"} · {currentTrack?.artist || "随心漫游"}
+            </div>
           </div>
 
-          {/* 2. 浮空透明 LRC 歌词行 (点击 LRC 后浮动出现于最顶层，完全透明不占空间) */}
-          {showLyrics && (
-            <div className="absolute -top-14 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-black text-theme-light bg-black/60 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/15 shadow-xl pointer-events-none select-none ani-show text-center max-w-[280px] truncate">
-              ♫ {currentLyricText || "纯音乐 · 静候灵感"}
-            </div>
-          )}
+          {/* 下层控制按钮区 (所有按钮去除实体背景色与外框阴影，仅保留纯净矢量图标，默认 #7D5A64，悬停变蜜桃粉 #FF7E95) */}
+          <div className="flex items-center justify-between w-full mt-1 px-1">
+            {/* 左侧可爱折叠小音符徽章 (点击收起) */}
+            <button
+              type="button"
+              onClick={toggleExpanded}
+              style={{
+                background: "linear-gradient(135deg, #FFF5F7, #FFE2E8)",
+              }}
+              className="no-drag flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#FFD0DA] text-[#FF7E95] text-xs hover:scale-110 active:scale-95 transition"
+              title="折叠为悬浮小音符"
+            >
+              <span>🎶</span>
+            </button>
 
-          {/* 3. 错误自愈提示微标 */}
-          {loadError && (
-            <div className="absolute -top-14 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-rose-300 bg-rose-950/80 backdrop-blur-md px-3 py-0.5 rounded-full border border-rose-500/30 pointer-events-none ani-show">
-              {loadError}
-            </div>
-          )}
+            {/* 控制按钮组 (宽指距，无实体底色) */}
+            <div className="no-drag flex items-center gap-3">
+              {/* 上一曲 */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  prev();
+                }}
+                className="p-1 text-[#7D5A64] hover:text-[#FF7E95] hover:scale-110 active:scale-90 transition"
+                title="上一曲"
+              >
+                <i className="ri-skip-back-fill text-sm" />
+              </button>
 
-          {/* 4. 浮空播放列表抽屉 (点击 ≡ 列表 后向上浮现，极简卡片式，点击切歌) */}
+              {/* 播放 / 暂停 */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePlay();
+                }}
+                className="p-1 text-[#7D5A64] hover:text-[#FF7E95] hover:scale-115 active:scale-90 transition"
+                title={isPlaying ? "暂停" : "播放"}
+              >
+                <i className={isPlaying ? "ri-pause-fill text-lg text-[#FF7E95]" : "ri-play-fill text-lg"} />
+              </button>
+
+              {/* 下一曲 */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  next();
+                }}
+                className="p-1 text-[#7D5A64] hover:text-[#FF7E95] hover:scale-110 active:scale-90 transition"
+                title="下一曲"
+              >
+                <i className="ri-skip-forward-fill text-sm" />
+              </button>
+
+              {/* 循环模式 */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const nextMode = playMode === "loop" ? "single" : playMode === "single" ? "random" : "loop";
+                  setPlayMode(nextMode);
+                }}
+                className={`p-1 transition ${
+                  playMode !== "loop" ? "text-[#FF7E95] font-bold" : "text-[#7D5A64] hover:text-[#FF7E95]"
+                }`}
+                title={playMode === "loop" ? "列表循环" : playMode === "single" ? "单曲循环" : "随机播放"}
+              >
+                {playMode === "loop" && <i className="ri-repeat-2-line text-sm" />}
+                {playMode === "single" && <i className="ri-repeat-one-line text-sm" />}
+                {playMode === "random" && <i className="ri-shuffle-line text-sm" />}
+              </button>
+
+              {/* 歌词开关 (LRC) */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowLyrics(!showLyrics);
+                }}
+                className={`px-1 py-0.5 text-[11px] font-mono font-bold transition rounded ${
+                  showLyrics ? "text-[#FF7E95]" : "text-[#7D5A64] hover:text-[#FF7E95]"
+                }`}
+                title="显示/隐藏浮空歌词"
+              >
+                LRC
+              </button>
+
+              {/* 播放列表按钮 */}
+              <button
+                ref={playlistToggleBtnRef}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPlaylistDrawer(!showPlaylistDrawer);
+                }}
+                className={`p-1 transition ${
+                  showPlaylistDrawer ? "text-[#FF7E95]" : "text-[#7D5A64] hover:text-[#FF7E95]"
+                }`}
+                title="展开选歌列表"
+              >
+                <i className="ri-play-list-line text-sm" />
+              </button>
+            </div>
+          </div>
+
+          {/* 紧贴下方嵌入一条 2px 极细粉色半透明播放进度条 */}
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              const clickX = e.clientX - rect.left;
+              const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+              seek(ratio * duration);
+            }}
+            className="no-drag absolute -bottom-[1px] left-6 right-6 h-[2px] rounded-full bg-[#FFD0DA]/40 overflow-hidden cursor-pointer"
+            title="点击快进/倒退"
+          >
+            <div
+              style={{
+                width: `${progressPercent}%`,
+                background: "linear-gradient(90deg, #FFD0DA 0%, #FF7E95 100%)",
+              }}
+              className="h-full rounded-full transition-all duration-150"
+            />
+          </div>
+
+          {/* 歌单展开视窗 (从上方展开，高度不超过 220px，半透明毛玻璃防遮挡，Click-outside 自动收起) */}
           {showPlaylistDrawer && (
-            <div className="no-drag absolute bottom-12 left-0 w-64 max-h-48 overflow-y-auto rounded-2xl bg-black/80 backdrop-blur-2xl border border-white/15 p-2 shadow-2xl flex flex-col gap-1 text-xs text-white z-50 ani-show scrollbar-thin">
-              <div className="flex items-center justify-between pb-1.5 px-1 border-b border-white/10 text-[11px] text-neutral-400">
-                <span>播放列表 ({playlist.length}首)</span>
+            <div
+              ref={playlistDrawerRef}
+              style={{
+                background: "rgba(255, 250, 252, 0.88)",
+                backdropFilter: "blur(16px)",
+                WebkitBackdropFilter: "blur(16px)",
+                borderRadius: "16px",
+                border: "1px solid rgba(255, 208, 218, 0.8)",
+                boxShadow: "0 10px 30px rgba(255, 126, 149, 0.18)",
+              }}
+              className="no-drag absolute bottom-14 left-0 w-72 max-h-[220px] overflow-y-auto p-2.5 z-50 ani-show flex flex-col gap-1 text-xs scrollbar-thin"
+            >
+              <div className="flex items-center justify-between pb-1 px-1 border-b border-[#FFD0DA]/50 text-[11px] text-[#7D5A64] font-bold">
+                <span className="flex items-center gap-1">
+                  <span>播放列表</span>
+                  <span className="text-[10px] text-[#FF7E95] font-mono">({playlist.length})</span>
+                </span>
                 <button
                   type="button"
                   onClick={() => setShowPlaylistDrawer(false)}
-                  className="hover:text-white"
+                  className="text-[#7D5A64] hover:text-[#FF7E95] p-0.5"
+                  title="收起列表"
                 >
                   <i className="ri-close-line" />
                 </button>
               </div>
+
               {playlist.length === 0 ? (
-                <p className="text-center text-neutral-400 py-4 text-[11px]">列表为空</p>
+                <p className="text-center text-[#7D5A64]/70 py-6 text-[11px]">暂无歌曲，请在音廊中收录</p>
               ) : (
                 playlist.map((track, i) => {
                   const isCur = currentTrack?.id === track.id;
                   return (
                     <div
                       key={track.id || i}
-                      onClick={() => play(track)}
+                      onClick={() => {
+                        play(track);
+                      }}
                       className={`flex items-center justify-between p-1.5 rounded-lg cursor-pointer transition select-none ${
                         isCur
-                          ? "bg-theme/30 text-theme-light font-bold"
-                          : "hover:bg-white/10 text-neutral-300"
+                          ? "bg-[#FF7E95]/15 text-[#FF7E95] font-bold shadow-2xs"
+                          : "text-[#503E42] hover:bg-[#FFD0DA]/30"
                       }`}
                     >
                       <div className="flex items-center gap-1.5 truncate">
-                        <span className="font-mono text-[10px] text-neutral-400">#{i + 1}</span>
+                        <span className="font-mono text-[10px] text-[#7D5A64]/60">#{i + 1}</span>
                         <span className="truncate">{track.name}</span>
-                        <span className="text-[10px] text-neutral-400 truncate">- {track.artist}</span>
+                        <span className="text-[10px] text-[#7D5A64]/70 truncate">- {track.artist}</span>
                       </div>
                       <button
                         type="button"
@@ -272,7 +490,8 @@ export function GlobalMusicPlayer() {
                           e.stopPropagation();
                           removeTrack(track.id);
                         }}
-                        className="text-neutral-400 hover:text-red-400 p-0.5"
+                        className="text-[#7D5A64]/40 hover:text-rose-500 p-0.5 transition"
+                        title="从列表中移除"
                       >
                         <i className="ri-close-line text-xs" />
                       </button>
@@ -283,115 +502,12 @@ export function GlobalMusicPlayer() {
             </div>
           )}
 
-          {/* 迷你微光黑胶唱片 (封面自动兜底) */}
-          <div className="relative h-8 w-8 shrink-0">
-            <VinylDiscArt
-              isPlaying={isPlaying}
-              coverUrl={currentTrack?.pic}
-              className="h-8 w-8"
-            />
-          </div>
-
-          {/* 核心全套独立按键组 (宽指距，透明极简高光) */}
-          <div className="no-drag flex items-center gap-3">
-            {/* 上一首 */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                prev();
-              }}
-              className="p-1 text-white/80 hover:text-white hover:scale-110 active:scale-90 transition"
-              title="上一首"
-            >
-              <i className="ri-skip-back-fill text-sm" />
-            </button>
-
-            {/* 播放 / 暂停 */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                togglePlay();
-              }}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 hover:bg-theme text-white hover:scale-110 active:scale-95 transition"
-              title={isPlaying ? "暂停" : "播放"}
-            >
-              <i className={isPlaying ? "ri-pause-fill text-sm" : "ri-play-fill text-sm translate-x-0.5"} />
-            </button>
-
-            {/* 下一首 */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                next();
-              }}
-              className="p-1 text-white/80 hover:text-white hover:scale-110 active:scale-90 transition"
-              title="下一首"
-            >
-              <i className="ri-skip-forward-fill text-sm" />
-            </button>
-
-            {/* 播放模式 (循环/单曲/随机) */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                const nextMode = playMode === "loop" ? "single" : playMode === "single" ? "random" : "loop";
-                setPlayMode(nextMode);
-              }}
-              className="p-1 text-white/80 hover:text-white transition"
-              title={playMode === "loop" ? "列表循环" : playMode === "single" ? "单曲循环" : "随机播放"}
-            >
-              {playMode === "loop" && <i className="ri-repeat-2-line text-xs" />}
-              {playMode === "single" && <i className="ri-repeat-one-line text-xs text-theme font-bold" />}
-              {playMode === "random" && <i className="ri-shuffle-line text-xs text-amber-400" />}
-            </button>
-
-            {/* LRC 歌词悬浮开关 */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowLyrics(!showLyrics);
-              }}
-              className={`px-1 py-0.5 text-xs font-mono font-bold rounded transition ${
-                showLyrics ? "text-theme bg-white/20 shadow-xs" : "text-white/70 hover:text-white"
-              }`}
-              title="开启/关闭浮空歌词"
-            >
-              LRC
-            </button>
-
-            {/* ≡ 播放列表抽屉开关 */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowPlaylistDrawer(!showPlaylistDrawer);
-              }}
-              className={`p-1 text-sm rounded transition ${
-                showPlaylistDrawer ? "text-theme" : "text-white/80 hover:text-white"
-              }`}
-              title="展开播放列表"
-            >
-              <i className="ri-play-list-line" />
-            </button>
-
-            {/* 贴边折叠收拢按钮 */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleDock();
-              }}
-              className="p-1 text-white/50 hover:text-white hover:scale-105 transition"
-              title="折叠为贴边音符"
-            >
-              <i className="ri-contract-left-line text-xs" />
-            </button>
-          </div>
+          {/* 错误自愈提示微标 */}
+          {loadError && (
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-rose-500 bg-[#FFF5F7] px-2.5 py-0.5 rounded-full border border-rose-200 pointer-events-none ani-show shadow-xs">
+              {loadError}
+            </div>
+          )}
         </div>
       )}
     </div>

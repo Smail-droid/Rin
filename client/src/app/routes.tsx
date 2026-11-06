@@ -97,7 +97,7 @@ export function AppRoutes() {
         <AdminOpenListPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/music" requirePermission title="音乐" description="全站沉浸式微光音乐电台 · 对接 GD Studio 聚合音乐 API 与 OpenList 5T 音频目录直链">
+      <AdminRoute path="/admin/music" requirePermission title="音廊" description="全站沉浸式微光音乐电台与 R2 云端资产中枢 · 对接全网聚合曲库与 OpenList 5T 音频">
         <AdminMusicPage />
       </AdminRoute>
 
