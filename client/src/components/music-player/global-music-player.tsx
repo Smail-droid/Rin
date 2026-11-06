@@ -206,35 +206,29 @@ export function GlobalMusicPlayer() {
         isDragging ? "cursor-grabbing opacity-90 transition-none" : "transition-transform duration-75"
       }`}
     >
-      {/* 1. 迷你唱片悬浮球状态 (支持自由拖拽移动、双击复位) */}
+      {/* 1. 迷你悬浮播放器 (侧栏静候不乱弹开，内置上一首/播放暂停/下一首/随机模式) */}
       {!isExpanded ? (
         <div
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onDoubleClick={handleResetPosition}
-          onClick={() => {
-            if (!hasMovedRef.current) {
-              setIsExpanded(true);
-            }
-          }}
-          className={`group relative flex items-center gap-2.5 p-1.5 pr-3.5 rounded-full bg-white/90 dark:bg-neutral-900/90 border border-black/10 dark:border-white/10 shadow-xl backdrop-blur-xl transition-all cursor-grab active:cursor-grabbing ${
-            isDragging ? "scale-95 ring-2 ring-theme/50 shadow-2xl" : "hover:scale-105"
+          className={`group relative flex items-center gap-2 p-1.5 pr-2.5 rounded-full bg-white/95 dark:bg-neutral-900/95 border border-black/10 dark:border-white/10 shadow-xl backdrop-blur-xl transition-all cursor-grab active:cursor-grabbing ${
+            isDragging ? "scale-95 ring-2 ring-theme/50 shadow-2xl" : "hover:shadow-2xl"
           }`}
           title={
             currentTrack
-              ? `正在播放: ${currentTrack.name} - ${currentTrack.artist} (按住可任意拖拽，双击复位)`
-              : "打开画廊随想音乐电台 (按住可任意拖拽，双击复位)"
+              ? `正在播放: ${currentTrack.name} - ${currentTrack.artist} (按住可拖动，双击复位)`
+              : "画廊音乐电台 (按住可拖动，双击复位)"
           }
         >
           {/* 精雕微光黑胶唱片质感原盘 (兜底与待机图标) */}
-          <div className="relative h-10 w-10 shrink-0">
+          <div className="relative h-9 w-9 shrink-0">
             <VinylDiscArt
               isPlaying={isPlaying}
               coverUrl={currentTrack?.pic}
-              className="h-10 w-10"
+              className="h-9 w-9"
             />
-
             {/* 播放微角标悬浮交互 */}
             <div
               onClick={(e) => {
@@ -242,38 +236,92 @@ export function GlobalMusicPlayer() {
                 togglePlay();
               }}
               className="no-drag absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full text-white text-xs z-20 cursor-pointer"
+              title={isPlaying ? "暂停" : "播放"}
             >
               <i className={isPlaying ? "ri-pause-fill" : "ri-play-fill"} />
             </div>
           </div>
 
           {/* 简易歌名与动态音波 */}
-          <div className="flex flex-col max-w-[110px] sm:max-w-[140px] pointer-events-none">
+          <div className="flex flex-col max-w-[85px] sm:max-w-[120px] pointer-events-none truncate">
             <span className="text-xs font-bold t-primary truncate">
-              {currentTrack?.name || "画廊随想电台"}
+              {currentTrack?.name || "画廊电台"}
             </span>
             <span className="text-[10px] text-neutral-400 truncate flex items-center gap-1">
               {isPlaying && (
-                <span className="inline-flex gap-0.5 items-end h-2.5">
-                  <span className="w-0.5 h-2 bg-theme animate-pulse" />
-                  <span className="w-0.5 h-3 bg-theme animate-pulse delay-75" />
-                  <span className="w-0.5 h-1.5 bg-theme animate-pulse delay-150" />
+                <span className="inline-flex gap-0.5 items-end h-2">
+                  <span className="w-0.5 h-1.5 bg-theme animate-pulse" />
+                  <span className="w-0.5 h-2 bg-theme animate-pulse delay-75" />
+                  <span className="w-0.5 h-1 bg-theme animate-pulse delay-150" />
                 </span>
               )}
               <span className="truncate">{currentTrack?.artist || "随心漫游"}</span>
             </span>
           </div>
 
-          {/* 队列歌曲数量小标 */}
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-theme/10 text-theme font-bold shrink-0 ml-0.5 pointer-events-none">
-            {playlist.length}首
-          </span>
-
-          {/* 拖拽手柄与展开指示微图标 */}
-          <div className="flex items-center gap-0.5 text-neutral-400 ml-1 text-xs">
-            <i className="ri-drag-move-2-line opacity-50 group-hover:opacity-100" />
-            <i className="ri-fullscreen-line group-hover:text-theme transition" />
+          {/* 迷你内嵌按键区 (上一首、播放/暂停、下一首、模式切换) */}
+          <div className="no-drag flex items-center gap-0.5 pl-1 border-l border-black/5 dark:border-white/5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                prev();
+              }}
+              className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/5 transition"
+              title="上一首"
+            >
+              <i className="ri-skip-back-fill text-xs" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePlay();
+              }}
+              className="p-1 rounded-md text-theme hover:bg-theme/10 transition"
+              title={isPlaying ? "暂停" : "播放"}
+            >
+              <i className={isPlaying ? "ri-pause-fill text-xs" : "ri-play-fill text-xs"} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                next();
+              }}
+              className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/5 transition"
+              title="下一首"
+            >
+              <i className="ri-skip-forward-fill text-xs" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                const nextMode = playMode === "loop" ? "single" : playMode === "single" ? "random" : "loop";
+                setPlayMode(nextMode);
+              }}
+              className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/5 transition"
+              title={playMode === "loop" ? "列表循环" : playMode === "single" ? "单曲循环" : "随机播放"}
+            >
+              {playMode === "loop" && <i className="ri-repeat-2-line text-xs" />}
+              {playMode === "single" && <i className="ri-repeat-one-line text-xs text-theme" />}
+              {playMode === "random" && <i className="ri-shuffle-line text-xs text-amber-500" />}
+            </button>
           </div>
+
+          {/* 专属展开指示按钮 (只有点击此处才会展开面板，平时在侧栏绝不乱弹开) */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(true);
+            }}
+            className="no-drag p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/5 transition ml-0.5"
+            title="展开完整电台面板"
+          >
+            <i className="ri-fullscreen-line text-xs" />
+          </button>
         </div>
       ) : (
         /* 2. 展开式微光交互电台面板 (支持顶部按住自由拖拽，移动端自适应高度防溢出) */

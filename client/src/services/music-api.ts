@@ -462,4 +462,34 @@ export async function fetchR2MusicFiles(): Promise<R2MusicFileItem[]> {
   }
 }
 
+export interface R2StorageStats {
+  configured: boolean;
+  imageCount: number;
+  imageBytes: number;
+  musicCount: number;
+  musicBytes: number;
+  totalBytes: number;
+  freeBytesLimit: number;
+  remainingBytes: number;
+}
+
+/**
+ * 获取 Cloudflare R2 容量与资产统计 (图片 vs 音乐，已用与剩余)
+ */
+export async function fetchR2StorageStats(): Promise<R2StorageStats | null> {
+  try {
+    const token = getAuthToken() || "";
+    const resp = await fetch("/api/storage/stats", {
+      credentials: "include",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch {
+    return null;
+  }
+}
+
 export const gdMusicService = new GdMusicService();

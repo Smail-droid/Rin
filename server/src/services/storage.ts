@@ -120,6 +120,44 @@ export function StorageService(): Hono {
         }
     });
 
+    // GET /storage/stats - R2 Capacity & Asset breakdown statistics
+    app.get('/stats', async (c: AppContext) => {
+        const env = c.get('env');
+        if (!env.R2_BUCKET) {
+            return c.json({ configured: false });
+        }
+
+        try {
+            const [imgListing, musicListing] = await Promise.all([
+                env.R2_BUCKET.list({ prefix: env.S3_FOLDER || 'images/', limit: 1000 }),
+                env.R2_BUCKET.list({ prefix: 'music/', limit: 1000 }),
+            ]);
+
+            let imageBytes = 0;
+            imgListing.objects.forEach((o) => (imageBytes += o.size));
+
+            let musicBytes = 0;
+            musicListing.objects.forEach((o) => (musicBytes += o.size));
+
+            const totalBytes = imageBytes + musicBytes;
+            const freeBytesLimit = 10 * 1024 * 1024 * 1024; // 10 GB Cloudflare R2 Free Tier
+            const remainingBytes = Math.max(0, freeBytesLimit - totalBytes);
+
+            return c.json({
+                configured: true,
+                imageCount: imgListing.objects.length,
+                imageBytes,
+                musicCount: musicListing.objects.length,
+                musicBytes,
+                totalBytes,
+                freeBytesLimit,
+                remainingBytes,
+            });
+        } catch (e: any) {
+            return c.json({ configured: true, error: e.message });
+        }
+    });
+
     // DELETE /storage/file/:key - Delete a single file (Admin only)
     app.delete('/file/:key', async (c: AppContext) => {
         const admin = c.get('admin');

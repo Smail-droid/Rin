@@ -261,14 +261,58 @@ function cleanCodeBlockContent(code: string): string {
   return result;
 }
 
-// 预处理清洗全篇 Markdown 文本（修复历史文章表格换行粘连、LaTeX 公式转纯文本符号等顽疾）
+// 修复 Markdown 表格前后空行规范（确保与普通段落无缝分离，同时严禁破坏表格内部行间距，保护代码块中的管道符）
+function fixTableBlockSpacing(text: string): string {
+  const lines = text.split("\n");
+  const result: string[] = [];
+  let inCodeBlock = false;
+
+  const isTableLine = (l: string, insideCode: boolean) => {
+    if (insideCode) return false;
+    const trimmed = l.trim();
+    if (!trimmed) return false;
+    return trimmed.includes("|") && (trimmed.startsWith("|") || trimmed.endsWith("|") || /^[^\n|]+\|[^\n|]+/.test(trimmed));
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const cur = lines[i];
+    if (cur.trim().startsWith("```")) {
+      inCodeBlock = !inCodeBlock;
+      result.push(cur);
+      continue;
+    }
+
+    if (inCodeBlock) {
+      result.push(cur);
+      continue;
+    }
+
+    const prev = lines[i - 1];
+    const next = lines[i + 1];
+
+    // 如果当前行是表格首行，且上一行非空且不是表格行，在表格前补空行以触发 GFM 块级解析
+    if (isTableLine(cur, inCodeBlock) && prev !== undefined && prev.trim() !== "" && !isTableLine(prev, false)) {
+      result.push("");
+    }
+
+    result.push(cur);
+
+    // 如果当前行是表格末行，且下一行非空且不是表格行，在表格后补空行
+    if (isTableLine(cur, inCodeBlock) && next !== undefined && next.trim() !== "" && !isTableLine(next, false)) {
+      result.push("");
+    }
+  }
+
+  return result.join("\n");
+}
+
+// 预处理清洗全篇 Markdown 文本（修复表格块间距、LaTeX 公式转纯文本符号等顽疾）
 function preprocessMarkdownContent(raw: string): string {
   if (!raw) return "";
   let text = raw;
 
-  // 1. 修复 Markdown 表格前后的空行缺失导致表格无法被解析或与上一段粘连
-  text = text.replace(/([^\n])\n(\|[^\n]+\|)\n/g, "$1\n\n$2\n");
-  text = text.replace(/\n(\|[^\n]+\|)\n([^\n|])/g, "\n$1\n\n$2");
+  // 1. 规范化表格块与前后段落的空行，杜绝把表格中间行误切断
+  text = fixTableBlockSpacing(text);
 
   // 2. 清洗历史旧文章中残留的 LaTeX 数学公式语法，自动还原为纯净易懂的文本：
   // 例: $\le 65536$ -> ≤ 65536, $\ge 131072$ -> ≥ 131072

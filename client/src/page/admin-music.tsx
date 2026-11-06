@@ -11,8 +11,10 @@ import {
   persistTrackToR2,
   deleteR2Track,
   fetchR2MusicFiles,
+  fetchR2StorageStats,
   type GdSearchResultItem,
   type R2MusicFileItem,
+  type R2StorageStats,
 } from "../services/music-api";
 import type { MusicTrack } from "../components/music-player/types";
 
@@ -125,6 +127,7 @@ export function AdminMusicPage() {
   // 右侧视图模式：播放队列 或 R2 云端存储桶曲库 (Navidrome 风格)
   const [rightViewMode, setRightViewMode] = useState<"queue" | "r2">("queue");
   const [r2Files, setR2Files] = useState<R2MusicFileItem[]>([]);
+  const [r2Stats, setR2Stats] = useState<R2StorageStats | null>(null);
   const [loadingR2, setLoadingR2] = useState<boolean>(false);
 
   // 播放队列行拖拽排序状态
@@ -498,17 +501,40 @@ export function AdminMusicPage() {
     setDragOverTrackId(null);
   };
 
-  // 加载 R2 云端存储桶音乐文件列表
+  // 加载 R2 云端存储桶音乐文件列表与容量统计
   const loadR2Files = async () => {
     setLoadingR2(true);
     try {
-      const files = await fetchR2MusicFiles();
+      const [files, stats] = await Promise.all([
+        fetchR2MusicFiles(),
+        fetchR2StorageStats(),
+      ]);
       setR2Files(files);
+      setR2Stats(stats);
     } catch {
       setR2Files([]);
     } finally {
       setLoadingR2(false);
     }
+  };
+
+  // 单曲快速移到首位 (第 1 位置顶)
+  const handleMoveToTop = (trackId: string | number) => {
+    const list = [...player.playlist];
+    const idx = list.findIndex((t) => t.id === trackId);
+    if (idx > 0) {
+      const [moved] = list.splice(idx, 1);
+      list.unshift(moved);
+      player.setPlaylist(list);
+    }
+  };
+
+  // 批量已选曲目一键置顶至第 1 位
+  const handleBatchMoveToTop = () => {
+    if (!selectedTrackIds.size) return;
+    const selected = player.playlist.filter((t) => selectedTrackIds.has(t.id));
+    const unselected = player.playlist.filter((t) => !selectedTrackIds.has(t.id));
+    player.setPlaylist([...selected, ...unselected]);
   };
 
   // 从 R2 物理删除文件
@@ -1273,6 +1299,15 @@ export function AdminMusicPage() {
 
               <button
                 type="button"
+                onClick={handleBatchMoveToTop}
+                disabled={!selectedTrackIds.size}
+                className="px-2 py-1 rounded-md border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition disabled:opacity-30"
+                title="将已选曲目一键置顶到第 1 位"
+              >
+                置顶
+              </button>
+              <button
+                type="button"
                 onClick={() => handleBatchMove("up")}
                 disabled={!selectedTrackIds.size}
                 className="p-1.5 rounded-md border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-30 transition"
@@ -1472,9 +1507,17 @@ export function AdminMusicPage() {
                                 </button>
                               )}
                             </td>
-                            {/* 操作 (配套播放/暂停切换，删除时同步清理 R2 存储) */}
+                            {/* 操作 (配套播放/暂停切换、置顶到首位、删除时同步清理 R2 存储) */}
                             <td className="py-1.5 px-2 text-right pr-3">
                               <div className="inline-flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveToTop(track.id)}
+                                  className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/5 transition"
+                                  title="一键移到首位 (置顶)"
+                                >
+                                  <i className="ri-vertical-align-top text-xs" />
+                                </button>
                                 {isCur && player.isPlaying ? (
                                   <button
                                     type="button"
@@ -1555,6 +1598,22 @@ export function AdminMusicPage() {
           ) : (
             /* Navidrome 风格 R2 云端存储桶曲库视图 */
             <div className="space-y-3 ani-show">
+              {/* R2 容量与资产分类统计面板 (图片 vs 音乐，已用与剩余) */}
+              {r2Stats && r2Stats.configured && (
+                <div className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 text-[11px] font-mono flex flex-wrap items-center justify-between gap-2 select-none">
+                  <div className="flex items-center gap-2">
+                    <span className="text-neutral-500">图片: <strong>{r2Stats.imageCount}</strong> 张 ({(r2Stats.imageBytes / (1024 * 1024)).toFixed(1)} MB)</span>
+                    <span className="opacity-30">|</span>
+                    <span className="text-theme font-bold">音乐: <strong>{r2Stats.musicCount}</strong> 首 ({(r2Stats.musicBytes / (1024 * 1024)).toFixed(1)} MB)</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-neutral-500">
+                    <span>总使用: {((r2Stats.totalBytes) / (1024 * 1024)).toFixed(1)} MB</span>
+                    <span className="opacity-30">|</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">剩余额度: {(r2Stats.remainingBytes / (1024 * 1024 * 1024)).toFixed(2)} GB / 10 GB</span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
                 <div className="flex items-center gap-2">
                   <i className="ri-database-2-line text-theme" />
