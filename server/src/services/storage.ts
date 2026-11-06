@@ -136,8 +136,9 @@ export function StorageService(): Hono {
             let imageBytes = 0;
             imgListing.objects.forEach((o) => (imageBytes += o.size));
 
+            const musicObjects = musicListing.objects.filter((o) => !o.key.endsWith("metadata.json"));
             let musicBytes = 0;
-            musicListing.objects.forEach((o) => (musicBytes += o.size));
+            musicObjects.forEach((o) => (musicBytes += o.size));
 
             const totalBytes = imageBytes + musicBytes;
             const freeBytesLimit = 10 * 1024 * 1024 * 1024; // 10 GB Cloudflare R2 Free Tier
@@ -147,7 +148,7 @@ export function StorageService(): Hono {
                 configured: true,
                 imageCount: imgListing.objects.length,
                 imageBytes,
-                musicCount: musicListing.objects.length,
+                musicCount: musicObjects.length,
                 musicBytes,
                 totalBytes,
                 freeBytesLimit,

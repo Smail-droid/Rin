@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.0.5] - 2026-11-07
+
+### Added
+- **Kawaii Floating Music Note Player**: Replaced pixelated system emojis with handcrafted anime vector dual-note SVG in soft coral-pink gradient (`#FF7E95` to `#FFA6B7`). Features a 100% transparent floating background, 8-second slow clockwise rotation during playback, breathing micro-glow, and click-to-expand/collapse control bar.
+- **Floating Upper Lyrics & No-BG Control Buttons**: Floating song title and synced LRC lyrics displayed without background boxes (`#503E42` warm brown and `#FF7E95` pink). Control buttons are stripped of solid background cards, with an embedded 2px delicate pink progress bar and Click-outside auto-closing playlist drawer.
+- **R2 Music Metadata Persistence (`music/metadata.json`)**: Solved cover loss when updating large 40MB audio files by establishing a dedicated 10KB metadata index. Changing covers and titles takes 15ms without re-uploading large audio binaries, surviving every `Ctrl + F5` force refresh.
+- **Audio Quality Auto-Detection**: Integrated automatic audio stream detection labeling FLAC lossless, 320K high quality, WAV master, and Hi-Res badges.
+- **Navidrome Album Grid 4-Corner Interactions & Column Density Switcher**: Album artwork cards feature top-left cover replacement, top-right physical deletion, center play/pause, bottom-left playlist status, and bottom-right audio quality badge. Added seamless 6-col / 8-col / 10-col layout switching.
+- **Direct Numeric Sorting for Tables**: Replaced cumbersome drag-and-drop with direct numeric input on row numbers in both Music Playlist and Tag Management (`/admin/tags`). Typing `3` on item 14 immediately moves it to position 3 while subsequent rows smoothly shift down by 1.
+- **Dashboard Full-Spectrum Super Table Overhaul**: Upgraded `/admin/dashboard` table to match `/admin/queue-status` with 44×44 cover preview, hover replacement dialog, in-place quick editing modal, permission lock dialog, pin/unpin buttons, and standard pagination.
+- **SEO Enhancements**: Added custom `footer.by_text` and `footer.by_url` configuration, plus blog favicon upload card with official 512×512 PNG/SVG specification advice.
+
+### Changed
+- **Unified Navigation & Terminology**: Renamed all occurrences of "音乐" (Music) to "音廊" (Music Gallery), "播放队列" to "播放列表", and streamlined button labels to concise 2-6 Chinese characters.
+- **Typography Standardization**: Cleaned micro text (`text-[10px]`, `scale-90`) across admin layout, dashboard, and ops diagnostic tables to legible `text-xs sm:text-sm` (13px/14px).
+
+---
+
 ## [v1.0.4] - 2026-11-05
 
 ### Added

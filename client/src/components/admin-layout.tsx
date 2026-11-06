@@ -147,10 +147,10 @@ export function AdminLayout({
                   }`}
                   title={item.label}
                 >
-                  <i className={`${item.icon} text-base shrink-0 transition-transform group-hover:scale-110 ${
+                  <i className={`${item.icon} text-lg shrink-0 transition-transform group-hover:scale-110 ${
                     isActive ? "dark:text-[#ff4d6d]" : ""
                   }`} />
-                  <span className="text-[10px] mt-0.5 tracking-tight font-medium scale-90">
+                  <span className="text-xs mt-0.5 tracking-tight font-semibold">
                     {item.label}
                   </span>
 

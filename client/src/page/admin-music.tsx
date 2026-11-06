@@ -212,6 +212,13 @@ export function AdminMusicPage() {
 
   // 音廊专属状态
   const [displayLayout, setDisplayLayout] = useState<"grid" | "list">("grid");
+  const [gridColumns, setGridColumns] = useState<6 | 8 | 10>(() => {
+    try {
+      return (Number(localStorage.getItem("rin_music_grid_cols")) || 6) as 6 | 8 | 10;
+    } catch {
+      return 6;
+    }
+  });
   const [r2Files, setR2Files] = useState<R2MusicFileItem[]>([]);
   const [r2Stats, setR2Stats] = useState<R2StorageStats | null>(null);
   const [loadingR2, setLoadingR2] = useState<boolean>(false);
@@ -1119,6 +1126,30 @@ export function AdminMusicPage() {
                   <i className="ri-list-check text-sm" />
                 </button>
               </div>
+
+              {/* 多列排布密度切换器 (6列 / 8列 / 10列，按需一键自由切换) */}
+              {displayLayout === "grid" && (
+                <div className="flex items-center gap-0.5 rounded-xl bg-black/5 dark:bg-white/5 p-0.5 text-xs">
+                  {[6, 8, 10].map((col) => (
+                    <button
+                      key={col}
+                      type="button"
+                      onClick={() => {
+                        setGridColumns(col as 6 | 8 | 10);
+                        try {
+                          localStorage.setItem("rin_music_grid_cols", String(col));
+                        } catch {}
+                      }}
+                      className={`px-2 py-0.5 rounded-lg font-mono font-bold transition text-[11px] ${
+                        gridColumns === col ? "bg-w text-theme shadow-2xs" : "text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                      }`}
+                      title={`${col} 列密集排布`}
+                    >
+                      {col}列
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 flex-wrap justify-between md:justify-end">
@@ -1158,15 +1189,23 @@ export function AdminMusicPage() {
             </div>
           </div>
 
-          {/* Navidrome 画册图格视图 (图 2 样式，首格带虚线上传) */}
+          {/* Navidrome 画册图格视图 (支持 6列 / 8列 / 10列 动态自由切换，四角+中心交互) */}
           {displayLayout === "grid" ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5">
+            <div
+              className={
+                gridColumns === 10
+                  ? "grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3"
+                  : gridColumns === 8
+                  ? "grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3.5"
+                  : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5"
+              }
+            >
               {/* 首格：等高虚线上传卡片 (参考图 4 `/admin/files`) */}
               <div
                 onClick={() => audioFileInputRef.current?.click()}
-                className="aspect-square rounded-2xl border-2 border-dashed border-black/15 dark:border-white/15 hover:border-theme/60 bg-black/[0.015] hover:bg-theme/5 transition flex flex-col items-center justify-center gap-2 cursor-pointer p-4 text-center group select-none"
+                className="aspect-square rounded-2xl border-2 border-dashed border-black/15 dark:border-white/15 hover:border-theme/60 bg-black/[0.015] hover:bg-theme/5 transition flex flex-col items-center justify-center gap-2 cursor-pointer p-3 text-center group select-none"
               >
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-theme/10 text-theme text-xl group-hover:scale-110 transition-transform">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-theme/10 text-theme text-lg group-hover:scale-110 transition-transform">
                   <i className="ri-upload-cloud-line" />
                 </span>
                 <div>
@@ -1198,61 +1237,91 @@ export function AdminMusicPage() {
                         <VinylDiscArt isPlaying={isPlayingThis} className="h-full w-full" />
                       )}
 
-                      {/* 悬浮半透明控制层 */}
-                      <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        {/* 试听/暂停 */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (isPlayingThis) player.pause();
-                            else {
+                      {/* 悬浮半透明控制层 (四角+中心布局：左上换封面 / 右上删除 / 居中播放 / 左下入库 / 右下音质) */}
+                      <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity p-2 flex flex-col justify-between">
+                        {/* 顶部行：左上角更换封面，右上角删除 */}
+                        <div className="flex items-center justify-between w-full">
+                          {/* 左上角：更换封面 */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCoverTargetFile(file);
+                              setCoverInputUrl(file.pic || "");
+                            }}
+                            className="h-7 w-7 rounded-full bg-black/40 hover:bg-theme text-white backdrop-blur-md flex items-center justify-center hover:scale-110 active:scale-95 transition shadow-sm"
+                            title="更换封面 (左上角)"
+                          >
+                            <i className="ri-image-edit-line text-xs" />
+                          </button>
+
+                          {/* 右上角：删除 */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteR2PhysicalFile(file);
+                            }}
+                            className="h-7 w-7 rounded-full bg-black/40 hover:bg-rose-500 text-rose-300 hover:text-white backdrop-blur-md flex items-center justify-center hover:scale-110 active:scale-95 transition shadow-sm"
+                            title="从音廊永久删除 (右上角)"
+                          >
+                            <i className="ri-delete-bin-line text-xs" />
+                          </button>
+                        </div>
+
+                        {/* 居中核心：播放 / 暂停大按键 */}
+                        <div className="flex items-center justify-center w-full">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isPlayingThis) player.pause();
+                              else {
+                                handleImportR2ToQueue(file);
+                                setTimeout(() => {
+                                  const found = player.playlist.find((t) => t.url === file.url);
+                                  if (found) player.play(found);
+                                }, 60);
+                              }
+                            }}
+                            className="h-10 w-10 rounded-full bg-theme text-white flex items-center justify-center hover:scale-115 active:scale-95 transition shadow-xl"
+                            title={isPlayingThis ? "暂停" : "播放 (居中)"}
+                          >
+                            <i className={isPlayingThis ? "ri-pause-fill text-lg" : "ri-play-fill text-lg translate-x-0.5"} />
+                          </button>
+                        </div>
+
+                        {/* 底部行：左下角入库状态，右下角音质标注 */}
+                        <div className="flex items-center justify-between w-full">
+                          {/* 左下角：加入播放列表 / 已入库 */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               handleImportR2ToQueue(file);
-                              setTimeout(() => {
-                                const found = player.playlist.find((t) => t.url === file.url);
-                                if (found) player.play(found);
-                              }, 60);
-                            }
-                          }}
-                          className="h-9 w-9 rounded-full bg-theme text-white flex items-center justify-center hover:scale-115 active:scale-95 transition shadow-lg"
-                          title={isPlayingThis ? "暂停" : "试听"}
-                        >
-                          <i className={isPlayingThis ? "ri-pause-fill text-base" : "ri-play-fill text-base translate-x-0.5"} />
-                        </button>
+                            }}
+                            className={`h-7 w-7 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition shadow-sm ${
+                              isQueued ? "bg-emerald-500 text-white font-bold" : "bg-black/40 text-white hover:bg-white/30 backdrop-blur-md"
+                            }`}
+                            title={isQueued ? "已在播放列表中" : "加入播放列表 (左下角)"}
+                          >
+                            <i className={isQueued ? "ri-check-line text-xs font-bold" : "ri-add-line text-xs"} />
+                          </button>
 
-                        {/* 加入播放列表 */}
-                        <button
-                          type="button"
-                          onClick={() => handleImportR2ToQueue(file)}
-                          className={`h-8 w-8 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition shadow-md ${
-                            isQueued ? "bg-emerald-500 text-white" : "bg-white/20 text-white backdrop-blur-md"
-                          }`}
-                          title={isQueued ? "已在播放列表中" : "加入播放列表"}
-                        >
-                          <i className={isQueued ? "ri-check-line font-bold" : "ri-add-line"} />
-                        </button>
-
-                        {/* 更换封面 */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCoverTargetFile(file);
-                            setCoverInputUrl(file.pic || "");
-                          }}
-                          className="h-8 w-8 rounded-full bg-white/20 text-white backdrop-blur-md hover:bg-theme hover:text-white flex items-center justify-center hover:scale-110 active:scale-95 transition shadow-md"
-                          title="更换/补全专辑封面"
-                        >
-                          <i className="ri-image-edit-line text-sm" />
-                        </button>
-
-                        {/* 删除 */}
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteR2PhysicalFile(file)}
-                          className="h-8 w-8 rounded-full bg-black/40 text-rose-300 hover:text-white hover:bg-rose-500 backdrop-blur-md flex items-center justify-center hover:scale-110 active:scale-95 transition shadow-md"
-                          title="从音廊永久删除"
-                        >
-                          <i className="ri-delete-bin-line text-sm" />
-                        </button>
+                          {/* 右下角：音质规格标注 (如 FLAC / 320K / WAV / MP3) */}
+                          <span
+                            className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-black uppercase backdrop-blur-md tracking-wider shadow-sm select-none ${
+                              file.quality === "FLAC" || file.quality === "WAV" || file.quality === "Hi-Res"
+                                ? "bg-amber-500 text-white"
+                                : file.quality === "320K"
+                                ? "bg-purple-600 text-white"
+                                : "bg-black/50 text-white/90"
+                            }`}
+                            title={`规格: ${file.quality || "MP3"}`}
+                          >
+                            {file.quality || (file.size > 26 * 1024 * 1024 ? "FLAC" : file.size > 8 * 1024 * 1024 ? "320K" : "MP3")}
+                          </span>
+                        </div>
                       </div>
                     </div>
 

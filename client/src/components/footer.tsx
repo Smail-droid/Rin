@@ -18,6 +18,9 @@ function Footer() {
     const loginEnabled = config.getBoolean('login.enabled');
     const [doubleClickTimes, setDoubleClickTimes] = useState(0);
 
+    const byText = config.get<string>("footer.by_text") || "80hou";
+    const byUrl = config.get<string>("footer.by_url") || "https://www.nodeseek.com/space/39375#/general";
+
     useEffect(() => {
         const container = footerHtmlRef.current;
         if (!container) return;
@@ -72,7 +75,7 @@ function Footer() {
                             setDoubleClickTimes(doubleClickTimes + 1);
                         }
                     }}>
-                        © {new Date().getFullYear()} Powered by <a className='hover:underline' href="https://www.nodeseek.com/space/39375#/general" target="_blank">80hou</a>
+                        © {new Date().getFullYear()} Powered by <a className='hover:underline text-theme font-medium' href={byUrl} target="_blank" rel="noreferrer">{byText}</a>
                     </span>
                     {config.getBoolean('rss') && <>
                         <Spliter />

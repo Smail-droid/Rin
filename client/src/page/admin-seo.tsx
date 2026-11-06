@@ -1,6 +1,9 @@
+import { useContext, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAlert } from "../components/dialog";
 import { useSiteConfig } from "../hooks/useSiteConfig";
+import { ClientConfigContext } from "../state/config";
+import { client } from "../app/runtime";
 
 interface SEOCheckItem {
   id: string;
@@ -16,7 +19,68 @@ interface SEOCheckItem {
 
 export function AdminSEOPage() {
   const siteConfig = useSiteConfig();
+  const clientConfig = useContext(ClientConfigContext);
   const { showAlert, AlertUI } = useAlert();
+
+  // 1. 首页底部 Powered by 署名与跳转链接状态
+  const [byText, setByText] = useState(() => clientConfig.get<string>("footer.by_text") || "80hou");
+  const [byUrl, setByUrl] = useState(() => clientConfig.get<string>("footer.by_url") || "https://www.nodeseek.com/space/39375#/general");
+  const [savingFooter, setSavingFooter] = useState(false);
+
+  // 2. 网站图标 (Favicon) 状态
+  const [faviconKey, setFaviconKey] = useState(Date.now());
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadFavicon = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingFavicon(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = localStorage.getItem("rin_auth_token") || "";
+      const resp = await fetch("/favicon", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
+      if (resp.ok) {
+        setFaviconKey(Date.now());
+        showAlert("🎉 网站图标 (Favicon) 已成功上传并更新！边缘端已自动切分生成多规格标头。");
+      } else {
+        const errText = await resp.text();
+        showAlert(`上传失败: ${errText}`);
+      }
+    } catch (err: any) {
+      showAlert(`上传异常: ${err.message}`);
+    } finally {
+      setUploadingFavicon(false);
+      if (faviconInputRef.current) faviconInputRef.current.value = "";
+    }
+  };
+
+  const handleSaveFooter = async () => {
+    setSavingFooter(true);
+    try {
+      const { error } = await client.config.update("client", {
+        "footer.by_text": byText.trim(),
+        "footer.by_url": byUrl.trim(),
+      });
+      if (error) {
+        showAlert(typeof error === "string" ? error : (error.value as string) || "保存失败");
+      } else {
+        showAlert("🎉 首页底部 By 署名与链接已成功更新！前台底部已实时生效。");
+      }
+    } catch (e: any) {
+      showAlert(e.message || "更新失败");
+    } finally {
+      setSavingFooter(false);
+    }
+  };
 
   const siteUrl = typeof window !== "undefined" ? window.location.origin : "https://你的域名";
   const sitemapUrl = `${siteUrl}/sitemap.xml`;
@@ -138,6 +202,133 @@ export function AdminSEOPage() {
             <i className="ri-external-link-line" />
             <span>在线验证 Sitemap</span>
           </a>
+        </div>
+      </div>
+
+      {/* 隐藏的 Favicon 上传输入框 */}
+      <input
+        ref={faviconInputRef}
+        type="file"
+        accept="image/png,image/svg+xml,image/jpeg,image/x-icon,image/webp"
+        onChange={handleUploadFavicon}
+        className="hidden"
+      />
+
+      {/* 专属定制卡片：首页底部 By 署名配置 + 网站 Favicon 图标上传 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* 卡片 1: 首页底部 Powered by 署名与跳转链接定制 */}
+        <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3.5">
+          <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+            <div className="flex items-center gap-2">
+              <i className="ri-copyright-line text-theme text-base" />
+              <h3 className="font-bold text-xs sm:text-sm t-primary">首页底部 Powered by 署名与跳转链接</h3>
+            </div>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-theme/10 text-theme">
+              实时生效
+            </span>
+          </div>
+
+          <p className="text-xs text-neutral-400 leading-relaxed">
+            自定义博客首页最底端版权行 <code className="font-mono text-theme font-bold">© Powered by [名称]</code> 的展示文本与点击外链。
+          </p>
+
+          <div className="space-y-2.5 text-xs">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-neutral-500">底部 By 后面显示的文字</label>
+              <input
+                type="text"
+                value={byText}
+                onChange={(e) => setByText(e.target.value)}
+                placeholder="例如: 80hou"
+                className="w-full rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] px-3 py-2 text-xs font-bold t-primary outline-none focus:border-theme"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-neutral-500">点击署名跳转的 URL 链接</label>
+              <input
+                type="url"
+                value={byUrl}
+                onChange={(e) => setByUrl(e.target.value)}
+                placeholder="例如: https://www.nodeseek.com/space/39375#/general"
+                className="w-full rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] px-3 py-2 text-xs font-mono t-primary outline-none focus:border-theme"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[11px] text-neutral-400">
+              预览: © {new Date().getFullYear()} Powered by <a href={byUrl} target="_blank" rel="noreferrer" className="text-theme font-bold hover:underline">{byText}</a>
+            </span>
+            <button
+              type="button"
+              onClick={handleSaveFooter}
+              disabled={savingFooter}
+              className="px-4 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition flex items-center gap-1"
+            >
+              {savingFooter && <i className="ri-loader-4-line animate-spin" />}
+              <span>{savingFooter ? "保存中..." : "保存底部配置"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 卡片 2: Blog 网站图标 (Favicon) 独立上传设置与尺寸建议 */}
+        <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3.5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+              <div className="flex items-center gap-2">
+                <i className="ri-image-circle-line text-theme text-base" />
+                <h3 className="font-bold text-xs sm:text-sm t-primary">Blog 网站图标 (Favicon) 设置</h3>
+              </div>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                PWA / 标签页标头
+              </span>
+            </div>
+
+            <div className="flex items-start gap-4 mt-3">
+              {/* 当前 Favicon 实时预览 */}
+              <div className="relative h-16 w-16 shrink-0 rounded-2xl border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] flex items-center justify-center overflow-hidden shadow-inner group">
+                <img
+                  key={faviconKey}
+                  src={`/favicon?t=${faviconKey}`}
+                  alt="当前网站图标"
+                  className="h-10 w-10 object-contain drop-shadow-sm"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+                <div
+                  onClick={() => faviconInputRef.current?.click()}
+                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs cursor-pointer"
+                  title="点击上传更换图标"
+                >
+                  <i className="ri-upload-cloud-line text-sm" />
+                </div>
+              </div>
+
+              {/* 官方规范与尺寸描述建议 */}
+              <div className="space-y-1 text-xs">
+                <h5 className="font-bold t-primary">官方图标规范建议与处理机制：</h5>
+                <ul className="text-neutral-500 dark:text-neutral-400 text-[11px] space-y-0.5 list-disc pl-3.5 leading-relaxed">
+                  <li><strong>推荐尺寸</strong>：<span className="text-theme font-bold">512 × 512</span> 像素正方形（高清适配 Retina 视网膜屏与手机 PWA）。</li>
+                  <li><strong>推荐格式</strong>：透明底 PNG 或矢量 SVG（体积小于 2MB）。</li>
+                  <li><strong>自动切分</strong>：边缘 Worker 会自动生成 16×16、32×32、48×48 等自适应规格，浏览器标签页秒级识别。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/5">
+            <button
+              type="button"
+              onClick={() => faviconInputRef.current?.click()}
+              disabled={uploadingFavicon}
+              className="px-4 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition flex items-center gap-1.5"
+            >
+              {uploadingFavicon ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-upload-cloud-line" />}
+              <span>{uploadingFavicon ? "正在处理并上传..." : "上传网站图标 (Favicon)"}</span>
+            </button>
+          </div>
         </div>
       </div>
 

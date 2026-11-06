@@ -2,6 +2,47 @@ import { Hono } from "hono";
 import type { AppContext } from "../core/hono-types";
 import { putStorageObjectAtKey } from "../utils/storage";
 
+const MUSIC_META_KEY = "music/metadata.json";
+
+interface TrackMeta {
+  name?: string;
+  artist?: string;
+  album?: string;
+  pic?: string;
+  quality?: string;
+}
+
+async function loadMusicMetadata(env: any): Promise<Record<string, TrackMeta>> {
+  if (!env.R2_BUCKET) return {};
+  try {
+    const obj = await env.R2_BUCKET.get(MUSIC_META_KEY);
+    if (!obj) return {};
+    return await obj.json();
+  } catch {
+    return {};
+  }
+}
+
+async function saveMusicMetadata(env: any, meta: Record<string, TrackMeta>) {
+  if (!env.R2_BUCKET) return;
+  try {
+    await env.R2_BUCKET.put(MUSIC_META_KEY, JSON.stringify(meta), {
+      httpMetadata: { contentType: "application/json" },
+    });
+  } catch (e) {
+    console.error("Failed to save music metadata index:", e);
+  }
+}
+
+function detectAudioQuality(key: string, size: number, contentType: string = ""): string {
+  const ext = key.split(".").pop()?.toLowerCase() || "";
+  if (ext === "flac" || contentType.includes("flac")) return "FLAC";
+  if (ext === "wav" || contentType.includes("wav")) return "WAV";
+  if (size > 26 * 1024 * 1024) return "Hi-Res";
+  if (size > 8 * 1024 * 1024) return "320K";
+  return "MP3";
+}
+
 export function MusicService(): Hono {
   const app = new Hono();
 
@@ -243,6 +284,16 @@ export function MusicService(): Hono {
         await putStorageObjectAtKey(env, storageKey, audioBuffer, contentType, origin);
       }
 
+      // 同步轻量索引
+      const metaMap = await loadMusicMetadata(env);
+      metaMap[storageKey] = {
+        name: name || "",
+        artist: artist || "",
+        pic: pic || "",
+        quality: detectAudioQuality(storageKey, audioBuffer.byteLength, contentType),
+      };
+      await saveMusicMetadata(env, metaMap);
+
       return c.json({
         success: true,
         key: storageKey,
@@ -274,6 +325,11 @@ export function MusicService(): Hono {
 
     try {
       await env.R2_BUCKET.delete(key);
+      const metaMap = await loadMusicMetadata(env);
+      if (metaMap[key]) {
+        delete metaMap[key];
+        await saveMusicMetadata(env, metaMap);
+      }
       return c.json({ success: true, key });
     } catch (e: any) {
       return c.json({ error: e.message }, 500);
@@ -294,32 +350,37 @@ export function MusicService(): Hono {
     }
 
     try {
-      const listing = await env.R2_BUCKET.list({
-        prefix: "music/",
-        limit: 100,
-      });
+      const [listing, metaMap] = await Promise.all([
+        env.R2_BUCKET.list({ prefix: "music/", limit: 500 }),
+        loadMusicMetadata(env),
+      ]);
 
       const origin = new URL(c.req.url).origin;
-      const files = listing.objects.map((obj) => {
-        const fileName = obj.key.replace(/^music\//, "");
-        const rawName = fileName.replace(/\.[a-zA-Z0-9]+$/, "");
-        const parts = rawName.split("_");
-        const displayName = obj.customMetadata?.name || parts[0] || rawName;
-        const artist = obj.customMetadata?.artist || (parts.length > 1 ? parts[1] : "");
-        const pic = obj.customMetadata?.pic || "";
-        const url = `${origin}/api/blob/${encodeURIComponent(obj.key)}`;
+      const files = listing.objects
+        .filter((obj) => obj.key !== MUSIC_META_KEY)
+        .map((obj) => {
+          const fileName = obj.key.replace(/^music\//, "");
+          const rawName = fileName.replace(/\.[a-zA-Z0-9]+$/, "");
+          const parts = rawName.split("_");
+          const m = metaMap[obj.key] || {};
+          const displayName = m.name || obj.customMetadata?.name || parts[0] || rawName;
+          const artist = m.artist || obj.customMetadata?.artist || (parts.length > 1 ? parts[1] : "");
+          const pic = m.pic || obj.customMetadata?.pic || "";
+          const quality = m.quality || detectAudioQuality(obj.key, obj.size, obj.httpMetadata?.contentType);
+          const url = `${origin}/api/blob/${encodeURIComponent(obj.key)}`;
 
-        return {
-          key: obj.key,
-          fileName,
-          displayName,
-          artist,
-          pic,
-          size: obj.size,
-          uploaded: obj.uploaded,
-          url,
-        };
-      });
+          return {
+            key: obj.key,
+            fileName,
+            displayName,
+            artist,
+            pic,
+            quality,
+            size: obj.size,
+            uploaded: obj.uploaded,
+            url,
+          };
+        });
 
       return c.json({ files });
     } catch (e: any) {
@@ -371,7 +432,7 @@ export function MusicService(): Hono {
     }
   });
 
-  // 8. 重命名 R2 中存储的音频元数据
+  // 8. 重命名 R2 中存储的音频元数据 (秒级更新轻量索引，零超时)
   app.post("/rename-r2", async (c: AppContext) => {
     const admin = c.get("admin");
     const env = c.get("env");
@@ -390,19 +451,12 @@ export function MusicService(): Hono {
         return c.json({ error: "Missing key or newName" }, 400);
       }
 
-      const obj = await env.R2_BUCKET.get(key);
-      if (!obj) {
-        return c.json({ error: "Object not found" }, 404);
-      }
-
-      const buf = await obj.arrayBuffer();
-      const meta = obj.customMetadata || {};
-      meta.name = newName.trim();
-
-      await env.R2_BUCKET.put(key, buf, {
-        httpMetadata: obj.httpMetadata,
-        customMetadata: meta,
-      });
+      const metaMap = await loadMusicMetadata(env);
+      metaMap[key] = {
+        ...(metaMap[key] || {}),
+        name: newName.trim(),
+      };
+      await saveMusicMetadata(env, metaMap);
 
       return c.json({ success: true, newName });
     } catch (e: any) {
@@ -410,7 +464,7 @@ export function MusicService(): Hono {
     }
   });
 
-  // 9. 更新/置换 R2 音频封面元数据
+  // 9. 更新/置换 R2 音频封面元数据 (秒级更新轻量索引，彻底告别 40MB 重传超时，永不丢失)
   app.post("/update-cover-r2", async (c: AppContext) => {
     const admin = c.get("admin");
     const env = c.get("env");
@@ -429,21 +483,15 @@ export function MusicService(): Hono {
         return c.json({ error: "Missing key" }, 400);
       }
 
-      const obj = await env.R2_BUCKET.get(key);
-      if (!obj) {
-        return c.json({ error: "Object not found" }, 404);
-      }
+      const finalPic = (pic || "").trim();
+      const metaMap = await loadMusicMetadata(env);
+      metaMap[key] = {
+        ...(metaMap[key] || {}),
+        pic: finalPic,
+      };
+      await saveMusicMetadata(env, metaMap);
 
-      const buf = await obj.arrayBuffer();
-      const meta = obj.customMetadata || {};
-      meta.pic = (pic || "").trim();
-
-      await env.R2_BUCKET.put(key, buf, {
-        httpMetadata: obj.httpMetadata,
-        customMetadata: meta,
-      });
-
-      return c.json({ success: true, key, pic: meta.pic });
+      return c.json({ success: true, key, pic: finalPic });
     } catch (e: any) {
       return c.json({ error: e.message }, 500);
     }

@@ -200,11 +200,11 @@ export function AdminOpsHubPage() {
         {/* 左半屏：系统健康诊断 Dense DataGrid */}
         <div className="rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] overflow-hidden shadow-2xs flex flex-col">
           {/* 表头操作栏 */}
-          <div className="p-3 border-b border-black/5 dark:border-white/5 flex items-center justify-between gap-2">
+          <div className="p-3.5 border-b border-black/5 dark:border-white/5 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <i className="ri-heart-pulse-line text-theme" />
-              <span className="font-bold text-xs t-primary">系统健康与运行环境诊断 ({healthItems.length})</span>
-              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold ${
+              <span className="font-bold text-xs sm:text-sm t-primary">系统健康与运行环境诊断 ({healthItems.length})</span>
+              <span className={`text-xs font-mono px-2 py-0.5 rounded font-bold ${
                 healthSummary.danger > 0 ? "bg-rose-500/10 text-rose-500" : healthSummary.warning > 0 ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"
               }`}>
                 {healthSummary.danger > 0 ? `${healthSummary.danger} 项异常` : healthSummary.warning > 0 ? `${healthSummary.warning} 项关注` : "全部就绪"}
@@ -222,13 +222,13 @@ export function AdminOpsHubPage() {
 
           {/* 表格内容 */}
           <div className="overflow-x-auto max-h-[calc(100vh-270px)]">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full text-left text-xs sm:text-sm border-collapse">
               <thead>
-                <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-400 font-mono text-[11px] sticky top-0 bg-white dark:bg-[#161b26] z-10">
-                  <th className="py-2 px-3 w-16 text-center">状态</th>
-                  <th className="py-2 px-3 w-32">巡检项目</th>
-                  <th className="py-2 px-3">现状诊断摘要</th>
-                  <th className="py-2 px-3 w-20 text-right pr-3">调控</th>
+                <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-500 dark:text-neutral-400 font-mono text-xs sticky top-0 bg-white dark:bg-[#161b26] z-10">
+                  <th className="py-2.5 px-3 w-16 text-center">状态</th>
+                  <th className="py-2.5 px-3 w-36">巡检项目</th>
+                  <th className="py-2.5 px-3">现状诊断摘要</th>
+                  <th className="py-2.5 px-3 w-24 text-right pr-4">调控</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
@@ -243,8 +243,8 @@ export function AdminOpsHubPage() {
                   </tr>
                 ) : orderedHealthItems.map((item) => (
                   <tr key={item.id} className="hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors">
-                    <td className="py-2 px-3 text-center">
-                      <span className={`inline-block px-1.5 py-0.2 rounded font-mono font-bold text-[10px] ${
+                    <td className="py-2.5 px-3 text-center">
+                      <span className={`inline-block px-2 py-0.5 rounded font-mono font-bold text-xs ${
                         item.status === "danger"
                           ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
                           : item.status === "warning"
@@ -254,27 +254,27 @@ export function AdminOpsHubPage() {
                         {item.status === "danger" ? "异常" : item.status === "warning" ? "需关注" : "正常"}
                       </span>
                     </td>
-                    <td className="py-2 px-3 font-semibold t-primary">
+                    <td className="py-2.5 px-3 font-bold t-primary">
                       {t(item.title.key, item.title.values)}
                     </td>
-                    <td className="py-2 px-3 text-[11px] text-neutral-500 dark:text-neutral-400">
+                    <td className="py-2.5 px-3 text-xs text-neutral-600 dark:text-neutral-300">
                       {item.summary ? (
                         <span className="font-mono">{t(item.summary.key, item.summary.values)}</span>
                       ) : (
                         <span>正常</span>
                       )}
                     </td>
-                    <td className="py-2 px-3 text-right pr-3 whitespace-nowrap">
+                    <td className="py-2.5 px-3 text-right pr-4 whitespace-nowrap">
                       {item.status !== "success" ? (
                         <Link
                           href={getFixLink(item.id)}
-                          className="px-2 py-0.5 rounded bg-theme/10 hover:bg-theme/20 text-theme font-bold text-[10px] transition inline-flex items-center gap-0.5"
+                          className="px-2.5 py-1 rounded-lg bg-theme/10 hover:bg-theme/20 text-theme font-bold text-xs transition inline-flex items-center gap-0.5"
                         >
                           <span>前往</span>
                           <i className="ri-arrow-right-s-line text-xs" />
                         </Link>
                       ) : (
-                        <span className="text-[10px] font-mono text-neutral-400">已闭环</span>
+                        <span className="text-xs font-mono text-neutral-400">已闭环</span>
                       )}
                     </td>
                   </tr>
@@ -287,19 +287,19 @@ export function AdminOpsHubPage() {
         {/* 右半屏：增量数据回填与异步任务 Dense DataGrid */}
         <div className="rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] overflow-hidden shadow-2xs flex flex-col">
           {/* 表头操作栏 */}
-          <div className="p-3 border-b border-black/5 dark:border-white/5 flex items-center justify-between gap-2">
+          <div className="p-3.5 border-b border-black/5 dark:border-white/5 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <i className="ri-history-line text-theme" />
-              <span className="font-bold text-xs t-primary">增量补偿与离线数据回填控制台</span>
-              <span className="text-[10px] font-mono text-neutral-400">
+              <span className="font-bold text-xs sm:text-sm t-primary">增量补偿与离线数据回填控制台</span>
+              <span className="text-xs font-mono text-neutral-400">
                 {compatGeneratedAt ? new Date(compatGeneratedAt).toLocaleTimeString() : "--:--"}
               </span>
             </div>
             <button
               type="button"
-              onClick={loadCompatStatus}
+              onClick={() => loadCompatStatus()}
               className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-neutral-400 hover:text-theme transition"
-              title="刷新回填状态"
+              title="重新获取回填指标"
             >
               <i className="ri-refresh-line text-xs" />
             </button>
@@ -307,20 +307,20 @@ export function AdminOpsHubPage() {
 
           {/* 表格内容 */}
           <div className="overflow-x-auto max-h-[calc(100vh-270px)]">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full text-left text-xs sm:text-sm border-collapse">
               <thead>
-                <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-400 font-mono text-[11px] sticky top-0 bg-white dark:bg-[#161b26] z-10">
-                  <th className="py-2 px-3 w-16 text-center">状态</th>
-                  <th className="py-2 px-3 w-32">回填任务</th>
-                  <th className="py-2 px-3">待处理 / 说明</th>
-                  <th className="py-2 px-3 w-36 text-right pr-3">执行通道</th>
+                <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-500 dark:text-neutral-400 font-mono text-xs sticky top-0 bg-white dark:bg-[#161b26] z-10">
+                  <th className="py-2.5 px-3 w-16 text-center">状态</th>
+                  <th className="py-2.5 px-3 w-36">回填任务</th>
+                  <th className="py-2.5 px-3">待处理 / 说明</th>
+                  <th className="py-2.5 px-3 w-40 text-right pr-4">执行通道</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
                 {/* 任务 1: AI 导读生成 */}
                 <tr className="hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors">
                   <td className="py-2.5 px-3 text-center">
-                    <span className={`inline-block px-1.5 py-0.2 rounded font-mono font-bold text-[10px] ${
+                    <span className={`inline-block px-2 py-0.5 rounded font-mono font-bold text-xs ${
                       compatStatus.aiSummary.eligible > 0 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                     }`}>
                       {compatStatus.aiSummary.eligible > 0 ? "待补偿" : "已就绪"}
@@ -329,24 +329,24 @@ export function AdminOpsHubPage() {
                   <td className="py-2.5 px-3">
                     <div className="flex flex-col">
                       <span className="font-bold t-primary">AI 智能导读回填</span>
-                      <span className="text-[10px] text-neutral-400 font-mono">CF Queue AI</span>
+                      <span className="text-[11px] text-neutral-400 font-mono">CF Queue AI</span>
                     </div>
                   </td>
                   <td className="py-2.5 px-3">
                     <span className="text-xs font-mono font-bold text-theme">
                       {compatStatus.aiSummary.eligible} 篇待处理
                     </span>
-                    <span className="text-[11px] text-neutral-400 block line-clamp-1">
+                    <span className="text-xs text-neutral-400 block line-clamp-1">
                       为未生成导读的文章增量补充 AI 摘要
                     </span>
                   </td>
-                  <td className="py-2.5 px-3 text-right pr-3 whitespace-nowrap">
-                    <div className="inline-flex items-center gap-1">
+                  <td className="py-2.5 px-3 text-right pr-4 whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1.5">
                       <button
                         type="button"
                         disabled={runningTask !== null || compatStatus.aiSummary.eligible === 0}
                         onClick={() => runAISummaryBackfill(false)}
-                        className="px-2 py-1 rounded bg-theme text-white text-[10px] font-bold shadow-2xs hover:bg-theme-hover disabled:opacity-40 transition flex items-center gap-1"
+                        className="px-2.5 py-1 rounded-lg bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover disabled:opacity-40 transition flex items-center gap-1"
                       >
                         {runningTask === "ai-summary" && <ReactLoading width="0.7rem" height="0.7rem" type="spin" color="#fff" />}
                         <span>增量回填</span>
@@ -355,7 +355,7 @@ export function AdminOpsHubPage() {
                         type="button"
                         disabled={runningTask !== null}
                         onClick={() => runAISummaryBackfill(true)}
-                        className="px-2 py-1 rounded border border-black/10 dark:border-white/10 text-[10px] font-semibold t-primary hover:border-theme disabled:opacity-40 transition"
+                        className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 text-xs font-semibold t-primary hover:border-theme disabled:opacity-40 transition"
                         title="全量重刷"
                       >
                         重刷
@@ -367,7 +367,7 @@ export function AdminOpsHubPage() {
                 {/* 任务 2: Blurhash 占位图生成 */}
                 <tr className="hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors">
                   <td className="py-2.5 px-3 text-center">
-                    <span className={`inline-block px-1.5 py-0.2 rounded font-mono font-bold text-[10px] ${
+                    <span className={`inline-block px-2 py-0.5 rounded font-mono font-bold text-xs ${
                       compatStatus.blurhash.eligible > 0 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                     }`}>
                       {compatStatus.blurhash.eligible > 0 ? "待补偿" : "已就绪"}
@@ -376,23 +376,23 @@ export function AdminOpsHubPage() {
                   <td className="py-2.5 px-3">
                     <div className="flex flex-col">
                       <span className="font-bold t-primary">图片 Blurhash 计算</span>
-                      <span className="text-[10px] text-neutral-400 font-mono">AST Pre-render</span>
+                      <span className="text-[11px] text-neutral-400 font-mono">AST Pre-render</span>
                     </div>
                   </td>
                   <td className="py-2.5 px-3">
                     <span className="text-xs font-mono font-bold text-blue-500">
                       {compatStatus.blurhash.eligible} 篇待处理
                     </span>
-                    <span className="text-[11px] text-neutral-400 block line-clamp-1">
+                    <span className="text-xs text-neutral-400 block line-clamp-1">
                       为 Markdown 插图自动生成模糊渐变微占位
                     </span>
                   </td>
-                  <td className="py-2.5 px-3 text-right pr-3 whitespace-nowrap">
+                  <td className="py-2.5 px-3 text-right pr-4 whitespace-nowrap">
                     <button
                       type="button"
                       disabled={runningTask !== null || compatStatus.blurhash.eligible === 0}
                       onClick={runBlurhashBackfill}
-                      className="px-2.5 py-1 rounded bg-blue-600 text-white text-[10px] font-bold shadow-2xs hover:bg-blue-700 disabled:opacity-40 transition flex items-center gap-1"
+                      className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold shadow-2xs hover:bg-blue-700 disabled:opacity-40 transition flex items-center gap-1"
                     >
                       {runningTask === "blurhash" && <ReactLoading width="0.7rem" height="0.7rem" type="spin" color="#fff" />}
                       <span>执行生成</span>

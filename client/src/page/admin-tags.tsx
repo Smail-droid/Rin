@@ -102,6 +102,19 @@ export function AdminTagsPage() {
       .list()
       .then(({ data, error }) => {
         if (data) {
+          try {
+            const savedOrderStr = localStorage.getItem("rin_admin_tags_order");
+            if (savedOrderStr) {
+              const orderIds: number[] = JSON.parse(savedOrderStr);
+              const orderMap = new Map<number, number>();
+              orderIds.forEach((id, idx) => orderMap.set(id, idx));
+              data.sort((a, b) => {
+                const idxA = orderMap.has(a.id) ? orderMap.get(a.id)! : 999999;
+                const idxB = orderMap.has(b.id) ? orderMap.get(b.id)! : 999999;
+                return idxA - idxB;
+              });
+            }
+          } catch {}
           setTags(data);
         } else if (error) {
           showAlert(String(error.value || "加载标签列表失败"));
@@ -110,6 +123,23 @@ export function AdminTagsPage() {
       .catch((err) => showAlert(err.message))
       .finally(() => setLoading(false));
   }, [showAlert]);
+
+  // 输入数字直接调序 (如 14 改为 3 敲回车瞬间插入第 3 位，原第 3 位及后续标签依次平滑顺延)
+  const handleMoveTagToIndex = (fromIndex: number, targetNumStr: string) => {
+    const targetNum = parseInt(targetNumStr.trim(), 10);
+    if (isNaN(targetNum) || targetNum < 1) return;
+    const targetIdx = Math.min(tags.length, targetNum) - 1;
+    if (targetIdx === fromIndex) return;
+
+    const list = [...tags];
+    const [moved] = list.splice(fromIndex, 1);
+    list.splice(targetIdx, 0, moved);
+    setTags(list);
+
+    try {
+      localStorage.setItem("rin_admin_tags_order", JSON.stringify(list.map((t) => t.id)));
+    } catch {}
+  };
 
   useEffect(() => {
     if (isLoadedRef.current) return;
@@ -515,9 +545,25 @@ export function AdminTagsPage() {
                         />
                       </td>
 
-                      {/* 序号 / ID */}
-                      <td className="py-2.5 px-3 font-mono text-neutral-400">
-                        {rowNumber}
+                      {/* 序号 / ID (支持输入目标数字直接调序，其余依次平滑顺延) */}
+                      <td className="py-2.5 px-3">
+                        <input
+                          type="number"
+                          min={1}
+                          max={tags.length}
+                          defaultValue={rowNumber}
+                          key={`${tag.id}_${rowNumber}`}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleMoveTagToIndex(rowNumber - 1, e.currentTarget.value);
+                            }
+                          }}
+                          onBlur={(e) => {
+                            handleMoveTagToIndex(rowNumber - 1, e.currentTarget.value);
+                          }}
+                          className="w-12 text-center rounded-md bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme/40 focus:border-theme focus:bg-w text-xs font-mono font-bold outline-none transition py-0.5"
+                          title="输入数字敲回车，直接调整到该序号并自动顺延"
+                        />
                       </td>
 
                       {/* 标签名称 (支持行内就地重命名编辑) */}

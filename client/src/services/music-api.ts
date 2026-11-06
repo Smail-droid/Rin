@@ -507,6 +507,7 @@ export interface R2MusicFileItem {
   displayName: string;
   artist?: string;
   pic?: string;
+  quality?: string;
   size: number;
   uploaded: string;
   url: string;
