@@ -2,6 +2,70 @@ import React, { useEffect, useRef, useState } from "react";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 import { useMusicPlayer } from "./music-player-context";
 
+// 精雕日系二次元可爱微光矢量 SVG 音符 (彻底取代系统丑陋像素 Emoji，全矢量高质感微光)
+function KawaiiMusicNoteSvg({
+  className = "w-6 h-6",
+}: {
+  className?: string;
+  isPlaying?: boolean;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{
+        filter: "drop-shadow(0 2px 8px rgba(255, 126, 149, 0.45))",
+      }}
+    >
+      <defs>
+        <linearGradient id="kawaii-note-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FF4D79" />
+          <stop offset="50%" stopColor="#FF7E95" />
+          <stop offset="100%" stopColor="#FFA6B7" />
+        </linearGradient>
+      </defs>
+      {/* 优雅的双音符连梁 */}
+      <path
+        d="M9 16.5V5.2C9 4.7 9.4 4.3 9.9 4.2L18.9 2.5C19.5 2.4 20 2.8 20 3.4V14.5"
+        stroke="url(#kawaii-note-grad)"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* 上方连梁横杠 */}
+      <path
+        d="M9 8.2L20 6.2"
+        stroke="url(#kawaii-note-grad)"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      {/* 左音符实体 (倾斜椭圆) */}
+      <ellipse
+        cx="6.8"
+        cy="16.5"
+        rx="3.6"
+        ry="2.7"
+        transform="rotate(-18 6.8 16.5)"
+        fill="url(#kawaii-note-grad)"
+      />
+      {/* 右音符实体 */}
+      <ellipse
+        cx="17.8"
+        cy="14.5"
+        rx="3.6"
+        ry="2.7"
+        transform="rotate(-18 17.8 14.5)"
+        fill="url(#kawaii-note-grad)"
+      />
+      {/* 二次元高光点 */}
+      <circle cx="5.8" cy="15.8" r="0.9" fill="#FFFFFF" opacity="0.9" />
+      <circle cx="16.8" cy="13.8" r="0.9" fill="#FFFFFF" opacity="0.9" />
+    </svg>
+  );
+}
+
 export function GlobalMusicPlayer() {
   const siteConfig = useSiteConfig();
   const {
@@ -214,10 +278,10 @@ export function GlobalMusicPlayer() {
         isDragging ? "cursor-grabbing opacity-90 transition-none" : "transition-transform duration-75"
       }`}
     >
-      {/* 状态 1: 折叠状态 (日系可爱 38px 悬浮音符圆形按钮，粉白柔和渐变，可拖拽贴边) */}
+      {/* 状态 1: 折叠状态 (完全透明纯净，仅显示精雕粉色矢量音符，旋转+微光，点击平滑展开控制栏) */}
       {!isExpanded ? (
         <div
-          className="relative group"
+          className="relative group flex items-center justify-center"
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
         >
@@ -235,35 +299,28 @@ export function GlobalMusicPlayer() {
             onPointerUp={handlePointerUp}
             onDoubleClick={handleResetPosition}
             onClick={toggleExpanded}
-            style={{
-              background: "linear-gradient(135deg, #FFF5F7 0%, #FFE2E8 50%, #FFD0DA 100%)",
-              boxShadow: isPlaying
-                ? "0 0 16px rgba(255, 126, 149, 0.55), 0 4px 12px rgba(255, 126, 149, 0.25)"
-                : "0 4px 12px rgba(255, 126, 149, 0.2)",
-            }}
-            className={`relative flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[#FFD0DA] transition-all hover:scale-110 active:scale-95 cursor-grab active:cursor-grabbing ${
-              isDragging ? "ring-2 ring-[#FF7E95]/60" : ""
+            className={`relative flex h-10 w-10 items-center justify-center rounded-full bg-transparent hover:bg-[#FFD0DA]/20 active:scale-95 transition-all cursor-grab active:cursor-grabbing ${
+              isDragging ? "ring-2 ring-[#FF7E95]/60 scale-105" : "hover:scale-110"
             }`}
-            title="点击展开可爱播放器 (按住可拖拽，双击复位)"
+            title="点击展开控制栏 (按住可拖动，双击复位)"
           >
-            {/* 播放时微弱粉色呼吸光圈 */}
+            {/* 播放时外圈弱粉色呼吸微光波纹 */}
             {isPlaying && (
               <span
                 style={{ borderColor: "#FF7E95" }}
-                className="absolute -inset-1 rounded-full border border-dashed opacity-75 animate-spin duration-[10000ms] pointer-events-none"
+                className="absolute inset-0.5 rounded-full border border-dashed opacity-60 animate-ping duration-[3000ms] pointer-events-none"
               />
             )}
 
-            {/* 音符图标：播放时顺时针缓慢旋转 (8s)，暂停时静止 */}
-            <span
+            {/* 精雕矢量 SVG 音符：播放时顺时针缓慢旋转 (8s)，暂停时优雅静止 */}
+            <div
               style={{
-                color: "#FF7E95",
                 animation: isPlaying ? "spin 8s linear infinite" : "none",
               }}
-              className="text-base select-none flex items-center justify-center"
+              className="flex items-center justify-center transition-transform"
             >
-              🎶
-            </span>
+              <KawaiiMusicNoteSvg className="w-7 h-7" isPlaying={isPlaying} />
+            </div>
           </button>
         </div>
       ) : (
@@ -307,17 +364,21 @@ export function GlobalMusicPlayer() {
 
           {/* 下层控制按钮区 (所有按钮去除实体背景色与外框阴影，仅保留纯净矢量图标，默认 #7D5A64，悬停变蜜桃粉 #FF7E95) */}
           <div className="flex items-center justify-between w-full mt-1 px-1">
-            {/* 左侧可爱折叠小音符徽章 (点击收起) */}
+            {/* 左侧透明矢量音符图标：点击直接收起/折叠控制栏 */}
             <button
               type="button"
               onClick={toggleExpanded}
-              style={{
-                background: "linear-gradient(135deg, #FFF5F7, #FFE2E8)",
-              }}
-              className="no-drag flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#FFD0DA] text-[#FF7E95] text-xs hover:scale-110 active:scale-95 transition"
-              title="折叠为悬浮小音符"
+              className="no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-transparent hover:bg-[#FFD0DA]/20 active:scale-90 transition p-0.5"
+              title="点击收起控制栏"
             >
-              <span>🎶</span>
+              <div
+                style={{
+                  animation: isPlaying ? "spin 8s linear infinite" : "none",
+                }}
+                className="flex items-center justify-center"
+              >
+                <KawaiiMusicNoteSvg className="w-5 h-5" isPlaying={isPlaying} />
+              </div>
             </button>
 
             {/* 控制按钮组 (宽指距，无实体底色) */}
