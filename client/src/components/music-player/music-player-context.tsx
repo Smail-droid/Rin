@@ -317,17 +317,32 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addTrack = useCallback((track: MusicTrack, playNow = false) => {
+    let targetIdx = 0;
     setPlaylistState((prev) => {
-      const exists = prev.some((t) => t.id === track.id || t.url === track.url);
-      const nextList = exists ? prev : [track, ...prev];
+      // 严格去重：根据 ID，或歌名 + 歌手完全匹配判定是否已存在
+      const existingIdx = prev.findIndex(
+        (t) =>
+          String(t.id) === String(track.id) ||
+          (t.name.trim().toLowerCase() === track.name.trim().toLowerCase() &&
+            t.artist.trim().toLowerCase() === track.artist.trim().toLowerCase())
+      );
+
+      if (existingIdx !== -1) {
+        targetIdx = existingIdx;
+        return prev; // 已经存在，保持原样，绝不重复插入覆盖
+      }
+
+      const nextList = [track, ...prev];
+      targetIdx = 0;
       try {
         localStorage.setItem("rin_music_playlist", JSON.stringify(nextList));
       } catch {}
       return nextList;
     });
+
     if (playNow) {
-      setCurrentTrackIndex(0);
       setTimeout(() => {
+        setCurrentTrackIndex(targetIdx);
         audioRef.current?.play().then(() => setIsPlaying(true)).catch(() => {});
       }, 50);
     }

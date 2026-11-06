@@ -203,7 +203,7 @@ export function MusicService(): Hono {
       return c.text("Invalid JSON", 400);
     }
 
-    const { url, trackId, name } = body || {};
+    const { url, trackId, name, pic, artist } = body || {};
     if (!url || typeof url !== "string") {
       return c.json({ error: "Missing audio url" }, 400);
     }
@@ -230,12 +230,24 @@ export function MusicService(): Hono {
       const storageKey = `music/${safeName}_${safeId}.${ext}`;
 
       const origin = new URL(c.req.url).origin;
-      const result = await putStorageObjectAtKey(env, storageKey, audioBuffer, contentType, origin);
+      if (env.R2_BUCKET) {
+        await env.R2_BUCKET.put(storageKey, audioBuffer, {
+          httpMetadata: { contentType },
+          customMetadata: {
+            name: name || "",
+            artist: artist || "",
+            pic: pic || "",
+          },
+        });
+      } else {
+        await putStorageObjectAtKey(env, storageKey, audioBuffer, contentType, origin);
+      }
 
       return c.json({
         success: true,
         key: storageKey,
-        permanentUrl: result.url,
+        permanentUrl: `${origin}/api/blob/${encodeURIComponent(storageKey)}`,
+        pic: pic || "",
       });
     } catch (e: any) {
       return c.json({ error: e.message || "Failed to persist to R2" }, 500);
@@ -292,13 +304,17 @@ export function MusicService(): Hono {
         const fileName = obj.key.replace(/^music\//, "");
         const rawName = fileName.replace(/\.[a-zA-Z0-9]+$/, "");
         const parts = rawName.split("_");
-        const displayName = parts[0] || rawName;
+        const displayName = obj.customMetadata?.name || parts[0] || rawName;
+        const artist = obj.customMetadata?.artist || (parts.length > 1 ? parts[1] : "");
+        const pic = obj.customMetadata?.pic || "";
         const url = `${origin}/api/blob/${encodeURIComponent(obj.key)}`;
 
         return {
           key: obj.key,
           fileName,
           displayName,
+          artist,
+          pic,
           size: obj.size,
           uploaded: obj.uploaded,
           url,
@@ -308,6 +324,89 @@ export function MusicService(): Hono {
       return c.json({ files });
     } catch (e: any) {
       return c.json({ files: [], error: e.message });
+    }
+  });
+
+  // 7. 直接向 R2 对象存储桶上传音频文件
+  app.post("/upload-r2", async (c: AppContext) => {
+    const admin = c.get("admin");
+    const env = c.get("env");
+
+    if (!admin) {
+      return c.text("Forbidden", 403);
+    }
+
+    if (!env.R2_BUCKET) {
+      return c.json({ error: "R2 bucket is not configured" }, 400);
+    }
+
+    try {
+      const body = await c.req.parseBody();
+      const file = body["file"] as File;
+      if (!file) {
+        return c.json({ error: "Missing file" }, 400);
+      }
+
+      const buffer = await file.arrayBuffer();
+      const cleanName = file.name.replace(/[^\w\u4e00-\u9fa5\.\-]/g, "_");
+      const storageKey = `music/${Date.now()}_${cleanName}`;
+      const origin = new URL(c.req.url).origin;
+
+      await env.R2_BUCKET.put(storageKey, buffer, {
+        httpMetadata: { contentType: file.type || "audio/mpeg" },
+        customMetadata: {
+          name: file.name.replace(/\.[a-zA-Z0-9]+$/, ""),
+          artist: "本地上传",
+        },
+      });
+
+      return c.json({
+        success: true,
+        key: storageKey,
+        url: `${origin}/api/blob/${encodeURIComponent(storageKey)}`,
+        name: file.name,
+      });
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  // 8. 重命名 R2 中存储的音频元数据
+  app.post("/rename-r2", async (c: AppContext) => {
+    const admin = c.get("admin");
+    const env = c.get("env");
+
+    if (!admin) {
+      return c.text("Forbidden", 403);
+    }
+
+    if (!env.R2_BUCKET) {
+      return c.json({ error: "R2 bucket is not configured" }, 400);
+    }
+
+    try {
+      const { key, newName } = await c.req.json();
+      if (!key || !newName) {
+        return c.json({ error: "Missing key or newName" }, 400);
+      }
+
+      const obj = await env.R2_BUCKET.get(key);
+      if (!obj) {
+        return c.json({ error: "Object not found" }, 404);
+      }
+
+      const buf = await obj.arrayBuffer();
+      const meta = obj.customMetadata || {};
+      meta.name = newName.trim();
+
+      await env.R2_BUCKET.put(key, buf, {
+        httpMetadata: obj.httpMetadata,
+        customMetadata: meta,
+      });
+
+      return c.json({ success: true, newName });
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500);
     }
   });
 

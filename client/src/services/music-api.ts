@@ -386,7 +386,13 @@ export async function syncOpenListFiles(openlistMusicUrl: string): Promise<Music
 /**
  * 将第三方临时音频直链高速转存至本站 Cloudflare R2 存储桶，获取永久 HTTPS 直链
  */
-export async function persistTrackToR2(track: { url: string; trackId: string | number; name: string }): Promise<string | null> {
+export async function persistTrackToR2(track: {
+  url: string;
+  trackId: string | number;
+  name: string;
+  pic?: string;
+  artist?: string;
+}): Promise<{ url: string | null; pic?: string }> {
   try {
     const token = getAuthToken() || "";
     const resp = await fetch("/api/music/persist-r2", {
@@ -400,13 +406,13 @@ export async function persistTrackToR2(track: { url: string; trackId: string | n
     });
     if (!resp.ok) {
       console.warn("Persist to R2 failed with status:", resp.status);
-      return null;
+      return { url: null };
     }
     const json = await resp.json();
-    return json.permanentUrl || null;
+    return { url: json.permanentUrl || null, pic: json.pic || track.pic || "" };
   } catch (e) {
     console.warn("Persist to R2 failed:", e);
-    return null;
+    return { url: null };
   }
 }
 
@@ -429,10 +435,57 @@ export async function deleteR2Track(key: string): Promise<boolean> {
   }
 }
 
+/**
+ * 直接上传本地音频文件至 Cloudflare R2
+ */
+export async function uploadR2AudioFile(file: File): Promise<{ success: boolean; key?: string; url?: string; name?: string }> {
+  try {
+    const token = getAuthToken() || "";
+    const form = new FormData();
+    form.append("file", file);
+
+    const resp = await fetch("/api/music/upload-r2", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: form,
+    });
+    if (!resp.ok) return { success: false };
+    return await resp.json();
+  } catch {
+    return { success: false };
+  }
+}
+
+/**
+ * 重命名 R2 存储桶中的音频显示名称
+ */
+export async function renameR2Track(key: string, newName: string): Promise<boolean> {
+  try {
+    const token = getAuthToken() || "";
+    const resp = await fetch("/api/music/rename-r2", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ key, newName }),
+    });
+    return resp.ok;
+  } catch {
+    return false;
+  }
+}
+
 export interface R2MusicFileItem {
   key: string;
   fileName: string;
   displayName: string;
+  artist?: string;
+  pic?: string;
   size: number;
   uploaded: string;
   url: string;

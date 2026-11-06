@@ -170,28 +170,28 @@ export function AdminDashboardPage() {
         <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center gap-2">
             <i className="ri-compass-3-line text-theme" />
-            <h3 className="font-bold text-xs t-primary">全站核心功能与快捷 URL 调度矩阵 (14 功能直达)</h3>
+            <h3 className="font-bold text-xs t-primary">快捷功能调度</h3>
           </div>
-          <span className="text-[11px] font-mono text-neutral-400">点击任意卡片即可跨模块直达</span>
+          <span className="text-[11px] font-mono text-neutral-400">点击图标跨模块直达</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-xs">
+        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-1.5 text-xs">
           {[
-            { href: "/admin/writing", icon: "ri-quill-pen-line", title: "撰写新文章", tag: "WRITE", color: "text-rose-500 bg-rose-500/10" },
-            { href: "/admin/tags", icon: "ri-price-tag-3-line", title: "标签分类穿梭", tag: "TAGS", color: "text-amber-500 bg-amber-500/10" },
-            { href: "/admin/files", icon: "ri-folder-image-line", title: "R2媒体相册", tag: "MEDIA", color: "text-sky-500 bg-sky-500/10" },
-            { href: "/admin/queue-status", icon: "ri-todo-line", title: "任务队列监控", tag: "QUEUE", color: "text-emerald-500 bg-emerald-500/10" },
-            { href: "/admin/settings?tab=general", icon: "ri-equalizer-line", title: "基础总闸设置", tag: "BASIC", color: "text-blue-500 bg-blue-500/10" },
-            { href: "/admin/settings?tab=atelier", icon: "ri-palette-line", title: "便签阵列工坊", tag: "ATELIER", color: "text-purple-500 bg-purple-500/10" },
-            { href: "/admin/ops", icon: "ri-heart-pulse-line", title: "运维巡检大盘", tag: "OPS", color: "text-pink-500 bg-pink-500/10" },
-            { href: "/admin/access", icon: "ri-shield-keyhole-line", title: "文章隐私锁定", tag: "LOCK", color: "text-indigo-500 bg-indigo-500/10" },
-            { href: "/admin/tokens", icon: "ri-key-2-line", title: "口令生成工坊", tag: "AUTH", color: "text-teal-500 bg-teal-500/10" },
-            { href: "/admin/ai", icon: "ri-sparkling-fill", title: "提示词预设库", tag: "PROMPT", color: "text-orange-500 bg-orange-500/10" },
-            { href: "/admin/music", icon: "ri-disc-line", title: "微光音乐台", tag: "MUSIC", color: "text-rose-500 bg-rose-500/10" },
-            { href: "/admin/openlist", icon: "ri-hard-drive-2-line", title: "OpenList网盘", tag: "DISK", color: "text-cyan-500 bg-cyan-500/10" },
-            { href: "/sitemap.xml", icon: "ri-map-2-line", title: "Sitemap 地图", tag: "XML", color: "text-lime-600 bg-lime-500/10", external: true },
-            { href: "/timeline", icon: "ri-time-line", title: "时光长河前台", tag: "TIMELINE", color: "text-violet-500 bg-violet-500/10", external: true },
-            { href: "/moments", icon: "ri-chat-smile-2-line", title: "生活记事前台", tag: "MOMENTS", color: "text-yellow-600 bg-yellow-500/10", external: true },
+            { href: "/admin/writing", icon: "ri-quill-pen-line", title: "撰写", color: "text-rose-500 bg-rose-500/10" },
+            { href: "/admin/tags", icon: "ri-price-tag-3-line", title: "标签", color: "text-amber-500 bg-amber-500/10" },
+            { href: "/admin/files", icon: "ri-folder-image-line", title: "媒体", color: "text-sky-500 bg-sky-500/10" },
+            { href: "/admin/queue-status", icon: "ri-todo-line", title: "调度", color: "text-emerald-500 bg-emerald-500/10" },
+            { href: "/admin/settings?tab=general", icon: "ri-equalizer-line", title: "设置", color: "text-blue-500 bg-blue-500/10" },
+            { href: "/admin/settings?tab=atelier", icon: "ri-palette-line", title: "便签", color: "text-purple-500 bg-purple-500/10" },
+            { href: "/admin/music", icon: "ri-disc-line", title: "音乐", color: "text-rose-500 bg-rose-500/10" },
+            { href: "/admin/openlist", icon: "ri-hard-drive-2-line", title: "网盘", color: "text-cyan-500 bg-cyan-500/10" },
+            { href: "/admin/ops", icon: "ri-heart-pulse-line", title: "运维", color: "text-pink-500 bg-pink-500/10" },
+            { href: "/admin/access", icon: "ri-shield-keyhole-line", title: "锁定", color: "text-indigo-500 bg-indigo-500/10" },
+            { href: "/admin/tokens", icon: "ri-key-2-line", title: "口令", color: "text-teal-500 bg-teal-500/10" },
+            { href: "/admin/ai", icon: "ri-sparkling-fill", title: "AI助手", color: "text-orange-500 bg-orange-500/10" },
+            { href: "/sitemap.xml", icon: "ri-map-2-line", title: "地图", color: "text-lime-600 bg-lime-500/10", external: true },
+            { href: "/timeline", icon: "ri-time-line", title: "长河", color: "text-violet-500 bg-violet-500/10", external: true },
+            { href: "/moments", icon: "ri-chat-smile-2-line", title: "动态", color: "text-yellow-600 bg-yellow-500/10", external: true },
           ].map((item, i) => (
             item.external ? (
               <a
@@ -199,25 +199,23 @@ export function AdminDashboardPage() {
                 href={item.href}
                 target="_blank"
                 rel="noreferrer"
-                className="p-2 rounded-xl border border-black/5 hover:border-theme/40 bg-black/[0.015] hover:bg-theme/5 dark:border-white/5 dark:bg-white/[0.02] flex flex-col items-center text-center gap-1 transition-all group"
+                className="p-1.5 rounded-xl border border-black/5 hover:border-theme/40 bg-black/[0.015] hover:bg-theme/5 dark:border-white/5 dark:bg-white/[0.02] flex flex-col items-center text-center gap-1 transition-all group"
               >
                 <span className={`p-1.5 rounded-lg ${item.color} group-hover:scale-110 transition-transform`}>
-                  <i className={`${item.icon} text-sm`} />
+                  <i className={`${item.icon} text-xs`} />
                 </span>
-                <span className="font-bold text-[11px] t-primary group-hover:text-theme truncate w-full">{item.title}</span>
-                <span className="text-[9px] font-mono text-neutral-400">{item.tag}</span>
+                <span className="font-semibold text-[11px] t-primary group-hover:text-theme truncate w-full">{item.title}</span>
               </a>
             ) : (
               <Link
                 key={i}
                 href={item.href}
-                className="p-2 rounded-xl border border-black/5 hover:border-theme/40 bg-black/[0.015] hover:bg-theme/5 dark:border-white/5 dark:bg-white/[0.02] flex flex-col items-center text-center gap-1 transition-all group"
+                className="p-1.5 rounded-xl border border-black/5 hover:border-theme/40 bg-black/[0.015] hover:bg-theme/5 dark:border-white/5 dark:bg-white/[0.02] flex flex-col items-center text-center gap-1 transition-all group"
               >
                 <span className={`p-1.5 rounded-lg ${item.color} group-hover:scale-110 transition-transform`}>
-                  <i className={`${item.icon} text-sm`} />
+                  <i className={`${item.icon} text-xs`} />
                 </span>
-                <span className="font-bold text-[11px] t-primary group-hover:text-theme truncate w-full">{item.title}</span>
-                <span className="text-[9px] font-mono text-neutral-400">{item.tag}</span>
+                <span className="font-semibold text-[11px] t-primary group-hover:text-theme truncate w-full">{item.title}</span>
               </Link>
             )
           ))}

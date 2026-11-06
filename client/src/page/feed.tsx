@@ -20,6 +20,7 @@ import { renderMermaidElements } from "../utils/render-mermaid";
 import { AdjacentSection } from "../components/adjacent_feed.tsx";
 import { stripImageUrlMetadata } from "../utils/image-upload";
 import { GalleryComments } from "../components/gallery-comments";
+import { Modal } from "@rin/ui";
 
 function extractFirstMarkdownImageUrl(content: string) {
   const match = /!\[.*?\]\((\S+?)(?:\s+"[^"]*")?\)/.exec(content);
@@ -51,6 +52,45 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+
+  // 就地极简文章快速编辑状态 (无需跳回后台，零额外重型分包开销)
+  const [isQuickEditOpen, setIsQuickEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const openQuickEdit = () => {
+    if (!feed) return;
+    setEditTitle(feed.title || "");
+    setEditContent(feed.content || "");
+    setIsQuickEditOpen(true);
+  };
+
+  const handleSaveQuickEdit = async () => {
+    if (!feed) return;
+    setIsSavingEdit(true);
+    try {
+      const { error } = await client.feed.update(feed.id, {
+        title: editTitle,
+        content: editContent,
+        listed: true,
+      });
+      if (error) {
+        showAlert(typeof error === "string" ? error : (error.value as string));
+      } else {
+        setFeed({
+          ...feed,
+          title: editTitle,
+          content: editContent,
+        });
+        setIsQuickEditOpen(false);
+      }
+    } catch (e: any) {
+      showAlert(e.message || "更新失败");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
   const shareMenuRef = useRef<HTMLDivElement>(null);
 
   // 切换文章（上一篇/下一篇）时立即滚回顶部，解决停留在文末问题
@@ -611,14 +651,15 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                             >
                               <i className="ri-skip-up-line" />
                             </button>
-                            <Link
+                            <button
+                              type="button"
                               aria-label={t("edit")}
-                              href={`/admin/writing/${feed.id}`}
-                              title="在后台修改编辑此文章"
+                              onClick={openQuickEdit}
+                              title="在前台就地快速修改编辑此文章"
                               className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:text-theme transition"
                             >
                               <i className="ri-edit-2-line" />
-                            </Link>
+                            </button>
                             <button
                               aria-label={t("delete.title")}
                               onClick={deleteFeed}
@@ -740,6 +781,90 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
             onClick={(e) => e.stopPropagation()}
           />
         </div>
+      )}
+
+      {/* 就地文章快速编辑弹窗 (无需跳转后台，零额外重型分包开销) */}
+      {isQuickEditOpen && (
+        <Modal
+          isOpen={isQuickEditOpen}
+          onRequestClose={() => !isSavingEdit && setIsQuickEditOpen(false)}
+          contentLabel="就地快速编辑文章"
+          panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-3xl w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl"
+        >
+          <div className="flex flex-col gap-3.5 max-h-[85vh]">
+            <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-base shadow-2xs">
+                  <i className="ri-quill-pen-line" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold t-primary">就地编辑文章 · #{feed?.id}</h3>
+                  <p className="text-[11px] text-neutral-400">原地即时修改正文与概要，保存后秒级呈现，无需跳转离开</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuickEditOpen(false)}
+                disabled={isSavingEdit}
+                className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+              >
+                <i className="ri-close-line text-lg" />
+              </button>
+            </div>
+
+            {/* 标题 */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-neutral-500">文章标题</label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="w-full rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] px-3 py-2 text-xs font-bold t-primary outline-none focus:border-theme"
+                placeholder="输入文章标题..."
+              />
+            </div>
+
+            {/* Markdown 正文 */}
+            <div className="space-y-1 flex-1 flex flex-col min-h-0">
+              <label className="text-[11px] font-bold text-neutral-500">Markdown 正文内容</label>
+              <textarea
+                rows={12}
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="w-full flex-1 rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] p-3 text-xs font-mono t-primary outline-none focus:border-theme resize-none scrollbar-thin"
+                placeholder="在此输入或粘贴 Markdown 正文..."
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-black/5 dark:border-white/5 text-xs">
+              <Link
+                href={`/admin/writing/${feed?.id}`}
+                className="text-neutral-400 hover:text-theme transition"
+              >
+                前往完整后台工坊 ➔
+              </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsQuickEditOpen(false)}
+                  disabled={isSavingEdit}
+                  className="px-4 py-1.5 rounded-xl text-neutral-500 hover:bg-black/5 font-semibold"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveQuickEdit}
+                  disabled={isSavingEdit || !editTitle.trim()}
+                  className="px-5 py-1.5 rounded-xl bg-theme text-white font-bold shadow-xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition flex items-center gap-1"
+                >
+                  {isSavingEdit && <i className="ri-loader-4-line animate-spin" />}
+                  <span>{isSavingEdit ? "保存中..." : "保存并在前台生效"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
 
       <AlertUI />
