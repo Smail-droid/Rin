@@ -826,7 +826,7 @@ function FriendCard({
     const profile = useContext(ProfileContext);
     const { category, cleanDesc } = parseFriendCategory(friend.desc, friend.url);
     const isUnhealthy = friend.health && friend.health.length > 0;
-    const isTop = friend.sort_order && friend.sort_order > 0;
+    const isTop = (friend.sort_order ?? 0) > 0;
     const safeUrl = safeHttpUrl(friend.url);
 
     // 分类徽标配色
@@ -881,12 +881,12 @@ function FriendCard({
                     </span>
 
                     {/* 置顶指示 */}
-                    {isTop && (
+                    {isTop ? (
                         <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400">
                             <i className="ri-pushpin-2-fill text-[9px]" />
                             <span>置顶</span>
                         </span>
-                    )}
+                    ) : null}
                 </div>
 
                 {/* 审核状态小提示 */}
@@ -1042,11 +1042,11 @@ function CompactFriendRow({
                     <span className="text-[10px] font-mono px-2 py-0.2 rounded-md bg-theme/10 text-theme shrink-0 font-bold">
                         {category}
                     </span>
-                    {isTop && (
+                    {isTop ? (
                         <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
                             📌 置顶
                         </span>
-                    )}
+                    ) : null}
                     <span className="text-xs text-neutral-400 truncate hidden md:inline">
                         {cleanDesc || "暂无简介"}
                     </span>
@@ -1177,11 +1177,11 @@ function PolaroidFriendCard({
                         <span className="font-bold text-sm text-neutral-800 dark:text-neutral-100 group-hover:text-theme transition-colors">
                             {friend.name}
                         </span>
-                        {isTop && (
+                        {isTop ? (
                             <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
                                 📌
                             </span>
-                        )}
+                        ) : null}
                     </div>
                     <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-theme/10 text-theme font-mono">
                         {category}
