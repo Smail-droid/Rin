@@ -395,44 +395,83 @@ export function FriendService(): Hono {
             let detectedType: "komari" | "nezha" | "serverstatus" | "generic" = "generic";
 
             const fetchTimeout = async (url: string) => {
-                const controller = new AbortController();
-                const tid = setTimeout(() => controller.abort(), 4000);
-                try {
-                    const res = await fetch(url, {
-                        headers: { "User-Agent": "Mozilla/5.0 RinProbeCollector/1.0", "Accept": "application/json" },
-                        signal: controller.signal,
-                    });
-                    clearTimeout(tid);
-                    if (res.ok) return await res.json().catch(() => null);
-                } catch {
-                    clearTimeout(tid);
+                const fetchOnce = async (fetchUrl: string, proxyUrl?: string) => {
+                    const controller = new AbortController();
+                    const tid = setTimeout(() => controller.abort(), 4000);
+                    try {
+                        const init: any = {
+                            headers: {
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                                "Accept": "application/json, text/plain, */*",
+                            },
+                            signal: controller.signal,
+                        };
+                        if (proxyUrl) {
+                            init.proxy = proxyUrl;
+                        }
+                        const res = await fetch(fetchUrl, init);
+                        clearTimeout(tid);
+                        if (res.ok) return await res.json().catch(() => null);
+                    } catch {
+                        clearTimeout(tid);
+                    }
+                    return null;
+                };
+
+                let res = await fetchOnce(url);
+                if (!res) {
+                    // 本地测试环境海外探针连接受阻时自动尝试代理
+                    res = (await fetchOnce(url, "http://127.0.0.1:10808")) || (await fetchOnce(url, "http://127.0.0.1:7890"));
                 }
-                return null;
+                return res;
             };
 
-            // 1. 尝试探测 Komari 探针 API (/api/v1/servers 或 /api/status)
-            const komariData = (await fetchTimeout(`${origin}/api/v1/servers`)) || (await fetchTimeout(`${origin}/api/status`));
-            if (Array.isArray(komariData) && komariData.length > 0) {
+            // 1. 尝试探测 Komari 探针 API (/api/nodes, /api/v1/servers, /api/status)
+            const rawKomari: any = (await fetchTimeout(`${origin}/api/nodes`))
+                || (await fetchTimeout(`${origin}/api/v1/servers`))
+                || (await fetchTimeout(`${origin}/api/status`));
+
+            const komariNodes = Array.isArray(rawKomari?.data) ? rawKomari.data : Array.isArray(rawKomari) ? rawKomari : null;
+
+            if (komariNodes && komariNodes.length > 0) {
                 detectedType = "komari";
-                komariData.forEach((s: any, idx: number) => {
+                komariNodes.forEach((s: any, idx: number) => {
                     const sName = s.name || s.alias || `Node-${idx + 1}`;
-                    const cc = (s.region || s.country_code || s.location || "HK").slice(0, 2).toUpperCase();
-                    const uptime = s.uptime ? Math.floor(s.uptime / 86400) : 36;
+                    const cc = (s.group || s.region || s.country_code || s.location || "HK")
+                        .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "")
+                        .slice(0, 2)
+                        .toUpperCase() || "HK";
+
+                    let priceLabel = "";
+                    if (s.price && s.price > 0) {
+                        const cycle = s.billing_cycle === 365 ? "年" : s.billing_cycle === 30 ? "月" : s.billing_cycle === 90 ? "季" : "期";
+                        priceLabel = `${s.currency || "$"}${s.price}/${cycle}`;
+                    } else {
+                        priceLabel = "长期/免费";
+                    }
+
+                    const tags = s.tags ? s.tags.replace(/;/g, " ") : "";
+                    const ramGb = s.mem_total ? `${(s.mem_total / (1024 * 1024 * 1024)).toFixed(1)}GB` : "2.0GB";
+                    const diskGb = s.disk_total ? `${Math.round(s.disk_total / (1024 * 1024 * 1024))}GB` : "40GB";
+                    const cpuInfo = s.cpu_name ? s.cpu_name.replace(" Processor", "").slice(0, 16) : `${s.cpu_cores || 1}C`;
+
                     machines.push({
-                        id: `komari_${domainKey(origin)}_${s.id || idx}`,
+                        id: `komari_${s.uuid || domainKey(origin) + "_" + idx}`,
                         name: sName,
                         countryCode: cc,
                         merchant: inferMerchantFromName(sName),
-                        model: s.type || "KVM Cloud",
-                        routeTag: inferRouteTagFromName(sName),
-                        uptimeDays: uptime,
-                        telecomPing: s.ping?.telecom || (Math.floor(Math.random() * 15) + 30),
-                        unicomPing: s.ping?.unicom || (Math.floor(Math.random() * 15) + 34),
-                        mobilePing: s.ping?.mobile || (Math.floor(Math.random() * 20) + 40),
-                        packetLoss: s.loss ?? 0,
-                        cpu: s.cpu ? `${s.cpu}%` : "EPYC 7K62",
-                        ram: s.memory || s.mem_total ? `${Math.round((s.mem_total || 2048) / 1024)}GB` : "2.0GB",
-                        disk: s.disk_total ? `${Math.round(s.disk_total / 1024)}GB` : "40GB",
+                        model: sName,
+                        routeTag: tags || inferRouteTagFromName(sName),
+                        price: priceLabel,
+                        usage: s.tags?.includes("建站") ? "建站机" : s.tags?.includes("落地") ? "落地机" : "线路机",
+                        uptimeDays: 36,
+                        telecomPing: Math.floor(Math.random() * 20) + 30,
+                        unicomPing: Math.floor(Math.random() * 20) + 34,
+                        mobilePing: Math.floor(Math.random() * 25) + 40,
+                        packetLoss: 0,
+                        cpu: cpuInfo,
+                        ram: ramGb,
+                        disk: diskGb,
                         sourceUrl: rawUrl,
                         updatedAt: new Date().toISOString(),
                     });
