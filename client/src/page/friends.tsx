@@ -211,6 +211,10 @@ export function FriendsPage() {
     // 来源头像自动提取与 R2 专属转存状态
     const [sourceAvatarUrl, setSourceAvatarUrl] = useState("");
     const [isExtractingAvatar, setIsExtractingAvatar] = useState(false);
+    const [siteFaviconUrl, setSiteFaviconUrl] = useState("");
+    const [nsAvatarUrl, setNsAvatarUrl] = useState("");
+    const [nsUserData, setNsUserData] = useState<any | null>(null);
+    const [iconChoice, setIconChoice] = useState<"site" | "ns">("site");
 
     // 编辑友链状态
     const [editingFriend, setEditingFriend] = useState<FriendItem | null>(null);
@@ -260,7 +264,7 @@ export function FriendsPage() {
         } catch {}
     };
 
-    // 一键从 NodeSeek 空间或个人主页提取头像并存入 R2 avatars/ 独立目录
+    // 一键从 NodeSeek 空间提取真实头像、昵称与勋章数据并存入 R2 avatars/ 独立目录
     const handleExtractSourceAvatar = async () => {
         const raw = sourceAvatarUrl.trim();
         if (!raw) return;
@@ -278,14 +282,22 @@ export function FriendsPage() {
             if (res.ok) {
                 const data = await res.json();
                 if (data.avatarUrl) {
+                    setNsAvatarUrl(data.avatarUrl);
                     setFormAvatar(data.avatarUrl);
-                    if (data.inferredName && !formName.trim()) {
-                        setFormName(data.inferredName);
-                    }
-                    showAlert("🎉 已成功从来源提取头像，并由 Cloudflare Worker 持久化存入 R2 avatars/ 独立目录！");
+                    setIconChoice("ns");
                 }
+                if (data.inferredName) {
+                    setFormName(prev => (!prev || prev.includes("Monitor") || prev.includes("http") ? `${data.inferredName} 的空间` : prev));
+                }
+                if (data.suggestedDesc) {
+                    setFormDesc(data.suggestedDesc);
+                }
+                if (data.nsDetail) {
+                    setNsUserData(data.nsDetail);
+                }
+                showAlert("🎉 已成功识别 NodeSeek 用户信息与真实头像，并存入 R2 avatars/ 独立目录！");
             } else {
-                showAlert("提取失败，请检查网址格式");
+                showAlert("NodeSeek 空间解析受阻，请检查网址格式");
             }
         } catch (e: any) {
             showAlert(e.message || "提取异常");
@@ -381,7 +393,10 @@ export function FriendsPage() {
                 const data = inspectRes.value.data;
                 setFormName(data.name || "");
                 setFormDesc(data.desc || "");
-                setFormAvatar(data.avatar || `https://www.google.com/s2/favicons?domain=${data.domain}&sz=128`);
+                const fav = data.avatar || `https://www.google.com/s2/favicons?domain=${data.domain}&sz=128`;
+                setSiteFaviconUrl(fav);
+                setFormAvatar(fav);
+                setIconChoice("site");
                 if (data.category) {
                     setFormCategory(data.category);
                 }
@@ -390,7 +405,10 @@ export function FriendsPage() {
                     const parsed = new URL(raw);
                     const domain = parsed.hostname;
                     setFormName(prev => prev || domain);
-                    setFormAvatar(prev => prev || `https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
+                    const fav = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+                    setSiteFaviconUrl(fav);
+                    setFormAvatar(fav);
+                    setIconChoice("site");
                     setFormCategory(prev => prev || inferCategoryFallback(raw, ""));
                 } catch {}
             }
@@ -402,6 +420,11 @@ export function FriendsPage() {
                     setSelectedProbeMachineIds(new Set(p.machines.map((m: any) => m.id)));
                     setFormCategory("探针测速");
                 }
+            }
+
+            // 如果同时填了 NodeSeek 空间地址，自动联动提取
+            if (sourceAvatarUrl.trim()) {
+                void handleExtractSourceAvatar();
             }
         } catch {
             showAlert("嗅探异常，请手动补充信息");
@@ -801,7 +824,7 @@ export function FriendsPage() {
                         </button>
                     </div>
 
-                    {/* URL 输入与一键智能解析 */}
+                    {/* 1. 站点链接 */}
                     <div className="mt-4">
                         <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 flex items-center justify-between">
                             <span>站点链接 (URL) *</span>
@@ -815,7 +838,7 @@ export function FriendsPage() {
                                     value={formUrl}
                                     onChange={e => setFormUrl(e.target.value)}
                                     onKeyDown={e => e.key === "Enter" && handleSniffUrl()}
-                                    placeholder="https://example.com"
+                                    placeholder="例如: https://komari.zixuanxie.top/"
                                     className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition"
                                 />
                             </div>
@@ -824,28 +847,62 @@ export function FriendsPage() {
                                 disabled={isSniffing}
                                 className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-60 transition shrink-0"
                             >
-                                {isSniffing ? (
-                                    <>
-                                        <i className="ri-loader-4-line animate-spin text-sm" />
-                                        <span>AI 解析中...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <i className="ri-magic-line text-sm" />
-                                        <span>一键智能解析</span>
-                                    </>
-                                )}
+                                {isSniffing ? <i className="ri-loader-4-line animate-spin text-sm" /> : <i className="ri-magic-line text-sm" />}
+                                <span>{isSniffing ? "解析中..." : "一键智能解析"}</span>
                             </button>
                         </div>
                         {isSniffing && (
                             <p className="mt-1.5 text-[11px] text-rose-500 animate-pulse flex items-center gap-1">
                                 <i className="ri-radar-line" />
-                                <span>正在嗅探站点信息并由 AI 自动精炼与归类...</span>
+                                <span>正在由 Cloudflare Worker 嗅探站点信息、图标与探针节点...</span>
                             </p>
                         )}
                     </div>
 
-                    {/* 分类选择 */}
+                    {/* 2. NodeSeek 个人空间地址 (选填) */}
+                    <div className="mt-3.5 p-3 rounded-2xl bg-black/[0.015] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 flex items-center gap-1.5">
+                                <i className="ri-user-smile-line text-theme" />
+                                <span>NodeSeek 个人空间地址 (选填)</span>
+                            </label>
+                            <span className="text-[10px] text-theme font-medium">
+                                自动提取用户真实头像、昵称与勋章
+                            </span>
+                        </div>
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <input
+                                    type="text"
+                                    value={sourceAvatarUrl}
+                                    onChange={e => setSourceAvatarUrl(e.target.value)}
+                                    onKeyDown={e => e.key === "Enter" && handleExtractSourceAvatar()}
+                                    placeholder="例如: https://www.nodeseek.com/space/61231#/general"
+                                    className="w-full px-3 py-1.5 text-xs rounded-xl bg-w border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition font-mono"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleExtractSourceAvatar}
+                                disabled={isExtractingAvatar || !sourceAvatarUrl.trim()}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-theme/10 hover:bg-theme hover:text-white text-theme text-xs font-semibold transition shrink-0 disabled:opacity-40 shadow-2xs"
+                                title="由 Cloudflare Worker 代理提取并转存至 R2 avatars/ 专属目录"
+                            >
+                                {isExtractingAvatar ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-download-cloud-line" />}
+                                <span>{isExtractingAvatar ? "提取中..." : "提取头像与昵称"}</span>
+                            </button>
+                        </div>
+
+                        {/* NodeSeek 勋章与数据条 */}
+                        {nsUserData && (
+                            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs flex flex-wrap items-center justify-between gap-1 text-emerald-700 dark:text-emerald-400 font-mono ani-show">
+                                <span className="font-bold">🏅 用户: {nsUserData.member_name} (Lv.{nsUserData.rank})</span>
+                                <span>🍗 {nsUserData.coin} 鸡腿 · 📝 {nsUserData.nPost} 贴 · ⏰ {nsUserData.created_at_str}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 3. 推荐归类 */}
                     <div className="mt-3.5">
                         <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1.5 block">
                             推荐归类 *
@@ -868,73 +925,115 @@ export function FriendsPage() {
                         </div>
                     </div>
 
-                    {/* 站点名称 */}
+                    {/* 4. 站点名称 */}
                     <div className="mt-3.5">
                         <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 block">
-                            站点名称 *
+                            站点 / 用户名称 *
                         </label>
                         <input
                             type="text"
                             value={formName}
                             onChange={e => setFormName(e.target.value)}
                             placeholder="例如: 某某小站 / 探针 / 博主名"
-                            className="w-full px-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition"
+                            className="w-full px-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition font-semibold"
                         />
                     </div>
 
-                    {/* 站点图标双通道：手动输入直链 + 来源网址/NodeSeek自动提取转存R2 avatars/ 独立目录 */}
-                    <div className="mt-3.5 space-y-2 p-3 rounded-2xl bg-black/[0.015] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+                    {/* 5. 图标选用：站点图标 vs NodeSeek 真实用户头像 */}
+                    <div className="mt-3.5 space-y-1.5">
                         <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300">
-                                站点图标 / 用户头像 (双通道设置) *
+                            <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 block">
+                                图标选用 (单选切换) *
                             </label>
-                            <span className="text-[10px] text-theme font-medium">
+                            <span className="text-[10px] text-neutral-400">
                                 存入 R2 avatars/ 独立目录
                             </span>
                         </div>
 
-                        {/* 通道 1: 手动输入图标直链 */}
-                        <div className="flex items-center gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            {/* 选项 A: 站点 Favicon */}
+                            <div
+                                onClick={() => {
+                                    if (siteFaviconUrl) {
+                                        setIconChoice("site");
+                                        setFormAvatar(siteFaviconUrl);
+                                    }
+                                }}
+                                className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition select-none ${
+                                    iconChoice === "site"
+                                        ? "border-theme bg-theme/10 ring-1 ring-theme/30"
+                                        : "border-black/10 dark:border-white/10 hover:bg-black/5"
+                                }`}
+                            >
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <input
+                                        type="radio"
+                                        name="icon-choice"
+                                        checked={iconChoice === "site"}
+                                        onChange={() => {
+                                            setIconChoice("site");
+                                            if (siteFaviconUrl) setFormAvatar(siteFaviconUrl);
+                                        }}
+                                        className="accent-theme"
+                                    />
+                                    <span className="font-bold text-xs truncate">站点图标 (Favicon)</span>
+                                </div>
+                                {siteFaviconUrl ? (
+                                    <div className="h-7 w-7 rounded-lg overflow-hidden bg-black/5 p-0.5 border border-black/10 shrink-0">
+                                        <ImageWithFallback src={siteFaviconUrl} alt="site" className="h-full w-full object-cover rounded" />
+                                    </div>
+                                ) : (
+                                    <span className="text-[10px] text-neutral-400">待解析</span>
+                                )}
+                            </div>
+
+                            {/* 选项 B: NodeSeek 用户头像 */}
+                            <div
+                                onClick={() => {
+                                    if (nsAvatarUrl) {
+                                        setIconChoice("ns");
+                                        setFormAvatar(nsAvatarUrl);
+                                    }
+                                }}
+                                className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition select-none ${
+                                    iconChoice === "ns"
+                                        ? "border-theme bg-theme/10 ring-1 ring-theme/30"
+                                        : "border-black/10 dark:border-white/10 hover:bg-black/5"
+                                } ${!nsAvatarUrl ? "opacity-60" : ""}`}
+                            >
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <input
+                                        type="radio"
+                                        name="icon-choice"
+                                        checked={iconChoice === "ns"}
+                                        disabled={!nsAvatarUrl}
+                                        onChange={() => {
+                                            setIconChoice("ns");
+                                            if (nsAvatarUrl) setFormAvatar(nsAvatarUrl);
+                                        }}
+                                        className="accent-theme"
+                                    />
+                                    <span className="font-bold text-xs truncate">NodeSeek 用户头像</span>
+                                </div>
+                                {nsAvatarUrl ? (
+                                    <div className="h-7 w-7 rounded-lg overflow-hidden bg-black/5 p-0.5 border border-black/10 shrink-0">
+                                        <ImageWithFallback src={nsAvatarUrl} alt="ns" className="h-full w-full object-cover rounded" />
+                                    </div>
+                                ) : (
+                                    <span className="text-[10px] text-neutral-400">待提取</span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 当前选中的图标直链 */}
+                        <div className="pt-1">
                             <input
                                 type="text"
                                 value={formAvatar}
                                 onChange={e => setFormAvatar(e.target.value)}
-                                placeholder="通道一: 手动输入图标直链 https://..."
-                                className="w-full px-3 py-1.5 text-xs rounded-xl bg-w border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition font-mono"
+                                placeholder="最终图标直链 (可手动修改) https://..."
+                                className="w-full px-3 py-1.5 text-xs rounded-xl bg-w border border-black/10 dark:border-white/10 font-mono text-neutral-600 dark:text-neutral-300 outline-none focus:border-theme"
                             />
-                            {formAvatar && (
-                                <div className="h-8 w-8 shrink-0 rounded-lg bg-black/5 dark:bg-white/5 p-1 flex items-center justify-center overflow-hidden border border-black/10 dark:border-white/10 shadow-2xs">
-                                    <ImageWithFallback
-                                        src={formAvatar}
-                                        alt="preview"
-                                        className="h-full w-full object-cover rounded-md"
-                                    />
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 通道 2: 输入 NS 空间或个人主页自动识别并转存 R2 */}
-                        <div className="flex items-center gap-2">
-                            <div className="relative flex-1">
-                                <i className="ri-user-search-line absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
-                                <input
-                                    type="text"
-                                    value={sourceAvatarUrl}
-                                    onChange={e => setSourceAvatarUrl(e.target.value)}
-                                    placeholder="通道二: 输入 NS 空间或个人主页 (如 https://www.nodeseek.com/space/61231)"
-                                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-w border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition font-mono text-neutral-600 dark:text-neutral-300"
-                                />
-                            </div>
-                            <button
-                                type="button"
-                                onClick={handleExtractSourceAvatar}
-                                disabled={isExtractingAvatar || !sourceAvatarUrl.trim()}
-                                className="px-3 py-1.5 rounded-xl bg-theme/10 hover:bg-theme hover:text-white text-theme text-xs font-semibold transition shrink-0 flex items-center gap-1 disabled:opacity-40 shadow-2xs"
-                                title="由 Cloudflare Worker 代理提取并转存至 R2 avatars/ 专属目录"
-                            >
-                                {isExtractingAvatar ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-download-cloud-line" />}
-                                <span>{isExtractingAvatar ? "转存中..." : "提取并存入R2"}</span>
-                            </button>
                         </div>
                     </div>
 

@@ -380,7 +380,7 @@ export function FriendService(): Hono {
         }
     });
 
-    // POST /extract-source-avatar (从 NodeSeek 空间、GitHub、个人主页提取头像并持久化存入 R2 avatars/ 独立目录)
+    // POST /extract-source-avatar (从 NodeSeek 空间提取真实头像与昵称并存入 R2 avatars/ 独立目录)
     app.post('/extract-source-avatar', async (c: AppContext) => {
         const body: any = await c.req.json().catch(() => ({}));
         const rawUrl = (body?.sourceUrl || "")?.trim();
@@ -395,13 +395,48 @@ export function FriendService(): Hono {
             let avatarFetchUrl = "";
             let inferredName = body?.name?.trim() || "";
             let fileExt = "png";
+            let nsDetail: any = null;
 
-            // 1. 特别适配 NodeSeek 个人空间：https://www.nodeseek.com/space/61231
+            // 1. 特别适配 NodeSeek 个人空间：https://www.nodeseek.com/space/61231#/general
             const nsMatch = rawUrl.match(/nodeseek\.com\/space\/(\d+)/i);
             if (nsMatch && nsMatch[1]) {
                 const uid = nsMatch[1];
-                inferredName = inferredName || `NodeSeek#${uid}`;
-                avatarFetchUrl = `https://www.google.com/s2/favicons?domain=nodeseek.com&sz=128`;
+                const nsHeaders = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+                    "Referer": `https://www.nodeseek.com/space/${uid}`,
+                    "Accept": "application/json, text/plain, */*",
+                };
+
+                // 尝试拉取 NodeSeek 用户信息
+                const fetchNsApi = async (u: string, proxy?: string) => {
+                    const ctrl = new AbortController();
+                    const tid = setTimeout(() => ctrl.abort(), 4000);
+                    try {
+                        const init: any = { headers: nsHeaders, signal: ctrl.signal };
+                        if (proxy) init.proxy = proxy;
+                        const r = await fetch(u, init);
+                        clearTimeout(tid);
+                        if (r.ok) return await r.json().catch(() => null);
+                    } catch {
+                        clearTimeout(tid);
+                    }
+                    return null;
+                };
+
+                let infoRes: any = await fetchNsApi(`https://www.nodeseek.com/api/account/getInfo/${uid}`);
+                if (!infoRes) {
+                    infoRes = await fetchNsApi(`https://www.nodeseek.com/api/account/getInfo/${uid}`, "http://127.0.0.1:10808");
+                }
+
+                if (infoRes?.detail) {
+                    nsDetail = infoRes.detail;
+                    inferredName = nsDetail.member_name || `NodeSeek#${uid}`;
+                } else {
+                    inferredName = inferredName || `NodeSeek#${uid}`;
+                }
+
+                // NodeSeek 真实用户头像直链 (通过 Referer 访问)
+                avatarFetchUrl = `https://www.nodeseek.com/avatar/${uid}.png`;
             } else if (rawUrl.includes("github.com/")) {
                 const ghMatch = rawUrl.match(/github\.com\/([a-zA-Z0-9_\-]+)/i);
                 if (ghMatch && ghMatch[1]) {
@@ -415,28 +450,54 @@ export function FriendService(): Hono {
                 avatarFetchUrl = `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=128`;
             }
 
-            // 2. 由 Worker 在边缘端拉取二进制图片流 (完全走 Worker 代理，绝不占用本地客户端网络)
+            // 2. 由 Worker 在边缘端拉取用户真实头像二进制流 (带 Referer 突破防盗链)
             let imageBuffer: ArrayBuffer | null = null;
             let contentType = "image/png";
 
-            try {
-                const imgRes = await fetch(avatarFetchUrl, {
-                    headers: { "User-Agent": "Mozilla/5.0 RinWorkerAvatarFetcher/1.0" },
-                });
-                if (imgRes.ok) {
-                    imageBuffer = await imgRes.arrayBuffer();
-                    contentType = imgRes.headers.get("content-type") || "image/png";
-                    if (contentType.includes("webp")) fileExt = "webp";
-                    else if (contentType.includes("jpeg") || contentType.includes("jpg")) fileExt = "jpg";
-                    else if (contentType.includes("svg")) fileExt = "svg";
+            const fetchImage = async (imgUrl: string, proxy?: string) => {
+                const ctrl = new AbortController();
+                const tid = setTimeout(() => ctrl.abort(), 4000);
+                try {
+                    const init: any = {
+                        headers: {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+                            "Referer": rawUrl,
+                            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*",
+                        },
+                        signal: ctrl.signal,
+                    };
+                    if (proxy) init.proxy = proxy;
+                    const res = await fetch(imgUrl, init);
+                    clearTimeout(tid);
+                    if (res.ok) {
+                        const ct = res.headers.get("content-type") || "image/png";
+                        if (!ct.includes("text/html")) {
+                            return { buf: await res.arrayBuffer(), ct };
+                        }
+                    }
+                } catch {
+                    clearTimeout(tid);
                 }
-            } catch {
-                //
+                return null;
+            };
+
+            let imgResult = await fetchImage(avatarFetchUrl);
+            if (!imgResult) {
+                imgResult = await fetchImage(avatarFetchUrl, "http://127.0.0.1:10808");
+            }
+
+            if (imgResult) {
+                imageBuffer = imgResult.buf;
+                contentType = imgResult.ct;
+                if (contentType.includes("webp")) fileExt = "webp";
+                else if (contentType.includes("jpeg") || contentType.includes("jpg")) fileExt = "jpg";
+                else if (contentType.includes("svg")) fileExt = "svg";
             }
 
             // 3. 持久化存入 Cloudflare R2 专属独立目录 avatars/ (绝不与 images/ 和 music/ 冲突)
             const cleanKeyPart = rawUrl.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
             const storageKey = `avatars/${Date.now()}_${cleanKeyPart}.${fileExt}`;
+            let finalAvatarUrl = avatarFetchUrl;
 
             if (imageBuffer && env?.R2_BUCKET) {
                 await env.R2_BUCKET.put(storageKey, imageBuffer, {
@@ -446,20 +507,22 @@ export function FriendService(): Hono {
                         inferredName,
                     },
                 });
-
-                return c.json({
-                    success: true,
-                    avatarUrl: `${origin}/api/blob/${encodeURIComponent(storageKey)}`,
-                    storageKey,
-                    inferredName,
-                });
+                finalAvatarUrl = `${origin}/api/blob/${encodeURIComponent(storageKey)}`;
             }
 
-            // 兜底回退
+            // 构建建议描述
+            let suggestedDesc = `个人博主 / 精彩站点`;
+            if (nsDetail) {
+                suggestedDesc = `NodeSeek 用户 ${inferredName} 的空间 (等级 ${nsDetail.rank || 1} · ${nsDetail.coin || 0} 鸡腿 · ${nsDetail.created_at_str || ""})`;
+            }
+
             return c.json({
                 success: true,
-                avatarUrl: avatarFetchUrl,
+                avatarUrl: finalAvatarUrl,
+                storageKey: imageBuffer ? storageKey : undefined,
                 inferredName,
+                nsDetail,
+                suggestedDesc,
             });
         } catch (e: any) {
             return c.json({ error: e.message || "Extract failed" }, 500);
