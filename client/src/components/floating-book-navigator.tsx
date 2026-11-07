@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { client } from "../app/runtime";
 
@@ -63,15 +63,34 @@ function KawaiiBookSvg({ className = "w-6 h-6" }: { className?: string }) {
   );
 }
 
+// 智能精简提炼长标题（去除生硬标点与多余前后缀，保持干练优美）
+function formatCompactTitle(raw: string, maxLen = 16): string {
+  if (!raw) return "无标题随想";
+  let t = raw.trim();
+  // 去除开头的引用括号如 【xx】、[xx]
+  t = t.replace(/^[【\[][^】\]]+[】\]]\s*/, "");
+  // 如果带有副标题横杠，优先保留前半句核心题旨
+  if (t.includes(" - ")) {
+    t = t.split(" - ")[0].trim();
+  } else if (t.includes(" —— ")) {
+    t = t.split(" —— ")[0].trim();
+  }
+  if (t.length > maxLen) {
+    return `${t.slice(0, maxLen)}…`;
+  }
+  return t;
+}
+
 export function FloatingBookNavigator() {
   const [location, setLocation] = useLocation();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [adjacent, setAdjacent] = useState<{ prev: any | null; next: any | null }>({ prev: null, next: null });
-  const [randomPool, setRandomPool] = useState<any[]>([]);
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [feedsPool, setFeedsPool] = useState<any[]>([]);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
 
-  // 严格限定：仅在文章内容 SPA 页面呈现 (如 /feed/:id 或自定义别名文章页)，首页/相册/动态等绝对不出现
+  // 严格限定：仅在文章内容 SPA 页面呈现 (如 /feed/:id 或自定义别名页)，首页/星廊/动态等全站绝对不出现
   const feedIdMatch = location.match(/^\/feed\/([^/]+)/);
   const currentFeedId = feedIdMatch ? feedIdMatch[1] : null;
 
@@ -87,27 +106,7 @@ export function FloatingBookNavigator() {
       !location.startsWith("/hashtags") &&
       !location.startsWith("/hashtag/"));
 
-  // 读取上一篇/下一篇文章数据
-  useEffect(() => {
-    if (!isArticlePage || !currentFeedId) {
-      setAdjacent({ prev: null, next: null });
-      return;
-    }
-
-    client.feed
-      .adjacent(currentFeedId)
-      .then(({ data }) => {
-        if (data && typeof data !== "string") {
-          setAdjacent({
-            prev: data.previousFeed || null,
-            next: data.nextFeed || null,
-          });
-        }
-      })
-      .catch(() => {});
-  }, [currentFeedId, isArticlePage]);
-
-  // 读取全站文章池用于“随便看看 / 随机漫游”
+  // 读取文章全量池
   useEffect(() => {
     if (!isArticlePage) return;
 
@@ -115,38 +114,52 @@ export function FloatingBookNavigator() {
       .list({ limit: 40, page: 1 })
       .then(({ data }) => {
         if (data?.data && Array.isArray(data.data)) {
-          setRandomPool(data.data);
+          setFeedsPool(data.data);
         }
       })
       .catch(() => {});
   }, [isArticlePage]);
 
-  // 随机漫游跳文章
-  const handleRandomRoam = () => {
-    if (!randomPool.length) return;
-    const candidates = randomPool.filter((f) => String(f.id) !== String(currentFeedId));
-    const target = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : randomPool[0];
+  // 当前文章标题提炼
+  const currentFeedTitle = useMemo(() => {
+    if (!currentFeedId || !feedsPool.length) return "画廊随想";
+    const found = feedsPool.find((f) => String(f.id) === String(currentFeedId));
+    return found ? formatCompactTitle(found.title) : "画廊随想";
+  }, [currentFeedId, feedsPool]);
+
+  // 随机漫游跳文章 (就像音乐随机播放一样)
+  const handleRandomRoam = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!feedsPool.length) return;
+    const candidates = feedsPool.filter((f) => String(f.id) !== String(currentFeedId));
+    const target = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : feedsPool[0];
     if (target) {
       setLocation(`/feed/${target.id}`);
       window.scrollTo({ top: 0, behavior: "smooth" });
-      setIsExpanded(false);
+      setShowDrawer(false);
     }
   };
 
-  const handleGoTo = (targetId: number | string) => {
-    setLocation(`/feed/${targetId}`);
+  const handleSelectArticle = (feedId: number | string) => {
+    setLocation(`/feed/${feedId}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
-    setIsExpanded(false);
+    setShowDrawer(false);
   };
 
   // Click-outside 外部点击监听自动收起
   useEffect(() => {
-    if (!isExpanded) return;
+    if (!isExpanded && !showDrawer) return;
 
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Node;
-      if (drawerRef.current && !drawerRef.current.contains(target)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        drawerRef.current &&
+        !drawerRef.current.contains(target)
+      ) {
         setIsExpanded(false);
+        setShowDrawer(false);
       }
     };
 
@@ -156,7 +169,7 @@ export function FloatingBookNavigator() {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("touchstart", handleClickOutside);
     };
-  }, [isExpanded]);
+  }, [isExpanded, showDrawer]);
 
   if (!isArticlePage) {
     return null;
@@ -167,13 +180,17 @@ export function FloatingBookNavigator() {
       aria-label="文章随心漫游控制器"
       className="fixed bottom-20 sm:bottom-22 right-4 sm:right-6 z-40 select-none"
     >
-      {/* 状态 1: 折叠状态 (默认仅显示精雕 38px 悬浮小书本，绝对不显示文字冒泡，零视觉侵扰) */}
+      {/* 状态 1: 折叠状态 (默认仅显示精雕 38px 悬浮小书本，绝对不显示文字冒泡，与播放器呼应) */}
       {!isExpanded ? (
         <button
           type="button"
           onClick={() => setIsExpanded(true)}
-          className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/75 dark:bg-neutral-900/75 border border-[#FFD0DA] shadow-md backdrop-blur-md hover:scale-110 active:scale-95 transition-all cursor-pointer group"
-          title="点击展开文章漫游 (上一篇 / 随便看看 / 下一篇)"
+          style={{
+            background: "linear-gradient(135deg, #FFF5F7 0%, #FFE2E8 50%, #FFD0DA 100%)",
+            boxShadow: "0 4px 16px rgba(255, 126, 149, 0.22)",
+          }}
+          className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#FFD0DA] hover:scale-110 active:scale-95 transition-all cursor-pointer group shadow-md"
+          title="点击展开文章漫游控制器"
         >
           {/* 呼吸微光波纹 */}
           <span
@@ -185,74 +202,137 @@ export function FloatingBookNavigator() {
           </div>
         </button>
       ) : (
-        /* 状态 2: 展开状态 (参考播放器组件的极简奶油粉白胶囊，绝不超屏、紧凑优雅) */
+        /* 状态 2: 展开状态 (完全参照播放器组件：纯矢量图标、无实体底框填充、紧凑手掌大胶囊) */
         <div
-          ref={drawerRef}
+          ref={containerRef}
           style={{
-            background: "rgba(255, 250, 252, 0.88)",
+            background: "rgba(255, 250, 252, 0.86)",
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
             border: "1px solid rgba(255, 208, 218, 0.75)",
-            boxShadow: "0 8px 24px rgba(255, 126, 149, 0.18)",
+            boxShadow: "0 8px 26px rgba(255, 126, 149, 0.18)",
           }}
-          className="relative flex flex-col rounded-full pl-2 pr-3 pt-1 pb-1.5 min-w-[210px] max-w-[260px] ani-show shadow-xl text-xs text-[#503E42] dark:bg-neutral-900/85 dark:text-neutral-200"
+          className="relative flex flex-col rounded-full pl-2 pr-3 pt-1 pb-1.5 min-w-[170px] max-w-[210px] ani-show shadow-xl text-xs text-[#503E42] dark:bg-neutral-900/85 dark:text-neutral-200"
         >
-          {/* 顶层微字标识 */}
-          <div className="w-full text-center text-[10px] font-bold text-[#FF7E95] truncate px-2 pointer-events-none">
-            随心漫游
+          {/* 顶层当前文章微字标识 (居中展示精简标题，无实体底色，温润深棕色 #503E42) */}
+          <div className="w-full text-center text-[10px] font-bold text-[#FF7E95] truncate px-1.5 pointer-events-none">
+            📖 {currentFeedTitle}
           </div>
 
-          {/* 控制按钮组 (上一篇、随便看看、下一篇、收起) */}
-          <div className="flex items-center justify-between w-full mt-0.5">
+          {/* 控制按钮区 (所有按钮去除实体背景色与外框阴影，仅保留纯净矢量图标，默认 #7D5A64，悬停变蜜桃粉 #FF7E95) */}
+          <div className="flex items-center justify-between w-full mt-0.5 px-0.5">
             {/* 左侧收起图标 */}
             <button
               type="button"
-              onClick={() => setIsExpanded(false)}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-transparent hover:bg-[#FFD0DA]/30 active:scale-90 transition p-0.5 text-neutral-400 hover:text-[#FF7E95]"
-              title="收起漫游"
+              onClick={() => {
+                setIsExpanded(false);
+                setShowDrawer(false);
+              }}
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-transparent hover:bg-[#FFD0DA]/20 active:scale-90 transition p-0.5 text-neutral-400 hover:text-[#FF7E95]"
+              title="收起漫游控制器"
             >
               <KawaiiBookSvg className="w-4 h-4" />
             </button>
 
-            {/* 上一篇 */}
-            <button
-              type="button"
-              onClick={() => adjacent.prev && handleGoTo(adjacent.prev.id)}
-              disabled={!adjacent.prev}
-              className={`p-1 transition flex items-center gap-0.5 font-bold ${
-                adjacent.prev ? "text-[#503E42] dark:text-neutral-200 hover:text-[#FF7E95] hover:scale-110 active:scale-90 cursor-pointer" : "text-neutral-300 dark:text-neutral-600 opacity-40 cursor-not-allowed"
-              }`}
-              title={adjacent.prev ? `上一篇: ${adjacent.prev.title}` : "没有上一篇了"}
-            >
-              <i className="ri-skip-back-line text-sm" />
-              <span className="text-[11px]">上一篇</span>
-            </button>
-
-            {/* 随便看看 (随机抽一篇) */}
+            {/* 随机漫游 (纯矢量图标，如同播放器随机播放按键一样，无粗笨文字填充) */}
             <button
               type="button"
               onClick={handleRandomRoam}
-              className="px-2 py-0.5 rounded-full bg-[#FF7E95]/15 text-[#FF7E95] hover:bg-[#FF7E95] hover:text-white transition font-bold text-[11px] flex items-center gap-0.5 active:scale-95 shadow-2xs cursor-pointer"
-              title="随机漫游一篇全站随想"
+              className="p-1 text-[#7D5A64] hover:text-[#FF7E95] hover:scale-115 active:scale-90 transition cursor-pointer"
+              title="随机漫游一篇随想 (就像随机播放)"
             >
-              <i className="ri-dice-line text-xs" />
-              <span>随便看看</span>
+              <i className="ri-shuffle-line text-sm font-bold" />
             </button>
 
-            {/* 下一篇 */}
+            {/* 换一批文章池 */}
             <button
               type="button"
-              onClick={() => adjacent.next && handleGoTo(adjacent.next.id)}
-              disabled={!adjacent.next}
-              className={`p-1 transition flex items-center gap-0.5 font-bold ${
-                adjacent.next ? "text-[#503E42] dark:text-neutral-200 hover:text-[#FF7E95] hover:scale-110 active:scale-90 cursor-pointer" : "text-neutral-300 dark:text-neutral-600 opacity-40 cursor-not-allowed"
-              }`}
-              title={adjacent.next ? `下一篇: ${adjacent.next.title}` : "没有下一篇了"}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (feedsPool.length > 0) {
+                  const shuffled = [...feedsPool].sort(() => 0.5 - Math.random());
+                  setFeedsPool(shuffled);
+                }
+              }}
+              className="p-1 text-[#7D5A64] hover:text-[#FF7E95] hover:scale-115 active:scale-90 transition cursor-pointer"
+              title="刷新换一批文章"
             >
-              <span className="text-[11px]">下一篇</span>
-              <i className="ri-skip-forward-line text-sm" />
+              <i className="ri-refresh-line text-sm" />
+            </button>
+
+            {/* 展开文章列表抽屉 (如同播放器展开选歌单一样) */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDrawer(!showDrawer);
+              }}
+              className={`p-1 transition cursor-pointer ${
+                showDrawer ? "text-[#FF7E95] font-bold scale-110" : "text-[#7D5A64] hover:text-[#FF7E95]"
+              }`}
+              title="展开文章列表选读"
+            >
+              <i className="ri-play-list-line text-sm" />
             </button>
           </div>
+
+          {/* 类似播放器选歌窗：从上方展开的高度不超过 220px 的极简文章选读窗 (只保留标题，绝无多余描述) */}
+          {showDrawer && (
+            <div
+              ref={drawerRef}
+              style={{
+                background: "rgba(255, 250, 252, 0.90)",
+                backdropFilter: "blur(18px)",
+                WebkitBackdropFilter: "blur(18px)",
+                borderRadius: "16px",
+                border: "1px solid rgba(255, 208, 218, 0.8)",
+                boxShadow: "0 10px 30px rgba(255, 126, 149, 0.18)",
+              }}
+              className="absolute bottom-12 right-0 w-64 max-h-[220px] overflow-y-auto p-2.5 z-50 ani-show flex flex-col gap-1 text-xs scrollbar-thin dark:bg-neutral-900/90"
+            >
+              <div className="flex items-center justify-between pb-1 px-1 border-b border-[#FFD0DA]/50 text-[11px] text-[#7D5A64] font-bold">
+                <span className="flex items-center gap-1">
+                  <span>文章漫游</span>
+                  <span className="text-[10px] text-[#FF7E95] font-mono">({feedsPool.length})</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowDrawer(false)}
+                  className="text-[#7D5A64] hover:text-[#FF7E95] p-0.5"
+                  title="收起列表"
+                >
+                  <i className="ri-close-line" />
+                </button>
+              </div>
+
+              {feedsPool.length === 0 ? (
+                <p className="text-center text-[#7D5A64]/70 py-6 text-[11px]">正在寻找文章...</p>
+              ) : (
+                feedsPool.slice(0, 10).map((feed, i) => {
+                  const isCur = String(feed.id) === String(currentFeedId);
+                  const title = formatCompactTitle(feed.title, 18);
+                  return (
+                    <div
+                      key={feed.id || i}
+                      onClick={() => handleSelectArticle(feed.id)}
+                      className={`flex items-center justify-between p-1.5 rounded-lg cursor-pointer transition select-none ${
+                        isCur
+                          ? "bg-[#FF7E95]/15 text-[#FF7E95] font-bold shadow-2xs"
+                          : "text-[#503E42] dark:text-neutral-200 hover:bg-[#FFD0DA]/30 dark:hover:bg-white/5"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className="font-mono text-[10px] text-[#7D5A64]/60 shrink-0">#{i + 1}</span>
+                        {/* 严格遵循用户指令：【只要标题，不要描述】，保持纯净干练 */}
+                        <span className="truncate font-medium">{title}</span>
+                      </div>
+                      {isCur && <span className="text-[9px] text-theme font-mono shrink-0">阅读中</span>}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
       )}
     </aside>
