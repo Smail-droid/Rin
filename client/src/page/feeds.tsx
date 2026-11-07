@@ -1348,22 +1348,67 @@ export function FeedsPage() {
         return pastel[index % pastel.length];
     };
 
+    const tagOrderList = useMemo(() => {
+        const currentIds = (tags || []).map((t) => t.id);
+        const orderList = homepageTagsConfig.customOrder.length > 0 ? [...homepageTagsConfig.customOrder] : [...currentIds];
+        currentIds.forEach((id) => {
+            if (!orderList.includes(id)) orderList.push(id);
+        });
+        return orderList;
+    }, [tags, homepageTagsConfig.customOrder]);
+
+    const orderedTagObjects = useMemo(() => {
+        return tagOrderList
+            .map((id) => (tags || []).find((t) => t.id === id))
+            .filter(Boolean) as { id: number; name: string }[];
+    }, [tagOrderList, tags]);
+
     const displayTags = useMemo(() => {
         if (!tags || tags.length === 0) return [];
-        let list = tags.filter((t) => !homepageTagsConfig.hiddenIds.includes(t.id));
-        if (homepageTagsConfig.customOrder.length > 0) {
-            list = [...list].sort((a, b) => {
-                const idxA = homepageTagsConfig.customOrder.indexOf(a.id);
-                const idxB = homepageTagsConfig.customOrder.indexOf(b.id);
-                if (idxA === -1 && idxB === -1) return 0;
-                if (idxA === -1) return 1;
-                if (idxB === -1) return -1;
-                return idxA - idxB;
-            });
-        }
+        let list = orderedTagObjects.filter((t) => !homepageTagsConfig.hiddenIds.includes(t.id));
         const limitCount = homepageTagsConfig.limit === "all" ? list.length : (homepageTagsConfig.limit || 8);
         return list.slice(0, limitCount);
-    }, [tags, homepageTagsConfig]);
+    }, [tags, orderedTagObjects, homepageTagsConfig.hiddenIds, homepageTagsConfig.limit]);
+
+    // 核心排序：输入目标数字直接调序，被替换的位置项依次自动顺延下移
+    const handleMoveTagToIndex = (fromIndex: number, targetNumStr: string) => {
+        const targetNum = parseInt(targetNumStr.trim(), 10);
+        if (isNaN(targetNum) || targetNum < 1) return;
+        const targetIdx = Math.min(tagOrderList.length, targetNum) - 1;
+        if (targetIdx === fromIndex) return;
+
+        const nextOrder = [...tagOrderList];
+        const [moved] = nextOrder.splice(fromIndex, 1);
+        nextOrder.splice(targetIdx, 0, moved);
+        updateTagsConfig({ customOrder: nextOrder });
+    };
+
+    // 预设上限联动：点击 4个/6个/8个/12个/全部 时，自动将前 N 个置为开启展示，其余自动置为隐藏
+    const handleSelectTagLimit = (val: number | "all") => {
+        if (val === "all") {
+            updateTagsConfig({ limit: "all", hiddenIds: [] });
+        } else {
+            const nextHidden = tagOrderList.slice(val);
+            updateTagsConfig({ limit: val, hiddenIds: nextHidden });
+        }
+    };
+
+    // 全选：所有标签开启展示
+    const handleSelectAllTags = () => {
+        updateTagsConfig({ hiddenIds: [] });
+    };
+
+    // 反选：已开启的关闭，已关闭的开启
+    const handleInvertTagsVisibility = () => {
+        const currentHidden = new Set(homepageTagsConfig.hiddenIds);
+        const nextHidden = tagOrderList.filter((id) => !currentHidden.has(id));
+        updateTagsConfig({ hiddenIds: nextHidden });
+    };
+
+    // 全关：关闭所有标签展示
+    const handleDisableAllTags = () => {
+        updateTagsConfig({ hiddenIds: [...tagOrderList] });
+    };
 
     const handleToggleTagVisibility = (tagId: number) => {
         const nextHidden = homepageTagsConfig.hiddenIds.includes(tagId)
@@ -2134,7 +2179,7 @@ export function FeedsPage() {
                                             <button
                                                 key={String(opt.val)}
                                                 type="button"
-                                                onClick={() => updateTagsConfig({ limit: opt.val })}
+                                                onClick={() => handleSelectTagLimit(opt.val)}
                                                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition select-none ${
                                                     isSel
                                                         ? "bg-theme text-white shadow-2xs font-bold"
@@ -2182,170 +2227,236 @@ export function FeedsPage() {
                             </div>
                         </div>
 
-                        {/* 高密超级表格 (支持按住手柄自由拖拽行调整顺序与就地别名重命名) */}
-                        <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10 bg-w max-h-[50vh] overflow-y-auto">
-                            <table className="w-full text-left text-xs border-collapse">
+                        {/* 3. 标签展示状态与全选/反选快捷控制栏 */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+                            <div className="flex items-center gap-2 text-xs flex-wrap">
+                                <span className="font-bold t-primary">标签展示状态：</span>
+                                <span className="px-2.5 py-0.5 rounded-full bg-theme/10 text-theme font-mono font-bold text-xs">
+                                    已启用 {orderedTagObjects.filter((t) => !homepageTagsConfig.hiddenIds.includes(t.id)).length} / {orderedTagObjects.length} 个
+                                </span>
+                                {homepageTagsConfig.limit !== "all" && (
+                                    <span className="text-[11px] text-neutral-400 font-medium">
+                                        (推荐前 {homepageTagsConfig.limit} 个)
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-1.5 flex-wrap self-end sm:self-auto">
+                                <button
+                                    type="button"
+                                    onClick={handleSelectAllTags}
+                                    className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme hover:text-theme text-xs font-semibold t-primary transition shadow-2xs active:scale-95"
+                                    title="开启所有标签的首页展示"
+                                >
+                                    全选 (全部启用)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleInvertTagsVisibility}
+                                    className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme hover:text-theme text-xs font-semibold t-primary transition shadow-2xs active:scale-95"
+                                    title="反转所有标签的展示开关"
+                                >
+                                    反选
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleDisableAllTags}
+                                    className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:bg-black/5 text-xs text-neutral-400 hover:text-rose-500 transition shadow-2xs active:scale-95"
+                                    title="关闭全部标签展示"
+                                >
+                                    全关
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 高密超级表格 (支持输入数字直接跳位排序、拖拽手柄、别名就地修改) */}
+                        <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10 bg-w max-h-[50vh] overflow-y-auto scrollbar-thin">
+                            <table className="w-full text-left text-xs border-collapse min-w-[500px]">
                                 <thead>
-                                    <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-400 font-mono text-[11px]">
-                                        <th className="py-2.5 px-3 w-16 text-center">拖放</th>
+                                    <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-500 dark:text-neutral-400 font-mono text-xs sticky top-0 bg-white dark:bg-neutral-900 z-10">
+                                        <th className="py-2.5 px-3 w-28 text-center">序号(跳位)</th>
                                         <th className="py-2.5 px-3">标签预览与别名</th>
                                         <th className="py-2.5 px-3 w-28 text-center">首页展示</th>
-                                        <th className="py-2.5 px-3 w-32 text-right pr-4">微调次序</th>
+                                        <th className="py-2.5 px-3 w-24 text-right pr-4">微调次序</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                                    {(() => {
-                                        const currentIds = tags.map((t) => t.id);
-                                        const orderList = homepageTagsConfig.customOrder.length > 0 ? [...homepageTagsConfig.customOrder] : [...currentIds];
-                                        currentIds.forEach((id) => {
-                                            if (!orderList.includes(id)) orderList.push(id);
-                                        });
-                                        const orderedTagObjects = orderList
-                                            .map((id) => tags.find((t) => t.id === id))
-                                            .filter(Boolean) as { id: number; name: string }[];
+                                    {orderedTagObjects.map((t, idx) => {
+                                        const isHidden = homepageTagsConfig.hiddenIds.includes(t.id);
+                                        const isDraggingRow = draggedTagId === t.id;
+                                        const isDragOverRow = dragOverTagId === t.id;
+                                        const currentAlias = homepageTagsConfig.aliases?.[t.id] || "";
 
-                                        return orderedTagObjects.map((t, idx) => {
-                                            const isHidden = homepageTagsConfig.hiddenIds.includes(t.id);
-                                            const isDraggingRow = draggedTagId === t.id;
-                                            const isDragOverRow = dragOverTagId === t.id;
-                                            const currentAlias = homepageTagsConfig.aliases?.[t.id] || "";
+                                        return (
+                                            <tr
+                                                key={t.id}
+                                                onDragOver={(e) => {
+                                                    e.preventDefault();
+                                                    if (dragOverTagId !== t.id) setDragOverTagId(t.id);
+                                                }}
+                                                onDrop={(e) => {
+                                                    e.preventDefault();
+                                                    handleTagRowDrop(t.id, tagOrderList);
+                                                }}
+                                                className={`hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-all select-none ${
+                                                    isDraggingRow ? "opacity-30 bg-theme/10" : ""
+                                                } ${isDragOverRow ? "border-t-2 border-theme bg-theme/5" : ""}`}
+                                            >
+                                                {/* 序号与拖动手柄 (支持输入数字直接跳位调序，被替换项自动顺延) */}
+                                                <td className="py-2 px-3 text-center">
+                                                    <div className="flex items-center justify-center gap-1.5">
+                                                        <span
+                                                            draggable
+                                                            onDragStart={(e) => {
+                                                                e.dataTransfer.setData("text/plain", String(t.id));
+                                                                setDraggedTagId(t.id);
+                                                            }}
+                                                            onDragEnd={() => {
+                                                                setDraggedTagId(null);
+                                                                setDragOverTagId(null);
+                                                            }}
+                                                            className="text-neutral-400 hover:text-theme cursor-grab active:cursor-grabbing p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 select-none shrink-0 hidden sm:inline-flex"
+                                                            title="按住手柄自由拖放调整排序"
+                                                        >
+                                                            <i className="ri-drag-move-2-line text-sm" />
+                                                        </span>
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            max={orderedTagObjects.length}
+                                                            defaultValue={idx + 1}
+                                                            key={`${t.id}_${idx + 1}`}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") {
+                                                                    handleMoveTagToIndex(idx, e.currentTarget.value);
+                                                                }
+                                                            }}
+                                                            onBlur={(e) => {
+                                                                handleMoveTagToIndex(idx, e.currentTarget.value);
+                                                            }}
+                                                            className="w-12 text-center rounded-lg bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme/40 focus:border-theme focus:bg-w text-xs font-mono font-bold outline-none transition py-0.5"
+                                                            title="输入目标序号敲回车，当前项直接调整至该位置，原位置项目自动下移"
+                                                        />
+                                                    </div>
+                                                </td>
 
-                                            return (
-                                                <tr
-                                                    key={t.id}
-                                                    draggable
-                                                    onDragStart={(e) => {
-                                                        e.dataTransfer.setData("text/plain", String(t.id));
-                                                        setDraggedTagId(t.id);
-                                                    }}
-                                                    onDragOver={(e) => {
-                                                        e.preventDefault();
-                                                        if (dragOverTagId !== t.id) setDragOverTagId(t.id);
-                                                    }}
-                                                    onDrop={(e) => {
-                                                        e.preventDefault();
-                                                        handleTagRowDrop(t.id, orderList);
-                                                    }}
-                                                    onDragEnd={() => {
-                                                        setDraggedTagId(null);
-                                                        setDragOverTagId(null);
-                                                    }}
-                                                    className={`hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-all select-none ${
-                                                        isDraggingRow ? "opacity-30 bg-theme/10" : ""
-                                                    } ${isDragOverRow ? "border-t-2 border-theme bg-theme/5" : ""}`}
-                                                >
-                                                    {/* 拖动手柄与序号 */}
-                                                    <td className="py-2 px-3 text-center">
-                                                        <div className="flex items-center justify-center gap-1">
-                                                            <span
-                                                                className="text-neutral-400 hover:text-theme cursor-grab active:cursor-grabbing p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 select-none"
-                                                                title="按住手柄自由拖放调整排序"
-                                                            >
-                                                                <i className="ri-drag-move-2-line text-sm" />
-                                                            </span>
-                                                            <span className="font-mono text-[11px] font-bold text-neutral-400">#{idx + 1}</span>
-                                                        </div>
-                                                    </td>
-
-                                                    {/* 标签预览与就地别名修改 */}
-                                                    <td className="py-2 px-3">
-                                                        {editingTagAliasId === t.id ? (
-                                                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                                                                <input
-                                                                    type="text"
-                                                                    value={editingTagAliasText}
-                                                                    onChange={(e) => setEditingTagAliasText(e.target.value)}
-                                                                    placeholder={t.name}
-                                                                    className="w-36 px-2 py-0.5 rounded-lg border border-theme text-xs bg-w outline-none font-semibold"
-                                                                />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
+                                                {/* 标签预览与就地别名修改 (移动端点击直接编辑，防止输入框阻断滑动) */}
+                                                <td className="py-2 px-3">
+                                                    {editingTagAliasId === t.id ? (
+                                                        <div className="flex items-center gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                                                            <input
+                                                                type="text"
+                                                                value={editingTagAliasText}
+                                                                onChange={(e) => setEditingTagAliasText(e.target.value)}
+                                                                placeholder={t.name}
+                                                                autoFocus
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === "Enter") {
                                                                         const newAliases = { ...homepageTagsConfig.aliases, [t.id]: editingTagAliasText.trim() };
                                                                         if (!editingTagAliasText.trim()) delete newAliases[t.id];
                                                                         updateTagsConfig({ aliases: newAliases });
                                                                         setEditingTagAliasId(null);
-                                                                    }}
-                                                                    className="px-2 py-0.5 rounded-md bg-theme text-white text-[11px] font-bold shadow-2xs"
-                                                                >
-                                                                    确定
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setEditingTagAliasId(null)}
-                                                                    className="px-1.5 py-0.5 rounded-md text-neutral-400 text-[11px]"
-                                                                >
-                                                                    取消
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex items-center gap-1.5 group/tag">
-                                                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-semibold text-xs border ${getTagColorClass(idx)}`}>
-                                                                    <span>🏷️</span>
-                                                                    <span>#{currentAlias || t.name}</span>
-                                                                </span>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setEditingTagAliasId(t.id);
-                                                                        setEditingTagAliasText(currentAlias || t.name);
-                                                                    }}
-                                                                    className="opacity-0 group-hover/tag:opacity-100 p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 transition"
-                                                                    title="修改前台展示别名"
-                                                                >
-                                                                    <i className="ri-edit-2-line text-xs" />
-                                                                </button>
-                                                                {currentAlias && (
-                                                                    <span className="text-[10px] text-neutral-400 font-mono hidden sm:inline">(原: #{t.name})</span>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </td>
-
-                                                    {/* 首页展示开关 */}
-                                                    <td className="py-2 px-3 text-center">
-                                                        <button
-                                                            type="button"
-                                                            role="switch"
-                                                            aria-checked={!isHidden}
-                                                            onClick={() => handleToggleTagVisibility(t.id)}
-                                                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
-                                                                !isHidden ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
-                                                            }`}
-                                                        >
-                                                            <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
-                                                                !isHidden ? "translate-x-4.5" : "translate-x-1"
-                                                            }`} />
-                                                        </button>
-                                                    </td>
-
-                                                    {/* 微调按钮组 */}
-                                                    <td className="py-2 px-3 text-right pr-4">
-                                                        <div className="inline-flex items-center gap-1">
+                                                                    } else if (e.key === "Escape") {
+                                                                        setEditingTagAliasId(null);
+                                                                    }
+                                                                }}
+                                                                className="w-32 sm:w-44 px-2 py-1 rounded-lg border border-theme text-xs bg-w outline-none font-semibold focus:ring-1 focus:ring-theme"
+                                                            />
                                                             <button
                                                                 type="button"
-                                                                onClick={() => handleMoveTagStep(t.id, "up", orderList)}
-                                                                disabled={idx === 0}
-                                                                className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition"
-                                                                title="向前微调"
+                                                                onClick={() => {
+                                                                    const newAliases = { ...homepageTagsConfig.aliases, [t.id]: editingTagAliasText.trim() };
+                                                                    if (!editingTagAliasText.trim()) delete newAliases[t.id];
+                                                                    updateTagsConfig({ aliases: newAliases });
+                                                                    setEditingTagAliasId(null);
+                                                                }}
+                                                                className="px-2.5 py-1 rounded-lg bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 transition"
                                                             >
-                                                                <i className="ri-arrow-up-s-line text-sm" />
+                                                                确定
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => handleMoveTagStep(t.id, "down", orderList)}
-                                                                disabled={idx === orderedTagObjects.length - 1}
-                                                                className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition"
-                                                                title="向后微调"
+                                                                onClick={() => setEditingTagAliasId(null)}
+                                                                className="px-2 py-1 rounded-lg text-neutral-400 hover:text-neutral-600 text-xs"
                                                             >
-                                                                <i className="ri-arrow-down-s-line text-sm" />
+                                                                取消
                                                             </button>
                                                         </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        });
-                                    })()}
+                                                    ) : (
+                                                        <div className="flex items-center gap-1.5 group/tag">
+                                                            <span
+                                                                onClick={() => {
+                                                                    setEditingTagAliasId(t.id);
+                                                                    setEditingTagAliasText(currentAlias || t.name);
+                                                                }}
+                                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold text-xs border cursor-pointer hover:opacity-80 transition select-none ${getTagColorClass(idx)}`}
+                                                                title="点击就地修改展示别名"
+                                                            >
+                                                                <span>🏷️</span>
+                                                                <span>#{currentAlias || t.name}</span>
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setEditingTagAliasId(t.id);
+                                                                    setEditingTagAliasText(currentAlias || t.name);
+                                                                }}
+                                                                className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 opacity-70 sm:opacity-0 sm:group-hover/tag:opacity-100 transition"
+                                                                title="修改前台展示别名"
+                                                            >
+                                                                <i className="ri-edit-2-line text-xs" />
+                                                            </button>
+                                                            {currentAlias && (
+                                                                <span className="text-[10px] text-neutral-400 font-mono hidden sm:inline">(原: #{t.name})</span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </td>
+
+                                                {/* 首页展示开关 (滑动开关) */}
+                                                <td className="py-2 px-3 text-center">
+                                                    <button
+                                                        type="button"
+                                                        role="switch"
+                                                        aria-checked={!isHidden}
+                                                        onClick={() => handleToggleTagVisibility(t.id)}
+                                                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                                                            !isHidden ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                                                        }`}
+                                                        title={!isHidden ? "已开启首页展示" : "已隐藏"}
+                                                    >
+                                                        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
+                                                            !isHidden ? "translate-x-4.5" : "translate-x-1"
+                                                        }`} />
+                                                    </button>
+                                                </td>
+
+                                                {/* 微调按钮组 */}
+                                                <td className="py-2 px-3 text-right pr-4">
+                                                    <div className="inline-flex items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleMoveTagStep(t.id, "up", tagOrderList)}
+                                                            disabled={idx === 0}
+                                                            className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition"
+                                                            title="向前微调一位"
+                                                        >
+                                                            <i className="ri-arrow-up-s-line text-sm" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleMoveTagStep(t.id, "down", tagOrderList)}
+                                                            disabled={idx === orderedTagObjects.length - 1}
+                                                            className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition"
+                                                            title="向后微调一位"
+                                                        >
+                                                            <i className="ri-arrow-down-s-line text-sm" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
