@@ -181,38 +181,95 @@ export function GlobalMusicPlayer() {
     };
   }, [showPlaylistDrawer]);
 
-  // 开始按住拖拽 (兼容鼠标与触屏设备)
-  const handlePointerDown = (e: React.PointerEvent) => {
+  // 拖拽与点击交互控制
+  const handleCollapsedPointerDown = (e: React.PointerEvent) => {
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initX: position?.x ?? 20,
+      initY: position?.y ?? (typeof window !== "undefined" ? window.innerHeight - 68 : 500),
+    };
+    hasMovedRef.current = false;
+    setIsDragging(false);
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
+  };
+
+  const handleCollapsedPointerMove = (e: React.PointerEvent) => {
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+
+    const deltaX = e.clientX - dragStartRef.current.startX;
+    const deltaY = e.clientY - dragStartRef.current.startY;
+    const dist = Math.hypot(deltaX, deltaY);
+
+    if (dist > 7) {
+      hasMovedRef.current = true;
+      setIsDragging(true);
+      const nextX = dragStartRef.current.initX + deltaX;
+      const nextY = dragStartRef.current.initY + deltaY;
+      setPosition(getSafePosition(nextX, nextY));
+    }
+  };
+
+  const handleCollapsedPointerUp = (e: React.PointerEvent) => {
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch {}
+
+    const wasDragging = hasMovedRef.current;
+    setIsDragging(false);
+
+    if (wasDragging) {
+      if (position) {
+        try {
+          localStorage.setItem("rin_music_player_pos", JSON.stringify(position));
+        } catch {}
+      }
+    } else {
+      // 触碰无位移视为纯点击，瞬间展开
+      setIsExpanded(true);
+      try {
+        localStorage.setItem("rin_music_expanded", "true");
+      } catch {}
+    }
+  };
+
+  // 展开态下的拖拽处理 (点击按钮、进度条、抽屉不触发拖动；其余区域均可流畅拖移)
+  const handleExpandedPointerDown = (e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
-    if (target.closest("button") || target.closest("input") || target.closest(".no-drag")) {
+    if (
+      target.closest("button") ||
+      target.closest(".progress-bar") ||
+      target.closest(".playlist-drawer")
+    ) {
       return;
     }
 
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initX: position?.x ?? 20,
+      initY: position?.y ?? (typeof window !== "undefined" ? window.innerHeight - 68 : 500),
+    };
     hasMovedRef.current = false;
     setIsDragging(true);
 
-    const clientX = e.clientX;
-    const clientY = e.clientY;
-    const curX = position?.x ?? 20;
-    const curY = position?.y ?? (typeof window !== "undefined" ? window.innerHeight - 68 : 500);
-
-    dragStartRef.current = {
-      startX: clientX,
-      startY: clientY,
-      initX: curX,
-      initY: curY,
-    };
-
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
+  const handleExpandedPointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
 
     const deltaX = e.clientX - dragStartRef.current.startX;
     const deltaY = e.clientY - dragStartRef.current.startY;
+    const dist = Math.hypot(deltaX, deltaY);
 
-    if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+    if (dist > 6) {
       hasMovedRef.current = true;
     }
 
@@ -223,7 +280,7 @@ export function GlobalMusicPlayer() {
     setPosition(safe);
   };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
+  const handleExpandedPointerUp = (e: React.PointerEvent) => {
     if (!isDragging) return;
     setIsDragging(false);
     try {
@@ -248,12 +305,13 @@ export function GlobalMusicPlayer() {
     } catch {}
   };
 
-  const toggleExpanded = () => {
-    if (hasMovedRef.current) return;
-    const nextVal = !isExpanded;
-    setIsExpanded(nextVal);
+  // 展开态下点击收起按键：无条件即时收起，零延迟、零卡顿
+  const handleCollapse = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setIsDragging(false);
+    setIsExpanded(false);
     try {
-      localStorage.setItem("rin_music_expanded", String(nextVal));
+      localStorage.setItem("rin_music_expanded", "false");
     } catch {}
   };
 
@@ -292,13 +350,11 @@ export function GlobalMusicPlayer() {
             </div>
           )}
 
-          <button
-            type="button"
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
+          <div
+            onPointerDown={handleCollapsedPointerDown}
+            onPointerMove={handleCollapsedPointerMove}
+            onPointerUp={handleCollapsedPointerUp}
             onDoubleClick={handleResetPosition}
-            onClick={toggleExpanded}
             className={`relative flex h-10 w-10 items-center justify-center rounded-full bg-transparent hover:bg-[#FFD0DA]/20 active:scale-95 transition-all cursor-grab active:cursor-grabbing ${
               isDragging ? "ring-2 ring-[#FF7E95]/60 scale-105" : "hover:scale-110"
             }`}
@@ -317,18 +373,18 @@ export function GlobalMusicPlayer() {
               style={{
                 animation: isPlaying ? "spin 8s linear infinite" : "none",
               }}
-              className="flex items-center justify-center transition-transform"
+              className="flex items-center justify-center transition-transform pointer-events-none"
             >
               <KawaiiMusicNoteSvg className="w-7 h-7" isPlaying={isPlaying} />
             </div>
-          </button>
+          </div>
         </div>
       ) : (
         /* 状态 2: 展开状态 (日系奶油粉白微光卡片，去除黑深灰色块，嵌入极细粉色半透明进度条) */
         <div
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
+          onPointerDown={handleExpandedPointerDown}
+          onPointerMove={handleExpandedPointerMove}
+          onPointerUp={handleExpandedPointerUp}
           onDoubleClick={handleResetPosition}
           style={{
             background: "rgba(255, 250, 252, 0.82)",
@@ -338,16 +394,16 @@ export function GlobalMusicPlayer() {
             boxShadow: "0 8px 28px rgba(255, 126, 149, 0.16)",
           }}
           className={`relative flex flex-col rounded-full pl-2 pr-3.5 pt-1.5 pb-2 min-w-[270px] max-w-[320px] transition-all cursor-grab active:cursor-grabbing ani-show ${
-            isDragging ? "scale-95 ring-2 ring-[#FF7E95]/50" : "hover:shadow-xl"
+            isDragging ? "scale-95 ring-2 ring-[#FF7E95]/50 transition-none" : "hover:shadow-xl"
           }`}
         >
-          {/* 上层浮空文字区 (无底色，居中显示当前歌曲名与歌词，温润深棕色 #503E42) */}
-          <div className="flex flex-col items-center justify-center w-full px-2 pointer-events-none select-none text-center">
+          {/* 上层浮空文字区 (可拖拽，温润深棕色 #503E42) */}
+          <div className="flex flex-col items-center justify-center w-full px-2 select-none text-center cursor-grab active:cursor-grabbing py-0.5">
             {/* 浮动 LRC 歌词行 (深棕色 #503E42 / 高亮 #FF7E95) */}
             {showLyrics && currentLyricText && (
               <div
                 style={{ color: "#FF7E95" }}
-                className="text-[11px] font-bold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-[240px] ani-show"
+                className="text-[11px] font-bold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-[240px] ani-show pointer-events-none"
               >
                 ♫ {currentLyricText}
               </div>
@@ -356,7 +412,7 @@ export function GlobalMusicPlayer() {
             {/* 歌曲名与歌手 */}
             <div
               style={{ color: "#503E42" }}
-              className="text-xs font-bold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-[230px]"
+              className="text-xs font-bold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-[230px] pointer-events-none"
             >
               ♫ {currentTrack?.name || "画廊随想"} · {currentTrack?.artist || "随心漫游"}
             </div>
@@ -364,25 +420,25 @@ export function GlobalMusicPlayer() {
 
           {/* 下层控制按钮区 (所有按钮去除实体背景色与外框阴影，仅保留纯净矢量图标，默认 #7D5A64，悬停变蜜桃粉 #FF7E95) */}
           <div className="flex items-center justify-between w-full mt-1 px-1">
-            {/* 左侧透明矢量音符图标：点击直接收起/折叠控制栏 */}
+            {/* 左侧透明矢量音符图标：点击直接无条件收起/折叠控制栏 */}
             <button
               type="button"
-              onClick={toggleExpanded}
-              className="no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-transparent hover:bg-[#FFD0DA]/20 active:scale-90 transition p-0.5"
+              onClick={handleCollapse}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-transparent hover:bg-[#FFD0DA]/20 active:scale-90 transition p-0.5 cursor-pointer"
               title="点击收起控制栏"
             >
               <div
                 style={{
                   animation: isPlaying ? "spin 8s linear infinite" : "none",
                 }}
-                className="flex items-center justify-center"
+                className="flex items-center justify-center pointer-events-none"
               >
                 <KawaiiMusicNoteSvg className="w-5 h-5" isPlaying={isPlaying} />
               </div>
             </button>
 
             {/* 控制按钮组 (宽指距，无实体底色) */}
-            <div className="no-drag flex items-center gap-3">
+            <div className="flex items-center gap-3">
               {/* 上一曲 */}
               <button
                 type="button"
@@ -482,7 +538,7 @@ export function GlobalMusicPlayer() {
               const ratio = Math.max(0, Math.min(1, clickX / rect.width));
               seek(ratio * duration);
             }}
-            className="no-drag absolute -bottom-[1px] left-6 right-6 h-[2px] rounded-full bg-[#FFD0DA]/40 overflow-hidden cursor-pointer"
+            className="progress-bar absolute -bottom-[1px] left-6 right-6 h-[2px] rounded-full bg-[#FFD0DA]/40 overflow-hidden cursor-pointer"
             title="点击快进/倒退"
           >
             <div
@@ -506,7 +562,7 @@ export function GlobalMusicPlayer() {
                 border: "1px solid rgba(255, 208, 218, 0.8)",
                 boxShadow: "0 10px 30px rgba(255, 126, 149, 0.18)",
               }}
-              className="no-drag absolute bottom-14 left-0 w-72 max-h-[220px] overflow-y-auto p-2.5 z-50 ani-show flex flex-col gap-1 text-xs scrollbar-thin"
+              className="playlist-drawer absolute bottom-14 left-0 w-72 max-h-[220px] overflow-y-auto p-2.5 z-50 ani-show flex flex-col gap-1 text-xs scrollbar-thin"
             >
               <div className="flex items-center justify-between pb-1 px-1 border-b border-[#FFD0DA]/50 text-[11px] text-[#7D5A64] font-bold">
                 <span className="flex items-center gap-1">

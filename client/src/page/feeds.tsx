@@ -162,12 +162,12 @@ function AtelierPhotoCard({
                 className={`absolute -top-2.5 left-1/2 -translate-x-1/2 w-14 h-4 ${tapeColor} rounded-xs shadow-2xs rotate-[-2deg] pointer-events-none z-10 opacity-90`}
             />
 
-            {/* Quick Admin Drag Handle on top-left */}
-            {canManage && (
+            {/* Quick Admin Drag Handle on top-left (仅桌面端大屏呈现) */}
+            {canManage && draggable && (
                 <div
                     onClick={(e) => e.stopPropagation()}
                     title="按住拖拽调整此文章在画廊中的摆放位置"
-                    className="absolute left-4 top-4 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme cursor-grab active:cursor-grabbing"
+                    className="absolute left-4 top-4 z-20 hidden sm:flex h-7 w-7 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme cursor-grab active:cursor-grabbing"
                 >
                     <i className="ri-drag-move-2-line text-xs" />
                 </div>
@@ -940,7 +940,14 @@ export function FeedsPage() {
     const [isR2NoteBgPickerOpen, setIsR2NoteBgPickerOpen] = useState(false);
     const [isUploadingNoteBg, setIsUploadingNoteBg] = useState(false);
     const [isSavingNote, setIsSavingNote] = useState(false);
-    const noteBgFileInputRef = useRef<HTMLInputElement>(null);
+    const [noteBgFileInputRef] = [useRef<HTMLInputElement>(null)];
+
+    // 仅在桌面大屏 (非移动触控设备) 下允许管理员拖拽重排卡片，杜绝移动触屏产生手势竞争与卡顿
+    const canDragCards = useMemo(() => {
+        if (!profile?.permission) return false;
+        if (typeof window === "undefined") return false;
+        return window.innerWidth >= 768 && !window.matchMedia("(pointer: coarse)").matches;
+    }, [profile?.permission]);
 
     // 3. 首页推荐标签高密超级表格管理 (Dense DataGrid)
     const [isTagSettingsOpen, setIsTagSettingsOpen] = useState(false);
@@ -1742,7 +1749,7 @@ export function FeedsPage() {
                                         index={idx}
                                         tiltOffset={shuffleSeed}
                                         canManage={Boolean(profile?.permission)}
-                                        draggable={Boolean(profile?.permission)}
+                                        draggable={canDragCards}
                                         isDragging={draggedStreamItem === itemK}
                                         isDragOver={dragOverStreamItem === itemK}
                                         onDragStart={(e) => {
@@ -1775,7 +1782,7 @@ export function FeedsPage() {
                                         type={item.noteType}
                                         siteConfig={siteConfig}
                                         canManage={Boolean(profile?.permission)}
-                                        draggable={Boolean(profile?.permission)}
+                                        draggable={canDragCards}
                                         isDragging={draggedStreamItem === itemK}
                                         isDragOver={dragOverStreamItem === itemK}
                                         onMoveStep={(nt, dir) => moveNoteStep(nt, dir, currentFirstPageKeys)}
