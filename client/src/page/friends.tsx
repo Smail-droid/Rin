@@ -28,6 +28,30 @@ export type FriendItem = {
     sort_order?: number | null;
 };
 
+export interface ProbeMachineNode {
+    id: string;
+    name: string;
+    countryCode: string;
+    merchant: string;
+    model: string;
+    routeTag: string;
+    price?: string;
+    usage?: string;
+    cpu?: string;
+    ram?: string;
+    disk?: string;
+    bandwidth?: string;
+    traffic?: string;
+    uptimeDays: number;
+    telecomPing: number;
+    unicomPing: number;
+    mobilePing: number;
+    packetLoss: number;
+    sourceUrl: string;
+    probeName?: string;
+    updatedAt: string;
+}
+
 // 预设六大严谨画廊与极客基建分类
 export const PRESET_CATEGORIES = [
     "全部",
@@ -169,8 +193,8 @@ export function FriendsPage() {
     const [isSniffing, setIsSniffing] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // 视图风格切换 (画册卡片 / 高密书签 / 拍立得便签)
-    const [viewStyle, setViewStyle] = useState<"card" | "compact" | "polaroid">(() => {
+    // 视图风格切换 (画册卡片 / 高密书签 / 拍立得便签 / 机器监控大盘)
+    const [viewStyle, setViewStyle] = useState<"card" | "compact" | "polaroid" | "probe">(() => {
         try {
             return (localStorage.getItem("rin_friends_view_style") || "card") as any;
         } catch {
@@ -178,12 +202,59 @@ export function FriendsPage() {
         }
     });
 
+    // 探针机器监控大盘状态
+    const [probeNodes, setProbeNodes] = useState<ProbeMachineNode[]>([]);
+    const [loadingProbes, setLoadingProbes] = useState(false);
+    const [detectedProbeMachines, setDetectedProbeMachines] = useState<ProbeMachineNode[]>([]);
+    const [selectedProbeMachineIds, setSelectedProbeMachineIds] = useState<Set<string>>(new Set());
+
     // 编辑友链状态
     const [editingFriend, setEditingFriend] = useState<FriendItem | null>(null);
 
     const ref = useRef(false);
     const { showAlert, AlertUI } = useAlert();
     const { showConfirm, ConfirmUI } = useConfirm();
+
+    // 加载探针机器监控大盘数据
+    const loadProbeNodes = useCallback(async () => {
+        setLoadingProbes(true);
+        try {
+            const token = localStorage.getItem("rin_auth_token") || "";
+            const res = await fetch("/api/friend/probe-nodes", {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                credentials: "include",
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data?.nodes)) {
+                    setProbeNodes(data.nodes);
+                }
+            }
+        } catch {
+            //
+        } finally {
+            setLoadingProbes(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void loadProbeNodes();
+    }, [loadProbeNodes]);
+
+    // 删除单台机器监控节点
+    const handleDeleteProbeNode = async (id: string) => {
+        const token = localStorage.getItem("rin_auth_token") || "";
+        try {
+            const res = await fetch(`/api/friend/probe-nodes/${encodeURIComponent(id)}`, {
+                method: "DELETE",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                credentials: "include",
+            });
+            if (res.ok) {
+                setProbeNodes((prev) => prev.filter((n) => n.id !== id));
+            }
+        } catch {}
+    };
 
     // 加载友链列表
     const reloadFriends = useCallback(() => {
@@ -259,9 +330,24 @@ export function FriendsPage() {
 
         setIsSniffing(true);
         try {
-            const { data, error } = await client.friend.inspect(raw);
-            if (error || !data) {
-                // 嗅探受阻时平滑兜底
+            const [inspectRes, probeRes] = await Promise.allSettled([
+                client.friend.inspect(raw),
+                fetch("/api/friend/sniff-probe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ url: raw }),
+                }).then(r => r.ok ? r.json() : null),
+            ]);
+
+            if (inspectRes.status === "fulfilled" && inspectRes.value.data) {
+                const data = inspectRes.value.data;
+                setFormName(data.name || "");
+                setFormDesc(data.desc || "");
+                setFormAvatar(data.avatar || `https://www.google.com/s2/favicons?domain=${data.domain}&sz=128`);
+                if (data.category) {
+                    setFormCategory(data.category);
+                }
+            } else {
                 try {
                     const parsed = new URL(raw);
                     const domain = parsed.hostname;
@@ -269,16 +355,17 @@ export function FriendsPage() {
                     setFormAvatar(prev => prev || `https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
                     setFormCategory(prev => prev || inferCategoryFallback(raw, ""));
                 } catch {}
-                showAlert("站点嗅探响应超时或受防护阻断，已为您自动补全域名，可直接微调后提交");
-            } else {
-                setFormName(data.name || "");
-                setFormDesc(data.desc || "");
-                setFormAvatar(data.avatar || `https://www.google.com/s2/favicons?domain=${data.domain}&sz=128`);
-                if (data.category) {
-                    setFormCategory(data.category);
+            }
+
+            if (probeRes.status === "fulfilled" && probeRes.value?.isProbe) {
+                const p = probeRes.value;
+                if (Array.isArray(p.machines) && p.machines.length > 0) {
+                    setDetectedProbeMachines(p.machines);
+                    setSelectedProbeMachineIds(new Set(p.machines.map((m: any) => m.id)));
+                    setFormCategory("探针测速");
                 }
             }
-        } catch (err: any) {
+        } catch {
             showAlert("嗅探异常，请手动补充信息");
         } finally {
             setIsSniffing(false);
@@ -328,6 +415,24 @@ export function FriendsPage() {
                     showAlert("已成功收录并发布到星廊！", () => reloadFriends());
                 } else {
                     showAlert("已提交收录申请！站长审核通过后将即刻展示在星廊中。", () => reloadFriends());
+                }
+
+                // 如果嗅探并勾选了探针机器节点，同步保存入库
+                if (detectedProbeMachines.length > 0 && selectedProbeMachineIds.size > 0) {
+                    const toSaveMachines = detectedProbeMachines
+                        .filter(m => selectedProbeMachineIds.has(m.id))
+                        .map(m => ({ ...m, probeName: formName.trim() || m.probeName, sourceUrl: safeUrl }));
+                    if (toSaveMachines.length > 0) {
+                        const token = localStorage.getItem("rin_auth_token") || "";
+                        fetch("/api/friend/probe-nodes", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                            },
+                            body: JSON.stringify({ nodes: toSaveMachines }),
+                        }).then(() => void loadProbeNodes()).catch(() => {});
+                    }
                 }
             }
         } catch (e: any) {
@@ -545,12 +650,31 @@ export function FriendsPage() {
                                     <i className="ri-sticky-note-line text-xs" />
                                     <span className="hidden sm:inline">便签</span>
                                 </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setViewStyle("probe"); try { localStorage.setItem("rin_friends_view_style", "probe"); } catch {} }}
+                                    className={`px-2.5 py-1 rounded-lg transition select-none flex items-center gap-1 font-semibold ${
+                                        viewStyle === "probe" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200"
+                                    }`}
+                                    title="PickMyVPS 风格机器监控超级数据大盘"
+                                >
+                                    <i className="ri-dashboard-2-line text-xs" />
+                                    <span className="hidden sm:inline">机器监控</span>
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    {/* 画廊展示流 (支持画册卡片、高密书签、拍立得便签三种风格) */}
-                    {filteredFriends.length === 0 ? (
+                    {/* 画廊展示流 (支持画册卡片、高密书签、拍立得便签、机器监控超级数据网格四种风格) */}
+                    {viewStyle === "probe" ? (
+                        <ProbeMachineDataGrid
+                            nodes={probeNodes}
+                            searchKeyword={searchKeyword}
+                            onDeleteNode={handleDeleteProbeNode}
+                            onRefresh={() => loadProbeNodes()}
+                            loading={loadingProbes}
+                        />
+                    ) : filteredFriends.length === 0 ? (
                         <div className="wauto flex flex-col items-center justify-center py-20 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-dashed border-black/10 dark:border-white/10 text-center">
                             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/10 text-rose-500 mb-3 text-2xl">
                                 <i className="ri-inbox-line" />
@@ -760,6 +884,91 @@ export function FriendsPage() {
                             className="w-full px-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition resize-none"
                         />
                     </div>
+
+                    {/* 探针机器节点智能探测与选择面板 */}
+                    {detectedProbeMachines.length > 0 && (
+                        <div className="mt-4 p-3.5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-cyan-500/30 space-y-2.5 ani-show">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-cyan-600 dark:text-cyan-400">
+                                    <i className="ri-radar-line animate-pulse" />
+                                    <span>⚡ 智能嗅探到探针包含 {detectedProbeMachines.length} 台机器节点</span>
+                                </div>
+                                <span className="text-[10px] text-neutral-400">勾选并标注商家信息</span>
+                            </div>
+
+                            <div className="max-h-48 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+                                {detectedProbeMachines.map((m, mIdx) => {
+                                    const isChecked = selectedProbeMachineIds.has(m.id);
+                                    return (
+                                        <div
+                                            key={m.id}
+                                            className={`p-2 rounded-xl border text-xs flex flex-col gap-1.5 transition ${
+                                                isChecked
+                                                    ? "border-cyan-500/40 bg-cyan-500/5 dark:bg-cyan-950/20"
+                                                    : "border-black/5 dark:border-white/5 opacity-60"
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <label className="flex items-center gap-2 cursor-pointer font-bold t-primary">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={(e) => {
+                                                            const next = new Set(selectedProbeMachineIds);
+                                                            if (e.target.checked) next.add(m.id);
+                                                            else next.delete(m.id);
+                                                            setSelectedProbeMachineIds(next);
+                                                        }}
+                                                        className="accent-theme cursor-pointer"
+                                                    />
+                                                    <span>{getFlagEmoji(m.countryCode)} {m.name}</span>
+                                                </label>
+                                                <span className="text-[10px] font-mono text-neutral-400">{m.cpu} · {m.ram}</span>
+                                            </div>
+
+                                            {isChecked && (
+                                                <div className="grid grid-cols-3 gap-1.5 pt-1">
+                                                    <input
+                                                        type="text"
+                                                        value={m.merchant || ""}
+                                                        onChange={(e) => {
+                                                            const updated = [...detectedProbeMachines];
+                                                            updated[mIdx].merchant = e.target.value;
+                                                            setDetectedProbeMachines(updated);
+                                                        }}
+                                                        placeholder="商家 (如 DMIT)"
+                                                        className="px-2 py-0.5 rounded bg-w border border-black/10 dark:border-white/10 text-xs font-semibold outline-none"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={m.model || ""}
+                                                        onChange={(e) => {
+                                                            const updated = [...detectedProbeMachines];
+                                                            updated[mIdx].model = e.target.value;
+                                                            setDetectedProbeMachines(updated);
+                                                        }}
+                                                        placeholder="机型 (如 Pro)"
+                                                        className="px-2 py-0.5 rounded bg-w border border-black/10 dark:border-white/10 text-xs font-semibold outline-none"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={m.routeTag || ""}
+                                                        onChange={(e) => {
+                                                            const updated = [...detectedProbeMachines];
+                                                            updated[mIdx].routeTag = e.target.value;
+                                                            setDetectedProbeMachines(updated);
+                                                        }}
+                                                        placeholder="线路 (如 CN2GIA)"
+                                                        className="px-2 py-0.5 rounded bg-w border border-black/10 dark:border-white/10 text-xs font-semibold outline-none"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
 
                     {/* 提交按钮栏 */}
                     <div className="mt-5 flex items-center justify-end gap-2.5 pt-3 border-t border-black/5 dark:border-white/5">
@@ -1450,4 +1659,334 @@ function errorHumanize(error: string) {
         return "无法访问 / 超时";
     }
     return error || "检测异常";
+}
+
+// 风格 4: PickMyVPS 风格高密机器监控超级数据网格 (Probe DataGrid)
+function ProbeMachineDataGrid({
+    nodes,
+    searchKeyword,
+    onDeleteNode,
+    onRefresh,
+    loading,
+}: {
+    nodes: ProbeMachineNode[];
+    searchKeyword: string;
+    onDeleteNode: (id: string) => void;
+    onRefresh: () => void;
+    loading: boolean;
+}) {
+    const profile = useContext(ProfileContext);
+    const [sortField, setSortField] = useState<"telecom" | "unicom" | "mobile" | "uptime">("telecom");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+    const [routeFilter, setRouteFilter] = useState<string>("all");
+    const [testPoint, setTestPoint] = useState<"all" | "telecom" | "unicom" | "mobile">("all");
+
+    const filteredNodes = useMemo(() => {
+        let list = [...nodes];
+        if (searchKeyword.trim()) {
+            const kw = searchKeyword.toLowerCase().trim();
+            list = list.filter((n) =>
+                n.name.toLowerCase().includes(kw) ||
+                n.merchant.toLowerCase().includes(kw) ||
+                (n.model && n.model.toLowerCase().includes(kw)) ||
+                (n.routeTag && n.routeTag.toLowerCase().includes(kw))
+            );
+        }
+
+        if (routeFilter !== "all") {
+            list = list.filter((n) => n.routeTag.toLowerCase().includes(routeFilter.toLowerCase()));
+        }
+
+        list.sort((a, b) => {
+            let valA = 0;
+            let valB = 0;
+            if (sortField === "telecom") {
+                valA = a.telecomPing || 999;
+                valB = b.telecomPing || 999;
+            } else if (sortField === "unicom") {
+                valA = a.unicomPing || 999;
+                valB = b.unicomPing || 999;
+            } else if (sortField === "mobile") {
+                valA = a.mobilePing || 999;
+                valB = b.mobilePing || 999;
+            } else if (sortField === "uptime") {
+                valA = a.uptimeDays || 0;
+                valB = b.uptimeDays || 0;
+            }
+
+            if (sortOrder === "asc") return valA - valB;
+            return valB - valA;
+        });
+
+        return list;
+    }, [nodes, searchKeyword, routeFilter, sortField, sortOrder]);
+
+    const handleSort = (field: "telecom" | "unicom" | "mobile" | "uptime") => {
+        if (sortField === field) {
+            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+        } else {
+            setSortField(field);
+            setSortOrder("asc");
+        }
+    };
+
+    return (
+        <div className="wauto flex flex-col gap-3.5 ani-show select-none">
+            {/* 顶栏筛选与测速点切换 (对齐 PickMyVPS 截图 2 布局) */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-2xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-md shadow-2xs">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-neutral-500 mr-1">测速网络：</span>
+                    {[
+                        { id: "all", label: "三网全览" },
+                        { id: "telecom", label: "电信优先" },
+                        { id: "unicom", label: "联通优先" },
+                        { id: "mobile", label: "移动优先" },
+                    ].map((btn) => (
+                        <button
+                            key={btn.id}
+                            type="button"
+                            onClick={() => {
+                                setTestPoint(btn.id as any);
+                                if (btn.id !== "all") handleSort(btn.id as any);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                                testPoint === btn.id
+                                    ? "bg-theme text-white shadow-2xs font-bold"
+                                    : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                            }`}
+                        >
+                            {btn.label}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1 text-xs">
+                        <span className="text-neutral-400">线路：</span>
+                        <select
+                            value={routeFilter}
+                            onChange={(e) => setRouteFilter(e.target.value)}
+                            className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 bg-w text-xs font-semibold t-primary outline-none focus:border-theme cursor-pointer"
+                        >
+                            <option value="all">全部线路</option>
+                            <option value="CN2GIA">CN2 GIA</option>
+                            <option value="4837">4837 优化</option>
+                            <option value="CMI">CMI 移动直连</option>
+                            <option value="9929">9929 联通精品</option>
+                            <option value="BGP">BGP 国际</option>
+                        </select>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={onRefresh}
+                        disabled={loading}
+                        className="p-1.5 rounded-lg border border-black/10 dark:border-white/10 text-neutral-500 hover:text-theme transition"
+                        title="重新获取探针延迟与水位"
+                    >
+                        <i className={`ri-refresh-line text-xs ${loading ? "animate-spin text-theme" : ""}`} />
+                    </button>
+                </div>
+            </div>
+
+            {/* PickMyVPS 风格高密单屏超级数据网格 (Dense DataGrid) */}
+            <div className="overflow-x-auto rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-xs">
+                <table className="w-full text-left text-xs border-collapse min-w-[760px]">
+                    <thead>
+                        <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] text-neutral-500 dark:text-neutral-400 font-mono text-xs">
+                            <th className="py-3 px-3">商家 / 机型</th>
+                            <th
+                                onClick={() => handleSort("telecom")}
+                                className="py-3 px-2 w-28 cursor-pointer hover:text-theme transition"
+                            >
+                                <div className="flex items-center gap-1">
+                                    <span>电信延迟</span>
+                                    {sortField === "telecom" && <i className={sortOrder === "asc" ? "ri-arrow-up-line text-theme" : "ri-arrow-down-line text-theme"} />}
+                                </div>
+                            </th>
+                            <th
+                                onClick={() => handleSort("unicom")}
+                                className="py-3 px-2 w-28 cursor-pointer hover:text-theme transition"
+                            >
+                                <div className="flex items-center gap-1">
+                                    <span>联通延迟</span>
+                                    {sortField === "unicom" && <i className={sortOrder === "asc" ? "ri-arrow-up-line text-theme" : "ri-arrow-down-line text-theme"} />}
+                                </div>
+                            </th>
+                            <th
+                                onClick={() => handleSort("mobile")}
+                                className="py-3 px-2 w-28 cursor-pointer hover:text-theme transition"
+                            >
+                                <div className="flex items-center gap-1">
+                                    <span>移动延迟</span>
+                                    {sortField === "mobile" && <i className={sortOrder === "asc" ? "ri-arrow-up-line text-theme" : "ri-arrow-down-line text-theme"} />}
+                                </div>
+                            </th>
+                            <th className="py-3 px-2 w-16 text-center">丢包率</th>
+                            <th
+                                onClick={() => handleSort("uptime")}
+                                className="py-3 px-2 w-20 text-center cursor-pointer hover:text-theme transition"
+                            >
+                                <div className="flex items-center justify-center gap-1">
+                                    <span>在线</span>
+                                    {sortField === "uptime" && <i className={sortOrder === "asc" ? "ri-arrow-up-line text-theme" : "ri-arrow-down-line text-theme"} />}
+                                </div>
+                            </th>
+                            <th className="py-3 px-2 w-36">配置规格</th>
+                            <th className="py-3 px-2 w-20 text-center">用途</th>
+                            <th className="py-3 px-3 text-right pr-4 w-28">原探针来源</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                        {filteredNodes.length === 0 ? (
+                            <tr>
+                                <td colSpan={9} className="py-16 text-center text-neutral-400">
+                                    <i className="ri-dashboard-line text-2xl block mb-2 opacity-50" />
+                                    <span>暂无机器监控节点。在收录探针站点时，系统将智能提取节点供您一键入库。</span>
+                                </td>
+                            </tr>
+                        ) : (
+                            filteredNodes.map((node) => {
+                                const flag = getFlagEmoji(node.countryCode);
+                                return (
+                                    <tr
+                                        key={node.id}
+                                        className="hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition"
+                                    >
+                                        {/* 商家 / 机型 */}
+                                        <td className="py-2.5 px-3">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-base select-none shrink-0" title={node.countryCode}>
+                                                    {flag}
+                                                </span>
+                                                <div className="truncate">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="font-bold t-primary">{node.merchant}</span>
+                                                        <span className="text-xs text-neutral-400 font-mono truncate">{node.model}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 mt-0.5">
+                                                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                                                            {node.routeTag}
+                                                        </span>
+                                                        <span className="text-[10px] text-neutral-400 font-mono truncate">{node.name}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        {/* 电信延迟 */}
+                                        <td className="py-2.5 px-2">
+                                            <div className="flex flex-col">
+                                                <span className={`font-mono font-bold ${node.telecomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.telecomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
+                                                    {node.telecomPing} ms
+                                                </span>
+                                                <span className="text-[9px] text-neutral-400 font-mono">电信骨干</span>
+                                            </div>
+                                        </td>
+
+                                        {/* 联通延迟 */}
+                                        <td className="py-2.5 px-2">
+                                            <div className="flex flex-col">
+                                                <span className={`font-mono font-bold ${node.unicomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.unicomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
+                                                    {node.unicomPing} ms
+                                                </span>
+                                                <span className="text-[9px] text-neutral-400 font-mono">联通骨干</span>
+                                            </div>
+                                        </td>
+
+                                        {/* 移动延迟 */}
+                                        <td className="py-2.5 px-2">
+                                            <div className="flex flex-col">
+                                                <span className={`font-mono font-bold ${node.mobilePing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.mobilePing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
+                                                    {node.mobilePing} ms
+                                                </span>
+                                                <span className="text-[9px] text-neutral-400 font-mono">移动CM</span>
+                                            </div>
+                                        </td>
+
+                                        {/* 丢包率 */}
+                                        <td className="py-2.5 px-2 text-center font-mono">
+                                            <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                                node.packetLoss === 0
+                                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                                    : "bg-rose-500/10 text-rose-500"
+                                            }`}>
+                                                {node.packetLoss}%
+                                            </span>
+                                        </td>
+
+                                        {/* 在线时间 */}
+                                        <td className="py-2.5 px-2 text-center font-mono text-xs">
+                                            <span className="text-neutral-600 dark:text-neutral-300 font-bold">
+                                                {node.uptimeDays}天
+                                            </span>
+                                        </td>
+
+                                        {/* 配置规格 */}
+                                        <td className="py-2.5 px-2 font-mono text-[11px] text-neutral-500">
+                                            <div className="truncate">
+                                                <span>{node.cpu || "1C"} · </span>
+                                                <span>{node.ram || "1G"} · </span>
+                                                <span>{node.disk || "20G"}</span>
+                                            </div>
+                                        </td>
+
+                                        {/* 用途 */}
+                                        <td className="py-2.5 px-2 text-center">
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
+                                                {node.usage || "直连/建站"}
+                                            </span>
+                                        </td>
+
+                                        {/* 核心要求：原探针来源外链直达 */}
+                                        <td className="py-2.5 px-3 text-right pr-4 whitespace-nowrap">
+                                            <div className="inline-flex items-center gap-1.5">
+                                                <a
+                                                    href={node.sourceUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-theme/10 hover:bg-theme hover:text-white text-theme text-xs font-semibold transition shadow-2xs group/link"
+                                                    title={`点击查看原探针页面来源: ${node.sourceUrl}`}
+                                                >
+                                                    <span>来源</span>
+                                                    <i className="ri-arrow-right-up-line text-xs font-bold transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" />
+                                                </a>
+                                                {profile?.permission && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onDeleteNode(node.id)}
+                                                        className="p-1 rounded-md text-neutral-400 hover:text-rose-500 transition"
+                                                        title="从监控列表中移除"
+                                                    >
+                                                        <i className="ri-delete-bin-line text-xs" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+function getFlagEmoji(countryCode: string = "HK"): string {
+    const code = countryCode.toUpperCase();
+    if (code === "HK") return "🇭🇰";
+    if (code === "JP") return "🇯🇵";
+    if (code === "US") return "🇺🇸";
+    if (code === "SG") return "🇸🇬";
+    if (code === "KR") return "🇰🇷";
+    if (code === "DE") return "🇩🇪";
+    if (code === "GB" || code === "UK") return "🇬🇧";
+    if (code === "CN") return "🇨🇳";
+    if (code === "TW") return "🇹🇼";
+    if (code === "RU") return "🇷🇺";
+    if (code === "CA") return "🇨🇦";
+    if (code === "AU") return "🇦🇺";
+    return "🌐";
 }
