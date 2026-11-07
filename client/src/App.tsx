@@ -3,6 +3,7 @@ import { AppRoutes } from "./app/routes";
 import { useAppBootstrap } from "./app/use-app-bootstrap";
 import { MusicPlayerProvider } from "./components/music-player/music-player-context";
 import { GlobalMusicPlayer } from "./components/music-player/global-music-player";
+import { FloatingBookNavigator } from "./components/floating-book-navigator";
 
 function App() {
   const { config, profile } = useAppBootstrap();
@@ -12,6 +13,7 @@ function App() {
       <MusicPlayerProvider>
         <AppRoutes />
         <GlobalMusicPlayer />
+        <FloatingBookNavigator />
       </MusicPlayerProvider>
     </AppProviders>
   );

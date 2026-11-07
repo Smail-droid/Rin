@@ -2,7 +2,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "r
 import { Link } from "wouter";
 import { Helmet } from 'react-helmet';
 import { useTranslation } from "react-i18next";
-import { Modal, SearchableSelect } from "@rin/ui";
+import { Modal } from "@rin/ui";
 import { useAlert, useConfirm } from "../components/dialog";
 import { ImageWithFallback } from "../components/image-with-fallback";
 import { Waiting } from "../components/loading";
@@ -28,16 +28,34 @@ export type FriendItem = {
     sort_order?: number | null;
 };
 
-// 预设核心与扩展分类
+// 预设六大严谨画廊与极客基建分类
 export const PRESET_CATEGORIES = [
     "全部",
-    "友友们",
-    "VPS/基础设施",
-    "测速/探针监控",
-    "极客常用工具",
-    "技术极客社区",
-    "其他灵感",
+    "友邻博客",
+    "主机算力",
+    "探针测速",
+    "极客工具",
+    "技术社区",
+    "漫游灵感",
 ] as const;
+
+// 历史分类向后兼容标准化映射
+export function normalizeCategory(cat: string): string {
+    const raw = (cat || "").trim();
+    if (raw === "友友们") return "友邻博客";
+    if (raw === "VPS/基础设施" || raw === "VPS" || raw === "基础设施") return "主机算力";
+    if (
+        raw === "测速/探针监控" ||
+        raw === "网络测速/路由" ||
+        raw === "买鸡/探针监控" ||
+        raw === "测速" ||
+        raw === "探针监控"
+    ) return "探针测速";
+    if (raw === "极客常用工具" || raw === "常用工具") return "极客工具";
+    if (raw === "技术极客社区" || raw === "极客社区") return "技术社区";
+    if (raw === "其他灵感") return "漫游灵感";
+    return raw || "友邻博客";
+}
 
 // 从描述中解析分类标签 [分类] 以及纯净简介
 export function parseFriendCategory(desc: string | null, url: string = ""): { category: string; cleanDesc: string } {
@@ -47,7 +65,7 @@ export function parseFriendCategory(desc: string | null, url: string = ""): { ca
     const match = desc.match(/^\[(.*?)\]\s*(.*)$/);
     if (match && match[1]) {
         return {
-            category: match[1].trim(),
+            category: normalizeCategory(match[1]),
             cleanDesc: match[2]?.trim() || "",
         };
     }
@@ -65,14 +83,16 @@ function inferCategoryFallback(url: string, text: string): string {
         combined.includes("cloud") ||
         combined.includes("host") ||
         combined.includes("server") ||
+        combined.includes("idc") ||
         combined.includes("机房") ||
         combined.includes("买鸡") ||
         combined.includes("主机")
     ) {
-        return "VPS/基础设施";
+        return "主机算力";
     }
     if (
         combined.includes("speedtest") ||
+        combined.includes("looking glass") ||
         combined.includes("probe") ||
         combined.includes("ping") ||
         combined.includes("bgp") ||
@@ -82,7 +102,7 @@ function inferCategoryFallback(url: string, text: string): string {
         combined.includes("nezha") ||
         combined.includes("uptime")
     ) {
-        return "测速/探针监控";
+        return "探针测速";
     }
     if (
         combined.includes("github") ||
@@ -92,7 +112,7 @@ function inferCategoryFallback(url: string, text: string): string {
         combined.includes("dev") ||
         combined.includes("工具")
     ) {
-        return "极客常用工具";
+        return "极客工具";
     }
     if (
         combined.includes("nodeseek") ||
@@ -104,9 +124,18 @@ function inferCategoryFallback(url: string, text: string): string {
         combined.includes("论坛") ||
         combined.includes("社区")
     ) {
-        return "技术极客社区";
+        return "技术社区";
     }
-    return "友友们";
+    if (
+        combined.includes("design") ||
+        combined.includes("art") ||
+        combined.includes("灵感") ||
+        combined.includes("画廊") ||
+        combined.includes("美学")
+    ) {
+        return "漫游灵感";
+    }
+    return "友邻博客";
 }
 
 // 封装带分类标签的完整描述
@@ -136,9 +165,18 @@ export function FriendsPage() {
     const [formName, setFormName] = useState("");
     const [formDesc, setFormDesc] = useState("");
     const [formAvatar, setFormAvatar] = useState("");
-    const [formCategory, setFormCategory] = useState("友友们");
+    const [formCategory, setFormCategory] = useState("友邻博客");
     const [isSniffing, setIsSniffing] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // 视图风格切换 (画册卡片 / 高密书签 / 拍立得便签)
+    const [viewStyle, setViewStyle] = useState<"card" | "compact" | "polaroid">(() => {
+        try {
+            return (localStorage.getItem("rin_friends_view_style") || "card") as any;
+        } catch {
+            return "card";
+        }
+    });
 
     // 编辑友链状态
     const [editingFriend, setEditingFriend] = useState<FriendItem | null>(null);
@@ -284,12 +322,12 @@ export function FriendsPage() {
                 setFormName("");
                 setFormDesc("");
                 setFormAvatar("");
-                setFormCategory("友友们");
+                setFormCategory("友邻博客");
 
                 if (profile?.permission) {
-                    showAlert("已成功收录并发布到罗盘画廊！", () => reloadFriends());
+                    showAlert("已成功收录并发布到星廊！", () => reloadFriends());
                 } else {
-                    showAlert("已提交收录申请！站长审核通过后将即刻展示在画廊中。", () => reloadFriends());
+                    showAlert("已提交收录申请！站长审核通过后将即刻展示在星廊中。", () => reloadFriends());
                 }
             }
         } catch (e: any) {
@@ -349,9 +387,9 @@ export function FriendsPage() {
     return (
         <>
             <Helmet>
-                <title>{`${t('friends.title')} - ${siteConfig.name}`}</title>
+                <title>{`星廊 · 灵感星图与友邻漫游 - ${siteConfig.name}`}</title>
                 <meta property="og:site_name" content={siteName} />
-                <meta property="og:title" content={t('friends.title')} />
+                <meta property="og:title" content={`星廊 · 灵感星图与友邻漫游`} />
                 <meta property="og:image" content={siteConfig.avatar} />
                 <meta property="og:type" content="article" />
                 <meta property="og:url" content={document.URL} />
@@ -363,14 +401,14 @@ export function FriendsPage() {
                     <div className="wauto py-6 mb-6 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 text-rose-500 dark:bg-rose-500/20 dark:text-rose-400 text-xs font-bold mb-2 shadow-2xs">
-                                <i className="ri-compass-3-line animate-spin-slow text-sm" />
-                                <span>邻家友链 · 极客罗盘</span>
+                                <i className="ri-sparkling-fill text-theme text-sm" />
+                                <span>星廊 · 灵感星图与友邻漫游</span>
                             </div>
                             <h1 className={`text-3xl sm:text-4xl font-extrabold tracking-tight art-title-${siteConfig.friendsTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"}`}>
-                                {t('friends.title')}
+                                星廊
                             </h1>
                             <p className="mt-1 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 font-normal">
-                                收集网络各处的灵感小岛、技术社区与极客基建罗盘
+                                漫游网络星群的灵感岛屿 · 友邻博客与极客数字基建
                             </p>
                         </div>
 
@@ -382,7 +420,7 @@ export function FriendsPage() {
                                     className="inline-flex items-center gap-1.5 rounded-full bg-theme px-4 py-2 text-xs font-bold text-white shadow-md shadow-rose-500/20 hover:bg-theme-hover active:scale-95 transition-all select-none"
                                 >
                                     <i className="ri-add-line text-sm" />
-                                    <span>{profile?.permission ? "添加站点" : "推荐站点 / 申请友链"}</span>
+                                    <span>{profile?.permission ? "收录站点" : "申请入廊 / 推荐站点"}</span>
                                 </button>
                             )}
 
@@ -451,28 +489,67 @@ export function FriendsPage() {
                             )}
                         </div>
 
-                        {/* 实时搜索 */}
-                        <div className="relative min-w-[200px] sm:w-64">
-                            <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
-                            <input
-                                type="text"
-                                value={searchKeyword}
-                                onChange={e => setSearchKeyword(e.target.value)}
-                                placeholder="搜索站点名称/描述..."
-                                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-theme/40 focus:bg-white dark:focus:bg-neutral-900 focus:outline-hidden transition placeholder:text-neutral-400"
-                            />
-                            {searchKeyword && (
+                        {/* 实时搜索与风格切换 */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <div className="relative min-w-[200px] sm:w-64">
+                                <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
+                                <input
+                                    type="text"
+                                    value={searchKeyword}
+                                    onChange={e => setSearchKeyword(e.target.value)}
+                                    placeholder="搜索站点名称/描述..."
+                                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-theme/40 focus:bg-white dark:focus:bg-neutral-900 focus:outline-hidden transition placeholder:text-neutral-400"
+                                />
+                                {searchKeyword && (
+                                    <button
+                                        onClick={() => setSearchKeyword("")}
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+                                    >
+                                        <i className="ri-close-circle-fill text-xs" />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* 风格切换器：画册卡片 / 高密书签 / 拍立得便签 */}
+                            <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-black/5 dark:bg-white/5 shrink-0 text-xs">
                                 <button
-                                    onClick={() => setSearchKeyword("")}
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+                                    type="button"
+                                    onClick={() => { setViewStyle("card"); try { localStorage.setItem("rin_friends_view_style", "card"); } catch {} }}
+                                    className={`px-2.5 py-1 rounded-lg transition select-none flex items-center gap-1 font-semibold ${
+                                        viewStyle === "card" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200"
+                                    }`}
+                                    title="画册卡片视图"
                                 >
-                                    <i className="ri-close-circle-fill text-xs" />
+                                    <i className="ri-grid-fill text-xs" />
+                                    <span className="hidden sm:inline">卡片</span>
                                 </button>
-                            )}
+                                <button
+                                    type="button"
+                                    onClick={() => { setViewStyle("compact"); try { localStorage.setItem("rin_friends_view_style", "compact"); } catch {} }}
+                                    className={`px-2.5 py-1 rounded-lg transition select-none flex items-center gap-1 font-semibold ${
+                                        viewStyle === "compact" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200"
+                                    }`}
+                                    title="高密书签视图"
+                                >
+                                    <i className="ri-list-check text-xs" />
+                                    <span className="hidden sm:inline">书签</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setViewStyle("polaroid"); try { localStorage.setItem("rin_friends_view_style", "polaroid"); } catch {} }}
+                                    className={`px-2.5 py-1 rounded-lg transition select-none flex items-center gap-1 font-semibold ${
+                                        viewStyle === "polaroid" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200"
+                                    }`}
+                                    title="拍立得便签视图"
+                                >
+                                    <i className="ri-sticky-note-line text-xs" />
+                                    <span className="hidden sm:inline">便签</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    {/* 画廊卡片流 */}
+                    {/* 画廊展示流 (支持画册卡片、高密书签、拍立得便签三种风格) */}
                     {filteredFriends.length === 0 ? (
                         <div className="wauto flex flex-col items-center justify-center py-20 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-dashed border-black/10 dark:border-white/10 text-center">
                             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/10 text-rose-500 mb-3 text-2xl">
@@ -482,8 +559,36 @@ export function FriendsPage() {
                                 {searchKeyword ? "没有找到符合搜索条件的站点" : "暂无相关收录站点"}
                             </p>
                             <p className="mt-1 text-xs text-neutral-400">
-                                点击右上角「+ 推荐站点 / 申请友链」添加第一个精彩小岛吧
+                                点击右上角「+ 申请入廊 / 推荐站点」添加第一个精彩星岛吧
                             </p>
+                        </div>
+                    ) : viewStyle === "compact" ? (
+                        <div className="wauto flex flex-col gap-2">
+                            {filteredFriends.map((friend, idx) => (
+                                <CompactFriendRow
+                                    key={friend.id}
+                                    friend={friend}
+                                    index={idx}
+                                    onEdit={() => setEditingFriend(friend)}
+                                    onDelete={() => handleDelete(friend.id)}
+                                    onApprove={() => handleApprove(friend)}
+                                    onReject={() => handleReject(friend)}
+                                />
+                            ))}
+                        </div>
+                    ) : viewStyle === "polaroid" ? (
+                        <div className="wauto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-7 pt-3">
+                            {filteredFriends.map((friend, idx) => (
+                                <PolaroidFriendCard
+                                    key={friend.id}
+                                    friend={friend}
+                                    index={idx}
+                                    onEdit={() => setEditingFriend(friend)}
+                                    onDelete={() => handleDelete(friend.id)}
+                                    onApprove={() => handleApprove(friend)}
+                                    onReject={() => handleReject(friend)}
+                                />
+                            ))}
                         </div>
                     ) : (
                         <div className="wauto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
@@ -727,16 +832,23 @@ function FriendCard({
     // 分类徽标配色
     const badgeColor = useMemo(() => {
         switch (category) {
+            case "主机算力":
             case "VPS/基础设施":
                 return "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400";
+            case "探针测速":
             case "测速/探针监控":
                 return "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400";
+            case "极客工具":
             case "极客常用工具":
                 return "bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400";
+            case "技术社区":
             case "技术极客社区":
                 return "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400";
+            case "漫游灵感":
             case "其他灵感":
                 return "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400";
+            case "友邻博客":
+            case "友友们":
             default:
                 return "bg-rose-500/10 text-theme dark:bg-rose-500/20 dark:text-rose-400";
         }
@@ -884,6 +996,242 @@ function FriendCard({
     );
 }
 
+// 风格 2: 高密单行书签行 (Compact List)
+function CompactFriendRow({
+    friend,
+    index,
+    onEdit,
+    onDelete,
+    onApprove,
+    onReject,
+}: {
+    friend: FriendItem;
+    index: number;
+    onEdit: () => void;
+    onDelete: () => void;
+    onApprove: () => void;
+    onReject: () => void;
+}) {
+    const profile = useContext(ProfileContext);
+    const { category, cleanDesc } = parseFriendCategory(friend.desc, friend.url);
+    const isUnhealthy = friend.health && friend.health.length > 0;
+    const isTop = friend.sort_order && friend.sort_order > 0;
+    const safeUrl = safeHttpUrl(friend.url);
+
+    return (
+        <div className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-black/5 dark:border-white/5 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-md hover:border-theme/40 hover:shadow-md transition-all select-none">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+                <span className="font-mono text-xs font-bold text-neutral-400 w-6 text-center shrink-0">#{index + 1}</span>
+                <div className="relative h-9 w-9 shrink-0 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] p-1 border border-black/5 dark:border-white/5 overflow-hidden">
+                    <ImageWithFallback
+                        className="h-full w-full rounded-lg object-cover"
+                        imageClassName={isUnhealthy ? "grayscale" : ""}
+                        src={friend.avatar}
+                        alt={friend.name}
+                    />
+                </div>
+                <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+                    <a
+                        href={safeUrl || "#"}
+                        target={safeUrl ? "_blank" : undefined}
+                        rel="noopener noreferrer"
+                        className="font-bold text-xs t-primary hover:text-theme transition truncate"
+                    >
+                        {friend.name}
+                    </a>
+                    <span className="text-[10px] font-mono px-2 py-0.2 rounded-md bg-theme/10 text-theme shrink-0 font-bold">
+                        {category}
+                    </span>
+                    {isTop && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
+                            📌 置顶
+                        </span>
+                    )}
+                    <span className="text-xs text-neutral-400 truncate hidden md:inline">
+                        {cleanDesc || "暂无简介"}
+                    </span>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+                {safeUrl && (
+                    <a
+                        href={safeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 rounded-lg bg-theme/10 hover:bg-theme hover:text-white text-theme text-xs font-semibold transition flex items-center gap-1 shadow-2xs"
+                    >
+                        <span>访问</span>
+                        <i className="ri-arrow-right-up-line text-xs" />
+                    </a>
+                )}
+                {(profile?.permission || profile?.id === friend.uid) && (
+                    <div className="flex items-center gap-1">
+                        {profile?.permission && friend.accepted === 0 && (
+                            <>
+                                <button
+                                    onClick={onApprove}
+                                    className="px-2 py-0.5 rounded-lg bg-emerald-500 text-white text-[11px] font-bold shadow-2xs"
+                                >
+                                    通过
+                                </button>
+                                <button
+                                    onClick={onReject}
+                                    className="px-2 py-0.5 rounded-lg bg-amber-500 text-white text-[11px] font-bold shadow-2xs"
+                                >
+                                    拒绝
+                                </button>
+                            </>
+                        )}
+                        <button
+                            onClick={onEdit}
+                            className="p-1 rounded-md text-neutral-400 hover:text-theme transition"
+                            title="管理"
+                        >
+                            <i className="ri-edit-line text-xs" />
+                        </button>
+                        <button
+                            onClick={onDelete}
+                            className="p-1 rounded-md text-neutral-400 hover:text-rose-500 transition"
+                            title="删除"
+                        >
+                            <i className="ri-delete-bin-line text-xs" />
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// 风格 3: 拍立得和纸胶带便签 (Polaroid Notes)
+function PolaroidFriendCard({
+    friend,
+    index,
+    onEdit,
+    onDelete,
+    onApprove,
+    onReject,
+}: {
+    friend: FriendItem;
+    index: number;
+    onEdit: () => void;
+    onDelete: () => void;
+    onApprove: () => void;
+    onReject: () => void;
+}) {
+    const profile = useContext(ProfileContext);
+    const { category, cleanDesc } = parseFriendCategory(friend.desc, friend.url);
+    const isUnhealthy = friend.health && friend.health.length > 0;
+    const isTop = friend.sort_order && friend.sort_order > 0;
+    const safeUrl = safeHttpUrl(friend.url);
+
+    // 拍立得交错微倾角
+    const tiltAngles = [
+        "rotate-[-2deg]",
+        "rotate-[1.5deg]",
+        "rotate-[-1deg]",
+        "rotate-[2deg]",
+        "rotate-[-1.5deg]",
+        "rotate-[1deg]",
+    ];
+    const tilt = tiltAngles[index % tiltAngles.length];
+
+    // 和纸胶带色彩
+    const tapeColors = [
+        "bg-rose-300/60 dark:bg-rose-500/30",
+        "bg-amber-300/60 dark:bg-amber-500/30",
+        "bg-sky-300/60 dark:bg-sky-500/30",
+        "bg-emerald-300/60 dark:bg-emerald-500/30",
+        "bg-purple-300/60 dark:bg-purple-500/30",
+    ];
+    const tape = tapeColors[index % tapeColors.length];
+
+    return (
+        <div
+            className={`group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-neutral-900 p-4 pt-6 border border-black/10 dark:border-white/10 shadow-md hover:shadow-2xl transition-all duration-300 transform ${tilt} hover:rotate-0 hover:scale-[1.03] hover:z-20 select-none`}
+        >
+            {/* 拍立得和纸胶带 */}
+            <div
+                className={`absolute -top-3 left-1/2 -translate-x-1/2 w-14 h-4.5 ${tape} rounded-xs shadow-2xs rotate-[-1deg] pointer-events-none z-10`}
+            />
+
+            <a
+                href={safeUrl || "#"}
+                target={safeUrl ? "_blank" : undefined}
+                rel="noopener noreferrer"
+                title={friend.name}
+                className="flex flex-col items-center text-center gap-2.5 flex-1 min-w-0"
+            >
+                <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] p-1.5 shadow-inner border border-black/5 dark:border-white/5 group-hover:scale-110 transition-transform overflow-hidden">
+                    <ImageWithFallback
+                        className="h-full w-full rounded-xl object-cover"
+                        imageClassName={isUnhealthy ? "grayscale" : ""}
+                        src={friend.avatar}
+                        alt={friend.name}
+                    />
+                </div>
+
+                <div className="w-full">
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-sm text-neutral-800 dark:text-neutral-100 group-hover:text-theme transition-colors">
+                            {friend.name}
+                        </span>
+                        {isTop && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                                📌
+                            </span>
+                        )}
+                    </div>
+                    <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-theme/10 text-theme font-mono">
+                        {category}
+                    </span>
+                    <p className="mt-1.5 line-clamp-2 text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed px-1">
+                        {cleanDesc || "漫步星廊，静候回响~"}
+                    </p>
+                </div>
+            </a>
+
+            {(profile?.permission || profile?.id === friend.uid) && (
+                <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-1 text-xs">
+                    {profile?.permission && friend.accepted === 0 ? (
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={onApprove}
+                                className="px-2 py-0.5 rounded-lg bg-emerald-500 text-white text-[10px] font-bold shadow-2xs"
+                            >
+                                通过
+                            </button>
+                            <button
+                                onClick={onReject}
+                                className="px-2 py-0.5 rounded-lg bg-amber-500 text-white text-[10px] font-bold shadow-2xs"
+                            >
+                                拒绝
+                            </button>
+                        </div>
+                    ) : <span />}
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={onEdit}
+                            className="p-1 rounded-md text-neutral-400 hover:text-theme transition text-xs"
+                            title="编辑"
+                        >
+                            <i className="ri-edit-line" />
+                        </button>
+                        <button
+                            onClick={onDelete}
+                            className="p-1 rounded-md text-neutral-400 hover:text-rose-500 transition text-xs"
+                            title="删除"
+                        >
+                            <i className="ri-delete-bin-line" />
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // 编辑友链弹窗组件
 function EditFriendModal({
     friend,
@@ -971,14 +1319,17 @@ function EditFriendModal({
                     <div className="mt-3.5 p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex flex-col gap-2.5">
                         <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300">审核状态</span>
-                            <div className="w-36">
-                                <SearchableSelect
-                                    value={String(status)}
-                                    onChange={(nextValue) => setStatus(Number(nextValue) || 0)}
-                                    options={statusOptions.map(o => ({ label: o.label, value: String(o.value) }))}
-                                    placeholder="状态"
-                                />
-                            </div>
+                            <select
+                                value={status}
+                                onChange={(e) => setStatus(Number(e.target.value))}
+                                className="w-36 px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w text-xs font-bold t-primary outline-none focus:border-theme cursor-pointer"
+                            >
+                                {statusOptions.map((o) => (
+                                    <option key={o.value} value={o.value}>
+                                        {o.label}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300">置顶权重 (数字越大越靠前)</span>

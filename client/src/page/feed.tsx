@@ -59,6 +59,18 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
   const [editContent, setEditContent] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
+  // PC 端右侧目录下方推荐标签
+  const [recommendedTags, setRecommendedTags] = useState<{ id: number; name: string }[]>([]);
+
+  useEffect(() => {
+    client.tag.list().then(({ data }) => {
+      if (data && Array.isArray(data)) {
+        const shuffled = [...data].sort(() => 0.5 - Math.random());
+        setRecommendedTags(shuffled.slice(0, 8));
+      }
+    }).catch(() => {});
+  }, []);
+
   const openQuickEdit = () => {
     if (!feed) return;
     setEditTitle(feed.title || "");
@@ -752,9 +764,46 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
             </main>
             <div className="w-80 hidden lg:block relative">
               <div
-                className={`start-0 end-0 top-[5.5rem] sticky`}
+                className={`start-0 end-0 top-[5.5rem] sticky flex flex-col gap-4 max-h-[calc(100vh-7rem)] overflow-y-auto scrollbar-none`}
               >
                 <TOC />
+
+                {/* 灵感标签漫游推荐卡片 (仅 PC 端右侧宽屏呈现，不破坏正文与移动端视觉) */}
+                {recommendedTags.length > 0 && (
+                  <div className="p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white/75 dark:bg-neutral-900/75 backdrop-blur-md shadow-2xs space-y-2.5 ani-show">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-black/5 dark:border-white/5">
+                      <div className="flex items-center gap-1.5 text-xs font-bold t-primary">
+                        <span className="text-theme">🏷️</span>
+                        <span>灵感标签漫游</span>
+                      </div>
+                      <Link href="/hashtags" className="text-[11px] text-neutral-400 hover:text-theme transition">
+                        星云 ➔
+                      </Link>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 text-xs">
+                      {recommendedTags.map((tag, idx) => {
+                        const pastel = [
+                          "bg-amber-100/80 text-amber-900 border-amber-300/50 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800/40",
+                          "bg-sky-100/80 text-sky-900 border-sky-300/50 dark:bg-sky-950/40 dark:text-sky-200 dark:border-sky-800/40",
+                          "bg-rose-100/80 text-rose-900 border-rose-300/50 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-800/40",
+                          "bg-emerald-100/80 text-emerald-900 border-emerald-300/50 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800/40",
+                          "bg-purple-100/80 text-purple-900 border-purple-300/50 dark:bg-purple-950/40 dark:text-purple-200 dark:border-purple-800/40",
+                        ];
+                        const colorClass = pastel[idx % pastel.length];
+                        return (
+                          <Link
+                            key={tag.id}
+                            href={`/hashtag/${encodeURIComponent(tag.name)}`}
+                            className={`px-2.5 py-0.5 rounded-full border text-[11px] font-semibold transition hover:scale-105 select-none ${colorClass}`}
+                          >
+                            #{tag.name}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </>

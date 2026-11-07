@@ -172,7 +172,7 @@ export function FriendService(): Hono {
             }
 
             // 智能分类与 AI 提炼
-            let suggestedCategory = "友友们";
+            let suggestedCategory = "友邻博客";
             let aiSummaryDesc = "";
 
             // 尝试通过后台配置的 AI 进行智能提炼与自动归类
@@ -184,7 +184,7 @@ export function FriendService(): Hono {
                     const aiResult = await executeAIChat(env, serverConfig, [
                         {
                             role: "system",
-                            content: `你是一个专业的网站信息精炼与分类助手。根据用户提供的网站信息，输出一段不超过40字的精炼中文简介，并将其归类为以下类别之一：['友友们', 'VPS/基础设施', '网络测速/路由', '买鸡/探针监控', '极客常用工具', '技术极客社区', '其他灵感']。请直接返回规范的 JSON 格式：{"desc": "精炼中文简介（40字以内）", "category": "分类名称"}`
+                            content: `你是一个专业的网站信息精炼与分类助手。根据用户提供的网站信息，输出一段不超过40字的精炼中文简介，并将其归类为以下类别之一：['友邻博客', '主机算力', '探针测速', '极客工具', '技术社区', '漫游灵感']。请直接返回规范的 JSON 格式：{"desc": "精炼中文简介（40字以内）", "category": "分类名称"}`
                         },
                         {
                             role: "user",
@@ -218,7 +218,7 @@ export function FriendService(): Hono {
             }
 
             // 启发式分类引擎（兼作保底与规则强化）
-            if (suggestedCategory === "友友们" || suggestedCategory === "其他灵感") {
+            if (suggestedCategory === "友邻博客" || suggestedCategory === "漫游灵感" || suggestedCategory === "友友们" || suggestedCategory === "其他灵感") {
                 const combinedContent = `${domain} ${siteTitle} ${siteDesc} ${rawHtmlText}`.toLowerCase();
                 if (
                     combinedContent.includes("vps") ||
@@ -231,7 +231,7 @@ export function FriendService(): Hono {
                     combinedContent.includes("云服务器") ||
                     combinedContent.includes("主机")
                 ) {
-                    suggestedCategory = "VPS/基础设施";
+                    suggestedCategory = "主机算力";
                 } else if (
                     combinedContent.includes("speedtest") ||
                     combinedContent.includes("looking glass") ||
@@ -241,17 +241,14 @@ export function FriendService(): Hono {
                     combinedContent.includes("测速") ||
                     combinedContent.includes("路由") ||
                     combinedContent.includes("回程") ||
-                    combinedContent.includes("traceroute")
-                ) {
-                    suggestedCategory = "网络测速/路由";
-                } else if (
+                    combinedContent.includes("traceroute") ||
                     combinedContent.includes("探针") ||
                     combinedContent.includes("nezha") ||
                     combinedContent.includes("uptime") ||
                     combinedContent.includes("serverstatus") ||
                     combinedContent.includes("监控")
                 ) {
-                    suggestedCategory = "买鸡/探针监控";
+                    suggestedCategory = "探针测速";
                 } else if (
                     combinedContent.includes("github") ||
                     combinedContent.includes("tool") ||
@@ -262,7 +259,7 @@ export function FriendService(): Hono {
                     combinedContent.includes("工具") ||
                     combinedContent.includes("转换")
                 ) {
-                    suggestedCategory = "极客常用工具";
+                    suggestedCategory = "极客工具";
                 } else if (
                     combinedContent.includes("nodeseek") ||
                     combinedContent.includes("v2ex") ||
@@ -273,7 +270,17 @@ export function FriendService(): Hono {
                     combinedContent.includes("论坛") ||
                     combinedContent.includes("社区")
                 ) {
-                    suggestedCategory = "技术极客社区";
+                    suggestedCategory = "技术社区";
+                } else if (
+                    combinedContent.includes("design") ||
+                    combinedContent.includes("art") ||
+                    combinedContent.includes("灵感") ||
+                    combinedContent.includes("画廊") ||
+                    combinedContent.includes("美学")
+                ) {
+                    suggestedCategory = "漫游灵感";
+                } else {
+                    suggestedCategory = "友邻博客";
                 }
             }
 

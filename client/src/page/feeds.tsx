@@ -605,7 +605,7 @@ function StickyNoteItem({
                 >
                     {renderAdminControls("friends")}
                     <span className="text-3xl mb-1">{siteConfig.atelierFriendsIcon || "🌸"}</span>
-                    <p className="font-bold text-sm text-rose-900 dark:text-rose-200 truncate w-32">邻家友链</p>
+                    <p className="font-bold text-sm text-rose-900 dark:text-rose-200 truncate w-32">星廊</p>
                     <span className="text-[11px] text-rose-700/80 dark:text-rose-300/80 mt-1 font-semibold group-hover:underline">
                         拜访朋友们 &rarr;
                     </span>
@@ -623,7 +623,7 @@ function StickyNoteItem({
                     <div className="flex items-center gap-2.5 min-w-0">
                         <span className="text-xl">{siteConfig.atelierFriendsIcon || "🌸"}</span>
                         <div className="min-w-0 truncate">
-                            <p className="font-bold text-xs text-rose-900 dark:text-rose-200 truncate">邻家友链</p>
+                            <p className="font-bold text-xs text-rose-900 dark:text-rose-200 truncate">星廊</p>
                             <p className="text-[10px] text-neutral-400 truncate">博主数字花园</p>
                         </div>
                     </div>
@@ -652,7 +652,7 @@ function StickyNoteItem({
 
                 <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
                     <span className="text-2xl mb-1 block">{siteConfig.atelierFriendsIcon || "🌸"}</span>
-                    <p className={`font-bold text-base ${bgImage ? "text-white" : "text-rose-900 dark:text-rose-200"}`}>邻家友链</p>
+                    <p className={`font-bold text-base ${bgImage ? "text-white" : "text-rose-900 dark:text-rose-200"}`}>星廊</p>
                     <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-rose-700/80 dark:text-rose-300/70"}`}>
                         {siteConfig.atelierFriendsDesc || "漫步在同好博主的数字花园，交换思想火花。"}
                     </p>
@@ -1208,7 +1208,7 @@ export function FeedsPage() {
             setNoteUrl(siteConfig.atelierMomentsUrl || "/moments");
             setNoteShow(siteConfig.atelierMomentsShow !== false);
         } else if (type === "friends") {
-            setNoteTitle("邻家友链");
+            setNoteTitle("星廊");
             setNoteDesc(siteConfig.atelierFriendsDesc || "");
             setNoteStyle(siteConfig.atelierFriendsStyle || "card");
             setNoteBg(siteConfig.atelierFriendsBg || "");

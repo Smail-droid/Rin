@@ -110,7 +110,7 @@ const STICKY_NOTES_CONFIG = [
   },
   {
     id: "friends" as const,
-    name: "邻家友链",
+    name: "星廊",
     subKey: "atelier.friends",
     defaultIcon: "🌸",
     defaultUrl: "/friends",
@@ -2463,7 +2463,7 @@ export function Settings() {
             </div>
           </div>
 
-          {/* 切片 2: 邻家友链健康巡检与申请治理 */}
+          {/* 切片 2: 星廊站点健康巡检与申请治理 */}
           <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-black/5 dark:border-white/5">
               <i className="ri-heart-pulse-line text-theme text-base" />
