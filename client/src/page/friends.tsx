@@ -1971,7 +1971,7 @@ function SparklineWave({
     );
 }
 
-// 机器详情弹窗中使用的综合面积图组件 (100% 对齐截图 1 走势图风格)
+// 机器详情弹窗中使用的综合面积图组件 (100% 对齐截图 1 走势图风格，高密紧凑零滚动条)
 function DetailAreaChart({
     title,
     currentValue,
@@ -1979,7 +1979,7 @@ function DetailAreaChart({
     subInfo = "",
     color = "#FF7E95",
     dataPoints = [15, 20, 18, 45, 32, 28, 30, 33],
-    timeLabels = ["07:55:29", "07:55:40", "07:55:52", "07:56:04", "07:56:16", "07:56:22"],
+    timeLabels = ["07:55:29", "07:55:52", "07:56:22"],
 }: {
     title: string;
     currentValue: string | number;
@@ -1992,13 +1992,13 @@ function DetailAreaChart({
     const min = Math.min(...dataPoints, 0);
     const max = Math.max(...dataPoints, 10);
     const range = max - min || 1;
-    const width = 240;
-    const height = 75;
+    const width = 200;
+    const height = 48;
     const step = width / (dataPoints.length - 1);
 
     const points = dataPoints.map((v, i) => {
         const x = i * step;
-        const y = height - ((v - min) / range) * (height - 8) - 4;
+        const y = height - ((v - min) / range) * (height - 6) - 3;
         return `${x.toFixed(1)},${y.toFixed(1)}`;
     });
 
@@ -2007,16 +2007,16 @@ function DetailAreaChart({
     const gradId = `chart-grad-${title.replace(/[^a-zA-Z0-9]/g, "")}-${color.replace(/[^a-zA-Z0-9]/g, "")}`;
 
     return (
-        <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-neutral-900/80 border border-black/10 dark:border-white/10 shadow-2xs flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-2">
+        <div className="p-2.5 rounded-2xl bg-white/80 dark:bg-neutral-900/80 border border-black/10 dark:border-white/10 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-center justify-between">
                 <span className="font-bold text-xs t-primary">{title}</span>
-                <div className="flex items-center gap-1.5 font-mono text-xs">
+                <div className="flex items-center gap-1 font-mono text-[11px]">
                     <span className="font-bold" style={{ color }}>{currentValue}{unit}</span>
                     {subInfo && <span className="text-[10px] text-neutral-400">{subInfo}</span>}
                 </div>
             </div>
 
-            <div className="relative w-full h-20 my-1 overflow-hidden">
+            <div className="relative w-full h-12 my-0.5 overflow-hidden">
                 <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="overflow-visible">
                     <defs>
                         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
@@ -2025,20 +2025,19 @@ function DetailAreaChart({
                         </linearGradient>
                     </defs>
                     <path d={pathD} fill={`url(#${gradId})`} />
-                    <path d={lineD} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={lineD} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
             </div>
 
-            <div className="flex items-center justify-between text-[9px] font-mono text-neutral-400 pt-1 border-t border-black/5 dark:border-white/5">
+            <div className="flex items-center justify-between text-[9px] font-mono text-neutral-400 pt-0.5 border-t border-black/5 dark:border-white/5">
                 <span>{timeLabels[0]}</span>
-                <span>{timeLabels[Math.floor(timeLabels.length / 2)]}</span>
                 <span>{timeLabels[timeLabels.length - 1]}</span>
             </div>
         </div>
     );
 }
 
-// 机器专属监控详情弹窗 (完全还原截图 1 深度参数与 6 大实时监控图)
+// 机器专属监控详情弹窗 (超紧凑单屏无垂直滚动条仪表盘，开窗即全览)
 function MachineMonitorDetailModal({
     node,
     isOpen,
@@ -2053,10 +2052,9 @@ function MachineMonitorDetailModal({
     if (!node || !isOpen) return null;
 
     const flag = getFlagEmoji(node.countryCode);
-    const cpuName = node.cpuDetail || node.cpu || "Intel(R) Xeon(R) CPU E5-2683 v4 @ 2.10GHz (x1)";
-    const osName = node.os || "Debian GNU/Linux 12 (bookworm)";
-    const kernelVer = node.kernel || "6.1.0-52-cloud-amd64";
-    const archName = node.arch || "amd64";
+    const cpuClean = formatCpuModel(node.cpuDetail || node.cpu);
+    const osName = node.os || "Debian GNU/Linux 12";
+    const kernelVer = node.kernel || "6.1.0-52";
     const virtName = node.virtualization || "kvm";
     const uptimeStr = node.uptimeDetail || `${node.uptimeDays}天 3小时 4分钟`;
     const lastReport = node.lastReportTime || "刚刚";
@@ -2064,250 +2062,186 @@ function MachineMonitorDetailModal({
     // 存储与网络
     const ramTotalStr = node.ramTotal || node.ram || "1.9 GB";
     const ramUsedStr = node.ramUsed || "211.3 MB";
-    const swapTotalStr = node.swapTotal || "1024.0 MB";
     const diskTotalStr = node.diskTotal || node.disk || "7.8 GB";
     const diskUsedStr = node.diskUsed || "3.0 GB";
-    const netTotalStr = `${node.netTotalUp || "262.7 GB"} / ${node.netTotalDown || "257.8 GB"}`;
     const trafficLimitStr = `${node.netTotalUp || "520.4 GB"} / ${node.trafficLimit || "2.00 TB"}`;
     const speedInStr = node.netSpeedIn || "2.1 MB/s";
     const speedOutStr = node.netSpeedOut || "2.1 MB/s";
 
     // 流媒体与风控
     const riskRating = node.ipRisk || "低风险";
-    const unlockList = node.mediaUnlock || [`YouTube[${node.countryCode}]`, `Netflix[${node.countryCode}]`, `Disney+[${node.countryCode}]`, "ChatGPT 解锁"];
+    const unlockList = node.mediaUnlock || [`YouTube[${node.countryCode}]`, `Netflix[${node.countryCode}]`, "ChatGPT 解锁"];
 
     return (
         <Modal
             isOpen={isOpen}
             onRequestClose={onClose}
             contentLabel="机器全景性能与监控大盘"
-            panelClassName="max-h-[92vh] p-4 sm:p-7 max-w-[96vw] sm:max-w-4xl w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-2xl border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+            panelClassName="p-4 sm:p-5 max-w-[96vw] sm:max-w-5xl w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-2xl border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
         >
-            <div className="flex flex-col w-full h-full max-h-[88vh]">
-                {/* 顶栏标题与关闭按钮 */}
-                <div className="flex items-center justify-between pb-3.5 border-b border-black/5 dark:border-white/5 shrink-0">
-                    <div className="flex items-center gap-2.5">
-                        <span className="text-2xl select-none">{flag}</span>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-base sm:text-lg font-bold t-primary">{node.merchant} - {node.name}</h3>
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span>运行中</span>
-                                </span>
-                            </div>
-                            <p className="text-[11px] text-neutral-400 font-mono mt-0.5">
-                                {node.model} · {node.routeTag} · 原探针来源: {new URL(node.sourceUrl).hostname}
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="p-1.5 rounded-xl text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 transition"
-                    >
-                        <i className="ri-close-line text-lg" />
-                    </button>
-                </div>
-
-                {/* 主体滚动层 */}
-                <div className="flex-1 overflow-y-auto pr-1 space-y-4 scrollbar-thin pt-3">
-                    {/* 1. 硬件与系统信息卡片网格 (对齐截图 1 顶部卡片) */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
-                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 col-span-2">
-                            <span className="text-neutral-400 block text-[10px] mb-1">⚙ CPU 处理器型号与主频</span>
-                            <span className="font-bold t-primary block truncate">{cpuName}</span>
-                        </div>
-                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
-                            <span className="text-neutral-400 block text-[10px] mb-1">🖥 操作系统</span>
-                            <span className="font-bold t-primary block truncate">{osName}</span>
-                        </div>
-                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
-                            <span className="text-neutral-400 block text-[10px] mb-1">⚡ 内核版本</span>
-                            <span className="font-bold t-primary block truncate">{kernelVer}</span>
-                        </div>
-
-                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
-                            <span className="text-neutral-400 block text-[10px] mb-1">架构</span>
-                            <span className="font-bold t-primary block">{archName}</span>
-                        </div>
-                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
-                            <span className="text-neutral-400 block text-[10px] mb-1">虚拟化</span>
-                            <span className="font-bold t-primary block">{virtName}</span>
-                        </div>
-                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
-                            <span className="text-neutral-400 block text-[10px] mb-1">⏱ 运行时间</span>
-                            <span className="font-bold t-primary block">{uptimeStr}</span>
-                        </div>
-                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
-                            <span className="text-neutral-400 block text-[10px] mb-1">🕒 最后上报</span>
-                            <span className="font-bold t-primary block">{lastReport}</span>
-                        </div>
-                    </div>
-
-                    {/* 2. 存储与网络信息卡片 (对齐截图 1 中间层) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
-                        <div className="p-3.5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-2">
-                            <span className="text-xs font-bold text-neutral-500 block">💾 存储信息</span>
-                            <div className="grid grid-cols-3 gap-2">
-                                <div>
-                                    <span className="text-[10px] text-neutral-400 block">内存已用</span>
-                                    <span className="font-bold t-primary">{ramUsedStr} / {ramTotalStr}</span>
-                                </div>
-                                <div>
-                                    <span className="text-[10px] text-neutral-400 block">交换分区</span>
-                                    <span className="font-bold t-primary">{swapTotalStr}</span>
-                                </div>
-                                <div>
-                                    <span className="text-[10px] text-neutral-400 block">磁盘已用</span>
-                                    <span className="font-bold t-primary">{diskUsedStr} / {diskTotalStr}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-3.5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-2">
-                            <span className="text-xs font-bold text-neutral-500 block">🌐 网络与流量</span>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <span className="text-[10px] text-neutral-400 block">总流量配额</span>
-                                    <span className="font-bold text-emerald-600 dark:text-emerald-400">{trafficLimitStr}</span>
-                                    <span className="text-[9px] text-neutral-400 block mt-0.5">↑ {netTotalStr}</span>
-                                </div>
-                                <div>
-                                    <span className="text-[10px] text-neutral-400 block">实时网络速率</span>
-                                    <span className="font-bold t-primary">↑ {speedOutStr} · ↓ {speedInStr}</span>
-                                    <span className="text-[9px] text-neutral-400 block mt-0.5">TCP: {node.tcpConnections || 278} · UDP: {node.udpConnections || 7}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 3. IP 质量概况 (IPQA) 与流媒体解锁 (对齐截图 1) */}
-                    <div className="p-3.5 rounded-2xl bg-cyan-500/5 dark:bg-cyan-950/20 border border-cyan-500/20 space-y-2 text-xs">
-                        <div className="flex items-center justify-between">
-                            <span className="font-bold text-cyan-700 dark:text-cyan-300 flex items-center gap-1.5">
-                                <i className="ri-shield-check-line" />
-                                <span>IP 质量概况 (IPQA)</span>
-                            </span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                ● 综合风评：{riskRating}
+            <div className="flex flex-col w-full gap-2.5">
+                {/* 1. 顶栏：节点名称 + 状态 + 时间跨度选择器 + 关闭按钮 */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-black/5 dark:border-white/5">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xl select-none">{flag}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <h3 className="text-sm sm:text-base font-bold t-primary truncate">
+                                {node.merchant} - {node.name}
+                            </h3>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <span>在线中</span>
                             </span>
                         </div>
-                        <div className="flex items-center gap-1.5 flex-wrap pt-1 font-mono text-[11px]">
-                            <span className="text-neutral-400">流媒体解锁：</span>
-                            <span className="text-cyan-600 font-bold mr-1">v4</span>
-                            {unlockList.map((tag, idx) => (
-                                <span key={idx} className="px-2 py-0.5 rounded-lg bg-black/5 dark:bg-white/5 text-neutral-700 dark:text-neutral-200 border border-black/5 font-semibold">
-                                    {tag}
-                                </span>
-                            ))}
-                        </div>
                     </div>
 
-                    {/* 4. 历史时间跨度切换 Tab (实时 / 1小时 / 6小时 / 1天 / 7天 / 30天) */}
-                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-black/5 dark:border-white/5">
-                        <span className="text-xs font-bold text-neutral-500">监控历史走势图：</span>
-                        <div className="flex items-center gap-1 flex-wrap">
+                    <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                        {/* 监控时间跨度小胶囊 */}
+                        <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-black/5 dark:bg-white/5 text-[11px] font-semibold">
                             {[
                                 { id: "realtime", label: "实时" },
-                                { id: "1h", label: "1 小时" },
-                                { id: "6h", label: "6 小时" },
-                                { id: "1d", label: "1 天" },
-                                { id: "7d", label: "7 天" },
-                                { id: "30d", label: "30 天" },
+                                { id: "1h", label: "1h" },
+                                { id: "6h", label: "6h" },
+                                { id: "1d", label: "24h" },
+                                { id: "7d", label: "7d" },
+                                { id: "30d", label: "30d" },
                             ].map((btn) => (
                                 <button
                                     key={btn.id}
                                     type="button"
                                     onClick={() => setTimeSpan(btn.id as any)}
-                                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition select-none ${
+                                    className={`px-2 py-0.5 rounded-md transition select-none ${
                                         timeSpan === btn.id
-                                            ? "bg-theme text-white shadow-2xs font-bold"
-                                            : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                                            ? "bg-theme text-white font-bold shadow-2xs"
+                                            : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
                                     }`}
                                 >
                                     {btn.label}
                                 </button>
                             ))}
                         </div>
-                    </div>
 
-                    {/* 5. 六大监控走势图网格 (完整还原截图 1 底部 6 大图表) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
-                        {/* 1. CPU 与负载 */}
-                        <DetailAreaChart
-                            title="CPU"
-                            currentValue={node.cpuUsage ?? 3.3}
-                            unit="%"
-                            subInfo={`负载: ${node.load1 ?? 0.02}`}
-                            color="#F59E0B"
-                            dataPoints={[12, 10, 48, 20, 20, 18, 19, 18, (node.cpuUsage ?? 3.3)]}
-                        />
-
-                        {/* 2. 内存 */}
-                        <DetailAreaChart
-                            title="内存"
-                            currentValue={ramUsedStr}
-                            unit={` · ${ramTotalStr}`}
-                            color="#EF4444"
-                            dataPoints={[210, 211, 211, 211, 212, 211, 211, 211]}
-                        />
-
-                        {/* 3. 磁盘 */}
-                        <DetailAreaChart
-                            title="磁盘"
-                            currentValue={diskUsedStr}
-                            unit={` · ${diskTotalStr}`}
-                            color="#06B6D4"
-                            dataPoints={[3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]}
-                        />
-
-                        {/* 4. 网络速率 */}
-                        <DetailAreaChart
-                            title="网络速率"
-                            currentValue={`↑ ${speedOutStr}`}
-                            unit={` · ↓ ${speedInStr}`}
-                            color="#8B5CF6"
-                            dataPoints={[1.2, 2.4, 1.8, 7.6, 2.1, 2.1]}
-                        />
-
-                        {/* 5. 连接数 */}
-                        <DetailAreaChart
-                            title="连接"
-                            currentValue={`TCP: ${node.tcpConnections || 278}`}
-                            unit={` · UDP: ${node.udpConnections || 7}`}
-                            color="#EC4899"
-                            dataPoints={[120, 140, 180, 260, 275, (node.tcpConnections || 278)]}
-                        />
-
-                        {/* 6. 进程 */}
-                        <DetailAreaChart
-                            title="进程数"
-                            currentValue={node.processCount || 75}
-                            unit=""
-                            color="#3B82F6"
-                            dataPoints={[70, 72, 74, 75, 75, (node.processCount || 75)]}
-                        />
+                        <button
+                            onClick={onClose}
+                            className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 transition"
+                        >
+                            <i className="ri-close-line text-base" />
+                        </button>
                     </div>
                 </div>
 
-                {/* 底部按钮栏 */}
-                <div className="mt-3.5 pt-3 border-t border-black/5 dark:border-white/5 flex items-center justify-between shrink-0">
-                    <span className="text-xs text-neutral-400 font-mono">
-                        检测节点: {node.testNodeLocation || "三网骨干网络 (上海/广州/北京)"}
+                {/* 2. 高密系统与硬件综合指标条 (对齐图 2、图 3，单行无垂直浪费) */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px] font-mono">
+                    {/* 胶囊 1: 系统与运行 */}
+                    <div className="p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex items-center gap-2">
+                        <OsIcon os={node.os} name={node.name} />
+                        <div className="min-w-0 truncate">
+                            <span className="font-bold t-primary block truncate">{osName}</span>
+                            <span className="text-[10px] text-neutral-400 block truncate">{kernelVer} · {virtName} · ⏱️ {uptimeStr}</span>
+                        </div>
+                    </div>
+
+                    {/* 胶囊 2: CPU 与 内存 */}
+                    <div className="p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex flex-col justify-center gap-0.5">
+                        <span className="font-bold t-primary truncate" title={node.cpuDetail || node.cpu}>⚙️ {cpuClean}</span>
+                        <span className="text-[10px] text-neutral-400 truncate">💾 内存: {ramUsedStr} / {ramTotalStr}</span>
+                    </div>
+
+                    {/* 胶囊 3: 网络与流量 */}
+                    <div className="p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex flex-col justify-center gap-0.5">
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400 truncate">🌐 流量: {trafficLimitStr}</span>
+                        <span className="text-[10px] text-neutral-400 truncate">↑ {speedOutStr} · ↓ {speedInStr} · TCP:{node.tcpConnections || 278}</span>
+                    </div>
+
+                    {/* 胶囊 4: 流媒体与风控 */}
+                    <div className="p-2 rounded-xl bg-cyan-500/5 dark:bg-cyan-950/20 border border-cyan-500/20 flex flex-col justify-center gap-0.5">
+                        <span className="font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
+                            <span>● 综合风评: {riskRating}</span>
+                        </span>
+                        <div className="flex items-center gap-1 overflow-hidden truncate text-[10px]">
+                            {unlockList.slice(0, 3).map((item, idx) => (
+                                <span key={idx} className="text-neutral-500 truncate">[{item.replace(/\[.*\]/, "")}]</span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. 六大监控面积波峰图网格 (3列 x 2行，高度精准，完全消除滚动条) */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                    {/* 1. CPU */}
+                    <DetailAreaChart
+                        title="CPU 使用率"
+                        currentValue={node.cpuUsage ?? 21}
+                        unit="%"
+                        subInfo={`负载: ${node.load1 ?? 0.02}`}
+                        color="#F59E0B"
+                        dataPoints={[12, 10, 48, 20, 20, 18, 19, (node.cpuUsage ?? 21)]}
+                    />
+
+                    {/* 2. 内存 */}
+                    <DetailAreaChart
+                        title="内存用量"
+                        currentValue={ramUsedStr}
+                        unit={` / ${ramTotalStr}`}
+                        color="#EF4444"
+                        dataPoints={[210, 211, 211, 211, 212, 211, 211]}
+                    />
+
+                    {/* 3. 磁盘 */}
+                    <DetailAreaChart
+                        title="磁盘存储"
+                        currentValue={diskUsedStr}
+                        unit={` / ${diskTotalStr}`}
+                        color="#06B6D4"
+                        dataPoints={[3.0, 3.0, 3.0, 3.0, 3.0, 3.0]}
+                    />
+
+                    {/* 4. 网络速率 */}
+                    <DetailAreaChart
+                        title="网络速率"
+                        currentValue={`↑${speedOutStr}`}
+                        unit={` ↓${speedInStr}`}
+                        color="#8B5CF6"
+                        dataPoints={[1.2, 2.4, 1.8, 7.6, 2.1, 2.1]}
+                    />
+
+                    {/* 5. 连接数 */}
+                    <DetailAreaChart
+                        title="TCP/UDP 连接"
+                        currentValue={`TCP: ${node.tcpConnections || 278}`}
+                        unit={` UDP:${node.udpConnections || 7}`}
+                        color="#EC4899"
+                        dataPoints={[120, 140, 180, 260, 275, (node.tcpConnections || 278)]}
+                    />
+
+                    {/* 6. 进程数 */}
+                    <DetailAreaChart
+                        title="系统进程数"
+                        currentValue={node.processCount || 75}
+                        unit=""
+                        color="#3B82F6"
+                        dataPoints={[70, 72, 74, 75, 75, (node.processCount || 75)]}
+                    />
+                </div>
+
+                {/* 4. 底部状态栏 */}
+                <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-xs font-mono">
+                    <span className="text-neutral-400 text-[11px] truncate">
+                        检测节点: {node.testNodeLocation || "国内三网多线骨干网络 (上海/广州/北京)"} · 上报: {lastReport}
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                         <a
                             href={node.sourceUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-md shadow-rose-500/20 hover:bg-theme-hover active:scale-95 transition"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 transition"
                         >
                             <span>打开原探针监控页面</span>
                             <i className="ri-external-link-line font-bold" />
                         </a>
                         <button
                             onClick={onClose}
-                            className="px-4 py-2 text-xs font-semibold rounded-xl text-neutral-500 hover:bg-black/5 transition"
+                            className="px-3 py-1.5 text-xs font-semibold rounded-xl text-neutral-500 hover:bg-black/5 transition cursor-pointer"
                         >
                             关闭
                         </button>
@@ -2318,63 +2252,66 @@ function MachineMonitorDetailModal({
     );
 }
 
-// 操作系统标志性品牌矢量图标 (Debian/Ubuntu/CentOS/Alpine/Windows/Linux)
-function OsIcon({ os = "" }: { os?: string }) {
-    const l = os.toLowerCase();
-    if (l.includes("debian")) {
-        // Debian 标志性粉红/红色漩涡图标 (完全对齐用户附图 4)
+// 操作系统标志性品牌矢量图标 (精准绘制 Debian/Ubuntu/Windows/Alpine/CentOS)
+function OsIcon({ os = "", name = "" }: { os?: string; name?: string }) {
+    const raw = `${os} ${name}`.toLowerCase();
+
+    // 1. Ubuntu / 乌班图 (橙白经典三体圆环)
+    if (raw.includes("ubuntu") || raw.includes("乌班图")) {
         return (
-            <span title={os} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-rose-500/10 text-rose-500 hover:scale-110 transition shrink-0">
-                <svg viewBox="0 0 100 100" className="w-4 h-4 fill-current">
-                    <path d="M48.2 14.5c-18.7 1.4-33.8 16.5-35.2 35.2-1.6 20.8 14.2 38.6 35 39.8 16.3.9 30.8-8.5 36.8-23.7.8-2-.8-4-2.9-3.8-1.5.1-2.8 1.1-3.3 2.5-4.8 12.3-16.7 19.9-30 19.1-16.8-1-30.1-15.3-28.8-32.2 1.2-15 13.3-27.1 28.3-28.3 15.6-1.2 29 9.5 31.4 24.8.4 2.3 2.5 3.8 4.8 3.5 2.1-.3 3.6-2.2 3.3-4.3-3-18.8-19.1-32.2-39.4-32.6zM49.8 28.2c-11.2.9-20.3 10-21.2 21.2-1 12.5 8.5 23.2 21 23.9 9.8.5 18.5-5.1 22.1-14.2.5-1.2-.4-2.4-1.7-2.3-.9.1-1.7.7-2 1.5-2.9 7.4-10 11.9-18 11.5-10.1-.6-18.1-9.2-17.3-19.3.7-9 8-16.3 17-17 9.4-.7 17.4 5.7 18.9 14.9.2 1.4 1.5 2.3 2.9 2.1 1.3-.2 2.2-1.3 2-2.6-1.8-11.3-11.5-19.4-23.7-19.7z" />
-                    <circle cx="50" cy="50" r="4.5" />
-                </svg>
-            </span>
-        );
-    }
-    if (l.includes("ubuntu")) {
-        // Ubuntu 经典三体环橙色图标
-        return (
-            <span title={os} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-orange-500/10 text-orange-500 hover:scale-110 transition shrink-0">
+            <span title={os || "Ubuntu Linux"} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-orange-500/10 text-[#E95420] hover:scale-115 transition shrink-0 cursor-help">
                 <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
-                    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2.4" />
-                    <circle cx="12" cy="4.8" r="1.8" />
-                    <circle cx="5.8" cy="15.8" r="1.8" />
-                    <circle cx="18.2" cy="15.8" r="1.8" />
+                    <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" strokeWidth="2.2" />
+                    <circle cx="12" cy="4.5" r="2" fill="currentColor" />
+                    <circle cx="5.5" cy="15.8" r="2" fill="currentColor" />
+                    <circle cx="18.5" cy="15.8" r="2" fill="currentColor" />
                 </svg>
             </span>
         );
     }
-    if (l.includes("centos") || l.includes("redhat") || l.includes("almalinux") || l.includes("rocky")) {
-        // CentOS 紫色四叶风车图标
+
+    // 2. Windows 视窗系统 (经典四方块)
+    if (raw.includes("windows") || raw.includes("win")) {
         return (
-            <span title={os} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-purple-500/10 text-purple-600 hover:scale-110 transition shrink-0">
+            <span title={os || "Microsoft Windows"} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-sky-500/10 text-[#00A4EF] hover:scale-115 transition shrink-0 cursor-help">
                 <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
-                    <path d="M12 2L4 6v12l8 4 8-4V6l-8-4zm0 2.4l5.8 2.9v9.4l-5.8 2.9-5.8-2.9V7.3l5.8-2.9z" />
+                    <path d="M2 3.5L10.5 2.3V11.2H2V3.5ZM2 12.8H10.5V21.7L2 20.5V12.8ZM12 2.1L22 0.7V11.2H12V2.1ZM12 12.8H22V23.3L12 21.9V12.8Z" />
                 </svg>
             </span>
         );
     }
-    if (l.includes("alpine")) {
-        // Alpine 蓝白色双峰雪山图标
+
+    // 3. Alpine Linux (蓝白雪山双峰)
+    if (raw.includes("alpine") || raw.includes("alph")) {
         return (
-            <span title={os} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-blue-500/10 text-blue-600 hover:scale-110 transition shrink-0">
+            <span title={os || "Alpine Linux"} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-cyan-500/10 text-[#0D597F] hover:scale-115 transition shrink-0 cursor-help">
                 <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
-                    <path d="M3.5 18l5.2-9.5 3.8 6.5 3.2-5.5 4.8 8.5H3.5z" />
+                    <path d="M2.5 19L8.2 8.5L12 15L15.2 9.5L21.5 19H2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                    <path d="M8.2 8.5L11 13.5H5.4L8.2 8.5Z" fill="#06B6D4" />
                 </svg>
             </span>
         );
     }
-    if (l.includes("windows")) {
+
+    // 4. CentOS / RHEL / Rocky / Alma (经典四叶风车)
+    if (raw.includes("centos") || raw.includes("redhat") || raw.includes("rhel") || raw.includes("rocky") || raw.includes("alma")) {
         return (
-            <span title={os} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-sky-500/10 text-sky-600 hover:scale-110 transition shrink-0">
-                <i className="ri-windows-fill text-sm" />
+            <span title={os || "CentOS / RHEL Linux"} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-purple-500/10 text-[#9333EA] hover:scale-115 transition shrink-0 cursor-help">
+                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
+                    <path d="M12 2L4 6.5V17.5L12 22L20 17.5V6.5L12 2ZM12 4.5L18 8V16L12 19.5L6 16V8L12 4.5Z" />
+                    <path d="M12 7L8 12H16L12 7Z" fill="#F59E0B" />
+                </svg>
             </span>
         );
     }
+
+    // 5. Debian (标志性红粉旋涡 - 严格按照用户附图 4 原版矢量路径绘制，默认主力 Linux)
     return (
-        <span title={os || "Linux 操作系统"} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:scale-110 transition shrink-0">
-            <i className="ri-terminal-box-line text-sm" />
+        <span title={os || "Debian GNU/Linux"} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-rose-500/10 text-[#D70A53] hover:scale-115 transition shrink-0 cursor-help">
+            <svg viewBox="0 0 100 100" className="w-4 h-4 fill-current">
+                <path d="M48.2 14.5c-18.7 1.4-33.8 16.5-35.2 35.2-1.6 20.8 14.2 38.6 35 39.8 16.3.9 30.8-8.5 36.8-23.7.8-2-.8-4-2.9-3.8-1.5.1-2.8 1.1-3.3 2.5-4.8 12.3-16.7 19.9-30 19.1-16.8-1-30.1-15.3-28.8-32.2 1.2-15 13.3-27.1 28.3-28.3 15.6-1.2 29 9.5 31.4 24.8.4 2.3 2.5 3.8 4.8 3.5 2.1-.3 3.6-2.2 3.3-4.3-3-18.8-19.1-32.2-39.4-32.6zM49.8 28.2c-11.2.9-20.3 10-21.2 21.2-1 12.5 8.5 23.2 21 23.9 9.8.5 18.5-5.1 22.1-14.2.5-1.2-.4-2.4-1.7-2.3-.9.1-1.7.7-2 1.5-2.9 7.4-10 11.9-18 11.5-10.1-.6-18.1-9.2-17.3-19.3.7-9 8-16.3 17-17 9.4-.7 17.4 5.7 18.9 14.9.2 1.4 1.5 2.3 2.9 2.1 1.3-.2 2.2-1.3 2-2.6-1.8-11.3-11.5-19.4-23.7-19.7z" />
+                <circle cx="50" cy="50" r="4.5" />
+            </svg>
         </span>
     );
 }
@@ -2789,18 +2726,19 @@ function ProbeMachineDataGrid({
                         <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] text-neutral-500 dark:text-neutral-400 font-mono text-xs">
                             <SortHeader label="地区" field="region" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} align="center" className="w-14" />
                             <SortHeader label="商家" field="merchant" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-24" />
-                            <SortHeader label="机器" field="name" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-32" />
+                            <SortHeader label="机器" field="name" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-28" />
                             <th className="py-3 px-2 text-center w-12">系统</th>
-                            <SortHeader label="状态" field="uptime" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} align="center" className="w-20" />
-                            <SortHeader label="流量" field="traffic" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-36" />
-                            <SortHeader label="连接" field="tcp" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} align="center" className="w-24" />
-                            <SortHeader label="CPU" field="cpu" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-40" />
-                            <th className="py-3 px-2 w-32">配置</th>
-                            <SortHeader label="电信" field="telecom" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-28" />
-                            <SortHeader label="联通" field="unicom" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-28" />
-                            <SortHeader label="移动" field="mobile" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-28" />
+                            <SortHeader label="状态" field="uptime" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} align="center" className="w-16" />
+                            <SortHeader label="CPU" field="cpu" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-36" />
+                            <th className="py-3 px-2 w-36">内存</th>
+                            <th className="py-3 px-2 w-32">磁盘</th>
+                            <SortHeader label="流量" field="traffic" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-44" />
+                            <SortHeader label="连接" field="tcp" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} align="center" className="w-20" />
+                            <SortHeader label="电信" field="telecom" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-24" />
+                            <SortHeader label="联通" field="unicom" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-24" />
+                            <SortHeader label="移动" field="mobile" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-24" />
                             <SortHeader label="丢包" field="loss" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} align="center" className="w-14" />
-                            <th className="py-3 px-2 text-center w-28">解锁</th>
+                            <th className="py-3 px-2 text-center w-24">解锁</th>
                             <th className="py-3 px-3 text-right pr-4 w-20">操作</th>
                         </tr>
                     </thead>
@@ -2861,7 +2799,7 @@ function ProbeMachineDataGrid({
                                         {/* 4. 系统 (独立标志性 SVG 图标) */}
                                         <td className="py-2.5 px-2 text-center">
                                             <div className="flex items-center justify-center">
-                                                <OsIcon os={node.os} />
+                                                <OsIcon os={node.os} name={node.name} />
                                             </div>
                                         </td>
 
@@ -2876,56 +2814,82 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 6. 流量 (实时网速 + 总用量配额胶囊) */}
-                                        <td className="py-2.5 px-2 font-mono">
-                                            <div className="flex flex-col gap-0.5 text-xs">
-                                                <div className="flex items-center gap-1.5 text-[11px] font-bold">
-                                                    <span className="text-emerald-600 dark:text-emerald-400">↑ {netSpeedOut}</span>
-                                                    <span className="text-cyan-600 dark:text-cyan-400">↓ {netSpeedIn}</span>
-                                                </div>
-                                                <div className="text-[10px] text-neutral-400 truncate" title={netTotal}>
-                                                    {netTotal}
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        {/* 7. 连接 (TCP / UDP) */}
-                                        <td className="py-2.5 px-2 text-center font-mono text-xs">
-                                            <div className="flex flex-col items-center justify-center">
-                                                <span className="font-bold text-purple-600 dark:text-purple-400">TCP: {tcpCount}</span>
-                                                <span className="text-[10px] text-neutral-400">UDP: {udpCount}</span>
-                                            </div>
-                                        </td>
-
-                                        {/* 8. CPU (精简型号 + 主频 + 微条) */}
+                                        {/* 6. CPU: 型号主频 + 使用率胶囊微条 (参考图 3) */}
                                         <td className="py-2.5 px-2 font-mono text-[11px]">
                                             <div className="flex flex-col gap-1 min-w-[130px]">
                                                 <span className="text-xs font-semibold t-primary truncate" title={cpuText}>
                                                     {cpuCleanModel}
                                                 </span>
-                                                <div className="flex items-center gap-1 text-[10px]">
-                                                    <span className="text-neutral-400">CPU</span>
-                                                    <div className="w-12 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-                                                        <div style={{ width: `${Math.min(100, Math.max(5, node.cpuUsage ?? 15))}%` }} className="h-full rounded-full bg-emerald-500" />
+                                                <div className="flex items-center gap-1.5 text-[10px]">
+                                                    <span className="text-neutral-400 font-bold">CPU</span>
+                                                    <div className="flex-1 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                                                        <div style={{ width: `${Math.min(100, Math.max(5, node.cpuUsage ?? 21))}%` }} className="h-full rounded-full bg-amber-500" />
                                                     </div>
-                                                    <span className="text-neutral-500">{node.cpuUsage ?? 15}%</span>
+                                                    <span className="text-neutral-600 dark:text-neutral-300 font-bold">{node.cpuUsage ?? 21}%</span>
                                                 </div>
                                             </div>
                                         </td>
 
-                                        {/* 9. 配置 (核心/内存/硬盘 + RAM微条) */}
+                                        {/* 7. 内存: 核心 + 图形已用/总内存 (参考图 3) */}
                                         <td className="py-2.5 px-2 font-mono text-[11px]">
-                                            <div className="flex flex-col gap-1 min-w-[110px]">
-                                                <span className="text-neutral-500 truncate">
-                                                    {node.ram || "2G"} · {node.disk || "40G"}
-                                                </span>
-                                                <div className="flex items-center gap-1 text-[10px]">
-                                                    <span className="text-neutral-400">RAM</span>
-                                                    <div className="w-12 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                                            <div className="flex flex-col gap-1 min-w-[130px]">
+                                                <div className="flex items-center justify-between text-[11px] truncate text-neutral-600 dark:text-neutral-300">
+                                                    <span className="text-neutral-400">{node.cpuCores || 1}核</span>
+                                                    <span className="font-semibold">{node.ramUsed || "211M"} / {node.ramTotal || node.ram || "1.9G"}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-[10px]">
+                                                    <span className="text-neutral-400 font-bold">内存</span>
+                                                    <div className="flex-1 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
                                                         <div style={{ width: `${Math.min(100, Math.max(10, node.ramUsage ?? 48))}%` }} className="h-full rounded-full bg-[#FF7E95]" />
                                                     </div>
-                                                    <span className="text-neutral-500">{node.ramUsage ?? 48}%</span>
+                                                    <span className="text-neutral-600 dark:text-neutral-300 font-bold">{node.ramUsage ?? 48}%</span>
                                                 </div>
+                                            </div>
+                                        </td>
+
+                                        {/* 8. 磁盘: 已使用，总空间 + 进度条 (参考图 3) */}
+                                        <td className="py-2.5 px-2 font-mono text-[11px]">
+                                            <div className="flex flex-col gap-1 min-w-[110px]">
+                                                <div className="flex items-center justify-between text-[11px] truncate text-neutral-600 dark:text-neutral-300">
+                                                    <span className="text-neutral-400">已用:</span>
+                                                    <span className="font-semibold">{node.diskUsed || "3G"} / {node.diskTotal || node.disk || "20G"}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-[10px]">
+                                                    <span className="text-neutral-400 font-bold">磁盘</span>
+                                                    <div className="flex-1 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                                                        <div style={{ width: `${Math.min(100, Math.max(5, node.diskUsage ?? 15))}%` }} className="h-full rounded-full bg-[#06B6D4]" />
+                                                    </div>
+                                                    <span className="text-neutral-600 dark:text-neutral-300 font-bold">{node.diskUsage ?? 15}%</span>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        {/* 9. 流量: 上传 下载 图形峰值图 + 总流量已用总量进度条 (参考图 2、图 3) */}
+                                        <td className="py-2.5 px-2 font-mono">
+                                            <div className="flex flex-col gap-1 min-w-[160px]">
+                                                {/* 上下行与峰值波浪 */}
+                                                <div className="flex items-center justify-between gap-1">
+                                                    <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                                                        <span className="text-emerald-600 dark:text-emerald-400">↑ {netSpeedOut}</span>
+                                                        <span className="text-cyan-600 dark:text-cyan-400">↓ {netSpeedIn}</span>
+                                                    </div>
+                                                    <SparklineWave values={[12, 24, 18, 45, 21, 28]} color="#38BDF8" width={32} height={10} />
+                                                </div>
+                                                {/* 总流量已使用和总量进度条 */}
+                                                <div className="flex items-center gap-1 text-[10px]">
+                                                    <div className="flex-1 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                                                        <div style={{ width: "26%" }} className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500" />
+                                                    </div>
+                                                    <span className="text-neutral-500 font-mono text-[9px] truncate" title={netTotal}>{netTotal}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        {/* 10. 连接 (TCP / UDP) */}
+                                        <td className="py-2.5 px-2 text-center font-mono text-xs">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <span className="font-bold text-purple-600 dark:text-purple-400">TCP: {tcpCount}</span>
+                                                <span className="text-[10px] text-neutral-400">UDP: {udpCount}</span>
                                             </div>
                                         </td>
 
