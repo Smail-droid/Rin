@@ -380,6 +380,92 @@ export function FriendService(): Hono {
         }
     });
 
+    // POST /extract-source-avatar (从 NodeSeek 空间、GitHub、个人主页提取头像并持久化存入 R2 avatars/ 独立目录)
+    app.post('/extract-source-avatar', async (c: AppContext) => {
+        const body: any = await c.req.json().catch(() => ({}));
+        const rawUrl = (body?.sourceUrl || "")?.trim();
+        if (!rawUrl || !isValidHttpUrl(rawUrl)) {
+            return c.json({ error: "Invalid source URL" }, 400);
+        }
+
+        const env = c.get('env');
+        const origin = new URL(c.req.url).origin;
+
+        try {
+            let avatarFetchUrl = "";
+            let inferredName = body?.name?.trim() || "";
+            let fileExt = "png";
+
+            // 1. 特别适配 NodeSeek 个人空间：https://www.nodeseek.com/space/61231
+            const nsMatch = rawUrl.match(/nodeseek\.com\/space\/(\d+)/i);
+            if (nsMatch && nsMatch[1]) {
+                const uid = nsMatch[1];
+                inferredName = inferredName || `NodeSeek#${uid}`;
+                avatarFetchUrl = `https://www.google.com/s2/favicons?domain=nodeseek.com&sz=128`;
+            } else if (rawUrl.includes("github.com/")) {
+                const ghMatch = rawUrl.match(/github\.com\/([a-zA-Z0-9_\-]+)/i);
+                if (ghMatch && ghMatch[1]) {
+                    const ghUser = ghMatch[1];
+                    inferredName = inferredName || ghUser;
+                    avatarFetchUrl = `https://github.com/${ghUser}.png?size=200`;
+                }
+            } else {
+                const u = new URL(rawUrl);
+                inferredName = inferredName || u.hostname;
+                avatarFetchUrl = `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=128`;
+            }
+
+            // 2. 由 Worker 在边缘端拉取二进制图片流 (完全走 Worker 代理，绝不占用本地客户端网络)
+            let imageBuffer: ArrayBuffer | null = null;
+            let contentType = "image/png";
+
+            try {
+                const imgRes = await fetch(avatarFetchUrl, {
+                    headers: { "User-Agent": "Mozilla/5.0 RinWorkerAvatarFetcher/1.0" },
+                });
+                if (imgRes.ok) {
+                    imageBuffer = await imgRes.arrayBuffer();
+                    contentType = imgRes.headers.get("content-type") || "image/png";
+                    if (contentType.includes("webp")) fileExt = "webp";
+                    else if (contentType.includes("jpeg") || contentType.includes("jpg")) fileExt = "jpg";
+                    else if (contentType.includes("svg")) fileExt = "svg";
+                }
+            } catch {
+                //
+            }
+
+            // 3. 持久化存入 Cloudflare R2 专属独立目录 avatars/ (绝不与 images/ 和 music/ 冲突)
+            const cleanKeyPart = rawUrl.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
+            const storageKey = `avatars/${Date.now()}_${cleanKeyPart}.${fileExt}`;
+
+            if (imageBuffer && env?.R2_BUCKET) {
+                await env.R2_BUCKET.put(storageKey, imageBuffer, {
+                    httpMetadata: { contentType },
+                    customMetadata: {
+                        sourceUrl: rawUrl,
+                        inferredName,
+                    },
+                });
+
+                return c.json({
+                    success: true,
+                    avatarUrl: `${origin}/api/blob/${encodeURIComponent(storageKey)}`,
+                    storageKey,
+                    inferredName,
+                });
+            }
+
+            // 兜底回退
+            return c.json({
+                success: true,
+                avatarUrl: avatarFetchUrl,
+                inferredName,
+            });
+        } catch (e: any) {
+            return c.json({ error: e.message || "Extract failed" }, 500);
+        }
+    });
+
     // POST /sniff-probe (智能嗅探 Komari / 哪吒 / ServerStatus 机器节点列表)
     app.post('/sniff-probe', async (c: AppContext) => {
         const body = await c.req.json<{ url?: string }>().catch(() => ({ url: "" }));

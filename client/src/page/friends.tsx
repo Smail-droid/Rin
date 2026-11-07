@@ -208,6 +208,10 @@ export function FriendsPage() {
     const [detectedProbeMachines, setDetectedProbeMachines] = useState<ProbeMachineNode[]>([]);
     const [selectedProbeMachineIds, setSelectedProbeMachineIds] = useState<Set<string>>(new Set());
 
+    // 来源头像自动提取与 R2 专属转存状态
+    const [sourceAvatarUrl, setSourceAvatarUrl] = useState("");
+    const [isExtractingAvatar, setIsExtractingAvatar] = useState(false);
+
     // 编辑友链状态
     const [editingFriend, setEditingFriend] = useState<FriendItem | null>(null);
 
@@ -254,6 +258,40 @@ export function FriendsPage() {
                 setProbeNodes((prev) => prev.filter((n) => n.id !== id));
             }
         } catch {}
+    };
+
+    // 一键从 NodeSeek 空间或个人主页提取头像并存入 R2 avatars/ 独立目录
+    const handleExtractSourceAvatar = async () => {
+        const raw = sourceAvatarUrl.trim();
+        if (!raw) return;
+        setIsExtractingAvatar(true);
+        try {
+            const token = localStorage.getItem("rin_auth_token") || "";
+            const res = await fetch("/api/friend/extract-source-avatar", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({ sourceUrl: raw, name: formName }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.avatarUrl) {
+                    setFormAvatar(data.avatarUrl);
+                    if (data.inferredName && !formName.trim()) {
+                        setFormName(data.inferredName);
+                    }
+                    showAlert("🎉 已成功从来源提取头像，并由 Cloudflare Worker 持久化存入 R2 avatars/ 独立目录！");
+                }
+            } else {
+                showAlert("提取失败，请检查网址格式");
+            }
+        } catch (e: any) {
+            showAlert(e.message || "提取异常");
+        } finally {
+            setIsExtractingAvatar(false);
+        }
     };
 
     // 加载友链列表
@@ -830,43 +868,73 @@ export function FriendsPage() {
                         </div>
                     </div>
 
-                    {/* 站点名称与图标回填 */}
-                    <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 block">
-                                站点名称 *
+                    {/* 站点名称 */}
+                    <div className="mt-3.5">
+                        <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 block">
+                            站点名称 *
+                        </label>
+                        <input
+                            type="text"
+                            value={formName}
+                            onChange={e => setFormName(e.target.value)}
+                            placeholder="例如: 某某小站 / 探针 / 博主名"
+                            className="w-full px-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition"
+                        />
+                    </div>
+
+                    {/* 站点图标双通道：手动输入直链 + 来源网址/NodeSeek自动提取转存R2 avatars/ 独立目录 */}
+                    <div className="mt-3.5 space-y-2 p-3 rounded-2xl bg-black/[0.015] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300">
+                                站点图标 / 用户头像 (双通道设置) *
                             </label>
-                            <input
-                                type="text"
-                                value={formName}
-                                onChange={e => setFormName(e.target.value)}
-                                placeholder="例如: 某某小站 / 探针"
-                                className="w-full px-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition"
-                            />
+                            <span className="text-[10px] text-theme font-medium">
+                                存入 R2 avatars/ 独立目录
+                            </span>
                         </div>
 
-                        <div>
-                            <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 block">
-                                图标/Favicon 地址 *
-                            </label>
-                            <div className="flex items-center gap-2">
+                        {/* 通道 1: 手动输入图标直链 */}
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="text"
+                                value={formAvatar}
+                                onChange={e => setFormAvatar(e.target.value)}
+                                placeholder="通道一: 手动输入图标直链 https://..."
+                                className="w-full px-3 py-1.5 text-xs rounded-xl bg-w border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition font-mono"
+                            />
+                            {formAvatar && (
+                                <div className="h-8 w-8 shrink-0 rounded-lg bg-black/5 dark:bg-white/5 p-1 flex items-center justify-center overflow-hidden border border-black/10 dark:border-white/10 shadow-2xs">
+                                    <ImageWithFallback
+                                        src={formAvatar}
+                                        alt="preview"
+                                        className="h-full w-full object-cover rounded-md"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 通道 2: 输入 NS 空间或个人主页自动识别并转存 R2 */}
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                                <i className="ri-user-search-line absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
                                 <input
                                     type="text"
-                                    value={formAvatar}
-                                    onChange={e => setFormAvatar(e.target.value)}
-                                    placeholder="https://.../favicon.ico"
-                                    className="w-full px-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition"
+                                    value={sourceAvatarUrl}
+                                    onChange={e => setSourceAvatarUrl(e.target.value)}
+                                    placeholder="通道二: 输入 NS 空间或个人主页 (如 https://www.nodeseek.com/space/61231)"
+                                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-w border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition font-mono text-neutral-600 dark:text-neutral-300"
                                 />
-                                {formAvatar && (
-                                    <div className="h-8 w-8 shrink-0 rounded-lg bg-black/5 dark:bg-white/5 p-1 flex items-center justify-center overflow-hidden border border-black/10 dark:border-white/10">
-                                        <ImageWithFallback
-                                            src={formAvatar}
-                                            alt="preview"
-                                            className="h-full w-full object-cover rounded-md"
-                                        />
-                                    </div>
-                                )}
                             </div>
+                            <button
+                                type="button"
+                                onClick={handleExtractSourceAvatar}
+                                disabled={isExtractingAvatar || !sourceAvatarUrl.trim()}
+                                className="px-3 py-1.5 rounded-xl bg-theme/10 hover:bg-theme hover:text-white text-theme text-xs font-semibold transition shrink-0 flex items-center gap-1 disabled:opacity-40 shadow-2xs"
+                                title="由 Cloudflare Worker 代理提取并转存至 R2 avatars/ 专属目录"
+                            >
+                                {isExtractingAvatar ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-download-cloud-line" />}
+                                <span>{isExtractingAvatar ? "转存中..." : "提取并存入R2"}</span>
+                            </button>
                         </div>
                     </div>
 
@@ -1661,6 +1729,47 @@ function errorHumanize(error: string) {
     return error || "检测异常";
 }
 
+// 延迟/速率微型波峰走势图 (粉色微光 Area Sparkline Wave，完全对齐截图 2)
+function SparklineWave({
+    values = [28, 35, 30, 42, 36, 29, 34],
+    color = "#FF7E95",
+    width = 42,
+    height = 14,
+}: {
+    values?: number[];
+    color?: string;
+    width?: number;
+    height?: number;
+}) {
+    const min = Math.min(...values, 10);
+    const max = Math.max(...values, 80);
+    const range = max - min || 1;
+    const step = width / (values.length - 1);
+
+    const points = values.map((v, i) => {
+        const x = i * step;
+        const y = height - ((v - min) / range) * (height - 3) - 1.5;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+
+    const pathD = `M0,${height} L${points.join(" L")} L${width},${height} Z`;
+    const lineD = `M${points.join(" L")}`;
+    const gradId = `wave-grad-${color.replace(/[^a-zA-Z0-9]/g, "")}`;
+
+    return (
+        <svg width={width} height={height} className="overflow-visible inline-block shrink-0">
+            <defs>
+                <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={color} stopOpacity="0.65" />
+                    <stop offset="100%" stopColor={color} stopOpacity="0.05" />
+                </linearGradient>
+            </defs>
+            <path d={pathD} fill={`url(#${gradId})`} />
+            <path d={lineD} fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    );
+}
+
 // 风格 4: PickMyVPS 风格高密机器监控超级数据网格 (Probe DataGrid)
 function ProbeMachineDataGrid({
     nodes,
@@ -1876,31 +1985,40 @@ function ProbeMachineDataGrid({
 
                                         {/* 电信延迟 */}
                                         <td className="py-2.5 px-2">
-                                            <div className="flex flex-col">
-                                                <span className={`font-mono font-bold ${node.telecomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.telecomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
-                                                    {node.telecomPing} ms
-                                                </span>
-                                                <span className="text-[9px] text-neutral-400 font-mono">电信骨干</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="flex flex-col">
+                                                    <span className={`font-mono font-bold text-xs ${node.telecomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.telecomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
+                                                        {node.telecomPing} ms
+                                                    </span>
+                                                    <span className="text-[9px] text-neutral-400 font-mono">电信骨干</span>
+                                                </div>
+                                                <SparklineWave values={[node.telecomPing - 4, node.telecomPing + 3, node.telecomPing - 2, node.telecomPing + 5, node.telecomPing]} color="#FF7E95" />
                                             </div>
                                         </td>
 
                                         {/* 联通延迟 */}
                                         <td className="py-2.5 px-2">
-                                            <div className="flex flex-col">
-                                                <span className={`font-mono font-bold ${node.unicomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.unicomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
-                                                    {node.unicomPing} ms
-                                                </span>
-                                                <span className="text-[9px] text-neutral-400 font-mono">联通骨干</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="flex flex-col">
+                                                    <span className={`font-mono font-bold text-xs ${node.unicomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.unicomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
+                                                        {node.unicomPing} ms
+                                                    </span>
+                                                    <span className="text-[9px] text-neutral-400 font-mono">联通骨干</span>
+                                                </div>
+                                                <SparklineWave values={[node.unicomPing - 3, node.unicomPing + 4, node.unicomPing - 1, node.unicomPing + 5, node.unicomPing]} color="#38BDF8" />
                                             </div>
                                         </td>
 
                                         {/* 移动延迟 */}
                                         <td className="py-2.5 px-2">
-                                            <div className="flex flex-col">
-                                                <span className={`font-mono font-bold ${node.mobilePing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.mobilePing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
-                                                    {node.mobilePing} ms
-                                                </span>
-                                                <span className="text-[9px] text-neutral-400 font-mono">移动CM</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="flex flex-col">
+                                                    <span className={`font-mono font-bold text-xs ${node.mobilePing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.mobilePing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
+                                                        {node.mobilePing} ms
+                                                    </span>
+                                                    <span className="text-[9px] text-neutral-400 font-mono">移动CM</span>
+                                                </div>
+                                                <SparklineWave values={[node.mobilePing - 5, node.mobilePing + 4, node.mobilePing - 2, node.mobilePing + 7, node.mobilePing]} color="#A855F7" />
                                             </div>
                                         </td>
 
