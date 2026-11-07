@@ -40,6 +40,9 @@ export interface ProbeMachineNode {
     cpu?: string;
     ram?: string;
     disk?: string;
+    cpuUsage?: number;
+    ramUsage?: number;
+    diskUsage?: number;
     bandwidth?: string;
     traffic?: string;
     uptimeDays: number;
@@ -443,6 +446,25 @@ export function FriendsPage() {
         const safeUrl = formUrl.trim().startsWith("http") ? formUrl.trim() : `https://${formUrl.trim()}`;
         const finalDesc = formatFriendDesc(formCategory, formDesc);
 
+        // 站点域名重复收录校验 (防止手抖重复提交相同探针或站点)
+        try {
+            const inputDomain = new URL(safeUrl).hostname.toLowerCase();
+            const existing = allFriends.find((f) => {
+                try {
+                    return new URL(f.url).hostname.toLowerCase() === inputDomain;
+                } catch {
+                    return f.url.toLowerCase().includes(inputDomain);
+                }
+            });
+
+            if (existing) {
+                if (!window.confirm(`⚠️ 该站点域名 (${inputDomain}) 已收录为「${existing.name}」。\n是否确认继续更新/追加收录？`)) {
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+        } catch {}
+
         setIsSubmitting(true);
         try {
             const apiCall = (profile?.permission || profile?.id)
@@ -609,7 +631,14 @@ export function FriendsPage() {
                                 return (
                                     <button
                                         key={cat}
-                                        onClick={() => setActiveCategory(cat)}
+                                        onClick={() => {
+                                            setActiveCategory(cat);
+                                            if (cat === "探针测速") {
+                                                setViewStyle("probe");
+                                            } else if (viewStyle === "probe") {
+                                                setViewStyle("card");
+                                            }
+                                        }}
                                         className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 select-none ${
                                             isActive
                                                 ? "bg-theme text-white shadow-sm font-bold scale-[1.02]"
@@ -727,7 +756,7 @@ export function FriendsPage() {
                     </div>
 
                     {/* 画廊展示流 (支持画册卡片、高密书签、拍立得便签、机器监控超级数据网格四种风格) */}
-                    {viewStyle === "probe" ? (
+                    {viewStyle === "probe" && (activeCategory === "全部" || activeCategory === "探针测速") ? (
                         <ProbeMachineDataGrid
                             nodes={probeNodes}
                             searchKeyword={searchKeyword}
@@ -797,11 +826,11 @@ export function FriendsPage() {
                 isOpen={isAddModalOpen}
                 onRequestClose={() => !isSniffing && !isSubmitting && setIsAddModalOpen(false)}
                 contentLabel="推荐站点 / 申请友链"
-                panelClassName="overflow-visible p-4 sm:p-7 max-w-[94vw] sm:max-w-lg w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
+                panelClassName="max-h-[90vh] p-4 sm:p-6 max-w-[94vw] sm:max-w-xl w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
             >
-                <div className="flex flex-col w-full">
-                    {/* 弹窗头部 */}
-                    <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
+                <div className="flex flex-col w-full h-full max-h-[85vh]">
+                    {/* 弹窗头部 (固定在顶部) */}
+                    <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 shrink-0">
                         <div className="flex items-center gap-2">
                             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-base shadow-2xs">
                                 <i className="ri-sparkling-fill" />
@@ -823,6 +852,9 @@ export function FriendsPage() {
                             <i className="ri-close-line text-lg" />
                         </button>
                     </div>
+
+                    {/* 可滑动主体内容区 (解决内容过多顶出屏幕外的Bug) */}
+                    <div className="flex-1 overflow-y-auto pr-1 space-y-3.5 scrollbar-thin pt-2">
 
                     {/* 1. 站点链接 */}
                     <div className="mt-4">
@@ -1094,40 +1126,61 @@ export function FriendsPage() {
                                             </div>
 
                                             {isChecked && (
-                                                <div className="grid grid-cols-3 gap-1.5 pt-1">
-                                                    <input
-                                                        type="text"
-                                                        value={m.merchant || ""}
-                                                        onChange={(e) => {
-                                                            const updated = [...detectedProbeMachines];
-                                                            updated[mIdx].merchant = e.target.value;
-                                                            setDetectedProbeMachines(updated);
-                                                        }}
-                                                        placeholder="商家 (如 DMIT)"
-                                                        className="px-2 py-0.5 rounded bg-w border border-black/10 dark:border-white/10 text-xs font-semibold outline-none"
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        value={m.model || ""}
-                                                        onChange={(e) => {
-                                                            const updated = [...detectedProbeMachines];
-                                                            updated[mIdx].model = e.target.value;
-                                                            setDetectedProbeMachines(updated);
-                                                        }}
-                                                        placeholder="机型 (如 Pro)"
-                                                        className="px-2 py-0.5 rounded bg-w border border-black/10 dark:border-white/10 text-xs font-semibold outline-none"
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        value={m.routeTag || ""}
-                                                        onChange={(e) => {
-                                                            const updated = [...detectedProbeMachines];
-                                                            updated[mIdx].routeTag = e.target.value;
-                                                            setDetectedProbeMachines(updated);
-                                                        }}
-                                                        placeholder="线路 (如 CN2GIA)"
-                                                        className="px-2 py-0.5 rounded bg-w border border-black/10 dark:border-white/10 text-xs font-semibold outline-none"
-                                                    />
+                                                <div className="space-y-1.5 pt-1">
+                                                    <div className="grid grid-cols-3 gap-1.5">
+                                                        <input
+                                                            type="text"
+                                                            value={m.merchant || ""}
+                                                            onChange={(e) => {
+                                                                const updated = [...detectedProbeMachines];
+                                                                updated[mIdx].merchant = e.target.value;
+                                                                setDetectedProbeMachines(updated);
+                                                            }}
+                                                            placeholder="商家 (如 DMIT)"
+                                                            className="px-2 py-0.5 rounded bg-w border border-black/10 dark:border-white/10 text-xs font-semibold outline-none"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            value={m.model || ""}
+                                                            onChange={(e) => {
+                                                                const updated = [...detectedProbeMachines];
+                                                                updated[mIdx].model = e.target.value;
+                                                                setDetectedProbeMachines(updated);
+                                                            }}
+                                                            placeholder="机型 (如 Pro)"
+                                                            className="px-2 py-0.5 rounded bg-w border border-black/10 dark:border-white/10 text-xs font-semibold outline-none"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            value={m.routeTag || ""}
+                                                            onChange={(e) => {
+                                                                const updated = [...detectedProbeMachines];
+                                                                updated[mIdx].routeTag = e.target.value;
+                                                                setDetectedProbeMachines(updated);
+                                                            }}
+                                                            placeholder="线路 (如 CN2GIA)"
+                                                            className="px-2 py-0.5 rounded bg-w border border-black/10 dark:border-white/10 text-xs font-semibold outline-none"
+                                                        />
+                                                    </div>
+
+                                                    {/* 快捷参考线路标签 (不知线路时一键点击选用) */}
+                                                    <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                                                        <span className="text-[10px] text-neutral-400">参考线路：</span>
+                                                        {["CN2 GIA", "4837 优化", "CMI 直连", "9929 精品", "BGP 国际", "优质线路", "待测线路"].map((rt) => (
+                                                            <button
+                                                                key={rt}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const updated = [...detectedProbeMachines];
+                                                                    updated[mIdx].routeTag = rt;
+                                                                    setDetectedProbeMachines(updated);
+                                                                }}
+                                                                className="px-1.5 py-0.2 rounded text-[10px] bg-black/5 dark:bg-white/5 hover:bg-theme hover:text-white transition select-none"
+                                                            >
+                                                                {rt}
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -1136,9 +1189,10 @@ export function FriendsPage() {
                             </div>
                         </div>
                     )}
+                    </div>
 
-                    {/* 提交按钮栏 */}
-                    <div className="mt-5 flex items-center justify-end gap-2.5 pt-3 border-t border-black/5 dark:border-white/5">
+                    {/* 提交按钮栏 (固定在底部，永远可见，绝不超出屏幕) */}
+                    <div className="mt-4 flex items-center justify-end gap-2.5 pt-3 border-t border-black/5 dark:border-white/5 shrink-0">
                         <button
                             onClick={() => setIsAddModalOpen(false)}
                             disabled={isSubmitting}
@@ -1149,7 +1203,7 @@ export function FriendsPage() {
                         <button
                             onClick={handleSubmitNew}
                             disabled={isSubmitting || !formUrl || !formName}
-                            className="inline-flex items-center gap-1.5 px-6 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-md shadow-rose-500/20 hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition"
+                            className="inline-flex items-center gap-1.5 px-6 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-md shadow-rose-500/20 hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition cursor-pointer"
                         >
                             {isSubmitting ? (
                                 <>
@@ -2139,12 +2193,30 @@ function ProbeMachineDataGrid({
                                             </span>
                                         </td>
 
-                                        {/* 配置规格 */}
+                                        {/* 配置规格与使用量指示波峰 */}
                                         <td className="py-2.5 px-2 font-mono text-[11px] text-neutral-500">
-                                            <div className="truncate">
-                                                <span>{node.cpu || "1C"} · </span>
-                                                <span>{node.ram || "1G"} · </span>
-                                                <span>{node.disk || "20G"}</span>
+                                            <div className="flex flex-col gap-1 min-w-[140px]">
+                                                <div className="flex items-center gap-1 text-neutral-600 dark:text-neutral-300">
+                                                    <span>{node.cpu || "1C"} · </span>
+                                                    <span>{node.ram || "2G"} · </span>
+                                                    <span>{node.disk || "40G"}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-[10px]">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-neutral-400">CPU</span>
+                                                        <div className="w-10 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                                                            <div style={{ width: `${Math.min(100, Math.max(5, node.cpuUsage ?? 15))}%` }} className="h-full rounded-full bg-emerald-500" />
+                                                        </div>
+                                                        <span className="text-neutral-500">{node.cpuUsage ?? 15}%</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-neutral-400">RAM</span>
+                                                        <div className="w-10 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                                                            <div style={{ width: `${Math.min(100, Math.max(10, node.ramUsage ?? 48))}%` }} className="h-full rounded-full bg-[#FF7E95]" />
+                                                        </div>
+                                                        <span className="text-neutral-500">{node.ramUsage ?? 48}%</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </td>
 
