@@ -2318,6 +2318,127 @@ function MachineMonitorDetailModal({
     );
 }
 
+// 操作系统标志性品牌矢量图标 (Debian/Ubuntu/CentOS/Alpine/Windows/Linux)
+function OsIcon({ os = "" }: { os?: string }) {
+    const l = os.toLowerCase();
+    if (l.includes("debian")) {
+        // Debian 标志性粉红/红色漩涡图标 (完全对齐用户附图 4)
+        return (
+            <span title={os} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-rose-500/10 text-rose-500 hover:scale-110 transition shrink-0">
+                <svg viewBox="0 0 100 100" className="w-4 h-4 fill-current">
+                    <path d="M48.2 14.5c-18.7 1.4-33.8 16.5-35.2 35.2-1.6 20.8 14.2 38.6 35 39.8 16.3.9 30.8-8.5 36.8-23.7.8-2-.8-4-2.9-3.8-1.5.1-2.8 1.1-3.3 2.5-4.8 12.3-16.7 19.9-30 19.1-16.8-1-30.1-15.3-28.8-32.2 1.2-15 13.3-27.1 28.3-28.3 15.6-1.2 29 9.5 31.4 24.8.4 2.3 2.5 3.8 4.8 3.5 2.1-.3 3.6-2.2 3.3-4.3-3-18.8-19.1-32.2-39.4-32.6zM49.8 28.2c-11.2.9-20.3 10-21.2 21.2-1 12.5 8.5 23.2 21 23.9 9.8.5 18.5-5.1 22.1-14.2.5-1.2-.4-2.4-1.7-2.3-.9.1-1.7.7-2 1.5-2.9 7.4-10 11.9-18 11.5-10.1-.6-18.1-9.2-17.3-19.3.7-9 8-16.3 17-17 9.4-.7 17.4 5.7 18.9 14.9.2 1.4 1.5 2.3 2.9 2.1 1.3-.2 2.2-1.3 2-2.6-1.8-11.3-11.5-19.4-23.7-19.7z" />
+                    <circle cx="50" cy="50" r="4.5" />
+                </svg>
+            </span>
+        );
+    }
+    if (l.includes("ubuntu")) {
+        // Ubuntu 经典三体环橙色图标
+        return (
+            <span title={os} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-orange-500/10 text-orange-500 hover:scale-110 transition shrink-0">
+                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
+                    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2.4" />
+                    <circle cx="12" cy="4.8" r="1.8" />
+                    <circle cx="5.8" cy="15.8" r="1.8" />
+                    <circle cx="18.2" cy="15.8" r="1.8" />
+                </svg>
+            </span>
+        );
+    }
+    if (l.includes("centos") || l.includes("redhat") || l.includes("almalinux") || l.includes("rocky")) {
+        // CentOS 紫色四叶风车图标
+        return (
+            <span title={os} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-purple-500/10 text-purple-600 hover:scale-110 transition shrink-0">
+                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
+                    <path d="M12 2L4 6v12l8 4 8-4V6l-8-4zm0 2.4l5.8 2.9v9.4l-5.8 2.9-5.8-2.9V7.3l5.8-2.9z" />
+                </svg>
+            </span>
+        );
+    }
+    if (l.includes("alpine")) {
+        // Alpine 蓝白色双峰雪山图标
+        return (
+            <span title={os} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-blue-500/10 text-blue-600 hover:scale-110 transition shrink-0">
+                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
+                    <path d="M3.5 18l5.2-9.5 3.8 6.5 3.2-5.5 4.8 8.5H3.5z" />
+                </svg>
+            </span>
+        );
+    }
+    if (l.includes("windows")) {
+        return (
+            <span title={os} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-sky-500/10 text-sky-600 hover:scale-110 transition shrink-0">
+                <i className="ri-windows-fill text-sm" />
+            </span>
+        );
+    }
+    return (
+        <span title={os || "Linux 操作系统"} className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:scale-110 transition shrink-0">
+            <i className="ri-terminal-box-line text-sm" />
+        </span>
+    );
+}
+
+// 精简 CPU 型号与主频提取函数 (去除 Intel(R) Xeon(R) CPU 等冗长前缀，保留核心 E5-2683 v4 @ 2.10GHz 或 EPYC-Milan)
+function formatCpuModel(raw: string = ""): string {
+    if (!raw) return "1C CPU";
+    let s = raw
+        .replace(/Intel\(R\)\s*/gi, "")
+        .replace(/Xeon\(R\)\s*/gi, "")
+        .replace(/Core\(TM\)\s*/gi, "")
+        .replace(/AMD\s*/gi, "")
+        .replace(/Processor\s*/gi, "")
+        .replace(/CPU\s*/gi, "")
+        .replace(/\s*\([^)]*\)\s*$/g, "")
+        .trim();
+    if (!s) return raw.slice(0, 16);
+    return s;
+}
+
+// 统一排序表头单元格 (每个字段均具备 ↑/↓ 双向排序能力)
+function SortHeader({
+    label,
+    field,
+    currentField,
+    currentOrder,
+    onSort,
+    align = "left",
+    className = "",
+}: {
+    label: string;
+    field: string;
+    currentField: string;
+    currentOrder: "asc" | "desc";
+    onSort: (field: any) => void;
+    align?: "left" | "center" | "right";
+    className?: string;
+}) {
+    const isActive = currentField === field;
+    return (
+        <th
+            onClick={() => onSort(field)}
+            className={`py-3 px-2 cursor-pointer transition select-none group/th hover:text-theme ${
+                align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left"
+            } ${className}`}
+        >
+            <div className={`inline-flex items-center gap-1 ${align === "center" ? "justify-center" : align === "right" ? "justify-end" : "justify-start"}`}>
+                <span className={isActive ? "text-theme font-bold" : ""}>{label}</span>
+                <span className="text-[10px] font-mono transition-transform">
+                    {isActive ? (
+                        currentOrder === "asc" ? (
+                            <i className="ri-arrow-up-line text-theme font-bold" />
+                        ) : (
+                            <i className="ri-arrow-down-line text-theme font-bold" />
+                        )
+                    ) : (
+                        <i className="ri-arrow-up-down-line text-neutral-300 dark:text-neutral-600 opacity-0 group-hover/th:opacity-100 transition-opacity" />
+                    )}
+                </span>
+            </div>
+        </th>
+    );
+}
+
 // 风格 4: PickMyVPS 风格高密机器监控超级数据网格 (Probe DataGrid)
 function ProbeMachineDataGrid({
     nodes,
@@ -2333,7 +2454,7 @@ function ProbeMachineDataGrid({
     loading: boolean;
 }) {
     const profile = useContext(ProfileContext);
-    const [sortField, setSortField] = useState<"telecom" | "unicom" | "mobile" | "uptime">("telecom");
+    const [sortField, setSortField] = useState<string>("telecom");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
     const [routeFilter, setRouteFilter] = useState<string>("all");
     const [regionFilter, setRegionFilter] = useState<string>("all");
@@ -2395,6 +2516,15 @@ function ProbeMachineDataGrid({
         return () => clearInterval(timer);
     }, [autoRefreshSec, handleSyncRealtime]);
 
+    const handleSort = (field: string) => {
+        if (sortField === field) {
+            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+        } else {
+            setSortField(field);
+            setSortOrder("asc");
+        }
+    };
+
     const filteredNodes = useMemo(() => {
         let list = [...nodes];
 
@@ -2426,11 +2556,40 @@ function ProbeMachineDataGrid({
             );
         }
 
-        // 4. 运营商与延迟排序
+        // 4. 多列全字段排序
         list.sort((a, b) => {
-            let valA = 0;
-            let valB = 0;
-            if (sortField === "telecom") {
+            let valA: any = 0;
+            let valB: any = 0;
+
+            if (sortField === "region") {
+                valA = a.countryCode || "";
+                valB = b.countryCode || "";
+                return sortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            } else if (sortField === "merchant") {
+                valA = a.merchant || "";
+                valB = b.merchant || "";
+                return sortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            } else if (sortField === "name") {
+                valA = a.name || "";
+                valB = b.name || "";
+                return sortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            } else if (sortField === "os") {
+                valA = a.os || "";
+                valB = b.os || "";
+                return sortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            } else if (sortField === "uptime") {
+                valA = a.uptimeDays || 0;
+                valB = b.uptimeDays || 0;
+            } else if (sortField === "traffic") {
+                valA = parseFloat(a.netTotalUp || "0") || 0;
+                valB = parseFloat(b.netTotalUp || "0") || 0;
+            } else if (sortField === "tcp") {
+                valA = a.tcpConnections || 0;
+                valB = b.tcpConnections || 0;
+            } else if (sortField === "cpu") {
+                valA = a.cpuUsage || 0;
+                valB = b.cpuUsage || 0;
+            } else if (sortField === "telecom") {
                 valA = a.telecomPing || 999;
                 valB = b.telecomPing || 999;
             } else if (sortField === "unicom") {
@@ -2439,9 +2598,9 @@ function ProbeMachineDataGrid({
             } else if (sortField === "mobile") {
                 valA = a.mobilePing || 999;
                 valB = b.mobilePing || 999;
-            } else if (sortField === "uptime") {
-                valA = a.uptimeDays || 0;
-                valB = b.uptimeDays || 0;
+            } else if (sortField === "loss") {
+                valA = a.packetLoss || 0;
+                valB = b.packetLoss || 0;
             }
 
             if (sortOrder === "asc") return valA - valB;
@@ -2450,15 +2609,6 @@ function ProbeMachineDataGrid({
 
         return list;
     }, [nodes, searchKeyword, probeSearch, regionFilter, routeFilter, sortField, sortOrder]);
-
-    const handleSort = (field: "telecom" | "unicom" | "mobile" | "uptime") => {
-        if (sortField === field) {
-            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-        } else {
-            setSortField(field);
-            setSortOrder("asc");
-        }
-    };
 
     return (
         <div className="wauto flex flex-col gap-3.5 ani-show select-none">
@@ -2634,59 +2784,30 @@ function ProbeMachineDataGrid({
 
             {/* PickMyVPS 风格高密单屏超级数据网格 (Dense DataGrid) */}
             <div className="overflow-x-auto rounded-3xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-xs">
-                <table className="w-full text-left text-xs border-collapse min-w-[1020px]">
+                <table className="w-full text-left text-xs border-collapse min-w-[1080px]">
                     <thead>
                         <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] text-neutral-500 dark:text-neutral-400 font-mono text-xs">
-                            <th className="py-3 px-3 w-16 text-center">地区</th>
-                            <th className="py-3 px-3 w-48">商家 / 机器 / 系统</th>
-                            <th
-                                onClick={() => handleSort("uptime")}
-                                className="py-3 px-2 w-24 text-center cursor-pointer hover:text-theme transition"
-                            >
-                                <div className="flex items-center justify-center gap-1">
-                                    <span>状态 / 在线</span>
-                                    {sortField === "uptime" && <i className={sortOrder === "asc" ? "ri-arrow-up-line text-theme" : "ri-arrow-down-line text-theme"} />}
-                                </div>
-                            </th>
-                            <th className="py-3 px-2 w-44">实时速率 / 总流量</th>
-                            <th className="py-3 px-2 w-28 text-center">连接数</th>
-                            <th className="py-3 px-2 w-52">处理器 CPU / 规格与用量</th>
-                            <th
-                                onClick={() => handleSort("telecom")}
-                                className="py-3 px-2 w-32 cursor-pointer hover:text-theme transition"
-                            >
-                                <div className="flex items-center gap-1">
-                                    <span>电信延迟</span>
-                                    {sortField === "telecom" && <i className={sortOrder === "asc" ? "ri-arrow-up-line text-theme" : "ri-arrow-down-line text-theme"} />}
-                                </div>
-                            </th>
-                            <th
-                                onClick={() => handleSort("unicom")}
-                                className="py-3 px-2 w-32 cursor-pointer hover:text-theme transition"
-                            >
-                                <div className="flex items-center gap-1">
-                                    <span>联通延迟</span>
-                                    {sortField === "unicom" && <i className={sortOrder === "asc" ? "ri-arrow-up-line text-theme" : "ri-arrow-down-line text-theme"} />}
-                                </div>
-                            </th>
-                            <th
-                                onClick={() => handleSort("mobile")}
-                                className="py-3 px-2 w-32 cursor-pointer hover:text-theme transition"
-                            >
-                                <div className="flex items-center gap-1">
-                                    <span>移动延迟</span>
-                                    {sortField === "mobile" && <i className={sortOrder === "asc" ? "ri-arrow-up-line text-theme" : "ri-arrow-down-line text-theme"} />}
-                                </div>
-                            </th>
-                            <th className="py-3 px-2 w-16 text-center">丢包率</th>
-                            <th className="py-3 px-2 w-36 text-center">流媒体 / 风评</th>
-                            <th className="py-3 px-3 text-right pr-4 w-32">操作 / 来源</th>
+                            <SortHeader label="地区" field="region" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} align="center" className="w-14" />
+                            <SortHeader label="商家" field="merchant" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-24" />
+                            <SortHeader label="机器" field="name" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-32" />
+                            <th className="py-3 px-2 text-center w-12">系统</th>
+                            <SortHeader label="状态" field="uptime" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} align="center" className="w-20" />
+                            <SortHeader label="流量" field="traffic" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-36" />
+                            <SortHeader label="连接" field="tcp" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} align="center" className="w-24" />
+                            <SortHeader label="CPU" field="cpu" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-40" />
+                            <th className="py-3 px-2 w-32">配置</th>
+                            <SortHeader label="电信" field="telecom" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-28" />
+                            <SortHeader label="联通" field="unicom" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-28" />
+                            <SortHeader label="移动" field="mobile" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} className="w-28" />
+                            <SortHeader label="丢包" field="loss" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} align="center" className="w-14" />
+                            <th className="py-3 px-2 text-center w-28">解锁</th>
+                            <th className="py-3 px-3 text-right pr-4 w-20">操作</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-black/5 dark:divide-white/5">
                         {filteredNodes.length === 0 ? (
                             <tr>
-                                <td colSpan={12} className="py-20 text-center text-neutral-400">
+                                <td colSpan={15} className="py-20 text-center text-neutral-400">
                                     <i className="ri-dashboard-line text-3xl block mb-2 opacity-50" />
                                     <span>暂无匹配的机器监控节点。点击上方「即刻更新」或在收录探针时添加。</span>
                                 </td>
@@ -2695,7 +2816,7 @@ function ProbeMachineDataGrid({
                             filteredNodes.map((node) => {
                                 const flag = getFlagEmoji(node.countryCode);
                                 const cpuText = node.cpuDetail || node.cpu || "Intel Xeon / AMD EPYC (x1)";
-                                const osText = node.os ? node.os.split(" ")[0] : "Linux";
+                                const cpuCleanModel = formatCpuModel(cpuText);
                                 const netSpeedIn = node.netSpeedIn || "2.1 MB/s";
                                 const netSpeedOut = node.netSpeedOut || "2.1 MB/s";
                                 const netTotal = `${node.netTotalUp || "520.4 GB"} / ${node.trafficLimit || "2.00 TB"}`;
@@ -2710,137 +2831,136 @@ function ProbeMachineDataGrid({
                                         className="hover:bg-black/[0.018] dark:hover:bg-white/[0.018] transition group"
                                     >
                                         {/* 1. 地区 */}
-                                        <td className="py-3 px-3 text-center">
-                                            <div className="flex flex-col items-center justify-center">
-                                                <span className="text-xl select-none" title={node.countryCode}>
-                                                    {flag}
-                                                </span>
-                                                <span className="text-[10px] font-mono font-bold text-neutral-400 mt-0.5">
-                                                    {node.countryCode}
-                                                </span>
-                                            </div>
+                                        <td className="py-2.5 px-2 text-center">
+                                            <span className="text-lg select-none inline-block hover:scale-110 transition" title={node.countryCode}>
+                                                {flag}
+                                            </span>
                                         </td>
 
-                                        {/* 2. 商家 / 机器 / 系统 */}
-                                        <td className="py-3 px-3">
-                                            <div className="flex flex-col gap-0.5 truncate max-w-[190px]">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="font-bold t-primary text-xs">{node.merchant}</span>
-                                                    <span className="text-[11px] text-neutral-400 font-mono truncate">{node.model}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                                        {/* 2. 商家 */}
+                                        <td className="py-2.5 px-2">
+                                            <span className="font-bold t-primary text-xs block truncate" title={node.merchant}>
+                                                {node.merchant}
+                                            </span>
+                                        </td>
+
+                                        {/* 3. 机器 (带线路胶囊) */}
+                                        <td className="py-2.5 px-2">
+                                            <div className="flex flex-col truncate max-w-[130px]">
+                                                <span className="text-xs font-mono font-semibold t-primary truncate" title={node.name}>
+                                                    {node.name}
+                                                </span>
+                                                {node.routeTag && (
+                                                    <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 truncate">
                                                         {node.routeTag}
                                                     </span>
-                                                    <span className="text-[10px] text-neutral-400 font-mono px-1 py-0.2 rounded bg-black/5 dark:bg-white/5">
-                                                        {osText}
-                                                    </span>
-                                                </div>
+                                                )}
                                             </div>
                                         </td>
 
-                                        {/* 3. 在线 / 离线与运行时间 */}
-                                        <td className="py-3 px-2 text-center">
+                                        {/* 4. 系统 (独立标志性 SVG 图标) */}
+                                        <td className="py-2.5 px-2 text-center">
+                                            <div className="flex items-center justify-center">
+                                                <OsIcon os={node.os} />
+                                            </div>
+                                        </td>
+
+                                        {/* 5. 状态 (在线绿点 + 运行天数) */}
+                                        <td className="py-2.5 px-2 text-center font-mono">
                                             <div className="flex flex-col items-center justify-center">
-                                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                                     <span>在线</span>
                                                 </span>
-                                                <span className="text-[10px] text-neutral-400 font-mono mt-0.5">
-                                                    {uptimeDays}天
-                                                </span>
+                                                <span className="text-[10px] text-neutral-400 mt-0.5">{uptimeDays}天</span>
                                             </div>
                                         </td>
 
-                                        {/* 4. 实时速率 / 总流量配额 */}
-                                        <td className="py-3 px-2 font-mono">
-                                            <div className="flex flex-col gap-1 min-w-[160px]">
-                                                <div className="flex items-center gap-2 text-xs font-bold">
+                                        {/* 6. 流量 (实时网速 + 总用量配额胶囊) */}
+                                        <td className="py-2.5 px-2 font-mono">
+                                            <div className="flex flex-col gap-0.5 text-xs">
+                                                <div className="flex items-center gap-1.5 text-[11px] font-bold">
                                                     <span className="text-emerald-600 dark:text-emerald-400">↑ {netSpeedOut}</span>
                                                     <span className="text-cyan-600 dark:text-cyan-400">↓ {netSpeedIn}</span>
                                                 </div>
-                                                <div className="flex items-center gap-1 text-[10px] text-neutral-400">
-                                                    <span>已用:</span>
-                                                    <span className="text-neutral-600 dark:text-neutral-300 font-semibold">{netTotal}</span>
+                                                <div className="text-[10px] text-neutral-400 truncate" title={netTotal}>
+                                                    {netTotal}
                                                 </div>
                                             </div>
                                         </td>
 
-                                        {/* 5. 连接数 (TCP / UDP) */}
-                                        <td className="py-3 px-2 text-center font-mono">
-                                            <div className="flex flex-col items-center justify-center text-xs">
+                                        {/* 7. 连接 (TCP / UDP) */}
+                                        <td className="py-2.5 px-2 text-center font-mono text-xs">
+                                            <div className="flex flex-col items-center justify-center">
                                                 <span className="font-bold text-purple-600 dark:text-purple-400">TCP: {tcpCount}</span>
                                                 <span className="text-[10px] text-neutral-400">UDP: {udpCount}</span>
                                             </div>
                                         </td>
 
-                                        {/* 6. 处理器 CPU / 规格与用量 */}
-                                        <td className="py-3 px-2 font-mono text-[11px] text-neutral-500">
-                                            <div className="flex flex-col gap-1 min-w-[190px]">
-                                                <div className="text-neutral-600 dark:text-neutral-300 text-xs font-semibold truncate" title={cpuText}>
-                                                    {cpuText}
-                                                </div>
-                                                <div className="flex items-center gap-2 text-[10px]">
-                                                    <span className="text-neutral-400">{node.ram || "2G"} · {node.disk || "40G"}</span>
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-neutral-400">CPU</span>
-                                                        <div className="w-9 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-                                                            <div style={{ width: `${Math.min(100, Math.max(5, node.cpuUsage ?? 15))}%` }} className="h-full rounded-full bg-emerald-500" />
-                                                        </div>
-                                                        <span className="text-neutral-500">{node.cpuUsage ?? 15}%</span>
+                                        {/* 8. CPU (精简型号 + 主频 + 微条) */}
+                                        <td className="py-2.5 px-2 font-mono text-[11px]">
+                                            <div className="flex flex-col gap-1 min-w-[130px]">
+                                                <span className="text-xs font-semibold t-primary truncate" title={cpuText}>
+                                                    {cpuCleanModel}
+                                                </span>
+                                                <div className="flex items-center gap-1 text-[10px]">
+                                                    <span className="text-neutral-400">CPU</span>
+                                                    <div className="w-12 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                                                        <div style={{ width: `${Math.min(100, Math.max(5, node.cpuUsage ?? 15))}%` }} className="h-full rounded-full bg-emerald-500" />
                                                     </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-neutral-400">RAM</span>
-                                                        <div className="w-9 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-                                                            <div style={{ width: `${Math.min(100, Math.max(10, node.ramUsage ?? 48))}%` }} className="h-full rounded-full bg-[#FF7E95]" />
-                                                        </div>
-                                                        <span className="text-neutral-500">{node.ramUsage ?? 48}%</span>
+                                                    <span className="text-neutral-500">{node.cpuUsage ?? 15}%</span>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        {/* 9. 配置 (核心/内存/硬盘 + RAM微条) */}
+                                        <td className="py-2.5 px-2 font-mono text-[11px]">
+                                            <div className="flex flex-col gap-1 min-w-[110px]">
+                                                <span className="text-neutral-500 truncate">
+                                                    {node.ram || "2G"} · {node.disk || "40G"}
+                                                </span>
+                                                <div className="flex items-center gap-1 text-[10px]">
+                                                    <span className="text-neutral-400">RAM</span>
+                                                    <div className="w-12 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                                                        <div style={{ width: `${Math.min(100, Math.max(10, node.ramUsage ?? 48))}%` }} className="h-full rounded-full bg-[#FF7E95]" />
                                                     </div>
+                                                    <span className="text-neutral-500">{node.ramUsage ?? 48}%</span>
                                                 </div>
                                             </div>
                                         </td>
 
-                                        {/* 7. 电信延迟 */}
-                                        <td className="py-3 px-2">
+                                        {/* 10. 电信延迟 (纯延迟数值 + 微型粉色波浪图) */}
+                                        <td className="py-2.5 px-2 font-mono">
                                             <div className="flex items-center gap-1.5">
-                                                <div className="flex flex-col">
-                                                    <span className={`font-mono font-bold text-xs ${node.telecomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.telecomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
-                                                        {node.telecomPing} ms
-                                                    </span>
-                                                    <span className="text-[9px] text-neutral-400 font-mono">电信骨干</span>
-                                                </div>
-                                                <SparklineWave values={node.pingHistory || [node.telecomPing - 4, node.telecomPing + 3, node.telecomPing - 2, node.telecomPing + 5, node.telecomPing]} color="#FF7E95" />
+                                                <span className={`text-xs font-bold ${node.telecomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.telecomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
+                                                    {node.telecomPing} ms
+                                                </span>
+                                                <SparklineWave values={node.pingHistory || [node.telecomPing - 4, node.telecomPing + 3, node.telecomPing - 2, node.telecomPing + 5, node.telecomPing]} color="#FF7E95" width={38} />
                                             </div>
                                         </td>
 
-                                        {/* 8. 联通延迟 */}
-                                        <td className="py-3 px-2">
+                                        {/* 11. 联通延迟 (纯延迟数值 + 微型蓝色波浪图) */}
+                                        <td className="py-2.5 px-2 font-mono">
                                             <div className="flex items-center gap-1.5">
-                                                <div className="flex flex-col">
-                                                    <span className={`font-mono font-bold text-xs ${node.unicomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.unicomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
-                                                        {node.unicomPing} ms
-                                                    </span>
-                                                    <span className="text-[9px] text-neutral-400 font-mono">联通骨干</span>
-                                                </div>
-                                                <SparklineWave values={node.pingHistory || [node.unicomPing - 3, node.unicomPing + 4, node.unicomPing - 1, node.unicomPing + 5, node.unicomPing]} color="#38BDF8" />
+                                                <span className={`text-xs font-bold ${node.unicomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.unicomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
+                                                    {node.unicomPing} ms
+                                                </span>
+                                                <SparklineWave values={node.pingHistory || [node.unicomPing - 3, node.unicomPing + 4, node.unicomPing - 1, node.unicomPing + 5, node.unicomPing]} color="#38BDF8" width={38} />
                                             </div>
                                         </td>
 
-                                        {/* 9. 移动延迟 */}
-                                        <td className="py-3 px-2">
+                                        {/* 12. 移动延迟 (纯延迟数值 + 微型紫色波浪图) */}
+                                        <td className="py-2.5 px-2 font-mono">
                                             <div className="flex items-center gap-1.5">
-                                                <div className="flex flex-col">
-                                                    <span className={`font-mono font-bold text-xs ${node.mobilePing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.mobilePing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
-                                                        {node.mobilePing} ms
-                                                    </span>
-                                                    <span className="text-[9px] text-neutral-400 font-mono">移动CM</span>
-                                                </div>
-                                                <SparklineWave values={node.pingHistory || [node.mobilePing - 5, node.mobilePing + 4, node.mobilePing - 2, node.mobilePing + 7, node.mobilePing]} color="#A855F7" />
+                                                <span className={`text-xs font-bold ${node.mobilePing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.mobilePing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
+                                                    {node.mobilePing} ms
+                                                </span>
+                                                <SparklineWave values={node.pingHistory || [node.mobilePing - 5, node.mobilePing + 4, node.mobilePing - 2, node.mobilePing + 7, node.mobilePing]} color="#A855F7" width={38} />
                                             </div>
                                         </td>
 
-                                        {/* 10. 丢包率 */}
-                                        <td className="py-3 px-2 text-center font-mono">
+                                        {/* 13. 丢包率 */}
+                                        <td className="py-2.5 px-2 text-center font-mono">
                                             <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
                                                 node.packetLoss === 0
                                                     ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
@@ -2850,25 +2970,23 @@ function ProbeMachineDataGrid({
                                             </span>
                                         </td>
 
-                                        {/* 11. 流媒体与风控 */}
-                                        <td className="py-3 px-2 text-center">
-                                            <div className="flex flex-col items-center justify-center gap-1 max-w-[140px] mx-auto">
+                                        {/* 14. 解锁 (流媒体与风评) */}
+                                        <td className="py-2.5 px-2 text-center">
+                                            <div className="flex items-center justify-center gap-1 flex-wrap max-w-[120px] mx-auto">
                                                 <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                                                     ● {node.ipRisk || "低风险"}
                                                 </span>
-                                                <div className="flex items-center justify-center gap-1 flex-wrap">
-                                                    {mediaList.slice(0, 2).map((tg, mIdx) => (
-                                                        <span key={mIdx} className="text-[9px] font-mono px-1 py-0.2 rounded bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
-                                                            {tg}
-                                                        </span>
-                                                    ))}
-                                                </div>
+                                                {mediaList.slice(0, 2).map((tg, mIdx) => (
+                                                    <span key={mIdx} className="text-[9px] font-mono px-1 py-0.2 rounded bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
+                                                        {tg.replace(/\[.*\]/, "")}
+                                                    </span>
+                                                ))}
                                             </div>
                                         </td>
 
-                                        {/* 12. 操作 / 来源 */}
-                                        <td className="py-3 px-3 text-right pr-4 whitespace-nowrap">
-                                            <div className="inline-flex items-center gap-1.5">
+                                        {/* 15. 操作 (纯符号图标按钮，极致精炼) */}
+                                        <td className="py-2.5 px-3 text-right pr-4 whitespace-nowrap">
+                                            <div className="inline-flex items-center gap-1">
                                                 {/* 打开机器 6 大监控图抽屉 */}
                                                 <button
                                                     type="button"
@@ -2876,11 +2994,10 @@ function ProbeMachineDataGrid({
                                                         setDetailNode(node);
                                                         setIsDetailOpen(true);
                                                     }}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/5 hover:bg-theme/10 hover:text-theme text-neutral-600 dark:text-neutral-300 text-xs font-semibold transition shadow-2xs"
+                                                    className="p-1.5 rounded-lg bg-black/5 hover:bg-theme/15 hover:text-theme text-neutral-600 dark:text-neutral-300 transition shadow-2xs cursor-pointer"
                                                     title="查看全景 6 大实时监控图表与详细硬件"
                                                 >
-                                                    <i className="ri-line-chart-line text-xs font-bold" />
-                                                    <span>详情</span>
+                                                    <i className="ri-bar-chart-2-line text-xs font-bold" />
                                                 </button>
 
                                                 {/* 原探针页面直达 */}
@@ -2888,10 +3005,9 @@ function ProbeMachineDataGrid({
                                                     href={node.sourceUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-theme/10 hover:bg-theme hover:text-white text-theme text-xs font-semibold transition shadow-2xs group/link"
+                                                    className="p-1.5 rounded-lg bg-theme/10 hover:bg-theme hover:text-white text-theme transition shadow-2xs group/link"
                                                     title={`点击查看原探针页面来源: ${node.sourceUrl}`}
                                                 >
-                                                    <span>来源</span>
                                                     <i className="ri-arrow-right-up-line text-xs font-bold transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" />
                                                 </a>
 
@@ -2899,7 +3015,7 @@ function ProbeMachineDataGrid({
                                                     <button
                                                         type="button"
                                                         onClick={() => onDeleteNode(node.id)}
-                                                        className="p-1 rounded-md text-neutral-400 hover:text-rose-500 transition"
+                                                        className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-500 hover:bg-rose-500/10 transition"
                                                         title="从监控列表中移除"
                                                     >
                                                         <i className="ri-delete-bin-line text-xs" />
