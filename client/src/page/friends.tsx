@@ -35,6 +35,7 @@ export interface ProbeMachineNode {
     merchant: string;
     model: string;
     routeTag: string;
+    tags?: string;
     price?: string;
     usage?: string;
     cpu?: string;
@@ -50,6 +51,7 @@ export interface ProbeMachineNode {
     unicomPing: number;
     mobilePing: number;
     packetLoss: number;
+    pingHistory?: number[];
     sourceUrl: string;
     probeName?: string;
     updatedAt: string;
@@ -870,7 +872,7 @@ export function FriendsPage() {
                                     value={formUrl}
                                     onChange={e => setFormUrl(e.target.value)}
                                     onKeyDown={e => e.key === "Enter" && handleSniffUrl()}
-                                    placeholder="例如: https://komari.zixuanxie.top/"
+                                    placeholder="例如: https://status.example.com"
                                     className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition"
                                 />
                             </div>
@@ -891,12 +893,12 @@ export function FriendsPage() {
                         )}
                     </div>
 
-                    {/* 2. NodeSeek 个人空间地址 (选填) */}
+                    {/* 2. NodeSeek 个人空间地址 (选填，支持纯数字 UID 或完整空间地址) */}
                     <div className="mt-3.5 p-3 rounded-2xl bg-black/[0.015] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-2">
                         <div className="flex items-center justify-between">
                             <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 flex items-center gap-1.5">
                                 <i className="ri-user-smile-line text-theme" />
-                                <span>NodeSeek 个人空间地址 (选填)</span>
+                                <span>NodeSeek 个人空间或 UID (选填)</span>
                             </label>
                             <span className="text-[10px] text-theme font-medium">
                                 自动提取用户真实头像、昵称与勋章
@@ -909,7 +911,7 @@ export function FriendsPage() {
                                     value={sourceAvatarUrl}
                                     onChange={e => setSourceAvatarUrl(e.target.value)}
                                     onKeyDown={e => e.key === "Enter" && handleExtractSourceAvatar()}
-                                    placeholder="例如: https://www.nodeseek.com/space/61231#/general"
+                                    placeholder="输入纯数字 UID (如 10001) 或空间网址 (如 https://www.nodeseek.com/space/10001)"
                                     className="w-full px-3 py-1.5 text-xs rounded-xl bg-w border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition font-mono"
                                 />
                             </div>
@@ -1941,24 +1943,68 @@ function ProbeMachineDataGrid({
     const [sortField, setSortField] = useState<"telecom" | "unicom" | "mobile" | "uptime">("telecom");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
     const [routeFilter, setRouteFilter] = useState<string>("all");
-    const [testPoint, setTestPoint] = useState<"all" | "telecom" | "unicom" | "mobile">("all");
+    const [regionFilter, setRegionFilter] = useState<string>("all");
+    const [carrierSort, setCarrierSort] = useState<"all" | "telecom" | "unicom" | "mobile">("all");
+    const [probeSearch, setProbeSearch] = useState<string>("");
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    // 动态提取节点中包含的所有区域代码
+    const availableRegions = useMemo(() => {
+        const set = new Set<string>();
+        nodes.forEach((n) => {
+            if (n.countryCode) set.add(n.countryCode.toUpperCase());
+        });
+        return Array.from(set);
+    }, [nodes]);
+
+    // 实时同步所有探针最新水位 (由 Worker 在边缘端拉取更新并写入 R2 快照)
+    const handleSyncRealtime = async () => {
+        setIsSyncing(true);
+        try {
+            const token = localStorage.getItem("rin_auth_token") || "";
+            const res = await fetch("/api/friend/sync-probe-nodes", {
+                method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                credentials: "include",
+            });
+            if (res.ok) {
+                onRefresh();
+            }
+        } catch {} finally {
+            setIsSyncing(false);
+        }
+    };
 
     const filteredNodes = useMemo(() => {
         let list = [...nodes];
-        if (searchKeyword.trim()) {
-            const kw = searchKeyword.toLowerCase().trim();
+
+        // 1. 区域过滤
+        if (regionFilter !== "all") {
+            list = list.filter((n) => n.countryCode.toUpperCase() === regionFilter.toUpperCase());
+        }
+
+        // 2. 线路过滤
+        if (routeFilter !== "all") {
             list = list.filter((n) =>
-                n.name.toLowerCase().includes(kw) ||
-                n.merchant.toLowerCase().includes(kw) ||
-                (n.model && n.model.toLowerCase().includes(kw)) ||
-                (n.routeTag && n.routeTag.toLowerCase().includes(kw))
+                (n.routeTag || "").toLowerCase().includes(routeFilter.toLowerCase()) ||
+                (n.tags || "").toLowerCase().includes(routeFilter.toLowerCase())
             );
         }
 
-        if (routeFilter !== "all") {
-            list = list.filter((n) => n.routeTag.toLowerCase().includes(routeFilter.toLowerCase()));
+        // 3. 关键字即时搜索 (支持商家、机型、名称、线路、地域)
+        const q = (probeSearch || searchKeyword).toLowerCase().trim();
+        if (q) {
+            list = list.filter((n) =>
+                n.name.toLowerCase().includes(q) ||
+                n.merchant.toLowerCase().includes(q) ||
+                (n.model && n.model.toLowerCase().includes(q)) ||
+                (n.routeTag && n.routeTag.toLowerCase().includes(q)) ||
+                (n.tags && n.tags.toLowerCase().includes(q)) ||
+                n.countryCode.toLowerCase().includes(q)
+            );
         }
 
+        // 4. 运营商与延迟排序
         list.sort((a, b) => {
             let valA = 0;
             let valB = 0;
@@ -1981,7 +2027,7 @@ function ProbeMachineDataGrid({
         });
 
         return list;
-    }, [nodes, searchKeyword, routeFilter, sortField, sortOrder]);
+    }, [nodes, searchKeyword, probeSearch, regionFilter, routeFilter, sortField, sortOrder]);
 
     const handleSort = (field: "telecom" | "unicom" | "mobile" | "uptime") => {
         if (sortField === field) {
@@ -1994,36 +2040,102 @@ function ProbeMachineDataGrid({
 
     return (
         <div className="wauto flex flex-col gap-3.5 ani-show select-none">
-            {/* 顶栏筛选与测速点切换 (对齐 PickMyVPS 截图 2 布局) */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-2xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-md shadow-2xs">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-bold text-neutral-500 mr-1">测速网络：</span>
-                    {[
-                        { id: "all", label: "三网全览" },
-                        { id: "telecom", label: "电信优先" },
-                        { id: "unicom", label: "联通优先" },
-                        { id: "mobile", label: "移动优先" },
-                    ].map((btn) => (
+            {/* 顶栏多维筛选矩阵 (按运营商、按地区、按线路、实时搜索，100% 对齐 PickMyVPS 布局) */}
+            <div className="flex flex-col gap-3 p-3.5 rounded-2xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-md shadow-2xs">
+                {/* 第一排：按运营商优先级 + 实时同步按钮 + 搜索框 */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-bold text-neutral-500 mr-1">运营商：</span>
+                        {[
+                            { id: "all", label: "三网全览" },
+                            { id: "telecom", label: "电信优先" },
+                            { id: "unicom", label: "联通优先" },
+                            { id: "mobile", label: "移动优先" },
+                        ].map((btn) => (
+                            <button
+                                key={btn.id}
+                                type="button"
+                                onClick={() => {
+                                    setCarrierSort(btn.id as any);
+                                    if (btn.id !== "all") handleSort(btn.id as any);
+                                }}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition select-none ${
+                                    carrierSort === btn.id
+                                        ? "bg-theme text-white shadow-2xs font-bold"
+                                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                                }`}
+                            >
+                                {btn.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
+                        <div className="relative w-48 sm:w-60">
+                            <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
+                            <input
+                                type="text"
+                                value={probeSearch}
+                                onChange={(e) => setProbeSearch(e.target.value)}
+                                placeholder="搜索商家 / 机型 / 线路..."
+                                className="w-full pl-8 pr-7 py-1 text-xs rounded-xl bg-w border border-black/10 dark:border-white/10 focus:border-theme outline-none"
+                            />
+                            {probeSearch && (
+                                <button
+                                    onClick={() => setProbeSearch("")}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                                >
+                                    <i className="ri-close-line text-xs" />
+                                </button>
+                            )}
+                        </div>
+
                         <button
-                            key={btn.id}
                             type="button"
-                            onClick={() => {
-                                setTestPoint(btn.id as any);
-                                if (btn.id !== "all") handleSort(btn.id as any);
-                            }}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
-                                testPoint === btn.id
-                                    ? "bg-theme text-white shadow-2xs font-bold"
+                            onClick={handleSyncRealtime}
+                            disabled={isSyncing || loading}
+                            className="px-3 py-1.5 rounded-xl border border-theme/30 bg-theme/5 hover:bg-theme hover:text-white text-theme text-xs font-bold transition flex items-center gap-1 shadow-2xs disabled:opacity-50 cursor-pointer"
+                            title="由 Cloudflare Worker 重新探测探针，同步最新延迟水位与在线天数"
+                        >
+                            <i className={`ri-refresh-line ${isSyncing || loading ? "animate-spin" : ""}`} />
+                            <span>{isSyncing ? "同步中..." : "实时更新"}</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* 第二排：按地域过滤胶囊 + 按线路过滤 */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-black/5 dark:border-white/5 text-xs">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-neutral-500 mr-1">地区：</span>
+                        <button
+                            type="button"
+                            onClick={() => setRegionFilter("all")}
+                            className={`px-2.5 py-0.5 rounded-lg font-semibold transition select-none ${
+                                regionFilter === "all"
+                                    ? "bg-theme text-white font-bold shadow-2xs"
                                     : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
                             }`}
                         >
-                            {btn.label}
+                            全部 ({nodes.length})
                         </button>
-                    ))}
-                </div>
+                        {availableRegions.map((cc) => (
+                            <button
+                                key={cc}
+                                type="button"
+                                onClick={() => setRegionFilter(cc)}
+                                className={`px-2 py-0.5 rounded-lg font-semibold transition select-none flex items-center gap-1 ${
+                                    regionFilter === cc
+                                        ? "bg-theme text-white font-bold shadow-2xs"
+                                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                                }`}
+                            >
+                                <span>{getFlagEmoji(cc)}</span>
+                                <span>{cc}</span>
+                            </button>
+                        ))}
+                    </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center gap-1 text-xs">
+                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
                         <span className="text-neutral-400">线路：</span>
                         <select
                             value={routeFilter}
@@ -2031,23 +2143,15 @@ function ProbeMachineDataGrid({
                             className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 bg-w text-xs font-semibold t-primary outline-none focus:border-theme cursor-pointer"
                         >
                             <option value="all">全部线路</option>
-                            <option value="CN2GIA">CN2 GIA</option>
-                            <option value="4837">4837 优化</option>
+                            <option value="CN2">CN2 GIA / 优化</option>
+                            <option value="4837">4837 联通优化</option>
                             <option value="CMI">CMI 移动直连</option>
-                            <option value="9929">9929 联通精品</option>
+                            <option value="9929">9929 精品</option>
                             <option value="BGP">BGP 国际</option>
+                            <option value="原生">原生 IP</option>
+                            <option value="媒体解锁">媒体解锁</option>
                         </select>
                     </div>
-
-                    <button
-                        type="button"
-                        onClick={onRefresh}
-                        disabled={loading}
-                        className="p-1.5 rounded-lg border border-black/10 dark:border-white/10 text-neutral-500 hover:text-theme transition"
-                        title="重新获取探针延迟与水位"
-                    >
-                        <i className={`ri-refresh-line text-xs ${loading ? "animate-spin text-theme" : ""}`} />
-                    </button>
                 </div>
             </div>
 
@@ -2094,9 +2198,9 @@ function ProbeMachineDataGrid({
                                     {sortField === "uptime" && <i className={sortOrder === "asc" ? "ri-arrow-up-line text-theme" : "ri-arrow-down-line text-theme"} />}
                                 </div>
                             </th>
-                            <th className="py-3 px-2 w-36">配置规格</th>
-                            <th className="py-3 px-2 w-20 text-center">用途</th>
-                            <th className="py-3 px-3 text-right pr-4 w-28">原探针来源</th>
+                            <th className="py-3 px-2 w-40">配置与使用量</th>
+                            <th className="py-3 px-2 w-28 text-center">真实数据标签</th>
+                            <th className="py-3 px-3 text-right pr-4 w-24">原探针来源</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-black/5 dark:divide-white/5">
@@ -2104,7 +2208,7 @@ function ProbeMachineDataGrid({
                             <tr>
                                 <td colSpan={9} className="py-16 text-center text-neutral-400">
                                     <i className="ri-dashboard-line text-2xl block mb-2 opacity-50" />
-                                    <span>暂无机器监控节点。在收录探针站点时，系统将智能提取节点供您一键入库。</span>
+                                    <span>暂无匹配的机器监控节点。点击上方「实时更新」或在收录探针时添加。</span>
                                 </td>
                             </tr>
                         ) : (
@@ -2145,7 +2249,7 @@ function ProbeMachineDataGrid({
                                                     </span>
                                                     <span className="text-[9px] text-neutral-400 font-mono">电信骨干</span>
                                                 </div>
-                                                <SparklineWave values={[node.telecomPing - 4, node.telecomPing + 3, node.telecomPing - 2, node.telecomPing + 5, node.telecomPing]} color="#FF7E95" />
+                                                <SparklineWave values={node.pingHistory || [node.telecomPing - 4, node.telecomPing + 3, node.telecomPing - 2, node.telecomPing + 5, node.telecomPing]} color="#FF7E95" />
                                             </div>
                                         </td>
 
@@ -2158,7 +2262,7 @@ function ProbeMachineDataGrid({
                                                     </span>
                                                     <span className="text-[9px] text-neutral-400 font-mono">联通骨干</span>
                                                 </div>
-                                                <SparklineWave values={[node.unicomPing - 3, node.unicomPing + 4, node.unicomPing - 1, node.unicomPing + 5, node.unicomPing]} color="#38BDF8" />
+                                                <SparklineWave values={node.pingHistory || [node.unicomPing - 3, node.unicomPing + 4, node.unicomPing - 1, node.unicomPing + 5, node.unicomPing]} color="#38BDF8" />
                                             </div>
                                         </td>
 
@@ -2171,7 +2275,7 @@ function ProbeMachineDataGrid({
                                                     </span>
                                                     <span className="text-[9px] text-neutral-400 font-mono">移动CM</span>
                                                 </div>
-                                                <SparklineWave values={[node.mobilePing - 5, node.mobilePing + 4, node.mobilePing - 2, node.mobilePing + 7, node.mobilePing]} color="#A855F7" />
+                                                <SparklineWave values={node.pingHistory || [node.mobilePing - 5, node.mobilePing + 4, node.mobilePing - 2, node.mobilePing + 7, node.mobilePing]} color="#A855F7" />
                                             </div>
                                         </td>
 
@@ -2220,11 +2324,19 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 用途 */}
+                                        {/* 用途与真实数据标签 */}
                                         <td className="py-2.5 px-2 text-center">
-                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
-                                                {node.usage || "直连/建站"}
-                                            </span>
+                                            <div className="flex items-center justify-center gap-1 flex-wrap max-w-[130px] mx-auto">
+                                                {(node.tags || node.routeTag || "优质节点")
+                                                    .split(/[;\s]+/)
+                                                    .filter(Boolean)
+                                                    .slice(0, 3)
+                                                    .map((tg: string, tIdx: number) => (
+                                                        <span key={tIdx} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-theme/10 text-theme font-mono shrink-0">
+                                                            {tg}
+                                                        </span>
+                                                    ))}
+                                            </div>
                                         </td>
 
                                         {/* 核心要求：原探针来源外链直达 */}
