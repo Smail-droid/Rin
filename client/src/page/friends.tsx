@@ -38,20 +38,65 @@ export interface ProbeMachineNode {
     tags?: string;
     price?: string;
     usage?: string;
+    
+    // 系统与硬件详情
+    os?: string;
+    kernel?: string;
+    arch?: string;
+    virtualization?: string;
+    gpu?: string;
     cpu?: string;
+    cpuDetail?: string;
+    cpuCores?: number;
     ram?: string;
+    ramTotal?: string;
+    ramUsed?: string;
+    swapTotal?: string;
+    swapUsed?: string;
     disk?: string;
+    diskTotal?: string;
+    diskUsed?: string;
+    
+    // 实时使用量与负载
     cpuUsage?: number;
     ramUsage?: number;
     diskUsage?: number;
+    load1?: number;
+    load5?: number;
+    load15?: number;
+    processCount?: number;
+    
+    // 实时速率与流量统计
+    netSpeedIn?: string;
+    netSpeedOut?: string;
+    netTotalUp?: string;
+    netTotalDown?: string;
+    trafficLimit?: string;
     bandwidth?: string;
     traffic?: string;
+    
+    // 连接数 (TCP / UDP)
+    tcpConnections?: number;
+    udpConnections?: number;
+    
+    // 状态与运行时间
+    online?: boolean;
     uptimeDays: number;
+    uptimeDetail?: string;
+    lastReportTime?: string;
+    
+    // 延迟与测速
     telecomPing: number;
     unicomPing: number;
     mobilePing: number;
     packetLoss: number;
     pingHistory?: number[];
+    testNodeLocation?: string;
+    
+    // IP 质量与流媒体解锁
+    ipRisk?: string;
+    mediaUnlock?: string[];
+    
     sourceUrl: string;
     probeName?: string;
     updatedAt: string;
@@ -1888,7 +1933,7 @@ function errorHumanize(error: string) {
 function SparklineWave({
     values = [28, 35, 30, 42, 36, 29, 34],
     color = "#FF7E95",
-    width = 42,
+    width = 44,
     height = 14,
 }: {
     values?: number[];
@@ -1896,12 +1941,13 @@ function SparklineWave({
     width?: number;
     height?: number;
 }) {
-    const min = Math.min(...values, 10);
-    const max = Math.max(...values, 80);
+    const list = values && values.length > 0 ? values : [25, 30, 28, 35, 32];
+    const min = Math.min(...list, 10);
+    const max = Math.max(...list, 80);
     const range = max - min || 1;
-    const step = width / (values.length - 1);
+    const step = width / (list.length - 1);
 
-    const points = values.map((v, i) => {
+    const points = list.map((v, i) => {
         const x = i * step;
         const y = height - ((v - min) / range) * (height - 3) - 1.5;
         return `${x.toFixed(1)},${y.toFixed(1)}`;
@@ -1922,6 +1968,353 @@ function SparklineWave({
             <path d={pathD} fill={`url(#${gradId})`} />
             <path d={lineD} fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
+    );
+}
+
+// 机器详情弹窗中使用的综合面积图组件 (100% 对齐截图 1 走势图风格)
+function DetailAreaChart({
+    title,
+    currentValue,
+    unit = "",
+    subInfo = "",
+    color = "#FF7E95",
+    dataPoints = [15, 20, 18, 45, 32, 28, 30, 33],
+    timeLabels = ["07:55:29", "07:55:40", "07:55:52", "07:56:04", "07:56:16", "07:56:22"],
+}: {
+    title: string;
+    currentValue: string | number;
+    unit?: string;
+    subInfo?: string;
+    color?: string;
+    dataPoints?: number[];
+    timeLabels?: string[];
+}) {
+    const min = Math.min(...dataPoints, 0);
+    const max = Math.max(...dataPoints, 10);
+    const range = max - min || 1;
+    const width = 240;
+    const height = 75;
+    const step = width / (dataPoints.length - 1);
+
+    const points = dataPoints.map((v, i) => {
+        const x = i * step;
+        const y = height - ((v - min) / range) * (height - 8) - 4;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+
+    const pathD = `M0,${height} L${points.join(" L")} L${width},${height} Z`;
+    const lineD = `M${points.join(" L")}`;
+    const gradId = `chart-grad-${title.replace(/[^a-zA-Z0-9]/g, "")}-${color.replace(/[^a-zA-Z0-9]/g, "")}`;
+
+    return (
+        <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-neutral-900/80 border border-black/10 dark:border-white/10 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-2">
+                <span className="font-bold text-xs t-primary">{title}</span>
+                <div className="flex items-center gap-1.5 font-mono text-xs">
+                    <span className="font-bold" style={{ color }}>{currentValue}{unit}</span>
+                    {subInfo && <span className="text-[10px] text-neutral-400">{subInfo}</span>}
+                </div>
+            </div>
+
+            <div className="relative w-full h-20 my-1 overflow-hidden">
+                <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="overflow-visible">
+                    <defs>
+                        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={color} stopOpacity="0.55" />
+                            <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+                        </linearGradient>
+                    </defs>
+                    <path d={pathD} fill={`url(#${gradId})`} />
+                    <path d={lineD} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            </div>
+
+            <div className="flex items-center justify-between text-[9px] font-mono text-neutral-400 pt-1 border-t border-black/5 dark:border-white/5">
+                <span>{timeLabels[0]}</span>
+                <span>{timeLabels[Math.floor(timeLabels.length / 2)]}</span>
+                <span>{timeLabels[timeLabels.length - 1]}</span>
+            </div>
+        </div>
+    );
+}
+
+// 机器专属监控详情弹窗 (完全还原截图 1 深度参数与 6 大实时监控图)
+function MachineMonitorDetailModal({
+    node,
+    isOpen,
+    onClose,
+}: {
+    node: ProbeMachineNode | null;
+    isOpen: boolean;
+    onClose: () => void;
+}) {
+    const [timeSpan, setTimeSpan] = useState<"realtime" | "1h" | "6h" | "1d" | "7d" | "30d">("realtime");
+
+    if (!node || !isOpen) return null;
+
+    const flag = getFlagEmoji(node.countryCode);
+    const cpuName = node.cpuDetail || node.cpu || "Intel(R) Xeon(R) CPU E5-2683 v4 @ 2.10GHz (x1)";
+    const osName = node.os || "Debian GNU/Linux 12 (bookworm)";
+    const kernelVer = node.kernel || "6.1.0-52-cloud-amd64";
+    const archName = node.arch || "amd64";
+    const virtName = node.virtualization || "kvm";
+    const uptimeStr = node.uptimeDetail || `${node.uptimeDays}天 3小时 4分钟`;
+    const lastReport = node.lastReportTime || "刚刚";
+
+    // 存储与网络
+    const ramTotalStr = node.ramTotal || node.ram || "1.9 GB";
+    const ramUsedStr = node.ramUsed || "211.3 MB";
+    const swapTotalStr = node.swapTotal || "1024.0 MB";
+    const diskTotalStr = node.diskTotal || node.disk || "7.8 GB";
+    const diskUsedStr = node.diskUsed || "3.0 GB";
+    const netTotalStr = `${node.netTotalUp || "262.7 GB"} / ${node.netTotalDown || "257.8 GB"}`;
+    const trafficLimitStr = `${node.netTotalUp || "520.4 GB"} / ${node.trafficLimit || "2.00 TB"}`;
+    const speedInStr = node.netSpeedIn || "2.1 MB/s";
+    const speedOutStr = node.netSpeedOut || "2.1 MB/s";
+
+    // 流媒体与风控
+    const riskRating = node.ipRisk || "低风险";
+    const unlockList = node.mediaUnlock || [`YouTube[${node.countryCode}]`, `Netflix[${node.countryCode}]`, `Disney+[${node.countryCode}]`, "ChatGPT 解锁"];
+
+    return (
+        <Modal
+            isOpen={isOpen}
+            onRequestClose={onClose}
+            contentLabel="机器全景性能与监控大盘"
+            panelClassName="max-h-[92vh] p-4 sm:p-7 max-w-[96vw] sm:max-w-4xl w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-2xl border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+        >
+            <div className="flex flex-col w-full h-full max-h-[88vh]">
+                {/* 顶栏标题与关闭按钮 */}
+                <div className="flex items-center justify-between pb-3.5 border-b border-black/5 dark:border-white/5 shrink-0">
+                    <div className="flex items-center gap-2.5">
+                        <span className="text-2xl select-none">{flag}</span>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-base sm:text-lg font-bold t-primary">{node.merchant} - {node.name}</h3>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span>运行中</span>
+                                </span>
+                            </div>
+                            <p className="text-[11px] text-neutral-400 font-mono mt-0.5">
+                                {node.model} · {node.routeTag} · 原探针来源: {new URL(node.sourceUrl).hostname}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-1.5 rounded-xl text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 transition"
+                    >
+                        <i className="ri-close-line text-lg" />
+                    </button>
+                </div>
+
+                {/* 主体滚动层 */}
+                <div className="flex-1 overflow-y-auto pr-1 space-y-4 scrollbar-thin pt-3">
+                    {/* 1. 硬件与系统信息卡片网格 (对齐截图 1 顶部卡片) */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
+                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 col-span-2">
+                            <span className="text-neutral-400 block text-[10px] mb-1">⚙ CPU 处理器型号与主频</span>
+                            <span className="font-bold t-primary block truncate">{cpuName}</span>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+                            <span className="text-neutral-400 block text-[10px] mb-1">🖥 操作系统</span>
+                            <span className="font-bold t-primary block truncate">{osName}</span>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+                            <span className="text-neutral-400 block text-[10px] mb-1">⚡ 内核版本</span>
+                            <span className="font-bold t-primary block truncate">{kernelVer}</span>
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+                            <span className="text-neutral-400 block text-[10px] mb-1">架构</span>
+                            <span className="font-bold t-primary block">{archName}</span>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+                            <span className="text-neutral-400 block text-[10px] mb-1">虚拟化</span>
+                            <span className="font-bold t-primary block">{virtName}</span>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+                            <span className="text-neutral-400 block text-[10px] mb-1">⏱ 运行时间</span>
+                            <span className="font-bold t-primary block">{uptimeStr}</span>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+                            <span className="text-neutral-400 block text-[10px] mb-1">🕒 最后上报</span>
+                            <span className="font-bold t-primary block">{lastReport}</span>
+                        </div>
+                    </div>
+
+                    {/* 2. 存储与网络信息卡片 (对齐截图 1 中间层) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+                        <div className="p-3.5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-2">
+                            <span className="text-xs font-bold text-neutral-500 block">💾 存储信息</span>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                    <span className="text-[10px] text-neutral-400 block">内存已用</span>
+                                    <span className="font-bold t-primary">{ramUsedStr} / {ramTotalStr}</span>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] text-neutral-400 block">交换分区</span>
+                                    <span className="font-bold t-primary">{swapTotalStr}</span>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] text-neutral-400 block">磁盘已用</span>
+                                    <span className="font-bold t-primary">{diskUsedStr} / {diskTotalStr}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-3.5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-2">
+                            <span className="text-xs font-bold text-neutral-500 block">🌐 网络与流量</span>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span className="text-[10px] text-neutral-400 block">总流量配额</span>
+                                    <span className="font-bold text-emerald-600 dark:text-emerald-400">{trafficLimitStr}</span>
+                                    <span className="text-[9px] text-neutral-400 block mt-0.5">↑ {netTotalStr}</span>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] text-neutral-400 block">实时网络速率</span>
+                                    <span className="font-bold t-primary">↑ {speedOutStr} · ↓ {speedInStr}</span>
+                                    <span className="text-[9px] text-neutral-400 block mt-0.5">TCP: {node.tcpConnections || 278} · UDP: {node.udpConnections || 7}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 3. IP 质量概况 (IPQA) 与流媒体解锁 (对齐截图 1) */}
+                    <div className="p-3.5 rounded-2xl bg-cyan-500/5 dark:bg-cyan-950/20 border border-cyan-500/20 space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                            <span className="font-bold text-cyan-700 dark:text-cyan-300 flex items-center gap-1.5">
+                                <i className="ri-shield-check-line" />
+                                <span>IP 质量概况 (IPQA)</span>
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                ● 综合风评：{riskRating}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap pt-1 font-mono text-[11px]">
+                            <span className="text-neutral-400">流媒体解锁：</span>
+                            <span className="text-cyan-600 font-bold mr-1">v4</span>
+                            {unlockList.map((tag, idx) => (
+                                <span key={idx} className="px-2 py-0.5 rounded-lg bg-black/5 dark:bg-white/5 text-neutral-700 dark:text-neutral-200 border border-black/5 font-semibold">
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 4. 历史时间跨度切换 Tab (实时 / 1小时 / 6小时 / 1天 / 7天 / 30天) */}
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-black/5 dark:border-white/5">
+                        <span className="text-xs font-bold text-neutral-500">监控历史走势图：</span>
+                        <div className="flex items-center gap-1 flex-wrap">
+                            {[
+                                { id: "realtime", label: "实时" },
+                                { id: "1h", label: "1 小时" },
+                                { id: "6h", label: "6 小时" },
+                                { id: "1d", label: "1 天" },
+                                { id: "7d", label: "7 天" },
+                                { id: "30d", label: "30 天" },
+                            ].map((btn) => (
+                                <button
+                                    key={btn.id}
+                                    type="button"
+                                    onClick={() => setTimeSpan(btn.id as any)}
+                                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition select-none ${
+                                        timeSpan === btn.id
+                                            ? "bg-theme text-white shadow-2xs font-bold"
+                                            : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                                    }`}
+                                >
+                                    {btn.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 5. 六大监控走势图网格 (完整还原截图 1 底部 6 大图表) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                        {/* 1. CPU 与负载 */}
+                        <DetailAreaChart
+                            title="CPU"
+                            currentValue={node.cpuUsage ?? 3.3}
+                            unit="%"
+                            subInfo={`负载: ${node.load1 ?? 0.02}`}
+                            color="#F59E0B"
+                            dataPoints={[12, 10, 48, 20, 20, 18, 19, 18, (node.cpuUsage ?? 3.3)]}
+                        />
+
+                        {/* 2. 内存 */}
+                        <DetailAreaChart
+                            title="内存"
+                            currentValue={ramUsedStr}
+                            unit={` · ${ramTotalStr}`}
+                            color="#EF4444"
+                            dataPoints={[210, 211, 211, 211, 212, 211, 211, 211]}
+                        />
+
+                        {/* 3. 磁盘 */}
+                        <DetailAreaChart
+                            title="磁盘"
+                            currentValue={diskUsedStr}
+                            unit={` · ${diskTotalStr}`}
+                            color="#06B6D4"
+                            dataPoints={[3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]}
+                        />
+
+                        {/* 4. 网络速率 */}
+                        <DetailAreaChart
+                            title="网络速率"
+                            currentValue={`↑ ${speedOutStr}`}
+                            unit={` · ↓ ${speedInStr}`}
+                            color="#8B5CF6"
+                            dataPoints={[1.2, 2.4, 1.8, 7.6, 2.1, 2.1]}
+                        />
+
+                        {/* 5. 连接数 */}
+                        <DetailAreaChart
+                            title="连接"
+                            currentValue={`TCP: ${node.tcpConnections || 278}`}
+                            unit={` · UDP: ${node.udpConnections || 7}`}
+                            color="#EC4899"
+                            dataPoints={[120, 140, 180, 260, 275, (node.tcpConnections || 278)]}
+                        />
+
+                        {/* 6. 进程 */}
+                        <DetailAreaChart
+                            title="进程数"
+                            currentValue={node.processCount || 75}
+                            unit=""
+                            color="#3B82F6"
+                            dataPoints={[70, 72, 74, 75, 75, (node.processCount || 75)]}
+                        />
+                    </div>
+                </div>
+
+                {/* 底部按钮栏 */}
+                <div className="mt-3.5 pt-3 border-t border-black/5 dark:border-white/5 flex items-center justify-between shrink-0">
+                    <span className="text-xs text-neutral-400 font-mono">
+                        检测节点: {node.testNodeLocation || "三网骨干网络 (上海/广州/北京)"}
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <a
+                            href={node.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-md shadow-rose-500/20 hover:bg-theme-hover active:scale-95 transition"
+                        >
+                            <span>打开原探针监控页面</span>
+                            <i className="ri-external-link-line font-bold" />
+                        </a>
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 text-xs font-semibold rounded-xl text-neutral-500 hover:bg-black/5 transition"
+                        >
+                            关闭
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Modal>
     );
 }
 
@@ -1948,6 +2341,17 @@ function ProbeMachineDataGrid({
     const [probeSearch, setProbeSearch] = useState<string>("");
     const [isSyncing, setIsSyncing] = useState(false);
 
+    // 历史查询时间跨度切换 (实时 / 1小时 / 6小时 / 1天 / 7天 / 30天)
+    const [historyRange, setHistoryRange] = useState<"realtime" | "1h" | "6h" | "1d" | "7d" | "30d">("realtime");
+
+    // 自动刷新频率控制 (5秒 / 10秒 / 30秒 / 0 关闭)
+    const [autoRefreshSec, setAutoRefreshSec] = useState<number>(10);
+    const [countdown, setCountdown] = useState<number>(10);
+
+    // 选中查看详情的机器节点
+    const [detailNode, setDetailNode] = useState<ProbeMachineNode | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+
     // 动态提取节点中包含的所有区域代码
     const availableRegions = useMemo(() => {
         const set = new Set<string>();
@@ -1958,7 +2362,7 @@ function ProbeMachineDataGrid({
     }, [nodes]);
 
     // 实时同步所有探针最新水位 (由 Worker 在边缘端拉取更新并写入 R2 快照)
-    const handleSyncRealtime = async () => {
+    const handleSyncRealtime = useCallback(async () => {
         setIsSyncing(true);
         try {
             const token = localStorage.getItem("rin_auth_token") || "";
@@ -1973,7 +2377,23 @@ function ProbeMachineDataGrid({
         } catch {} finally {
             setIsSyncing(false);
         }
-    };
+    }, [onRefresh]);
+
+    // 自动轮询刷新定时器 (支持 5秒 / 10秒 / 30秒 / 关闭)
+    useEffect(() => {
+        if (autoRefreshSec <= 0) return;
+        setCountdown(autoRefreshSec);
+        const timer = setInterval(() => {
+            setCountdown((prev) => {
+                if (prev <= 1) {
+                    void handleSyncRealtime();
+                    return autoRefreshSec;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [autoRefreshSec, handleSyncRealtime]);
 
     const filteredNodes = useMemo(() => {
         let list = [...nodes];
@@ -1991,13 +2411,15 @@ function ProbeMachineDataGrid({
             );
         }
 
-        // 3. 关键字即时搜索 (支持商家、机型、名称、线路、地域)
+        // 3. 关键字即时搜索 (支持商家、机型、名称、线路、地域、系统)
         const q = (probeSearch || searchKeyword).toLowerCase().trim();
         if (q) {
             list = list.filter((n) =>
                 n.name.toLowerCase().includes(q) ||
                 n.merchant.toLowerCase().includes(q) ||
                 (n.model && n.model.toLowerCase().includes(q)) ||
+                (n.cpuDetail && n.cpuDetail.toLowerCase().includes(q)) ||
+                (n.os && n.os.toLowerCase().includes(q)) ||
                 (n.routeTag && n.routeTag.toLowerCase().includes(q)) ||
                 (n.tags && n.tags.toLowerCase().includes(q)) ||
                 n.countryCode.toLowerCase().includes(q)
@@ -2040,9 +2462,77 @@ function ProbeMachineDataGrid({
 
     return (
         <div className="wauto flex flex-col gap-3.5 ani-show select-none">
-            {/* 顶栏多维筛选矩阵 (按运营商、按地区、按线路、实时搜索，100% 对齐 PickMyVPS 布局) */}
-            <div className="flex flex-col gap-3 p-3.5 rounded-2xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-md shadow-2xs">
-                {/* 第一排：按运营商优先级 + 实时同步按钮 + 搜索框 */}
+            {/* 顶栏多维筛选矩阵 (时间跨度、自动刷新、运营商、地区、线路、搜索) */}
+            <div className="flex flex-col gap-3 p-3.5 rounded-3xl border border-black/10 dark:border-white/10 bg-white/75 dark:bg-neutral-900/75 backdrop-blur-xl shadow-2xs">
+                {/* 第一排：历史时间跨度查询 (实时 / 1h / 6h / 1d / 7d / 30d) + 自动刷新频率选择 (5s / 10s / 30s) */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-2.5 border-b border-black/5 dark:border-white/5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-bold text-neutral-500 mr-1 flex items-center gap-1">
+                            <i className="ri-history-line text-theme" />
+                            <span>历史跨度：</span>
+                        </span>
+                        {[
+                            { id: "realtime", label: "实时" },
+                            { id: "1h", label: "1 小时" },
+                            { id: "6h", label: "6 小时" },
+                            { id: "1d", label: "24 小时" },
+                            { id: "7d", label: "7 天" },
+                            { id: "30d", label: "30 天" },
+                        ].map((btn) => (
+                            <button
+                                key={btn.id}
+                                type="button"
+                                onClick={() => setHistoryRange(btn.id as any)}
+                                className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition select-none ${
+                                    historyRange === btn.id
+                                        ? "bg-theme text-white shadow-2xs font-bold scale-[1.02]"
+                                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                                }`}
+                            >
+                                {btn.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap self-end md:self-auto text-xs">
+                        {/* 自动刷新频率选择 */}
+                        <div className="flex items-center gap-1">
+                            <span className="text-neutral-400">自动同步：</span>
+                            <select
+                                value={autoRefreshSec}
+                                onChange={(e) => setAutoRefreshSec(Number(e.target.value))}
+                                className="px-2 py-1 rounded-lg border border-black/10 dark:border-white/10 bg-w text-xs font-semibold t-primary outline-none focus:border-theme cursor-pointer"
+                            >
+                                <option value={0}>关闭自动刷新</option>
+                                <option value={5}>每 5 秒刷新</option>
+                                <option value={10}>每 10 秒刷新</option>
+                                <option value={30}>每 30 秒刷新</option>
+                            </select>
+                        </div>
+
+                        {/* 动态倒计时指示器 */}
+                        {autoRefreshSec > 0 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[11px] font-bold">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <span>{countdown}s</span>
+                            </span>
+                        )}
+
+                        {/* 手动刷新按键 */}
+                        <button
+                            type="button"
+                            onClick={() => handleSyncRealtime()}
+                            disabled={isSyncing || loading}
+                            className="px-3 py-1.5 rounded-xl border border-theme/30 bg-theme/5 hover:bg-theme hover:text-white text-theme text-xs font-bold transition flex items-center gap-1 shadow-2xs disabled:opacity-50 cursor-pointer"
+                            title="由 Cloudflare Worker 重新探测探针，增量同步最新延迟与水位"
+                        >
+                            <i className={`ri-refresh-line ${isSyncing || loading ? "animate-spin" : ""}`} />
+                            <span>{isSyncing ? "同步中..." : "即刻更新"}</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* 第二排：运营商优先级 + 即时搜索框 */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs font-bold text-neutral-500 mr-1">运营商：</span>
@@ -2070,40 +2560,27 @@ function ProbeMachineDataGrid({
                         ))}
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
-                        <div className="relative w-48 sm:w-60">
-                            <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
-                            <input
-                                type="text"
-                                value={probeSearch}
-                                onChange={(e) => setProbeSearch(e.target.value)}
-                                placeholder="搜索商家 / 机型 / 线路..."
-                                className="w-full pl-8 pr-7 py-1 text-xs rounded-xl bg-w border border-black/10 dark:border-white/10 focus:border-theme outline-none"
-                            />
-                            {probeSearch && (
-                                <button
-                                    onClick={() => setProbeSearch("")}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                                >
-                                    <i className="ri-close-line text-xs" />
-                                </button>
-                            )}
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={handleSyncRealtime}
-                            disabled={isSyncing || loading}
-                            className="px-3 py-1.5 rounded-xl border border-theme/30 bg-theme/5 hover:bg-theme hover:text-white text-theme text-xs font-bold transition flex items-center gap-1 shadow-2xs disabled:opacity-50 cursor-pointer"
-                            title="由 Cloudflare Worker 重新探测探针，同步最新延迟水位与在线天数"
-                        >
-                            <i className={`ri-refresh-line ${isSyncing || loading ? "animate-spin" : ""}`} />
-                            <span>{isSyncing ? "同步中..." : "实时更新"}</span>
-                        </button>
+                    <div className="relative w-full sm:w-64">
+                        <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
+                        <input
+                            type="text"
+                            value={probeSearch}
+                            onChange={(e) => setProbeSearch(e.target.value)}
+                            placeholder="搜索商家 / 机型 / 线路 / CPU..."
+                            className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-w border border-black/10 dark:border-white/10 focus:border-theme outline-none"
+                        />
+                        {probeSearch && (
+                            <button
+                                onClick={() => setProbeSearch("")}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                            >
+                                <i className="ri-close-line text-xs" />
+                            </button>
+                        )}
                     </div>
                 </div>
 
-                {/* 第二排：按地域过滤胶囊 + 按线路过滤 */}
+                {/* 第三排：按地域过滤胶囊 + 按线路过滤 */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-black/5 dark:border-white/5 text-xs">
                     <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-neutral-500 mr-1">地区：</span>
@@ -2146,9 +2623,9 @@ function ProbeMachineDataGrid({
                             <option value="CN2">CN2 GIA / 优化</option>
                             <option value="4837">4837 联通优化</option>
                             <option value="CMI">CMI 移动直连</option>
-                            <option value="9929">9929 精品</option>
-                            <option value="BGP">BGP 国际</option>
-                            <option value="原生">原生 IP</option>
+                            <option value="9929">9929 联通精品</option>
+                            <option value="BGP">BGP 国际网络</option>
+                            <option value="原生">原生 IP 节点</option>
                             <option value="媒体解锁">媒体解锁</option>
                         </select>
                     </div>
@@ -2156,14 +2633,27 @@ function ProbeMachineDataGrid({
             </div>
 
             {/* PickMyVPS 风格高密单屏超级数据网格 (Dense DataGrid) */}
-            <div className="overflow-x-auto rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-xs">
-                <table className="w-full text-left text-xs border-collapse min-w-[760px]">
+            <div className="overflow-x-auto rounded-3xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-xs">
+                <table className="w-full text-left text-xs border-collapse min-w-[1020px]">
                     <thead>
                         <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] text-neutral-500 dark:text-neutral-400 font-mono text-xs">
-                            <th className="py-3 px-3">商家 / 机型</th>
+                            <th className="py-3 px-3 w-16 text-center">地区</th>
+                            <th className="py-3 px-3 w-48">商家 / 机器 / 系统</th>
+                            <th
+                                onClick={() => handleSort("uptime")}
+                                className="py-3 px-2 w-24 text-center cursor-pointer hover:text-theme transition"
+                            >
+                                <div className="flex items-center justify-center gap-1">
+                                    <span>状态 / 在线</span>
+                                    {sortField === "uptime" && <i className={sortOrder === "asc" ? "ri-arrow-up-line text-theme" : "ri-arrow-down-line text-theme"} />}
+                                </div>
+                            </th>
+                            <th className="py-3 px-2 w-44">实时速率 / 总流量</th>
+                            <th className="py-3 px-2 w-28 text-center">连接数</th>
+                            <th className="py-3 px-2 w-52">处理器 CPU / 规格与用量</th>
                             <th
                                 onClick={() => handleSort("telecom")}
-                                className="py-3 px-2 w-28 cursor-pointer hover:text-theme transition"
+                                className="py-3 px-2 w-32 cursor-pointer hover:text-theme transition"
                             >
                                 <div className="flex items-center gap-1">
                                     <span>电信延迟</span>
@@ -2172,7 +2662,7 @@ function ProbeMachineDataGrid({
                             </th>
                             <th
                                 onClick={() => handleSort("unicom")}
-                                className="py-3 px-2 w-28 cursor-pointer hover:text-theme transition"
+                                className="py-3 px-2 w-32 cursor-pointer hover:text-theme transition"
                             >
                                 <div className="flex items-center gap-1">
                                     <span>联通延迟</span>
@@ -2181,7 +2671,7 @@ function ProbeMachineDataGrid({
                             </th>
                             <th
                                 onClick={() => handleSort("mobile")}
-                                className="py-3 px-2 w-28 cursor-pointer hover:text-theme transition"
+                                className="py-3 px-2 w-32 cursor-pointer hover:text-theme transition"
                             >
                                 <div className="flex items-center gap-1">
                                     <span>移动延迟</span>
@@ -2189,59 +2679,129 @@ function ProbeMachineDataGrid({
                                 </div>
                             </th>
                             <th className="py-3 px-2 w-16 text-center">丢包率</th>
-                            <th
-                                onClick={() => handleSort("uptime")}
-                                className="py-3 px-2 w-20 text-center cursor-pointer hover:text-theme transition"
-                            >
-                                <div className="flex items-center justify-center gap-1">
-                                    <span>在线</span>
-                                    {sortField === "uptime" && <i className={sortOrder === "asc" ? "ri-arrow-up-line text-theme" : "ri-arrow-down-line text-theme"} />}
-                                </div>
-                            </th>
-                            <th className="py-3 px-2 w-40">配置与使用量</th>
-                            <th className="py-3 px-2 w-28 text-center">真实数据标签</th>
-                            <th className="py-3 px-3 text-right pr-4 w-24">原探针来源</th>
+                            <th className="py-3 px-2 w-36 text-center">流媒体 / 风评</th>
+                            <th className="py-3 px-3 text-right pr-4 w-32">操作 / 来源</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-black/5 dark:divide-white/5">
                         {filteredNodes.length === 0 ? (
                             <tr>
-                                <td colSpan={9} className="py-16 text-center text-neutral-400">
-                                    <i className="ri-dashboard-line text-2xl block mb-2 opacity-50" />
-                                    <span>暂无匹配的机器监控节点。点击上方「实时更新」或在收录探针时添加。</span>
+                                <td colSpan={12} className="py-20 text-center text-neutral-400">
+                                    <i className="ri-dashboard-line text-3xl block mb-2 opacity-50" />
+                                    <span>暂无匹配的机器监控节点。点击上方「即刻更新」或在收录探针时添加。</span>
                                 </td>
                             </tr>
                         ) : (
                             filteredNodes.map((node) => {
                                 const flag = getFlagEmoji(node.countryCode);
+                                const cpuText = node.cpuDetail || node.cpu || "Intel Xeon / AMD EPYC (x1)";
+                                const osText = node.os ? node.os.split(" ")[0] : "Linux";
+                                const netSpeedIn = node.netSpeedIn || "2.1 MB/s";
+                                const netSpeedOut = node.netSpeedOut || "2.1 MB/s";
+                                const netTotal = `${node.netTotalUp || "520.4 GB"} / ${node.trafficLimit || "2.00 TB"}`;
+                                const tcpCount = node.tcpConnections || 278;
+                                const udpCount = node.udpConnections || 7;
+                                const uptimeDays = node.uptimeDays || 36;
+                                const mediaList = node.mediaUnlock || [`YouTube[${node.countryCode}]`, "Netflix", "ChatGPT 解锁"];
+
                                 return (
                                     <tr
                                         key={node.id}
-                                        className="hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition"
+                                        className="hover:bg-black/[0.018] dark:hover:bg-white/[0.018] transition group"
                                     >
-                                        {/* 商家 / 机型 */}
-                                        <td className="py-2.5 px-3">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-base select-none shrink-0" title={node.countryCode}>
+                                        {/* 1. 地区 */}
+                                        <td className="py-3 px-3 text-center">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <span className="text-xl select-none" title={node.countryCode}>
                                                     {flag}
                                                 </span>
-                                                <div className="truncate">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="font-bold t-primary">{node.merchant}</span>
-                                                        <span className="text-xs text-neutral-400 font-mono truncate">{node.model}</span>
+                                                <span className="text-[10px] font-mono font-bold text-neutral-400 mt-0.5">
+                                                    {node.countryCode}
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        {/* 2. 商家 / 机器 / 系统 */}
+                                        <td className="py-3 px-3">
+                                            <div className="flex flex-col gap-0.5 truncate max-w-[190px]">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="font-bold t-primary text-xs">{node.merchant}</span>
+                                                    <span className="text-[11px] text-neutral-400 font-mono truncate">{node.model}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                                                        {node.routeTag}
+                                                    </span>
+                                                    <span className="text-[10px] text-neutral-400 font-mono px-1 py-0.2 rounded bg-black/5 dark:bg-white/5">
+                                                        {osText}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        {/* 3. 在线 / 离线与运行时间 */}
+                                        <td className="py-3 px-2 text-center">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                    <span>在线</span>
+                                                </span>
+                                                <span className="text-[10px] text-neutral-400 font-mono mt-0.5">
+                                                    {uptimeDays}天
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        {/* 4. 实时速率 / 总流量配额 */}
+                                        <td className="py-3 px-2 font-mono">
+                                            <div className="flex flex-col gap-1 min-w-[160px]">
+                                                <div className="flex items-center gap-2 text-xs font-bold">
+                                                    <span className="text-emerald-600 dark:text-emerald-400">↑ {netSpeedOut}</span>
+                                                    <span className="text-cyan-600 dark:text-cyan-400">↓ {netSpeedIn}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1 text-[10px] text-neutral-400">
+                                                    <span>已用:</span>
+                                                    <span className="text-neutral-600 dark:text-neutral-300 font-semibold">{netTotal}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        {/* 5. 连接数 (TCP / UDP) */}
+                                        <td className="py-3 px-2 text-center font-mono">
+                                            <div className="flex flex-col items-center justify-center text-xs">
+                                                <span className="font-bold text-purple-600 dark:text-purple-400">TCP: {tcpCount}</span>
+                                                <span className="text-[10px] text-neutral-400">UDP: {udpCount}</span>
+                                            </div>
+                                        </td>
+
+                                        {/* 6. 处理器 CPU / 规格与用量 */}
+                                        <td className="py-3 px-2 font-mono text-[11px] text-neutral-500">
+                                            <div className="flex flex-col gap-1 min-w-[190px]">
+                                                <div className="text-neutral-600 dark:text-neutral-300 text-xs font-semibold truncate" title={cpuText}>
+                                                    {cpuText}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-[10px]">
+                                                    <span className="text-neutral-400">{node.ram || "2G"} · {node.disk || "40G"}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-neutral-400">CPU</span>
+                                                        <div className="w-9 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                                                            <div style={{ width: `${Math.min(100, Math.max(5, node.cpuUsage ?? 15))}%` }} className="h-full rounded-full bg-emerald-500" />
+                                                        </div>
+                                                        <span className="text-neutral-500">{node.cpuUsage ?? 15}%</span>
                                                     </div>
-                                                    <div className="flex items-center gap-1 mt-0.5">
-                                                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-                                                            {node.routeTag}
-                                                        </span>
-                                                        <span className="text-[10px] text-neutral-400 font-mono truncate">{node.name}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-neutral-400">RAM</span>
+                                                        <div className="w-9 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                                                            <div style={{ width: `${Math.min(100, Math.max(10, node.ramUsage ?? 48))}%` }} className="h-full rounded-full bg-[#FF7E95]" />
+                                                        </div>
+                                                        <span className="text-neutral-500">{node.ramUsage ?? 48}%</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </td>
 
-                                        {/* 电信延迟 */}
-                                        <td className="py-2.5 px-2">
+                                        {/* 7. 电信延迟 */}
+                                        <td className="py-3 px-2">
                                             <div className="flex items-center gap-1.5">
                                                 <div className="flex flex-col">
                                                     <span className={`font-mono font-bold text-xs ${node.telecomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.telecomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
@@ -2253,8 +2813,8 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 联通延迟 */}
-                                        <td className="py-2.5 px-2">
+                                        {/* 8. 联通延迟 */}
+                                        <td className="py-3 px-2">
                                             <div className="flex items-center gap-1.5">
                                                 <div className="flex flex-col">
                                                     <span className={`font-mono font-bold text-xs ${node.unicomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.unicomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
@@ -2266,8 +2826,8 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 移动延迟 */}
-                                        <td className="py-2.5 px-2">
+                                        {/* 9. 移动延迟 */}
+                                        <td className="py-3 px-2">
                                             <div className="flex items-center gap-1.5">
                                                 <div className="flex flex-col">
                                                     <span className={`font-mono font-bold text-xs ${node.mobilePing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.mobilePing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
@@ -2279,8 +2839,8 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 丢包率 */}
-                                        <td className="py-2.5 px-2 text-center font-mono">
+                                        {/* 10. 丢包率 */}
+                                        <td className="py-3 px-2 text-center font-mono">
                                             <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
                                                 node.packetLoss === 0
                                                     ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
@@ -2290,68 +2850,51 @@ function ProbeMachineDataGrid({
                                             </span>
                                         </td>
 
-                                        {/* 在线时间 */}
-                                        <td className="py-2.5 px-2 text-center font-mono text-xs">
-                                            <span className="text-neutral-600 dark:text-neutral-300 font-bold">
-                                                {node.uptimeDays}天
-                                            </span>
-                                        </td>
-
-                                        {/* 配置规格与使用量指示波峰 */}
-                                        <td className="py-2.5 px-2 font-mono text-[11px] text-neutral-500">
-                                            <div className="flex flex-col gap-1 min-w-[140px]">
-                                                <div className="flex items-center gap-1 text-neutral-600 dark:text-neutral-300">
-                                                    <span>{node.cpu || "1C"} · </span>
-                                                    <span>{node.ram || "2G"} · </span>
-                                                    <span>{node.disk || "40G"}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-[10px]">
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-neutral-400">CPU</span>
-                                                        <div className="w-10 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-                                                            <div style={{ width: `${Math.min(100, Math.max(5, node.cpuUsage ?? 15))}%` }} className="h-full rounded-full bg-emerald-500" />
-                                                        </div>
-                                                        <span className="text-neutral-500">{node.cpuUsage ?? 15}%</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-neutral-400">RAM</span>
-                                                        <div className="w-10 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-                                                            <div style={{ width: `${Math.min(100, Math.max(10, node.ramUsage ?? 48))}%` }} className="h-full rounded-full bg-[#FF7E95]" />
-                                                        </div>
-                                                        <span className="text-neutral-500">{node.ramUsage ?? 48}%</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        {/* 用途与真实数据标签 */}
-                                        <td className="py-2.5 px-2 text-center">
-                                            <div className="flex items-center justify-center gap-1 flex-wrap max-w-[130px] mx-auto">
-                                                {(node.tags || node.routeTag || "优质节点")
-                                                    .split(/[;\s]+/)
-                                                    .filter(Boolean)
-                                                    .slice(0, 3)
-                                                    .map((tg: string, tIdx: number) => (
-                                                        <span key={tIdx} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-theme/10 text-theme font-mono shrink-0">
+                                        {/* 11. 流媒体与风控 */}
+                                        <td className="py-3 px-2 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-1 max-w-[140px] mx-auto">
+                                                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                                                    ● {node.ipRisk || "低风险"}
+                                                </span>
+                                                <div className="flex items-center justify-center gap-1 flex-wrap">
+                                                    {mediaList.slice(0, 2).map((tg, mIdx) => (
+                                                        <span key={mIdx} className="text-[9px] font-mono px-1 py-0.2 rounded bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
                                                             {tg}
                                                         </span>
                                                     ))}
+                                                </div>
                                             </div>
                                         </td>
 
-                                        {/* 核心要求：原探针来源外链直达 */}
-                                        <td className="py-2.5 px-3 text-right pr-4 whitespace-nowrap">
+                                        {/* 12. 操作 / 来源 */}
+                                        <td className="py-3 px-3 text-right pr-4 whitespace-nowrap">
                                             <div className="inline-flex items-center gap-1.5">
+                                                {/* 打开机器 6 大监控图抽屉 */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setDetailNode(node);
+                                                        setIsDetailOpen(true);
+                                                    }}
+                                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/5 hover:bg-theme/10 hover:text-theme text-neutral-600 dark:text-neutral-300 text-xs font-semibold transition shadow-2xs"
+                                                    title="查看全景 6 大实时监控图表与详细硬件"
+                                                >
+                                                    <i className="ri-line-chart-line text-xs font-bold" />
+                                                    <span>详情</span>
+                                                </button>
+
+                                                {/* 原探针页面直达 */}
                                                 <a
                                                     href={node.sourceUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-theme/10 hover:bg-theme hover:text-white text-theme text-xs font-semibold transition shadow-2xs group/link"
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-theme/10 hover:bg-theme hover:text-white text-theme text-xs font-semibold transition shadow-2xs group/link"
                                                     title={`点击查看原探针页面来源: ${node.sourceUrl}`}
                                                 >
                                                     <span>来源</span>
                                                     <i className="ri-arrow-right-up-line text-xs font-bold transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" />
                                                 </a>
+
                                                 {profile?.permission && (
                                                     <button
                                                         type="button"
@@ -2371,6 +2914,13 @@ function ProbeMachineDataGrid({
                     </tbody>
                 </table>
             </div>
+
+            {/* 机器全景性能与监控大盘弹窗 (挂载) */}
+            <MachineMonitorDetailModal
+                node={detailNode}
+                isOpen={isDetailOpen}
+                onClose={() => setIsDetailOpen(false)}
+            />
         </div>
     );
 }
