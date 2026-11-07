@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { client } from "../app/runtime";
 
-// 精雕日系二次元可爱微光矢量 SVG 小书本 (彻底拒绝像素 Emoji，纯矢量手绘微光)
+// 精雕日系二次元可爱微光矢量 SVG 小书本 (纯矢量手绘，蜜桃珊瑚粉微光)
 function KawaiiBookSvg({ className = "w-6 h-6" }: { className?: string }) {
   return (
     <svg
@@ -39,7 +39,7 @@ function KawaiiBookSvg({ className = "w-6 h-6" }: { className?: string }) {
         strokeLinejoin="round"
       />
 
-      {/* 书本书页折叠层 (左页与右页) */}
+      {/* 书页左右折叠层 */}
       <path
         d="M4.5 18.5C6.5 17.5 9 17.5 12 19V5.5C9 4 6.5 4 4.5 5V18.5Z"
         fill="url(#kawaii-book-pages)"
@@ -54,12 +54,9 @@ function KawaiiBookSvg({ className = "w-6 h-6" }: { className?: string }) {
       />
 
       {/* 黄金丝带书签 */}
-      <path
-        d="M11 5V12L12 11L13 12V5H11Z"
-        fill="url(#kawaii-ribbon)"
-      />
+      <path d="M11 5V12L12 11L13 12V5H11Z" fill="url(#kawaii-ribbon)" />
 
-      {/* 二次元白色高光点 */}
+      {/* 白色微光点 */}
       <circle cx="6.5" cy="8.5" r="0.75" fill="#FFFFFF" opacity="0.9" />
       <circle cx="17.5" cy="8.5" r="0.75" fill="#FFFFFF" opacity="0.9" />
     </svg>
@@ -67,52 +64,88 @@ function KawaiiBookSvg({ className = "w-6 h-6" }: { className?: string }) {
 }
 
 export function FloatingBookNavigator() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [feeds, setFeeds] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [adjacent, setAdjacent] = useState<{ prev: any | null; next: any | null }>({ prev: null, next: null });
+  const [randomPool, setRandomPool] = useState<any[]>([]);
+
   const drawerRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // 管理后台路由下自动隐藏，保持管理控制台专注整洁
-  const isExcluded = location.startsWith("/admin") || location.startsWith("/login");
+  // 严格限定：仅在文章内容 SPA 页面呈现 (如 /feed/:id 或自定义别名文章页)，首页/相册/动态等绝对不出现
+  const feedIdMatch = location.match(/^\/feed\/([^/]+)/);
+  const currentFeedId = feedIdMatch ? feedIdMatch[1] : null;
 
-  // 加载精选文章用于漫游推荐
-  const loadRecommendedFeeds = async () => {
-    setLoading(true);
-    try {
-      const { data } = await client.feed.list({ limit: 30, page: 1 });
-      if (data?.data && Array.isArray(data.data)) {
-        // 随机打乱抽取 5 篇
-        const shuffled = [...data.data].sort(() => 0.5 - Math.random());
-        setFeeds(shuffled.slice(0, 5));
-      }
-    } catch {
-      // 容错
-    } finally {
-      setLoading(false);
+  const isArticlePage =
+    Boolean(currentFeedId) ||
+    (location !== "/" &&
+      !location.startsWith("/admin") &&
+      !location.startsWith("/login") &&
+      !location.startsWith("/friends") &&
+      !location.startsWith("/moments") &&
+      !location.startsWith("/timeline") &&
+      !location.startsWith("/search") &&
+      !location.startsWith("/hashtags") &&
+      !location.startsWith("/hashtag/"));
+
+  // 读取上一篇/下一篇文章数据
+  useEffect(() => {
+    if (!isArticlePage || !currentFeedId) {
+      setAdjacent({ prev: null, next: null });
+      return;
+    }
+
+    client.feed
+      .adjacent(currentFeedId)
+      .then(({ data }) => {
+        if (data && typeof data !== "string") {
+          setAdjacent({
+            prev: data.previousFeed || null,
+            next: data.nextFeed || null,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [currentFeedId, isArticlePage]);
+
+  // 读取全站文章池用于“随便看看 / 随机漫游”
+  useEffect(() => {
+    if (!isArticlePage) return;
+
+    client.feed
+      .list({ limit: 40, page: 1 })
+      .then(({ data }) => {
+        if (data?.data && Array.isArray(data.data)) {
+          setRandomPool(data.data);
+        }
+      })
+      .catch(() => {});
+  }, [isArticlePage]);
+
+  // 随机漫游跳文章
+  const handleRandomRoam = () => {
+    if (!randomPool.length) return;
+    const candidates = randomPool.filter((f) => String(f.id) !== String(currentFeedId));
+    const target = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : randomPool[0];
+    if (target) {
+      setLocation(`/feed/${target.id}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setIsExpanded(false);
     }
   };
 
-  useEffect(() => {
-    if (isExpanded && feeds.length === 0) {
-      void loadRecommendedFeeds();
-    }
-  }, [isExpanded]);
+  const handleGoTo = (targetId: number | string) => {
+    setLocation(`/feed/${targetId}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setIsExpanded(false);
+  };
 
-  // Click-outside 外部点击监听自动收拢
+  // Click-outside 外部点击监听自动收起
   useEffect(() => {
     if (!isExpanded) return;
 
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Node;
-      if (
-        drawerRef.current &&
-        !drawerRef.current.contains(target) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(target)
-      ) {
+      if (drawerRef.current && !drawerRef.current.contains(target)) {
         setIsExpanded(false);
       }
     };
@@ -125,159 +158,100 @@ export function FloatingBookNavigator() {
     };
   }, [isExpanded]);
 
-  if (isExcluded) {
+  if (!isArticlePage) {
     return null;
   }
 
   return (
     <aside
-      aria-label="画廊漫游与随心阅读"
+      aria-label="文章随心漫游控制器"
       className="fixed bottom-20 sm:bottom-22 right-4 sm:right-6 z-40 select-none"
     >
-      {/* 折叠状态：纯矢量手绘日系小书本悬浮按钮 */}
+      {/* 状态 1: 折叠状态 (默认仅显示精雕 38px 悬浮小书本，绝对不显示文字冒泡，零视觉侵扰) */}
       {!isExpanded ? (
-        <div
-          className="relative group flex items-center justify-center"
-          onMouseEnter={() => setShowTooltip(true)}
-          onMouseLeave={() => setShowTooltip(false)}
+        <button
+          type="button"
+          onClick={() => setIsExpanded(true)}
+          className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/75 dark:bg-neutral-900/75 border border-[#FFD0DA] shadow-md backdrop-blur-md hover:scale-110 active:scale-95 transition-all cursor-pointer group"
+          title="点击展开文章漫游 (上一篇 / 随便看看 / 下一篇)"
         >
-          {/* 轻量悬浮 Tooltip */}
-          {showTooltip && (
-            <div className="absolute -top-8 right-0 whitespace-nowrap px-2.5 py-0.5 rounded-full bg-[#FFFAFC]/95 text-[#503E42] text-[11px] font-bold shadow-md border border-[#FFD0DA]/70 pointer-events-none ani-show backdrop-blur-md">
-              画廊漫游 · 随心阅读
-            </div>
-          )}
-
-          <button
-            ref={buttonRef}
-            type="button"
-            onClick={() => setIsExpanded(true)}
-            className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/70 dark:bg-neutral-900/70 border border-[#FFD0DA] shadow-md backdrop-blur-md hover:scale-110 active:scale-95 transition-all cursor-pointer group"
-            title="点击展开画廊文章随心漫游"
-          >
-            {/* 呼吸微光圈 */}
-            <span
-              style={{ borderColor: "#FF7E95" }}
-              className="absolute inset-0 rounded-full border border-dashed opacity-50 animate-pulse duration-[3000ms] pointer-events-none"
-            />
-            <div className="transition-transform group-hover:rotate-6">
-              <KawaiiBookSvg className="w-6 h-6" />
-            </div>
-          </button>
-        </div>
+          {/* 呼吸微光波纹 */}
+          <span
+            style={{ borderColor: "#FF7E95" }}
+            className="absolute inset-0 rounded-full border border-dashed opacity-40 animate-pulse duration-[3000ms] pointer-events-none"
+          />
+          <div className="transition-transform group-hover:rotate-6">
+            <KawaiiBookSvg className="w-5.5 h-5.5" />
+          </div>
+        </button>
       ) : (
-        /* 展开状态：二次元奶油粉白毛玻璃抽屉 (半透明防遮挡，一键切文章与换一批) */
+        /* 状态 2: 展开状态 (参考播放器组件的极简奶油粉白胶囊，绝不超屏、紧凑优雅) */
         <div
           ref={drawerRef}
           style={{
-            background: "rgba(255, 250, 252, 0.92)",
-            backdropFilter: "blur(18px)",
-            WebkitBackdropFilter: "blur(18px)",
-            border: "1px solid rgba(255, 208, 218, 0.85)",
-            boxShadow: "0 12px 36px rgba(255, 126, 149, 0.2)",
+            background: "rgba(255, 250, 252, 0.88)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            border: "1px solid rgba(255, 208, 218, 0.75)",
+            boxShadow: "0 8px 24px rgba(255, 126, 149, 0.18)",
           }}
-          className="w-76 sm:w-84 max-h-[75vh] rounded-3xl p-3.5 shadow-2xl flex flex-col gap-2.5 ani-show text-xs text-[#503E42] dark:bg-neutral-900/90 dark:text-neutral-200"
+          className="relative flex flex-col rounded-full pl-2 pr-3 pt-1 pb-1.5 min-w-[210px] max-w-[260px] ani-show shadow-xl text-xs text-[#503E42] dark:bg-neutral-900/85 dark:text-neutral-200"
         >
-          {/* 抽屉头部 */}
-          <div className="flex items-center justify-between pb-2 border-b border-[#FFD0DA]/60">
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <KawaiiBookSvg className="w-5 h-5 shrink-0" />
-              <span className="text-[#503E42] dark:text-neutral-100 font-bold">画廊漫游 · 随心阅读</span>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={loadRecommendedFeeds}
-                disabled={loading}
-                className="px-2 py-0.5 rounded-lg text-[11px] font-semibold text-theme hover:bg-theme/10 transition flex items-center gap-0.5"
-                title="随机换一批文章"
-              >
-                <i className={`ri-dice-line text-xs ${loading ? "animate-spin" : ""}`} />
-                <span>换一批</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsExpanded(false)}
-                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition"
-                title="收起抽屉"
-              >
-                <i className="ri-close-line text-base" />
-              </button>
-            </div>
+          {/* 顶层微字标识 */}
+          <div className="w-full text-center text-[10px] font-bold text-[#FF7E95] truncate px-2 pointer-events-none">
+            随心漫游
           </div>
 
-          {/* 文章推荐流 */}
-          <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[55vh] pr-0.5 scrollbar-thin">
-            {loading && feeds.length === 0 ? (
-              <div className="py-12 text-center text-neutral-400">
-                <i className="ri-loader-4-line animate-spin text-lg block mb-1 text-theme" />
-                <span>正在寻找灵感文章...</span>
-              </div>
-            ) : feeds.length === 0 ? (
-              <div className="py-10 text-center text-neutral-400">
-                <span>暂无推荐文章</span>
-              </div>
-            ) : (
-              feeds.map((feed) => {
-                const cover = feed.coverImage || feed.avatar;
-                const isCurrent = location === `/feed/${feed.id}` || location === `/${feed.alias}`;
-
-                return (
-                  <Link
-                    key={feed.id}
-                    href={`/feed/${feed.id}`}
-                    onClick={() => {
-                      setIsExpanded(false);
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className={`flex items-start gap-2.5 p-2 rounded-2xl transition group/item select-none cursor-pointer ${
-                      isCurrent
-                        ? "bg-theme/15 text-theme font-bold border border-theme/30"
-                        : "hover:bg-[#FFD0DA]/30 dark:hover:bg-white/5 border border-transparent"
-                    }`}
-                  >
-                    {/* 文章封面缩略图 */}
-                    <div className="h-10 w-10 shrink-0 rounded-xl overflow-hidden bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 flex items-center justify-center">
-                      {cover ? (
-                        <img src={cover} alt="" className="h-full w-full object-cover group-hover/item:scale-105 transition-transform" />
-                      ) : (
-                        <KawaiiBookSvg className="w-5 h-5 opacity-70" />
-                      )}
-                    </div>
-
-                    {/* 文章标题与时间 */}
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-xs truncate group-hover/item:text-theme transition-colors">
-                        {feed.title || "无标题随想"}
-                      </h4>
-                      <p className="text-[10px] text-neutral-400 truncate mt-0.5">
-                        {feed.summary || "点击即刻深度漫游此篇随想"}
-                      </p>
-                    </div>
-                  </Link>
-                );
-              })
-            )}
-          </div>
-
-          {/* 抽屉底部 */}
-          <div className="pt-1.5 border-t border-[#FFD0DA]/60 flex items-center justify-between text-[11px] text-neutral-400">
-            <Link
-              href="/"
+          {/* 控制按钮组 (上一篇、随便看看、下一篇、收起) */}
+          <div className="flex items-center justify-between w-full mt-0.5">
+            {/* 左侧收起图标 */}
+            <button
+              type="button"
               onClick={() => setIsExpanded(false)}
-              className="hover:text-theme transition flex items-center gap-1 font-semibold"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-transparent hover:bg-[#FFD0DA]/30 active:scale-90 transition p-0.5 text-neutral-400 hover:text-[#FF7E95]"
+              title="收起漫游"
             >
-              <span>返回画廊首页</span>
-              <i className="ri-arrow-right-s-line text-xs" />
-            </Link>
-            <Link
-              href="/hashtags"
-              onClick={() => setIsExpanded(false)}
-              className="hover:text-theme transition font-semibold"
+              <KawaiiBookSvg className="w-4 h-4" />
+            </button>
+
+            {/* 上一篇 */}
+            <button
+              type="button"
+              onClick={() => adjacent.prev && handleGoTo(adjacent.prev.id)}
+              disabled={!adjacent.prev}
+              className={`p-1 transition flex items-center gap-0.5 font-bold ${
+                adjacent.prev ? "text-[#503E42] dark:text-neutral-200 hover:text-[#FF7E95] hover:scale-110 active:scale-90 cursor-pointer" : "text-neutral-300 dark:text-neutral-600 opacity-40 cursor-not-allowed"
+              }`}
+              title={adjacent.prev ? `上一篇: ${adjacent.prev.title}` : "没有上一篇了"}
             >
-              标签星云
-            </Link>
+              <i className="ri-skip-back-line text-sm" />
+              <span className="text-[11px]">上一篇</span>
+            </button>
+
+            {/* 随便看看 (随机抽一篇) */}
+            <button
+              type="button"
+              onClick={handleRandomRoam}
+              className="px-2 py-0.5 rounded-full bg-[#FF7E95]/15 text-[#FF7E95] hover:bg-[#FF7E95] hover:text-white transition font-bold text-[11px] flex items-center gap-0.5 active:scale-95 shadow-2xs cursor-pointer"
+              title="随机漫游一篇全站随想"
+            >
+              <i className="ri-dice-line text-xs" />
+              <span>随便看看</span>
+            </button>
+
+            {/* 下一篇 */}
+            <button
+              type="button"
+              onClick={() => adjacent.next && handleGoTo(adjacent.next.id)}
+              disabled={!adjacent.next}
+              className={`p-1 transition flex items-center gap-0.5 font-bold ${
+                adjacent.next ? "text-[#503E42] dark:text-neutral-200 hover:text-[#FF7E95] hover:scale-110 active:scale-90 cursor-pointer" : "text-neutral-300 dark:text-neutral-600 opacity-40 cursor-not-allowed"
+              }`}
+              title={adjacent.next ? `下一篇: ${adjacent.next.title}` : "没有下一篇了"}
+            >
+              <span className="text-[11px]">下一篇</span>
+              <i className="ri-skip-forward-line text-sm" />
+            </button>
           </div>
         </div>
       )}

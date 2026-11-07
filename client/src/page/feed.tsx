@@ -454,11 +454,11 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         />
                       </div>
 
-                      {/* 纯净左右双向微光流动弹幕系统：仅在平板与桌面端展开，移动端绝对留白以保护画作与标题 */}
+                      {/* 纯净左右双向微光流动弹幕系统：全端自适应流动，手机竖屏横屏均可随心漫游 */}
                       {isDanmakuEnabled && (
-                        <div className="hidden sm:block absolute inset-0 z-20 pointer-events-none select-none overflow-hidden">
+                        <div className="block absolute inset-0 z-20 pointer-events-none select-none overflow-hidden">
                           {/* 左翼微光灵感区 (显著随机手绘大倾角、随机字号 12~15px，向中心加速游动并粒子消散) */}
-                          <div className="absolute left-2 sm:left-4 inset-y-10 w-44 sm:w-64 pointer-events-none">
+                          <div className="absolute left-1.5 sm:left-4 inset-y-6 sm:inset-y-10 w-36 sm:w-64 pointer-events-none">
                             {dualFlankDanmaku.leftItems.map((dm, i) => (
                               <div
                                 key={`left-${i}`}
@@ -480,7 +480,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                           </div>
 
                           {/* 右翼读者留言微光区 (显著随机手绘大倾角、随机字号 12~15px，向中心加速游动并粒子消散) */}
-                          <div className="absolute right-2 sm:right-4 inset-y-10 w-44 sm:w-64 pointer-events-none text-right">
+                          <div className="absolute right-1.5 sm:right-4 inset-y-6 sm:inset-y-10 w-36 sm:w-64 pointer-events-none text-right">
                             {dualFlankDanmaku.rightItems.map((dm, i) => (
                               <div
                                 key={`right-${i}`}

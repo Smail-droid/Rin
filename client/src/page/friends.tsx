@@ -396,7 +396,7 @@ export function FriendsPage() {
             </Helmet>
 
             <Waiting for={status === "idle"}>
-                <main className="w-full flex flex-col justify-center items-center mb-12 t-primary ani-show min-h-[75vh]">
+                <main className="w-full flex flex-col justify-start items-center pt-2 sm:pt-4 mb-12 t-primary ani-show">
                     {/* 顶部标题与行动导航 */}
                     <div className="wauto py-6 mb-6 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
@@ -1015,13 +1015,14 @@ function CompactFriendRow({
     const profile = useContext(ProfileContext);
     const { category, cleanDesc } = parseFriendCategory(friend.desc, friend.url);
     const isUnhealthy = friend.health && friend.health.length > 0;
-    const isTop = friend.sort_order && friend.sort_order > 0;
+    const isTop = (friend.sort_order ?? 0) > 0;
     const safeUrl = safeHttpUrl(friend.url);
 
     return (
-        <div className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-black/5 dark:border-white/5 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-md hover:border-theme/40 hover:shadow-md transition-all select-none">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-2xl border border-black/5 dark:border-white/5 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-md hover:border-theme/40 hover:shadow-md transition-all select-none">
+            {/* 核心内容区 */}
             <div className="flex items-center gap-3 min-w-0 flex-1">
-                <span className="font-mono text-xs font-bold text-neutral-400 w-6 text-center shrink-0">#{index + 1}</span>
+                <span className="font-mono text-xs font-bold text-neutral-400 w-5 text-center shrink-0">#{index + 1}</span>
                 <div className="relative h-9 w-9 shrink-0 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] p-1 border border-black/5 dark:border-white/5 overflow-hidden">
                     <ImageWithFallback
                         className="h-full w-full rounded-lg object-cover"
@@ -1051,18 +1052,38 @@ function CompactFriendRow({
                         {cleanDesc || "暂无简介"}
                     </span>
                 </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
+                {/* 手机端访问纯图标直达 (放在标题行右侧，不显示冗长文字) */}
                 {safeUrl && (
                     <a
                         href={safeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-2.5 py-1 rounded-lg bg-theme/10 hover:bg-theme hover:text-white text-theme text-xs font-semibold transition flex items-center gap-1 shadow-2xs"
+                        className="sm:hidden p-1.5 rounded-lg bg-theme/10 hover:bg-theme hover:text-white text-theme transition flex items-center justify-center shrink-0 shadow-2xs"
+                        title="访问站点"
                     >
-                        <span>访问</span>
-                        <i className="ri-arrow-right-up-line text-xs" />
+                        <i className="ri-arrow-right-up-line text-xs font-bold" />
+                    </a>
+                )}
+            </div>
+
+            {/* 手机端显示展开的单行简介 (PC已在上方内联显示) */}
+            {cleanDesc && (
+                <p className="sm:hidden text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1 pl-8 [overflow-wrap:anywhere]">
+                    {cleanDesc}
+                </p>
+            )}
+
+            {/* 动作栏：PC在右侧一行呈现，手机在底栏靠右舒展对齐，绝不挤占上方标题与简介 */}
+            <div className="flex items-center justify-end gap-1.5 shrink-0 pl-8 sm:pl-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-black/5 dark:border-white/5">
+                {safeUrl && (
+                    <a
+                        href={safeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hidden sm:inline-flex p-1.5 rounded-lg bg-theme/10 hover:bg-theme hover:text-white text-theme transition items-center justify-center shadow-2xs"
+                        title="访问站点"
+                    >
+                        <i className="ri-arrow-right-up-line text-xs font-bold" />
                     </a>
                 )}
                 {(profile?.permission || profile?.id === friend.uid) && (
