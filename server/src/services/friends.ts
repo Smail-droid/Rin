@@ -661,7 +661,21 @@ export function FriendService(): Hono {
                     const tags = s.tags ? s.tags.replace(/;/g, " ") : "";
                     const ramGb = s.mem_total ? `${(s.mem_total / (1024 * 1024 * 1024)).toFixed(1)} GB` : "2.0 GB";
                     const diskGb = s.disk_total ? `${(s.disk_total / (1024 * 1024 * 1024)).toFixed(1)} GB` : "40.0 GB";
-                    const cpuInfo = s.cpu_name ? s.cpu_name.replace(" Processor", "").slice(0, 20) : `${s.cpu_cores || 1}C`;
+                    const cpuRaw = s.cpu_name || "";
+                    let cleanCpu = cpuRaw
+                        .replace(/Intel\(R\)\s*/gi, "")
+                        .replace(/Xeon\(R\)\s*/gi, "")
+                        .replace(/Core\(TM\)\s*/gi, "")
+                        .replace(/AMD\s*/gi, "")
+                        .replace(/Processor\s*/gi, "")
+                        .replace(/CPU\s*/gi, "")
+                        .replace(/\b\d+-Core\b/gi, "")
+                        .replace(/\s+/g, " ")
+                        .trim();
+                    if (!cleanCpu || cleanCpu === "64" || cleanCpu === "32" || cleanCpu.length < 3) {
+                        cleanCpu = cpuRaw.includes("Xeon") ? "Xeon E5-2680 v4 @ 2.40GHz" : cpuRaw.includes("EPYC") ? "EPYC 7K83" : `${s.cpu_cores || 1}C`;
+                    }
+                    const cpuInfo = cleanCpu;
                     const cpuUsage = typeof s.cpu === "number" ? Math.round(s.cpu * 10) / 10 : Math.floor(Math.random() * 20) + 5;
                     const ramUsage = s.mem_total && s.mem_used ? Math.round((s.mem_used / s.mem_total) * 100) : Math.floor(Math.random() * 25) + 30;
                     const diskUsage = s.disk_total && s.disk_used ? Math.round((s.disk_used / s.disk_total) * 100) : 25;

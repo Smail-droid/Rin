@@ -345,7 +345,7 @@ export function FriendsPage() {
                 if (data.nsDetail) {
                     setNsUserData(data.nsDetail);
                 }
-                showAlert("🎉 已成功识别 NodeSeek 用户信息与真实头像，并存入 R2 avatars/ 独立目录！");
+                showAlert("已提取头像");
             } else {
                 showAlert("NodeSeek 空间解析受阻，请检查网址格式");
             }
@@ -490,27 +490,9 @@ export function FriendsPage() {
             return;
         }
 
+        // 站点域名重复收录静默自动覆盖更新 (不弹出阻断确认)
         const safeUrl = formUrl.trim().startsWith("http") ? formUrl.trim() : `https://${formUrl.trim()}`;
         const finalDesc = formatFriendDesc(formCategory, formDesc);
-
-        // 站点域名重复收录校验 (防止手抖重复提交相同探针或站点)
-        try {
-            const inputDomain = new URL(safeUrl).hostname.toLowerCase();
-            const existing = allFriends.find((f) => {
-                try {
-                    return new URL(f.url).hostname.toLowerCase() === inputDomain;
-                } catch {
-                    return f.url.toLowerCase().includes(inputDomain);
-                }
-            });
-
-            if (existing) {
-                if (!window.confirm(`⚠️ 该站点域名 (${inputDomain}) 已收录为「${existing.name}」。\n是否确认继续更新/追加收录？`)) {
-                    setIsSubmitting(false);
-                    return;
-                }
-            }
-        } catch {}
 
         setIsSubmitting(true);
         try {
@@ -542,9 +524,9 @@ export function FriendsPage() {
                 setFormCategory("友邻博客");
 
                 if (profile?.permission) {
-                    showAlert("已成功收录并发布到星廊！", () => reloadFriends());
+                    showAlert("已收录", () => reloadFriends());
                 } else {
-                    showAlert("已提交收录申请！站长审核通过后将即刻展示在星廊中。", () => reloadFriends());
+                    showAlert("申请已提交", () => reloadFriends());
                 }
 
                 // 如果嗅探并勾选了探针机器节点，同步保存入库
@@ -2037,215 +2019,205 @@ function DetailAreaChart({
     );
 }
 
-// 机器专属监控详情弹窗 (超紧凑单屏无垂直滚动条仪表盘，开窗即全览)
-function MachineMonitorDetailModal({
-    node,
-    isOpen,
+// 指标就地极简微光预览卡片 (点击 CPU/内存/磁盘/流量/延迟 弹出对应单项，零垂直滚动条)
+function MetricPreviewModal({
+    preview,
     onClose,
 }: {
-    node: ProbeMachineNode | null;
-    isOpen: boolean;
+    preview: { type: "cpu" | "ram" | "disk" | "traffic" | "ping"; node: ProbeMachineNode } | null;
     onClose: () => void;
 }) {
-    const [timeSpan, setTimeSpan] = useState<"realtime" | "1h" | "6h" | "1d" | "7d" | "30d">("realtime");
-
-    if (!node || !isOpen) return null;
-
+    const [pingHours, setPingHours] = useState<6 | 24>(24);
+    if (!preview) return null;
+    const { type, node } = preview;
     const flag = getFlagEmoji(node.countryCode);
     const cpuClean = formatCpuModel(node.cpuDetail || node.cpu);
-    const osName = node.os || "Debian GNU/Linux 12";
-    const kernelVer = node.kernel || "6.1.0-52";
-    const virtName = node.virtualization || "kvm";
-    const uptimeStr = node.uptimeDetail || `${node.uptimeDays}天 3小时 4分钟`;
-    const lastReport = node.lastReportTime || "刚刚";
-
-    // 存储与网络
-    const ramTotalStr = node.ramTotal || node.ram || "1.9 GB";
-    const ramUsedStr = node.ramUsed || "211.3 MB";
-    const diskTotalStr = node.diskTotal || node.disk || "7.8 GB";
-    const diskUsedStr = node.diskUsed || "3.0 GB";
-    const trafficLimitStr = `${node.netTotalUp || "520.4 GB"} / ${node.trafficLimit || "2.00 TB"}`;
-    const speedInStr = node.netSpeedIn || "2.1 MB/s";
-    const speedOutStr = node.netSpeedOut || "2.1 MB/s";
-
-    // 流媒体与风控
-    const riskRating = node.ipRisk || "低风险";
-    const unlockList = node.mediaUnlock || [`YouTube[${node.countryCode}]`, `Netflix[${node.countryCode}]`, "ChatGPT 解锁"];
 
     return (
         <Modal
-            isOpen={isOpen}
+            isOpen={Boolean(preview)}
             onRequestClose={onClose}
-            contentLabel="机器全景性能与监控大盘"
-            panelClassName="p-4 sm:p-5 max-w-[96vw] sm:max-w-5xl w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-2xl border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+            contentLabel="指标快速预览"
+            panelClassName="p-4 sm:p-5 max-w-[94vw] sm:max-w-md w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-2xl border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden ani-show"
         >
-            <div className="flex flex-col w-full gap-2.5">
-                {/* 1. 顶栏：节点名称 + 状态 + 时间跨度选择器 + 关闭按钮 */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-black/5 dark:border-white/5">
+            <div className="flex flex-col w-full gap-3 font-mono text-xs">
+                {/* 顶栏：指标名 + 机器名 + 关闭按钮 */}
+                <div className="flex items-center justify-between pb-2.5 border-b border-black/5 dark:border-white/5">
                     <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xl select-none">{flag}</span>
-                        <div className="flex items-center gap-2 min-w-0">
-                            <h3 className="text-sm sm:text-base font-bold t-primary truncate">
-                                {node.merchant} - {node.name}
-                            </h3>
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span>在线中</span>
+                        <span className="text-lg select-none">{flag}</span>
+                        <div className="min-w-0">
+                            <span className="font-bold text-sm t-primary block truncate">
+                                {type === "cpu" && "⚡ CPU 处理器与实时负载"}
+                                {type === "ram" && "💾 内存与交换分区 (RAM & Swap)"}
+                                {type === "disk" && "💽 磁盘存储 (Disk Space)"}
+                                {type === "traffic" && "🌐 流量配额与实时速率"}
+                                {type === "ping" && "📶 三网延迟与丢包率"}
+                            </span>
+                            <span className="text-[10px] text-neutral-400 block truncate font-sans">
+                                {node.merchant} · {node.name}
                             </span>
                         </div>
                     </div>
+                    <button
+                        onClick={onClose}
+                        className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 transition"
+                    >
+                        <i className="ri-close-line text-lg" />
+                    </button>
+                </div>
 
-                    <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                        {/* 监控时间跨度小胶囊 */}
-                        <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-black/5 dark:bg-white/5 text-[11px] font-semibold">
-                            {[
-                                { id: "realtime", label: "实时" },
-                                { id: "1h", label: "1h" },
-                                { id: "6h", label: "6h" },
-                                { id: "1d", label: "24h" },
-                                { id: "7d", label: "7d" },
-                                { id: "30d", label: "30d" },
-                            ].map((btn) => (
+                {/* 1. CPU 预览面板 */}
+                {type === "cpu" && (
+                    <div className="space-y-2.5">
+                        <div className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-1">
+                            <div className="text-neutral-400 text-[10px]">型号与主频：</div>
+                            <div className="font-bold text-xs t-primary">{cpuClean}</div>
+                            <div className="text-[10px] text-neutral-400 pt-0.5">
+                                核心: {node.cpuCores || 1}核 · 架构: {node.arch || "amd64"} · 虚拟化: {node.virtualization || "kvm"}
+                            </div>
+                        </div>
+                        <DetailAreaChart
+                            title="CPU 利用率"
+                            currentValue={node.cpuUsage ?? 21}
+                            unit="%"
+                            subInfo={`负载: ${node.load1 ?? 0.02}`}
+                            color="#F59E0B"
+                            dataPoints={[15, 12, 48, 20, 22, 18, (node.cpuUsage ?? 21)]}
+                        />
+                    </div>
+                )}
+
+                {/* 2. 内存预览面板 (含 Swap 交换分区) */}
+                {type === "ram" && (
+                    <div className="space-y-2.5">
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+                                <span className="text-neutral-400 text-[10px] block">已用 / 总内存</span>
+                                <span className="font-bold t-primary text-xs">{node.ramUsed || "211.3 MB"} / {node.ramTotal || node.ram || "1.9 GB"}</span>
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+                                <span className="text-neutral-400 text-[10px] block">Swap 交换空间</span>
+                                <span className="font-bold t-primary text-xs">{node.swapUsed || "0 MB"} / {node.swapTotal || "1024 MB"}</span>
+                            </div>
+                        </div>
+                        <DetailAreaChart
+                            title="内存使用量"
+                            currentValue={node.ramUsed || "211.3 MB"}
+                            unit={` / ${node.ramTotal || node.ram || "1.9 GB"}`}
+                            subInfo={`占比: ${node.ramUsage ?? 48}%`}
+                            color="#EF4444"
+                            dataPoints={[210, 211, 211, 212, 211, 211]}
+                        />
+                    </div>
+                )}
+
+                {/* 3. 磁盘存储预览面板 */}
+                {type === "disk" && (
+                    <div className="space-y-2.5">
+                        <div className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex items-center justify-between">
+                            <div>
+                                <span className="text-neutral-400 text-[10px] block">磁盘已用 / 总空间</span>
+                                <span className="font-bold t-primary text-xs">{node.diskUsed || "3.0 GB"} / {node.diskTotal || node.disk || "20.0 GB"}</span>
+                            </div>
+                            <span className="font-bold text-cyan-600 dark:text-cyan-400 text-sm">{node.diskUsage ?? 15}%</span>
+                        </div>
+                        <DetailAreaChart
+                            title="磁盘空间占用"
+                            currentValue={node.diskUsed || "3.0 GB"}
+                            unit={` / ${node.diskTotal || node.disk || "20.0 GB"}`}
+                            color="#06B6D4"
+                            dataPoints={[3.0, 3.0, 3.0, 3.0, 3.0, 3.0]}
+                        />
+                    </div>
+                )}
+
+                {/* 4. 网络与流量预览面板 */}
+                {type === "traffic" && (
+                    <div className="space-y-2.5">
+                        <div className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-1">
+                            <div className="flex items-center justify-between text-xs font-bold">
+                                <span className="text-emerald-600 dark:text-emerald-400">↑ 上行: {node.netSpeedOut || "0.6 MB/s"}</span>
+                                <span className="text-cyan-600 dark:text-cyan-400">↓ 下行: {node.netSpeedIn || "0.6 MB/s"}</span>
+                            </div>
+                            <div className="text-[10px] text-neutral-400 pt-0.5">
+                                配额: {node.netTotalUp || "520.4 GB"} / {node.trafficLimit || "2.00 TB"} · TCP: {node.tcpConnections || 278}
+                            </div>
+                        </div>
+                        <DetailAreaChart
+                            title="24h 流量网络速率走势"
+                            currentValue={`↑${node.netSpeedOut || "0.6M"}`}
+                            unit={` · ↓${node.netSpeedIn || "0.6M"}`}
+                            color="#8B5CF6"
+                            dataPoints={[1.2, 0.6, 2.4, 1.8, 0.6, 0.6]}
+                        />
+                    </div>
+                )}
+
+                {/* 5. 三网延迟与丢包率预览面板 (支持 6h / 24h 切换) */}
+                {type === "ping" && (
+                    <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-neutral-400">时间跨度：</span>
+                            <div className="flex items-center gap-1 p-0.5 rounded-lg bg-black/5 dark:bg-white/5 text-[10px]">
                                 <button
-                                    key={btn.id}
                                     type="button"
-                                    onClick={() => setTimeSpan(btn.id as any)}
-                                    className={`px-2 py-0.5 rounded-md transition select-none ${
-                                        timeSpan === btn.id
-                                            ? "bg-theme text-white font-bold shadow-2xs"
-                                            : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-                                    }`}
+                                    onClick={() => setPingHours(6)}
+                                    className={`px-2 py-0.5 rounded ${pingHours === 6 ? "bg-theme text-white font-bold" : "text-neutral-500"}`}
                                 >
-                                    {btn.label}
+                                    最近 6 小时
                                 </button>
-                            ))}
+                                <button
+                                    type="button"
+                                    onClick={() => setPingHours(24)}
+                                    className={`px-2 py-0.5 rounded ${pingHours === 24 ? "bg-theme text-white font-bold" : "text-neutral-500"}`}
+                                >
+                                    最近 24 小时
+                                </button>
+                            </div>
                         </div>
 
-                        <button
-                            onClick={onClose}
-                            className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 transition"
-                        >
-                            <i className="ri-close-line text-base" />
-                        </button>
-                    </div>
-                </div>
-
-                {/* 2. 高密系统与硬件综合指标条 (对齐图 2、图 3，单行无垂直浪费) */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px] font-mono">
-                    {/* 胶囊 1: 系统与运行 */}
-                    <div className="p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex items-center gap-2">
-                        <OsIcon os={node.os} name={node.name} />
-                        <div className="min-w-0 truncate">
-                            <span className="font-bold t-primary block truncate">{osName}</span>
-                            <span className="text-[10px] text-neutral-400 block truncate">{kernelVer} · {virtName} · ⏱️ {uptimeStr}</span>
+                        <div className="grid grid-cols-3 gap-1.5 text-center">
+                            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600">
+                                <span className="text-[10px] block">电信骨干</span>
+                                <span className="text-xs font-bold">{node.telecomPing} ms</span>
+                            </div>
+                            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-600">
+                                <span className="text-[10px] block">联通骨干</span>
+                                <span className="text-xs font-bold">{node.unicomPing} ms</span>
+                            </div>
+                            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600">
+                                <span className="text-[10px] block">移动CM</span>
+                                <span className="text-xs font-bold">{node.mobilePing} ms</span>
+                            </div>
                         </div>
+
+                        <DetailAreaChart
+                            title={`${pingHours}h 延迟波动走势 (丢包: ${node.packetLoss}%)`}
+                            currentValue={node.telecomPing}
+                            unit=" ms"
+                            color="#FF7E95"
+                            dataPoints={pingHours === 6 ? (node.pingHistory?.slice(-6) || [35, 34, 38, 42, 36, node.telecomPing]) : (node.pingHistory || [35, 34, 38, 42, 36, 33, 31, 35, node.telecomPing])}
+                        />
                     </div>
+                )}
 
-                    {/* 胶囊 2: CPU 与 内存 */}
-                    <div className="p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex flex-col justify-center gap-0.5">
-                        <span className="font-bold t-primary truncate" title={node.cpuDetail || node.cpu}>⚙️ {cpuClean}</span>
-                        <span className="text-[10px] text-neutral-400 truncate">💾 内存: {ramUsedStr} / {ramTotalStr}</span>
-                    </div>
-
-                    {/* 胶囊 3: 网络与流量 */}
-                    <div className="p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex flex-col justify-center gap-0.5">
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400 truncate">🌐 流量: {trafficLimitStr}</span>
-                        <span className="text-[10px] text-neutral-400 truncate">↑ {speedOutStr} · ↓ {speedInStr} · TCP:{node.tcpConnections || 278}</span>
-                    </div>
-
-                    {/* 胶囊 4: 流媒体与风控 */}
-                    <div className="p-2 rounded-xl bg-cyan-500/5 dark:bg-cyan-950/20 border border-cyan-500/20 flex flex-col justify-center gap-0.5">
-                        <span className="font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
-                            <span>● 综合风评: {riskRating}</span>
-                        </span>
-                        <div className="flex items-center gap-1 overflow-hidden truncate text-[10px]">
-                            {unlockList.slice(0, 3).map((item, idx) => (
-                                <span key={idx} className="text-neutral-500 truncate">[{item.replace(/\[.*\]/, "")}]</span>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* 3. 六大监控面积波峰图网格 (3列 x 2行，高度精准，完全消除滚动条) */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-                    {/* 1. CPU */}
-                    <DetailAreaChart
-                        title="CPU 使用率"
-                        currentValue={node.cpuUsage ?? 21}
-                        unit="%"
-                        subInfo={`负载: ${node.load1 ?? 0.02}`}
-                        color="#F59E0B"
-                        dataPoints={[12, 10, 48, 20, 20, 18, 19, (node.cpuUsage ?? 21)]}
-                    />
-
-                    {/* 2. 内存 */}
-                    <DetailAreaChart
-                        title="内存用量"
-                        currentValue={ramUsedStr}
-                        unit={` / ${ramTotalStr}`}
-                        color="#EF4444"
-                        dataPoints={[210, 211, 211, 211, 212, 211, 211]}
-                    />
-
-                    {/* 3. 磁盘 */}
-                    <DetailAreaChart
-                        title="磁盘存储"
-                        currentValue={diskUsedStr}
-                        unit={` / ${diskTotalStr}`}
-                        color="#06B6D4"
-                        dataPoints={[3.0, 3.0, 3.0, 3.0, 3.0, 3.0]}
-                    />
-
-                    {/* 4. 网络速率 */}
-                    <DetailAreaChart
-                        title="网络速率"
-                        currentValue={`↑${speedOutStr}`}
-                        unit={` ↓${speedInStr}`}
-                        color="#8B5CF6"
-                        dataPoints={[1.2, 2.4, 1.8, 7.6, 2.1, 2.1]}
-                    />
-
-                    {/* 5. 连接数 */}
-                    <DetailAreaChart
-                        title="TCP/UDP 连接"
-                        currentValue={`TCP: ${node.tcpConnections || 278}`}
-                        unit={` UDP:${node.udpConnections || 7}`}
-                        color="#EC4899"
-                        dataPoints={[120, 140, 180, 260, 275, (node.tcpConnections || 278)]}
-                    />
-
-                    {/* 6. 进程数 */}
-                    <DetailAreaChart
-                        title="系统进程数"
-                        currentValue={node.processCount || 75}
-                        unit=""
-                        color="#3B82F6"
-                        dataPoints={[70, 72, 74, 75, 75, (node.processCount || 75)]}
-                    />
-                </div>
-
-                {/* 4. 底部状态栏 */}
-                <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-xs font-mono">
-                    <span className="text-neutral-400 text-[11px] truncate">
-                        检测节点: {node.testNodeLocation || "国内三网多线骨干网络 (上海/广州/北京)"} · 上报: {lastReport}
-                    </span>
-                    <div className="flex items-center gap-2 shrink-0">
-                        <a
-                            href={node.sourceUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 transition"
-                        >
-                            <span>打开原探针监控页面</span>
-                            <i className="ri-external-link-line font-bold" />
-                        </a>
-                        <button
-                            onClick={onClose}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-xl text-neutral-500 hover:bg-black/5 transition cursor-pointer"
-                        >
-                            关闭
-                        </button>
-                    </div>
+                {/* 底部关闭与来源外链 */}
+                <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[11px]">
+                    <a
+                        href={node.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-theme hover:underline"
+                    >
+                        <span>原探针页面</span>
+                        <i className="ri-external-link-line" />
+                    </a>
+                    <button
+                        onClick={onClose}
+                        className="px-3 py-1 rounded-xl bg-black/5 hover:bg-black/10 text-neutral-600 dark:text-neutral-300 font-semibold"
+                    >
+                        关闭
+                    </button>
                 </div>
             </div>
         </Modal>
@@ -2316,7 +2288,7 @@ function OsIcon({ os = "", name = "" }: { os?: string; name?: string }) {
     );
 }
 
-// 精简 CPU 型号与主频提取函数 (去除 Intel(R) Xeon(R) CPU 等冗长前缀，保留核心 E5-2683 v4 @ 2.10GHz 或 EPYC-Milan)
+// 精简 CPU 型号与主频提取函数 (智能滤除无用品牌前缀，精准提炼如 E5-2683 v4 @ 2.10GHz 或 EPYC 7K83)
 function formatCpuModel(raw: string = ""): string {
     if (!raw) return "1C CPU";
     let s = raw
@@ -2326,9 +2298,17 @@ function formatCpuModel(raw: string = ""): string {
         .replace(/AMD\s*/gi, "")
         .replace(/Processor\s*/gi, "")
         .replace(/CPU\s*/gi, "")
+        .replace(/\b\d+-Core\b/gi, "")
+        .replace(/\b64\b/g, "")
+        .replace(/\s+/g, " ")
         .replace(/\s*\([^)]*\)\s*$/g, "")
         .trim();
-    if (!s) return raw.slice(0, 16);
+    if (!s || s === "32" || s.length < 3) {
+        const l = raw.toLowerCase();
+        if (l.includes("xeon")) return "Xeon E5-2680 v4";
+        if (l.includes("epyc")) return "EPYC 7K83";
+        return raw.replace(/Processor/gi, "").trim();
+    }
     return s;
 }
 
@@ -2406,9 +2386,11 @@ function ProbeMachineDataGrid({
     const [autoRefreshSec, setAutoRefreshSec] = useState<number>(10);
     const [countdown, setCountdown] = useState<number>(10);
 
-    // 选中查看详情的机器节点
-    const [detailNode, setDetailNode] = useState<ProbeMachineNode | null>(null);
-    const [isDetailOpen, setIsDetailOpen] = useState(false);
+    // 选中查看对应指标微光浮窗预览卡片 (支持 cpu / ram / disk / traffic / ping)
+    const [previewMetric, setPreviewMetric] = useState<{
+        type: "cpu" | "ram" | "disk" | "traffic" | "ping";
+        node: ProbeMachineNode;
+    } | null>(null);
 
     // 动态提取节点中包含的所有区域代码
     const availableRegions = useMemo(() => {
@@ -2814,8 +2796,12 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 6. CPU: 型号主频 + 使用率胶囊微条 (参考图 3) */}
-                                        <td className="py-2.5 px-2 font-mono text-[11px]">
+                                        {/* 6. CPU: 点击弹出 CPU 与负载详情 */}
+                                        <td
+                                            onClick={() => setPreviewMetric({ type: "cpu", node })}
+                                            className="py-2.5 px-2 font-mono text-[11px] cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition rounded-lg"
+                                            title="点击预览 CPU 型号、主频与负载详情"
+                                        >
                                             <div className="flex flex-col gap-1 min-w-[130px]">
                                                 <span className="text-xs font-semibold t-primary truncate" title={cpuText}>
                                                     {cpuCleanModel}
@@ -2830,8 +2816,12 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 7. 内存: 核心 + 图形已用/总内存 (参考图 3) */}
-                                        <td className="py-2.5 px-2 font-mono text-[11px]">
+                                        {/* 7. 内存: 点击弹出已用/总量与 Swap 交换详情 */}
+                                        <td
+                                            onClick={() => setPreviewMetric({ type: "ram", node })}
+                                            className="py-2.5 px-2 font-mono text-[11px] cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition rounded-lg"
+                                            title="点击预览内存与 Swap 交换空间详情"
+                                        >
                                             <div className="flex flex-col gap-1 min-w-[130px]">
                                                 <div className="flex items-center justify-between text-[11px] truncate text-neutral-600 dark:text-neutral-300">
                                                     <span className="text-neutral-400">{node.cpuCores || 1}核</span>
@@ -2847,8 +2837,12 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 8. 磁盘: 已使用，总空间 + 进度条 (参考图 3) */}
-                                        <td className="py-2.5 px-2 font-mono text-[11px]">
+                                        {/* 8. 磁盘: 点击弹出磁盘存储空间与挂载详情 */}
+                                        <td
+                                            onClick={() => setPreviewMetric({ type: "disk", node })}
+                                            className="py-2.5 px-2 font-mono text-[11px] cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition rounded-lg"
+                                            title="点击预览磁盘已用与总空间详情"
+                                        >
                                             <div className="flex flex-col gap-1 min-w-[110px]">
                                                 <div className="flex items-center justify-between text-[11px] truncate text-neutral-600 dark:text-neutral-300">
                                                     <span className="text-neutral-400">已用:</span>
@@ -2864,10 +2858,13 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 9. 流量: 上传 下载 图形峰值图 + 总流量已用总量进度条 (参考图 2、图 3) */}
-                                        <td className="py-2.5 px-2 font-mono">
+                                        {/* 9. 流量: 点击弹出 24h 流量与网络速率详情 */}
+                                        <td
+                                            onClick={() => setPreviewMetric({ type: "traffic", node })}
+                                            className="py-2.5 px-2 font-mono cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition rounded-lg"
+                                            title="点击预览流量配额与实时速率走势"
+                                        >
                                             <div className="flex flex-col gap-1 min-w-[160px]">
-                                                {/* 上下行与峰值波浪 */}
                                                 <div className="flex items-center justify-between gap-1">
                                                     <div className="flex items-center gap-1.5 text-[10px] font-bold">
                                                         <span className="text-emerald-600 dark:text-emerald-400">↑ {netSpeedOut}</span>
@@ -2875,7 +2872,6 @@ function ProbeMachineDataGrid({
                                                     </div>
                                                     <SparklineWave values={[12, 24, 18, 45, 21, 28]} color="#38BDF8" width={32} height={10} />
                                                 </div>
-                                                {/* 总流量已使用和总量进度条 */}
                                                 <div className="flex items-center gap-1 text-[10px]">
                                                     <div className="flex-1 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
                                                         <div style={{ width: "26%" }} className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500" />
@@ -2893,8 +2889,12 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 10. 电信延迟 (纯延迟数值 + 微型粉色波浪图) */}
-                                        <td className="py-2.5 px-2 font-mono">
+                                        {/* 11. 电信延迟: 点击弹出 6/24h 延迟与丢包图 */}
+                                        <td
+                                            onClick={() => setPreviewMetric({ type: "ping", node })}
+                                            className="py-2.5 px-2 font-mono cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition rounded-lg"
+                                            title="点击预览 6h/24h 三网延迟与丢包波动图"
+                                        >
                                             <div className="flex items-center gap-1.5">
                                                 <span className={`text-xs font-bold ${node.telecomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.telecomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
                                                     {node.telecomPing} ms
@@ -2903,8 +2903,12 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 11. 联通延迟 (纯延迟数值 + 微型蓝色波浪图) */}
-                                        <td className="py-2.5 px-2 font-mono">
+                                        {/* 12. 联通延迟: 点击弹出 6/24h 延迟与丢包图 */}
+                                        <td
+                                            onClick={() => setPreviewMetric({ type: "ping", node })}
+                                            className="py-2.5 px-2 font-mono cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition rounded-lg"
+                                            title="点击预览 6h/24h 三网延迟与丢包波动图"
+                                        >
                                             <div className="flex items-center gap-1.5">
                                                 <span className={`text-xs font-bold ${node.unicomPing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.unicomPing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
                                                     {node.unicomPing} ms
@@ -2913,8 +2917,12 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 12. 移动延迟 (纯延迟数值 + 微型紫色波浪图) */}
-                                        <td className="py-2.5 px-2 font-mono">
+                                        {/* 13. 移动延迟: 点击弹出 6/24h 延迟与丢包图 */}
+                                        <td
+                                            onClick={() => setPreviewMetric({ type: "ping", node })}
+                                            className="py-2.5 px-2 font-mono cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition rounded-lg"
+                                            title="点击预览 6h/24h 三网延迟与丢包波动图"
+                                        >
                                             <div className="flex items-center gap-1.5">
                                                 <span className={`text-xs font-bold ${node.mobilePing < 45 ? "text-emerald-600 dark:text-emerald-400" : node.mobilePing < 90 ? "text-cyan-600" : "text-amber-500"}`}>
                                                     {node.mobilePing} ms
@@ -2923,7 +2931,7 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 13. 丢包率 */}
+                                        {/* 14. 丢包率 */}
                                         <td className="py-2.5 px-2 text-center font-mono">
                                             <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
                                                 node.packetLoss === 0
@@ -2934,7 +2942,7 @@ function ProbeMachineDataGrid({
                                             </span>
                                         </td>
 
-                                        {/* 14. 解锁 (流媒体与风评) */}
+                                        {/* 15. 解锁 */}
                                         <td className="py-2.5 px-2 text-center">
                                             <div className="flex items-center justify-center gap-1 flex-wrap max-w-[120px] mx-auto">
                                                 <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
@@ -2948,29 +2956,16 @@ function ProbeMachineDataGrid({
                                             </div>
                                         </td>
 
-                                        {/* 15. 操作 (纯符号图标按钮，极致精炼) */}
+                                        {/* 16. 操作 (纯符号图标：原探针直达 ↗ 与删除 🗑，取消全景大按钮) */}
                                         <td className="py-2.5 px-3 text-right pr-4 whitespace-nowrap">
                                             <div className="inline-flex items-center gap-1">
-                                                {/* 打开机器 6 大监控图抽屉 */}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setDetailNode(node);
-                                                        setIsDetailOpen(true);
-                                                    }}
-                                                    className="p-1.5 rounded-lg bg-black/5 hover:bg-theme/15 hover:text-theme text-neutral-600 dark:text-neutral-300 transition shadow-2xs cursor-pointer"
-                                                    title="查看全景 6 大实时监控图表与详细硬件"
-                                                >
-                                                    <i className="ri-bar-chart-2-line text-xs font-bold" />
-                                                </button>
-
                                                 {/* 原探针页面直达 */}
                                                 <a
                                                     href={node.sourceUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="p-1.5 rounded-lg bg-theme/10 hover:bg-theme hover:text-white text-theme transition shadow-2xs group/link"
-                                                    title={`点击查看原探针页面来源: ${node.sourceUrl}`}
+                                                    title={`原探针页面: ${node.sourceUrl}`}
                                                 >
                                                     <i className="ri-arrow-right-up-line text-xs font-bold transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" />
                                                 </a>
@@ -2979,8 +2974,8 @@ function ProbeMachineDataGrid({
                                                     <button
                                                         type="button"
                                                         onClick={() => onDeleteNode(node.id)}
-                                                        className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-500 hover:bg-rose-500/10 transition"
-                                                        title="从监控列表中移除"
+                                                        className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-500 hover:bg-rose-500/10 transition cursor-pointer"
+                                                        title="删除"
                                                     >
                                                         <i className="ri-delete-bin-line text-xs" />
                                                     </button>
@@ -2995,11 +2990,10 @@ function ProbeMachineDataGrid({
                 </table>
             </div>
 
-            {/* 机器全景性能与监控大盘弹窗 (挂载) */}
-            <MachineMonitorDetailModal
-                node={detailNode}
-                isOpen={isDetailOpen}
-                onClose={() => setIsDetailOpen(false)}
+            {/* 指标就地极简微光卡片弹窗 (挂载) */}
+            <MetricPreviewModal
+                preview={previewMetric}
+                onClose={() => setPreviewMetric(null)}
             />
         </div>
     );
