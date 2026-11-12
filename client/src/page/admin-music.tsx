@@ -127,6 +127,10 @@ export function AdminMusicPage() {
   tasksRef.current = uploadTasks;
   const [showUploadPanel, setShowUploadPanel] = useState<boolean>(false);
   const [isDragOverGallery, setIsDragOverGallery] = useState<boolean>(false);
+  const dragCounterRef = useRef<number>(0);
+  const [uploadFilterTab, setUploadFilterTab] = useState<
+    "all" | "uploading" | "queued" | "duplicate" | "error" | "completed"
+  >("all");
   const audioFilesInputRef = useRef<HTMLInputElement>(null);
   const audioFolderInputRef = useRef<HTMLInputElement>(null);
   const [autoFetchingAllCovers, setAutoFetchingAllCovers] = useState<boolean>(false);
@@ -614,6 +618,42 @@ export function AdminMusicPage() {
     setTimeout(pumpUploadQueue, 50);
   };
 
+  // 拖拽防闪烁精确计数器
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current += 1;
+    if (dragCounterRef.current === 1) {
+      setIsDragOverGallery(true);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragOverGallery(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragOverGallery(false);
+    if (e.dataTransfer) {
+      void handleExtractDropFiles(e.dataTransfer);
+    }
+  };
+
   const handleStartAllUploads = () => {
     setUploadTasks((prev) =>
       prev.map((t) =>
@@ -638,18 +678,40 @@ export function AdminMusicPage() {
 
   const handleRetryAllFailed = () => {
     setUploadTasks((prev) =>
-      prev.map((t) => (t.status === "error" ? { ...t, status: "queued", error: undefined, progress: 0 } : t))
+      prev.map((t) => (t.status === "error" || t.status === "oversized" ? { ...t, status: "queued", error: undefined, progress: 0 } : t))
     );
     setTimeout(pumpUploadQueue, 50);
   };
 
-  const handleSkipAllDuplicates = () => {
-    setUploadTasks((prev) => prev.filter((t) => t.status !== "duplicate"));
+  const handleClearTaskPanel = () => {
+    // 仅清空前端上传管理器中的任务记录，绝对不触碰任何云端 R2 真实音频文件
+    tasksRef.current
+      .filter((t) => t.status === "uploading")
+      .forEach((t) => t.controller?.abort());
+    setUploadTasks([]);
   };
 
-  const handleClearCompletedUploads = () => {
-    setUploadTasks((prev) => prev.filter((t) => t.status !== "completed"));
-  };
+  // 任务各分区分类统计
+  const uploadStats = useMemo(() => {
+    return {
+      all: uploadTasks.length,
+      uploading: uploadTasks.filter((t) => t.status === "uploading").length,
+      queued: uploadTasks.filter((t) => t.status === "queued" || t.status === "paused").length,
+      duplicate: uploadTasks.filter((t) => t.status === "duplicate").length,
+      error: uploadTasks.filter((t) => t.status === "error" || t.status === "oversized").length,
+      completed: uploadTasks.filter((t) => t.status === "completed").length,
+    };
+  }, [uploadTasks]);
+
+  // 根据当前选中分区 Tab 过滤的任务列表
+  const filteredUploadTasks = useMemo(() => {
+    if (uploadFilterTab === "uploading") return uploadTasks.filter((t) => t.status === "uploading");
+    if (uploadFilterTab === "queued") return uploadTasks.filter((t) => t.status === "queued" || t.status === "paused");
+    if (uploadFilterTab === "duplicate") return uploadTasks.filter((t) => t.status === "duplicate");
+    if (uploadFilterTab === "error") return uploadTasks.filter((t) => t.status === "error" || t.status === "oversized");
+    if (uploadFilterTab === "completed") return uploadTasks.filter((t) => t.status === "completed");
+    return uploadTasks;
+  }, [uploadTasks, uploadFilterTab]);
 
   // 重命名音廊文件
   const handleSaveRenameR2 = async (key: string) => {
@@ -971,7 +1033,7 @@ export function AdminMusicPage() {
       <input
         ref={audioFilesInputRef}
         type="file"
-        accept="audio/*,.mp3,.flac,.wav,.m4a,.ogg,.aac,.opus,.ape"
+        accept="audio/*, .mp3, .flac, .wav, .m4a"
         multiple
         onChange={(e) => {
           if (e.target.files) handleEnqueueFiles(Array.from(e.target.files));
@@ -1269,27 +1331,13 @@ export function AdminMusicPage() {
       {/* 4. 视界 A: 音廊资产 (R2 云端资产曲库，融合图 2 Navidrome 与图 4 媒体资产相册) */}
       {activeTab === "gallery" && (
         <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragOverGallery(true);
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragOverGallery(false);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragOverGallery(false);
-            if (e.dataTransfer) {
-              void handleExtractDropFiles(e.dataTransfer);
-            }
-          }}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
           className={`flex flex-col gap-3.5 ani-show relative ${isDragOverGallery ? "ring-2 ring-theme/50 rounded-2xl bg-theme/5" : ""}`}
         >
-          {/* 拖拽释放蒙层提示 */}
+          {/* 拖拽释放蒙层提示 (pointer-events-none 彻底杜绝子节点事件冒泡与闪烁) */}
           {isDragOverGallery && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center rounded-2xl bg-w/80 backdrop-blur-md border-2 border-dashed border-theme ani-show pointer-events-none">
               <i className="ri-folder-music-line text-4xl text-theme animate-bounce" />
@@ -1300,19 +1348,57 @@ export function AdminMusicPage() {
 
           {/* 上传任务状态中枢面板 */}
           {(showUploadPanel || uploadTasks.length > 0) && uploadTasks.length > 0 && (
-            <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3 ani-show">
-              <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5 flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-theme/10 text-theme text-xs font-bold">
-                    <i className="ri-upload-cloud-2-line" />
-                  </span>
-                  <span className="font-bold text-xs t-primary">音频上传中枢</span>
-                  <span className="text-[10px] text-neutral-400 font-mono">
-                    (共 {uploadTasks.length} 项 · 成功 {uploadTasks.filter((t) => t.status === "completed").length} · 失败/超限 {uploadTasks.filter((t) => t.status === "error" || t.status === "oversized").length})
-                  </span>
+            <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3.5 ani-show">
+              {/* 顶部标题与分区切换 Tab 栏 */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 border-b border-black/5 dark:border-white/5 gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 mr-1">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-theme/10 text-theme text-xs font-bold">
+                      <i className="ri-upload-cloud-2-line" />
+                    </span>
+                    <span className="font-bold text-xs t-primary">音频上传中枢</span>
+                  </div>
+
+                  {/* 分区切换选项卡 (精准分类，一目了然) */}
+                  <div className="flex items-center gap-1 p-0.5 rounded-xl bg-black/5 dark:bg-white/5 text-[11px] font-semibold flex-wrap">
+                    {[
+                      { id: "all", label: "全部", count: uploadStats.all },
+                      { id: "uploading", label: "上传中", count: uploadStats.uploading },
+                      { id: "queued", label: "排队中", count: uploadStats.queued },
+                      { id: "duplicate", label: "已存在", count: uploadStats.duplicate },
+                      { id: "error", label: "失败", count: uploadStats.error },
+                      { id: "completed", label: "已完成", count: uploadStats.completed },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setUploadFilterTab(tab.id as any)}
+                        className={`px-2 py-0.5 rounded-lg transition flex items-center gap-1 select-none ${
+                          uploadFilterTab === tab.id
+                            ? "bg-w text-theme font-bold shadow-2xs"
+                            : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+                        }`}
+                      >
+                        <span>{tab.label}</span>
+                        <span className="font-mono text-[10px] opacity-70">({tab.count})</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                {/* 顶部动作按钮区 */}
+                <div className="flex items-center gap-1.5 flex-wrap text-xs self-end sm:self-auto">
+                  {uploadStats.error > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleRetryAllFailed}
+                      className="px-2 py-1 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 font-semibold transition flex items-center gap-1 text-[11px]"
+                      title="重试所有失败的项目"
+                    >
+                      <i className="ri-restart-line" />
+                      <span>重试失败 ({uploadStats.error})</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={handleStartAllUploads}
@@ -1329,33 +1415,13 @@ export function AdminMusicPage() {
                     <i className="ri-pause-fill" />
                     <span>全部暂停</span>
                   </button>
-                  {uploadTasks.some((t) => t.status === "error") && (
-                    <button
-                      type="button"
-                      onClick={handleRetryAllFailed}
-                      className="px-2 py-1 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 font-semibold transition flex items-center gap-1 text-[11px]"
-                      title="重试所有失败项"
-                    >
-                      <i className="ri-restart-line" />
-                      <span>重试失败 ({uploadTasks.filter((t) => t.status === "error").length})</span>
-                    </button>
-                  )}
-                  {uploadTasks.some((t) => t.status === "duplicate") && (
-                    <button
-                      type="button"
-                      onClick={handleSkipAllDuplicates}
-                      className="px-2 py-1 rounded-lg bg-black/5 dark:bg-white/5 text-neutral-500 hover:text-neutral-700 font-semibold transition text-[11px]"
-                      title="从列表中跳过已存在的歌曲"
-                    >
-                      跳过已存在
-                    </button>
-                  )}
                   <button
                     type="button"
-                    onClick={handleClearCompletedUploads}
+                    onClick={handleClearTaskPanel}
                     className="px-2 py-1 rounded-lg bg-black/5 dark:bg-white/5 text-neutral-400 hover:text-neutral-600 font-semibold transition text-[11px]"
+                    title="仅清空本上传列表记录，绝对不删除云端音乐资产"
                   >
-                    清空已完成
+                    清空面板
                   </button>
                   <button
                     type="button"
@@ -1368,126 +1434,163 @@ export function AdminMusicPage() {
                 </div>
               </div>
 
-              {/* 任务列表 */}
-              <div className="divide-y divide-black/5 dark:divide-white/5 max-h-56 overflow-y-auto scrollbar-thin">
-                {uploadTasks.map((task) => (
-                  <div key={task.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium t-primary truncate max-w-sm block text-[11px]">{task.name}</span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="font-mono text-[10px] text-neutral-400">
-                            {(task.size / (1024 * 1024)).toFixed(1)} MB
+              {/* 任务列表 (优雅高度与完全无横向溢出) */}
+              <div className="divide-y divide-black/5 dark:divide-white/5 max-h-64 overflow-y-auto pr-1">
+                {filteredUploadTasks.length === 0 ? (
+                  <div className="py-8 text-center text-neutral-400 text-xs">
+                    当前分类下暂无任务
+                  </div>
+                ) : (
+                  filteredUploadTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="py-2 px-1 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] rounded-xl flex items-center justify-between gap-3 text-xs transition select-none"
+                    >
+                      {/* 左侧：文件信息与细线进度条 */}
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5">
+                          <i className="ri-music-2-line text-neutral-400 text-xs shrink-0" />
+                          <span className="font-medium t-primary truncate block text-xs" title={task.name}>
+                            {task.name}
                           </span>
-                          {/* 状态徽标 */}
+                          {task.error && (
+                            <span className="text-[10px] text-rose-500 shrink-0 truncate max-w-[220px]" title={task.error}>
+                              · {task.error}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 进度条 */}
+                        <div className="w-full bg-black/5 dark:bg-white/5 rounded-full h-1 mt-1.5 overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-200 ${
+                              task.status === "completed"
+                                ? "bg-emerald-500"
+                                : task.status === "error" || task.status === "oversized"
+                                ? "bg-rose-500"
+                                : task.status === "paused"
+                                ? "bg-amber-400"
+                                : task.status === "duplicate"
+                                ? "bg-purple-400"
+                                : "bg-theme"
+                            }`}
+                            style={{
+                              width: `${task.status === "completed" || task.status === "duplicate" ? 100 : task.progress}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* 右侧：严格右对齐的指标与动作按钮 (严格等高 24px，绝不跳动错位) */}
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        {/* 文件大小 */}
+                        <span className="font-mono text-[11px] text-neutral-400 w-16 text-right">
+                          {(task.size / (1024 * 1024)).toFixed(1)} MB
+                        </span>
+
+                        {/* 状态徽标 (固定宽 56px 居中) */}
+                        <div className="w-14 flex justify-center">
                           {task.status === "uploading" && (
-                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-theme/10 text-theme animate-pulse">
-                              上传中 {task.progress}%
+                            <span className="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-theme/10 text-theme animate-pulse">
+                              {task.progress}%
                             </span>
                           )}
                           {task.status === "completed" && (
-                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                              ✓ 完成
+                            <span className="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                              已完成
                             </span>
                           )}
                           {task.status === "paused" && (
-                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-amber-500/10 text-amber-600">
+                            <span className="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-amber-500/10 text-amber-600">
                               已暂停
                             </span>
                           )}
                           {task.status === "duplicate" && (
-                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-purple-500/10 text-purple-600">
+                            <span className="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-purple-500/10 text-purple-600">
                               已存在
                             </span>
                           )}
                           {task.status === "oversized" && (
-                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-rose-500/10 text-rose-600">
-                              超限 (&gt;100MB)
+                            <span className="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-rose-500/10 text-rose-600">
+                              超限
                             </span>
                           )}
                           {task.status === "error" && (
-                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-rose-500/10 text-rose-600" title={task.error}>
+                            <span className="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-rose-500/10 text-rose-600">
                               失败
                             </span>
                           )}
                           {task.status === "queued" && (
-                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-neutral-500/10 text-neutral-400">
-                              排队中
+                            <span className="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-neutral-500/10 text-neutral-400">
+                              等待中
                             </span>
                           )}
                         </div>
-                      </div>
 
-                      {/* 进度条 */}
-                      <div className="w-full bg-black/5 dark:bg-white/5 rounded-full h-1 mt-1.5 overflow-hidden">
-                        <div
-                          className={`h-full transition-all duration-200 ${
-                            task.status === "completed"
-                              ? "bg-emerald-500"
-                              : task.status === "error" || task.status === "oversized"
-                              ? "bg-rose-500"
-                              : task.status === "paused"
-                              ? "bg-amber-400"
-                              : "bg-theme"
-                          }`}
-                          style={{ width: `${task.status === "completed" ? 100 : task.progress}%` }}
-                        />
+                        {/* 明确的操作按钮槽位 (统一 76px 宽，右对齐) */}
+                        <div className="flex items-center gap-1.5 w-[76px] justify-end">
+                          {task.status === "uploading" && (
+                            <button
+                              type="button"
+                              onClick={() => handlePauseTask(task.id)}
+                              className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 text-[10px] font-semibold transition flex items-center gap-0.5"
+                              title="暂停当前文件上传"
+                            >
+                              <i className="ri-pause-line" />
+                              <span>暂停</span>
+                            </button>
+                          )}
+                          {(task.status === "paused" || task.status === "queued") && (
+                            <button
+                              type="button"
+                              onClick={() => handleResumeTask(task.id)}
+                              className="px-2 py-0.5 rounded-lg bg-theme/10 text-theme hover:bg-theme/20 text-[10px] font-semibold transition flex items-center gap-0.5"
+                              title="开始/继续上传"
+                            >
+                              <i className="ri-play-line" />
+                              <span>继续</span>
+                            </button>
+                          )}
+                          {task.status === "error" && (
+                            <button
+                              type="button"
+                              onClick={() => handleResumeTask(task.id)}
+                              className="px-2 py-0.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 text-[10px] font-semibold transition flex items-center gap-0.5"
+                              title="重新尝试上传该文件"
+                            >
+                              <i className="ri-restart-line" />
+                              <span>重试</span>
+                            </button>
+                          )}
+                          {task.status === "duplicate" && (
+                            <button
+                              type="button"
+                              onClick={() => handleResumeTask(task.id)}
+                              className="px-2 py-0.5 rounded-lg bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 text-[10px] font-semibold transition flex items-center gap-0.5"
+                              title="强制覆盖已存在文件"
+                            >
+                              <i className="ri-upload-2-line" />
+                              <span>覆盖</span>
+                            </button>
+                          )}
+                          {task.status === "completed" && (
+                            <span className="text-[10px] text-emerald-500 font-semibold px-2">✓ 入库</span>
+                          )}
+                        </div>
+
+                        {/* 移除当前单任务按钮 */}
+                        <button
+                          type="button"
+                          onClick={() => handleCancelTask(task.id)}
+                          className="p-1 rounded text-neutral-400 hover:text-rose-500 transition"
+                          title="移出上传列表"
+                        >
+                          <i className="ri-close-line text-xs" />
+                        </button>
                       </div>
                     </div>
-
-                    {/* 操作按钮区 */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      {task.status === "uploading" && (
-                        <button
-                          type="button"
-                          onClick={() => handlePauseTask(task.id)}
-                          className="p-1 rounded text-neutral-400 hover:text-amber-500 transition"
-                          title="暂停上传"
-                        >
-                          <i className="ri-pause-line text-sm" />
-                        </button>
-                      )}
-                      {(task.status === "paused" || task.status === "queued") && (
-                        <button
-                          type="button"
-                          onClick={() => handleResumeTask(task.id)}
-                          className="p-1 rounded text-neutral-400 hover:text-theme transition"
-                          title="开始/继续上传"
-                        >
-                          <i className="ri-play-line text-sm" />
-                        </button>
-                      )}
-                      {task.status === "error" && (
-                        <button
-                          type="button"
-                          onClick={() => handleResumeTask(task.id)}
-                          className="p-1 rounded text-rose-500 hover:text-theme transition"
-                          title="重新尝试上传"
-                        >
-                          <i className="ri-restart-line text-sm" />
-                        </button>
-                      )}
-                      {task.status === "duplicate" && (
-                        <button
-                          type="button"
-                          onClick={() => handleResumeTask(task.id)}
-                          className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 transition"
-                          title="强制覆盖已存在文件"
-                        >
-                          覆盖上传
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleCancelTask(task.id)}
-                        className="p-1 rounded text-neutral-400 hover:text-rose-500 transition"
-                        title="移除任务"
-                      >
-                        <i className="ri-close-line text-sm" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           )}
