@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { AppContext } from "../core/hono-types";
 import { putStorageObjectAtKey } from "../utils/storage";
+import { extractAudioCover } from "../utils/audio-cover";
 
 const MUSIC_META_KEY = "music/metadata.json";
 
@@ -33,6 +34,46 @@ async function saveMusicMetadata(env: any, meta: Record<string, TrackMeta>) {
   } catch (e) {
     console.error("Failed to save music metadata index:", e);
   }
+}
+
+// 智能去除首尾下划线、破折号与多余空格
+function cleanAudioMetaString(str: string): string {
+  if (!str) return "";
+  return str
+    .replace(/_-_/g, " - ")
+    .replace(/^[\s_\-]+|[\s_\-]+$/g, "")
+    .trim();
+}
+
+// 智能从文件名中提取歌手与歌名
+function parseAudioFileName(rawName: string): { artist: string; title: string } {
+  const noExt = rawName.replace(/\.[a-zA-Z0-9]+$/, "").trim();
+  let core = noExt;
+  const tsMatch = noExt.match(/^\d{10,14}_(?:[a-zA-Z0-9]+_)?(.+)$/);
+  if (tsMatch) core = tsMatch[1];
+
+  let artist = "";
+  let title = core;
+
+  // 优先按常见分割符分离歌手与歌曲名
+  if (core.includes("_-_")) {
+    const parts = core.split("_-_");
+    artist = parts[0];
+    title = parts.slice(1).join(" - ");
+  } else if (core.includes(" - ")) {
+    const parts = core.split(" - ");
+    artist = parts[0];
+    title = parts.slice(1).join(" - ");
+  } else if (core.includes("-")) {
+    const parts = core.split("-");
+    artist = parts[0];
+    title = parts.slice(1).join("-");
+  }
+
+  artist = cleanAudioMetaString(artist);
+  title = cleanAudioMetaString(title);
+
+  return { artist, title: title || cleanAudioMetaString(core) };
 }
 
 function detectAudioQuality(key: string, size: number, contentType: string = ""): string {
@@ -407,20 +448,19 @@ export function MusicService(): Hono {
         })
         .map((obj) => {
           const fileName = obj.key.replace(/^music\//, "");
-          const rawName = fileName.replace(/\.[a-zA-Z0-9]+$/, "");
-          let coreName = rawName;
-          const tsMatch = rawName.match(/^\d{10,14}_(?:[a-zA-Z0-9]+_)?(.+)$/);
-          if (tsMatch) coreName = tsMatch[1];
           const m = metaMap[obj.key] || {};
-          let displayName = m.name || obj.customMetadata?.name || coreName;
-          let artist = m.artist || obj.customMetadata?.artist || "";
-          if (coreName.includes("-") && (!artist || artist === "本地上传")) {
-            const parts = coreName.split("-").map((s) => s.trim());
-            if (parts.length >= 2 && parts[0] && parts[1]) {
-              artist = parts[0];
-              displayName = parts.slice(1).join("-").trim();
-            }
+          const parsed = parseAudioFileName(fileName);
+
+          let displayName = m.name || obj.customMetadata?.name || parsed.title;
+          let artist = m.artist || obj.customMetadata?.artist || parsed.artist;
+
+          // 核心清洗：剥离存量和增量中所有的前后下划线与连字符，彻底还原清晰曲名
+          displayName = cleanAudioMetaString(displayName) || parsed.title;
+          artist = cleanAudioMetaString(artist);
+          if (!artist || artist === "本地上传") {
+            artist = parsed.artist || "随心漫游";
           }
+
           const pic = m.pic || obj.customMetadata?.pic || "";
           const quality = m.quality || detectAudioQuality(obj.key, obj.size, obj.httpMetadata?.contentType);
           const url = `${origin}/api/blob/${encodeURIComponent(obj.key)}`;
@@ -475,26 +515,47 @@ export function MusicService(): Hono {
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
 
+      // 提取纯净的歌名与歌手信息，绝不携带下划线
+      const parsed = parseAudioFileName(file.name);
       const cleanName = file.name.replace(/[^\w\u4e00-\u9fa5\.\-]/g, "_");
       const storageKey = `music/${Date.now()}_${cleanName}`;
       const origin = new URL(c.req.url).origin;
 
+      // 优先从音频原始二进制中提取内嵌高清封面
+      let extractedPicUrl = "";
+      try {
+        const coverObj = extractAudioCover(buffer);
+        if (coverObj) {
+          const ext = coverObj.mime.includes("png") ? "png" : "jpg";
+          const safePrefix = parsed.title.replace(/[^\w\u4e00-\u9fa5\-]/g, "_").slice(0, 30);
+          const coverKey = `music/covers/${safePrefix}_${crypto.randomUUID().slice(0, 6)}.${ext}`;
+          await env.R2_BUCKET.put(coverKey, coverObj.data, {
+            httpMetadata: { contentType: coverObj.mime },
+          });
+          extractedPicUrl = `${origin}/api/blob/${encodeURIComponent(coverKey)}`;
+        }
+      } catch (err) {
+        console.warn("Extract embedded cover error:", err);
+      }
+
       await env.R2_BUCKET.put(storageKey, buffer, {
         httpMetadata: { contentType: file.type || "audio/mpeg" },
         customMetadata: {
-          name: file.name.replace(/\.[a-zA-Z0-9]+$/, ""),
-          artist: "本地上传",
+          name: parsed.title,
+          artist: parsed.artist || "随心漫游",
           hash: hashHex,
+          pic: extractedPicUrl,
         },
       });
 
       // 同步轻量索引
       const metaMap = await loadMusicMetadata(env);
       metaMap[storageKey] = {
-        name: file.name.replace(/\.[a-zA-Z0-9]+$/, ""),
-        artist: "本地上传",
+        name: parsed.title,
+        artist: parsed.artist || "随心漫游",
         quality: detectAudioQuality(storageKey, buffer.byteLength, file.type),
         hash: hashHex,
+        pic: extractedPicUrl,
       };
       await saveMusicMetadata(env, metaMap);
 
@@ -502,7 +563,8 @@ export function MusicService(): Hono {
         success: true,
         key: storageKey,
         url: `${origin}/api/blob/${encodeURIComponent(storageKey)}`,
-        name: file.name,
+        name: parsed.title,
+        pic: extractedPicUrl,
         hash: hashHex,
         size: buffer.byteLength,
       });
@@ -582,6 +644,56 @@ export function MusicService(): Hono {
       return c.json({ success: true, key, pic: finalPic });
     } catch (e: any) {
       return c.json({ error: e.message }, 500);
+    }
+  });
+
+  // 10. 音频元数据封面深度嗅探与补全（优先从文件头提取内嵌封面，无内嵌才通知前端联网检索）
+  app.post("/auto-cover", async (c: AppContext) => {
+    const admin = c.get("admin");
+    const env = c.get("env");
+
+    if (!admin) return c.text("Forbidden", 403);
+    if (!env.R2_BUCKET) return c.json({ error: "R2 bucket is not configured" }, 400);
+
+    try {
+      const { key } = await c.req.json();
+      if (!key) return c.json({ error: "Missing key" }, 400);
+
+      // 读取音频文件前 2MB 数据提取 ID3 / FLAC PICTURE 标签
+      const obj = await env.R2_BUCKET.get(key, {
+        range: { offset: 0, length: 2 * 1024 * 1024 },
+      });
+      if (!obj) return c.json({ found: false, error: "File not found" });
+
+      const headBuffer = await obj.arrayBuffer();
+      const coverObj = extractAudioCover(headBuffer);
+
+      if (coverObj) {
+        const origin = new URL(c.req.url).origin;
+        const ext = coverObj.mime.includes("png") ? "png" : "jpg";
+        const safeBase = key.replace(/^music\//, "").replace(/[^\w\u4e00-\u9fa5\-]/g, "_").slice(0, 32);
+        const coverKey = `music/covers/${safeBase}_${crypto.randomUUID().slice(0, 6)}.${ext}`;
+
+        await env.R2_BUCKET.put(coverKey, coverObj.data, {
+          httpMetadata: { contentType: coverObj.mime },
+        });
+
+        const picUrl = `${origin}/api/blob/${encodeURIComponent(coverKey)}`;
+
+        // 更新索引
+        const metaMap = await loadMusicMetadata(env);
+        metaMap[key] = {
+          ...(metaMap[key] || {}),
+          pic: picUrl,
+        };
+        await saveMusicMetadata(env, metaMap);
+
+        return c.json({ found: true, source: "embedded", pic: picUrl });
+      }
+
+      return c.json({ found: false, reason: "no_embedded_cover" });
+    } catch (e: any) {
+      return c.json({ found: false, error: e.message });
     }
   });
 

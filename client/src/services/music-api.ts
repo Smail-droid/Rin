@@ -564,6 +564,28 @@ export async function updateR2TrackCover(key: string, pic: string): Promise<bool
   }
 }
 
+/**
+ * 优先从 R2 原始音频文件中嗅探嵌入元数据封面，若无才联网匹配
+ */
+export async function sniffR2AudioCover(key: string): Promise<{ found: boolean; pic?: string; source?: string }> {
+  try {
+    const token = getAuthToken() || "";
+    const resp = await fetch("/api/music/auto-cover", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ key }),
+    });
+    if (!resp.ok) return { found: false };
+    return await resp.json();
+  } catch {
+    return { found: false };
+  }
+}
+
 export interface R2MusicFileItem {
   key: string;
   fileName: string;

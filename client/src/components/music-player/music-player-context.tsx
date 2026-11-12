@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { LyricLine, MusicPlayerContextType, MusicTrack, PlayMode } from "./types";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
+import { client } from "../../app/runtime";
 
 export const DEFAULT_PRESET_TRACKS: MusicTrack[] = [];
 
@@ -78,21 +79,21 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   // 播放列表状态
   const [playlist, setPlaylistState] = useState<MusicTrack[]>(() => {
-    // 优先读取后台配置的歌单
-    if (siteConfig.musicPlaylist) {
-      try {
-        const parsed = JSON.parse(siteConfig.musicPlaylist);
-        if (Array.isArray(parsed) && parsed.length > 0) return sanitizePlaylist(parsed);
-      } catch {}
-    }
-    // 其次读取本地缓存歌单
+    // 优先读取本地缓存歌单 (反映用户最新的增删修改)
     try {
       const saved = localStorage.getItem("rin_music_playlist");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return sanitizePlaylist(parsed);
+        if (Array.isArray(parsed)) return sanitizePlaylist(parsed);
       }
     } catch {}
+    // 其次读取后台配置的歌单
+    if (siteConfig.musicPlaylist) {
+      try {
+        const parsed = JSON.parse(siteConfig.musicPlaylist);
+        if (Array.isArray(parsed)) return sanitizePlaylist(parsed);
+      } catch {}
+    }
     return DEFAULT_PRESET_TRACKS;
   });
 
@@ -121,12 +122,12 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [showPlaylist, setShowPlaylist] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // 当后台配置的歌单从服务端或配置中心到达时，自动响应并更新播放列表
+  // 当后台配置的歌单从服务端或配置中心到达时，自动响应并更新播放列表 (兼容空歌单 [])
   useEffect(() => {
-    if (siteConfig.musicPlaylist) {
+    if (siteConfig.musicPlaylist !== undefined && siteConfig.musicPlaylist !== null) {
       try {
         const parsed = JSON.parse(siteConfig.musicPlaylist);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           const sanitized = sanitizePlaylist(parsed);
           setPlaylistState(sanitized);
           try {
@@ -143,7 +144,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       if (e.key === "rin_music_playlist" && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             setPlaylistState(sanitizePlaylist(parsed));
           }
         } catch {}
@@ -277,6 +278,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     setPlaylistState(tracks);
     try {
       localStorage.setItem("rin_music_playlist", JSON.stringify(tracks));
+      void client.config.update("client", { "music.playlist": JSON.stringify(tracks) });
     } catch {}
   }, []);
 
@@ -300,6 +302,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       targetIdx = 0;
       try {
         localStorage.setItem("rin_music_playlist", JSON.stringify(nextList));
+        void client.config.update("client", { "music.playlist": JSON.stringify(nextList) });
       } catch {}
       return nextList;
     });
@@ -317,6 +320,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       const nextList = prev.filter((t) => t.id !== id);
       try {
         localStorage.setItem("rin_music_playlist", JSON.stringify(nextList));
+        void client.config.update("client", { "music.playlist": JSON.stringify(nextList) });
       } catch {}
       return nextList;
     });
@@ -326,7 +330,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     setPlaylistState([]);
     pause();
     try {
-      localStorage.removeItem("rin_music_playlist");
+      localStorage.setItem("rin_music_playlist", "[]");
+      void client.config.update("client", { "music.playlist": "[]" });
     } catch {}
   }, [pause]);
 

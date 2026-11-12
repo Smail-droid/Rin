@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Helmet } from "react-helmet";
 import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
@@ -15,6 +16,7 @@ import {
   fetchR2StorageStats,
   uploadR2AudioFileWithProgress,
   computeAudioFingerprint,
+  sniffR2AudioCover,
   renameR2Track,
   updateR2TrackCover,
   type GdSearchResultItem,
@@ -45,6 +47,15 @@ function sortSearchResultsByRelevance(items: GdSearchResultItem[], kw: string): 
 
     return getScore(bName, bArtist) - getScore(aName, aArtist);
   });
+}
+
+// 智能清洗歌曲名称与歌手（去除前后下划线、破折号与多余空格，杜绝 _歌名 现象）
+function cleanDisplayTitle(str: string): string {
+  if (!str) return "";
+  return str
+    .replace(/_-_/g, " - ")
+    .replace(/^[\s_\-]+|[\s_\-]+$/g, "")
+    .trim();
 }
 
 // 简短中文音源格式化 (严禁英文和自动降级后缀，保持纯粹简洁)
@@ -746,10 +757,28 @@ export function AdminMusicPage() {
     setCoverInputUrl("");
   };
 
-  // 自动为单个音廊歌曲嗅探网络高清封面
+  // 自动为单个音廊歌曲嗅探封面 (优先从音频本身提取嵌入元数据封面，无元数据才联网寻找)
   const handleAutoFetchSingleCover = async (file: R2MusicFileItem) => {
     try {
-      const q = `${file.displayName} ${file.artist || ""}`.trim();
+      // 1. 第一优先级：先从音频二进制嵌入的元数据 (ID3v2 APIC / FLAC PICTURE) 中提取封面
+      const metaRes = await sniffR2AudioCover(file.key);
+      if (metaRes.found && metaRes.pic) {
+        setR2Files((prev) =>
+          prev.map((f) => (f.key === file.key ? { ...f, pic: metaRes.pic } : f))
+        );
+        const updated = player.playlist.map((t) =>
+          t.url.includes(file.key) ? { ...t, pic: metaRes.pic } : t
+        );
+        player.setPlaylist(updated);
+        setCoverTargetFile(null);
+        setCoverInputUrl("");
+        return;
+      }
+
+      // 2. 第二优先级：若无嵌入元数据封面，才开始进行清洗后联网检索并转存 R2
+      const cleanTitle = cleanDisplayTitle(file.displayName);
+      const cleanArtist = cleanDisplayTitle(file.artist || "");
+      const q = `${cleanTitle} ${cleanArtist}`.trim();
       const items = await gdMusicService.search(q, "all", 1, 3);
       for (const item of items) {
         const { track } = await gdMusicService.resolveTrackWithFallback(item, 128);
@@ -786,9 +815,11 @@ export function AdminMusicPage() {
 
   // 将音廊文件单首导入播放列表
   const handleImportR2ToQueue = (file: R2MusicFileItem) => {
-    const parts = file.displayName.split("-").map((s) => s.trim());
-    const artist = file.artist || (parts.length > 1 ? parts[0] : "音廊");
-    const songName = parts.length > 1 ? parts.slice(1).join("-") : parts[0];
+    const rawTitle = cleanDisplayTitle(file.displayName);
+    const rawArtist = cleanDisplayTitle(file.artist || "");
+    const parts = rawTitle.split("-").map((s) => cleanDisplayTitle(s));
+    const artist = rawArtist && rawArtist !== "本地上传" ? rawArtist : (parts.length > 1 ? parts[0] : "音廊");
+    const songName = parts.length > 1 ? parts.slice(1).join("-").trim() : rawTitle;
     const track: MusicTrack = {
       id: `r2_${file.key}`,
       name: songName,
@@ -807,9 +838,11 @@ export function AdminMusicPage() {
   const handleImportAllR2ToQueue = () => {
     if (r2Files.length === 0) return;
     const newTracks: MusicTrack[] = r2Files.map((file) => {
-      const parts = file.displayName.split("-").map((s) => s.trim());
-      const artist = file.artist || (parts.length > 1 ? parts[0] : "音廊");
-      const songName = parts.length > 1 ? parts.slice(1).join("-") : parts[0];
+      const rawTitle = cleanDisplayTitle(file.displayName);
+      const rawArtist = cleanDisplayTitle(file.artist || "");
+      const parts = rawTitle.split("-").map((s) => cleanDisplayTitle(s));
+      const artist = rawArtist && rawArtist !== "本地上传" ? rawArtist : (parts.length > 1 ? parts[0] : "音廊");
+      const songName = parts.length > 1 ? parts.slice(1).join("-").trim() : rawTitle;
       return {
         id: `r2_${file.key}`,
         name: songName,
@@ -986,8 +1019,12 @@ export function AdminMusicPage() {
 
   const handleBatchDelete = async () => {
     if (!selectedTrackIds.size) return;
-    player.setPlaylist(player.playlist.filter((t) => !selectedTrackIds.has(t.id)));
+    const remaining = player.playlist.filter((t) => !selectedTrackIds.has(t.id));
+    player.setPlaylist(remaining);
     setSelectedTrackIds(new Set());
+    try {
+      await client.config.update("client", { "music.playlist": JSON.stringify(remaining) });
+    } catch {}
   };
 
   const handleDeleteTrack = async (track: MusicTrack) => {
@@ -1763,9 +1800,9 @@ export function AdminMusicPage() {
 
                       {/* 悬浮半透明控制层 (四角+中心布局：左上换封面 / 右上删除 / 居中播放 / 左下入库 / 右下音质) */}
                       <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity p-2 flex flex-col justify-between">
-                        {/* 顶部行：左上角更换封面，右上角删除 */}
+                        {/* 顶部行：更换封面与删除 */}
                         <div className="flex items-center justify-between w-full">
-                          {/* 左上角：更换封面 */}
+                          {/* 更换封面 */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -1774,12 +1811,12 @@ export function AdminMusicPage() {
                               setCoverInputUrl(file.pic || "");
                             }}
                             className="h-7 w-7 rounded-full bg-black/40 hover:bg-theme text-white backdrop-blur-md flex items-center justify-center hover:scale-110 active:scale-95 transition shadow-sm"
-                            title="更换封面 (左上角)"
+                            title="更换封面"
                           >
                             <i className="ri-image-edit-line text-xs" />
                           </button>
 
-                          {/* 右上角：删除 */}
+                          {/* 删除 */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -1787,7 +1824,7 @@ export function AdminMusicPage() {
                               handleDeleteR2PhysicalFile(file);
                             }}
                             className="h-7 w-7 rounded-full bg-black/40 hover:bg-rose-500 text-rose-300 hover:text-white backdrop-blur-md flex items-center justify-center hover:scale-110 active:scale-95 transition shadow-sm"
-                            title="从音廊永久删除 (右上角)"
+                            title="从音廊永久删除"
                           >
                             <i className="ri-delete-bin-line text-xs" />
                           </button>
@@ -1809,15 +1846,15 @@ export function AdminMusicPage() {
                               }
                             }}
                             className="h-10 w-10 rounded-full bg-theme text-white flex items-center justify-center hover:scale-115 active:scale-95 transition shadow-xl"
-                            title={isPlayingThis ? "暂停" : "播放 (居中)"}
+                            title={isPlayingThis ? "暂停" : "播放"}
                           >
                             <i className={isPlayingThis ? "ri-pause-fill text-lg" : "ri-play-fill text-lg translate-x-0.5"} />
                           </button>
                         </div>
 
-                        {/* 底部行：左下角入库状态，右下角音质标注 */}
+                        {/* 底部行：入库状态与音质标注 */}
                         <div className="flex items-center justify-between w-full">
-                          {/* 左下角：加入播放列表 / 已入库 */}
+                          {/* 加入播放列表 / 已入库 */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -1827,7 +1864,7 @@ export function AdminMusicPage() {
                             className={`h-7 w-7 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition shadow-sm ${
                               isQueued ? "bg-emerald-500 text-white font-bold" : "bg-black/40 text-white hover:bg-white/30 backdrop-blur-md"
                             }`}
-                            title={isQueued ? "已在播放列表中" : "加入播放列表 (左下角)"}
+                            title={isQueued ? "已在播放列表中" : "加入播放列表"}
                           >
                             <i className={isQueued ? "ri-check-line text-xs font-bold" : "ri-add-line text-xs"} />
                           </button>
@@ -1849,15 +1886,17 @@ export function AdminMusicPage() {
                       </div>
                     </div>
 
-                    {/* 卡片下方文字信息 */}
+                    {/* 卡片下方文字信息 (智能清洗去除下划线与多余空格) */}
                     <div className="mt-2.5 truncate select-none">
                       <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-bold t-primary block truncate flex-1">{file.displayName}</span>
+                        <span className="text-xs font-bold t-primary block truncate flex-1" title={cleanDisplayTitle(file.displayName)}>
+                          {cleanDisplayTitle(file.displayName)}
+                        </span>
                         <button
                           type="button"
                           onClick={() => {
                             setEditingR2Key(file.key);
-                            setEditingR2Name(file.displayName);
+                            setEditingR2Name(cleanDisplayTitle(file.displayName));
                           }}
                           className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-theme transition"
                           title="重命名歌曲"
@@ -1866,7 +1905,7 @@ export function AdminMusicPage() {
                         </button>
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-neutral-400 mt-0.5">
-                        <span className="truncate">{file.artist || "随心漫游"}</span>
+                        <span className="truncate">{cleanDisplayTitle(file.artist || "随心漫游")}</span>
                         <span className="font-mono">{(file.size / (1024 * 1024)).toFixed(1)} MB</span>
                       </div>
                     </div>
@@ -2262,9 +2301,32 @@ export function AdminMusicPage() {
                           </div>
                         </td>
 
-                        {/* 曲目名与艺术家 */}
+                        {/* 曲目名与艺术家 (前置播放/暂停按键，零视线距离顺手直达) */}
                         <td className="py-2 px-2">
                           <div className="flex items-center gap-2">
+                            {/* 前置播放/暂停按钮 */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isCur && player.isPlaying) player.pause();
+                                else player.play(track);
+                              }}
+                              className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 shadow-2xs ${
+                                isCur && player.isPlaying
+                                  ? "bg-theme text-white shadow-theme/30 scale-105"
+                                  : "bg-theme/10 hover:bg-theme text-theme hover:text-white"
+                              }`}
+                              title={isCur && player.isPlaying ? "暂停" : "播放"}
+                            >
+                              <i
+                                className={
+                                  isCur && player.isPlaying
+                                    ? "ri-pause-fill text-xs"
+                                    : "ri-play-fill text-xs translate-x-0.5"
+                                }
+                              />
+                            </button>
+
                             {track.pic ? (
                               <img src={track.pic} alt="" className="h-7 w-7 rounded-lg object-cover shrink-0" />
                             ) : (
@@ -2322,7 +2384,7 @@ export function AdminMusicPage() {
                           )}
                         </td>
 
-                        {/* 操作 */}
+                        {/* 操作 (置顶与删除) */}
                         <td className="py-2 px-2 text-right pr-4">
                           <div className="inline-flex items-center gap-1.5">
                             {/* 置顶 */}
@@ -2335,33 +2397,12 @@ export function AdminMusicPage() {
                               <i className="ri-vertical-align-top text-xs" />
                             </button>
 
-                            {/* 播放/暂停 */}
-                            {isCur && player.isPlaying ? (
-                              <button
-                                type="button"
-                                onClick={() => player.pause()}
-                                className="p-1 rounded-md text-theme hover:bg-theme/10 transition"
-                                title="暂停"
-                              >
-                                <i className="ri-pause-fill text-xs" />
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => player.play(track)}
-                                className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 transition"
-                                title="播放"
-                              >
-                                <i className="ri-play-fill text-xs" />
-                              </button>
-                            )}
-
                             {/* 删除 */}
                             <button
                               type="button"
                               onClick={() => handleDeleteTrack(track)}
                               className="p-1 rounded-md text-neutral-400 hover:text-red-500 hover:bg-black/5 transition"
-                              title="删除"
+                              title="移出播放列表"
                             >
                               <i className="ri-delete-bin-line text-xs" />
                             </button>
@@ -2604,16 +2645,26 @@ export function AdminMusicPage() {
         </div>
       )}
 
-      {/* 封面修改弹窗 */}
-      {coverTargetFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 ani-show">
-          <div className="w-full max-w-md rounded-2xl bg-w p-5 border border-black/10 dark:border-white/10 shadow-2xl space-y-3.5">
+      {/* 封面修改弹窗 (React Portal 挂载至 document.body 并提权至 z-[9999]，彻底消除灰色遮挡与层级截断) */}
+      {coverTargetFile && typeof document !== "undefined" && createPortal(
+        <div
+          onClick={() => setCoverTargetFile(null)}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 ani-show"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl bg-white dark:bg-neutral-900 p-5 border border-black/10 dark:border-white/10 shadow-2xl space-y-4"
+          >
             <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
-              <h4 className="font-bold text-sm t-primary flex items-center gap-1.5">
-                <i className="ri-image-edit-line text-theme" />
-                <span>更换专辑封面 · {coverTargetFile.displayName}</span>
+              <h4 className="font-bold text-sm t-primary flex items-center gap-1.5 truncate">
+                <i className="ri-image-edit-line text-theme shrink-0" />
+                <span className="truncate">更换专辑封面 · {cleanDisplayTitle(coverTargetFile.displayName)}</span>
               </h4>
-              <button onClick={() => setCoverTargetFile(null)} className="text-neutral-400 hover:text-neutral-600">
+              <button
+                type="button"
+                onClick={() => setCoverTargetFile(null)}
+                className="text-neutral-400 hover:text-neutral-600 p-1 rounded-lg"
+              >
                 <i className="ri-close-line text-lg" />
               </button>
             </div>
@@ -2625,7 +2676,7 @@ export function AdminMusicPage() {
                   type="url"
                   value={coverInputUrl}
                   onChange={(e) => setCoverInputUrl(e.target.value)}
-                  placeholder="https://example.com/cover.jpg"
+                  placeholder="输入封面图片 URL (自动转存 R2 存储桶)"
                   className="flex-1 rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] px-3 py-2 text-xs outline-none focus:border-theme"
                 />
                 <button
@@ -2641,7 +2692,7 @@ export function AdminMusicPage() {
 
             {/* 封面预览 */}
             {coverInputUrl.trim() && (
-              <div className="flex items-center justify-center p-2 rounded-xl bg-black/5 dark:bg-white/5">
+              <div className="flex items-center justify-center p-3 rounded-xl bg-black/5 dark:bg-white/5">
                 <img
                   src={coverInputUrl.trim()}
                   alt="预览"
@@ -2655,9 +2706,10 @@ export function AdminMusicPage() {
               <button
                 type="button"
                 onClick={() => handleAutoFetchSingleCover(coverTargetFile)}
-                className="text-theme hover:underline font-bold"
+                className="text-theme hover:underline font-bold flex items-center gap-1"
               >
-                自动嗅探网络封面
+                <i className="ri-magic-line" />
+                <span>自动嗅探网络封面</span>
               </button>
               <div className="flex items-center gap-2">
                 <button
@@ -2678,7 +2730,8 @@ export function AdminMusicPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* R2 媒体库图片选择器 */}
