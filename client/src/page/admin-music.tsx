@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
-import { useMusicPlayer, DEFAULT_PRESET_TRACKS } from "../components/music-player/music-player-context";
+import { useMusicPlayer } from "../components/music-player/music-player-context";
 import { VinylDiscArt } from "../components/music-player/vinyl-disc-art";
 import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
 import {
@@ -13,7 +13,7 @@ import {
   deleteR2Track,
   fetchR2MusicFiles,
   fetchR2StorageStats,
-  uploadR2AudioFile,
+  uploadR2AudioFileWithProgress,
   renameR2Track,
   updateR2TrackCover,
   type GdSearchResultItem,
@@ -61,139 +61,29 @@ function formatCleanSourceName(track: MusicTrack): string {
   return "网络源";
 }
 
-// 纯文本音乐流派标签 (极简纯净风格)
-const GENRE_TAGS = ["华语", "流行", "摇滚", "民谣", "电子", "爵士", "说唱", "原声", "轻音乐", "古风"];
+// 支持的音频格式集合
+const AUDIO_EXTS = new Set([
+  "mp3", "flac", "wav", "m4a", "ogg", "aac", "opus", "wma", "webm", "ape", "alac", "aiff"
+]);
 
-// 热门榜单纯文本检索标签
-const CHART_PRESETS = [
-  { label: "热歌榜", query: "热歌榜", source: "all" },
-  { label: "飙升榜", query: "飙升榜", source: "all" },
-  { label: "新歌榜", query: "新歌榜", source: "all" },
-  { label: "ACG原声", query: "ACG原声", source: "bilibili" },
-  { label: "经典流行", query: "华语流行经典", source: "netease" },
-  { label: "纯音治愈", query: "治愈纯音", source: "all" },
-  { label: "深夜伴奏", query: "深夜伴奏", source: "all" },
-];
+// 单个音频文件上限 (Cloudflare Worker 请求体上限通常为 100MB)
+const MAX_AUDIO_FILE_SIZE = 100 * 1024 * 1024;
 
-interface ArtistData {
+export interface AudioUploadTask {
+  id: string;
+  file: File;
   name: string;
-  initial: string;
-  cat: "male" | "female" | "group";
+  size: number;
+  progress: number;
+  status: "queued" | "uploading" | "paused" | "completed" | "duplicate" | "oversized" | "error";
+  error?: string;
+  controller?: AbortController;
 }
 
-// 华语男女歌手 A-Z 丰富词库
-const ARTIST_DIRECTORY: ArtistData[] = [
-  { name: "阿杜", initial: "A", cat: "male" },
-  { name: "阿云嘎", initial: "A", cat: "male" },
-  { name: "艾热", initial: "A", cat: "male" },
-  { name: "安琥", initial: "A", cat: "male" },
-  { name: "白敬亭", initial: "B", cat: "male" },
-  { name: "宝石Gem", initial: "B", cat: "male" },
-  { name: "白举纲", initial: "B", cat: "male" },
-  { name: "毕书尽", initial: "B", cat: "male" },
-  { name: "陈奕迅", initial: "C", cat: "male" },
-  { name: "蔡徐坤", initial: "C", cat: "male" },
-  { name: "陈小春", initial: "C", cat: "male" },
-  { name: "陈楚生", initial: "C", cat: "male" },
-  { name: "崔健", initial: "C", cat: "male" },
-  { name: "常石磊", initial: "C", cat: "male" },
-  { name: "曹格", initial: "C", cat: "male" },
-  { name: "陈鸿宇", initial: "C", cat: "male" },
-  { name: "刀郎", initial: "D", cat: "male" },
-  { name: "大张伟", initial: "D", cat: "male" },
-  { name: "戴荃", initial: "D", cat: "male" },
-  { name: "董又霖", initial: "D", cat: "male" },
-  { name: "杜德伟", initial: "D", cat: "male" },
-  { name: "贰佰", initial: "E", cat: "male" },
-  { name: "费玉清", initial: "F", cat: "male" },
-  { name: "方大同", initial: "F", cat: "male" },
-  { name: "范逸臣", initial: "F", cat: "male" },
-  { name: "付辛博", initial: "F", cat: "male" },
-  { name: "光良", initial: "G", cat: "male" },
-  { name: "古巨基", initial: "G", cat: "male" },
-  { name: "郭富城", initial: "G", cat: "male" },
-  { name: "隔壁老樊", initial: "G", cat: "male" },
-  { name: "郭顶", initial: "G", cat: "male" },
-  { name: "高进", initial: "G", cat: "male" },
-  { name: "华晨宇", initial: "H", cat: "male" },
-  { name: "胡夏", initial: "H", cat: "male" },
-  { name: "黄家驹", initial: "H", cat: "male" },
-  { name: "胡彦斌", initial: "H", cat: "male" },
-  { name: "海来阿木", initial: "H", cat: "male" },
-  { name: "黄子韬", initial: "H", cat: "male" },
-  { name: "黄渤", initial: "H", cat: "male" },
-  { name: "郝云", initial: "H", cat: "male" },
-  { name: "焦迈奇", initial: "J", cat: "male" },
-  { name: "姜云升", initial: "J", cat: "male" },
-  { name: "金志文", initial: "J", cat: "male" },
-  { name: "井柏然", initial: "J", cat: "male" },
-  { name: "柯受良", initial: "K", cat: "male" },
-  { name: "林俊杰", initial: "L", cat: "male" },
-  { name: "李荣浩", initial: "L", cat: "male" },
-  { name: "刘德华", initial: "L", cat: "male" },
-  { name: "李克勤", initial: "L", cat: "male" },
-  { name: "梁博", initial: "L", cat: "male" },
-  { name: "鹿晗", initial: "L", cat: "male" },
-  { name: "李宗盛", initial: "L", cat: "male" },
-  { name: "柳爽", initial: "L", cat: "male" },
-  { name: "林宥嘉", initial: "L", cat: "male" },
-  { name: "卢广仲", initial: "L", cat: "male" },
-  { name: "毛不易", initial: "M", cat: "male" },
-  { name: "马頔", initial: "M", cat: "male" },
-  { name: "朴树", initial: "P", cat: "male" },
-  { name: "齐秦", initial: "Q", cat: "male" },
-  { name: "任贤齐", initial: "R", cat: "male" },
-  { name: "孙楠", initial: "S", cat: "male" },
-  { name: "薛之谦", initial: "X", cat: "male" },
-  { name: "许嵩", initial: "X", cat: "male" },
-  { name: "许巍", initial: "X", cat: "male" },
-  { name: "周杰伦", initial: "Z", cat: "male" },
-  { name: "张学友", initial: "Z", cat: "male" },
-  { name: "张杰", initial: "Z", cat: "male" },
-  { name: "赵雷", initial: "Z", cat: "male" },
-
-  // 女歌手
-  { name: "李发发", initial: "L", cat: "female" },
-  { name: "阿桑", initial: "A", cat: "female" },
-  { name: "蔡依林", initial: "C", cat: "female" },
-  { name: "蔡健雅", initial: "C", cat: "female" },
-  { name: "陈绮贞", initial: "C", cat: "female" },
-  { name: "陈粒", initial: "C", cat: "female" },
-  { name: "邓紫棋", initial: "D", cat: "female" },
-  { name: "戴佩妮", initial: "D", cat: "female" },
-  { name: "房东的猫", initial: "F", cat: "female" },
-  { name: "韩红", initial: "H", cat: "female" },
-  { name: "梁静茹", initial: "L", cat: "female" },
-  { name: "刘若英", initial: "L", cat: "female" },
-  { name: "莫文蔚", initial: "M", cat: "female" },
-  { name: "那英", initial: "N", cat: "female" },
-  { name: "孙燕姿", initial: "S", cat: "female" },
-  { name: "田馥甄", initial: "T", cat: "female" },
-  { name: "王菲", initial: "W", cat: "female" },
-  { name: "王心凌", initial: "W", cat: "female" },
-  { name: "萧亚轩", initial: "X", cat: "female" },
-  { name: "杨千嬅", initial: "Y", cat: "female" },
-  { name: "张韶涵", initial: "Z", cat: "female" },
-  { name: "张惠妹", initial: "Z", cat: "female" },
-  { name: "周笔畅", initial: "Z", cat: "female" },
-
-  // 组合
-  { name: "Beyond", initial: "B", cat: "group" },
-  { name: "五月天", initial: "W", cat: "group" },
-  { name: "苏打绿", initial: "S", cat: "group" },
-  { name: "告五人", initial: "G", cat: "group" },
-  { name: "新裤子", initial: "X", cat: "group" },
-  { name: "飞儿乐团", initial: "F", cat: "group" },
-  { name: "逃跑计划", initial: "T", cat: "group" },
-  { name: "羽泉", initial: "Y", cat: "group" },
-  { name: "水木年华", initial: "S", cat: "group" },
-  { name: "黑豹乐队", initial: "H", cat: "group" },
-  { name: "唐朝乐队", initial: "T", cat: "group" },
-];
-
-const ALPHABET = [
-  "全部", "A", "B", "C", "D", "E", "F", "G", "H", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "W", "X", "Y", "Z",
-];
+function isAudioFile(file: File): boolean {
+  const ext = file.name.split(".").pop()?.toLowerCase() || "";
+  return AUDIO_EXTS.has(ext) || file.type.startsWith("audio/");
+}
 
 export function AdminMusicPage() {
   const siteConfig = useSiteConfig();
@@ -227,12 +117,16 @@ export function AdminMusicPage() {
   const [sortR2By, setSortR2By] = useState<"newest" | "largest" | "name">("newest");
   const [editingR2Key, setEditingR2Key] = useState<string | null>(null);
   const [editingR2Name, setEditingR2Name] = useState<string>("");
-  const [isUploadingR2, setIsUploadingR2] = useState<boolean>(false);
+  // 上传任务队列与控制
+  const [uploadTasks, setUploadTasks] = useState<AudioUploadTask[]>([]);
+  const [showUploadPanel, setShowUploadPanel] = useState<boolean>(false);
+  const [isDragOverGallery, setIsDragOverGallery] = useState<boolean>(false);
+  const audioFilesInputRef = useRef<HTMLInputElement>(null);
+  const audioFolderInputRef = useRef<HTMLInputElement>(null);
   const [autoFetchingAllCovers, setAutoFetchingAllCovers] = useState<boolean>(false);
   const [coverTargetFile, setCoverTargetFile] = useState<R2MusicFileItem | null>(null);
   const [coverInputUrl, setCoverInputUrl] = useState<string>("");
   const [isR2MediaPickerOpen, setIsR2MediaPickerOpen] = useState<boolean>(false);
-  const audioFileInputRef = useRef<HTMLInputElement>(null);
 
   // 播放列表状态
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string | number>>(new Set());
@@ -255,8 +149,6 @@ export function AdminMusicPage() {
   // 在线搜索状态
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchMode, setSearchMode] = useState<"song" | "album">("song");
-  const [selectedInitial, setSelectedInitial] = useState("全部");
-  const [selectedArtistCat, setSelectedArtistCat] = useState<"all" | "male" | "female" | "group">("all");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<GdSearchResultItem[]>([]);
   const [resolvingId, setResolvingId] = useState<string | number | null>(null);
@@ -460,20 +352,201 @@ export function AdminMusicPage() {
     await loadR2Files();
   };
 
-  // 本地音频上传至音廊
-  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingR2(true);
-    try {
-      const res = await uploadR2AudioFile(file);
-      if (res.success) {
-        await loadR2Files();
+  // 执行单曲上传
+  const executeUploadTask = (taskId: string, file: File) => {
+    const controller = new AbortController();
+
+    setUploadTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: "uploading", error: undefined, controller } : t))
+    );
+
+    uploadR2AudioFileWithProgress(file, {
+      signal: controller.signal,
+      onProgress: (_loaded, _total, percent) => {
+        setUploadTasks((prev) =>
+          prev.map((t) => (t.id === taskId ? { ...t, progress: percent } : t))
+        );
+      },
+    })
+      .then((res) => {
+        if (res.success) {
+          setUploadTasks((prev) =>
+            prev.map((t) => (t.id === taskId ? { ...t, progress: 100, status: "completed" } : t))
+          );
+          void loadR2Files();
+        } else {
+          if (res.error === "aborted") {
+            setUploadTasks((prev) =>
+              prev.map((t) => (t.id === taskId ? { ...t, status: "paused" } : t))
+            );
+          } else {
+            setUploadTasks((prev) =>
+              prev.map((t) => (t.id === taskId ? { ...t, status: "error", error: res.error || "上传失败" } : t))
+            );
+          }
+        }
+      })
+      .catch((err) => {
+        setUploadTasks((prev) =>
+          prev.map((t) => (t.id === taskId ? { ...t, status: "error", error: err?.message || "上传异常" } : t))
+        );
+      });
+  };
+
+  // 批量入队音频文件 (带重名检测与 R2 免费容量限制)
+  const handleEnqueueFiles = (incomingFiles: File[]) => {
+    const audioList = incomingFiles.filter(isAudioFile);
+    if (audioList.length === 0) return;
+
+    const currentR2 = r2Files;
+    const newTasks: AudioUploadTask[] = audioList.map((file) => {
+      const id = `upload_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const cleanName = file.name.replace(/[^\w\u4e00-\u9fa5\.\-]/g, "_").toLowerCase();
+      const baseName = file.name.replace(/\.[a-zA-Z0-9]+$/, "").trim().toLowerCase();
+
+      // 检查是否已经在音廊中存在
+      const isDup = currentR2.some((f) => {
+        const fClean = f.fileName.toLowerCase();
+        const fDisplay = f.displayName.trim().toLowerCase();
+        return fClean.includes(cleanName) || fDisplay === baseName;
+      });
+
+      let status: AudioUploadTask["status"] = "queued";
+      let error: string | undefined;
+
+      if (file.size > MAX_AUDIO_FILE_SIZE) {
+        status = "oversized";
+        error = "超出单文件 100MB 限制";
+      } else if (isDup) {
+        status = "duplicate";
+        error = "音廊已收录同名曲目";
       }
-    } finally {
-      setIsUploadingR2(false);
-      if (audioFileInputRef.current) audioFileInputRef.current.value = "";
+
+      return {
+        id,
+        file,
+        name: file.name,
+        size: file.size,
+        progress: 0,
+        status,
+        error,
+      };
+    });
+
+    setUploadTasks((prev) => [...newTasks, ...prev]);
+    setShowUploadPanel(true);
+
+    // 自动触发就绪任务
+    newTasks.filter((t) => t.status === "queued").forEach((t) => {
+      executeUploadTask(t.id, t.file);
+    });
+  };
+
+  // 递归提取拖拽目录和文件
+  const handleExtractDropFiles = async (dataTransfer: DataTransfer) => {
+    const items = dataTransfer.items;
+    if (!items || items.length === 0) {
+      if (dataTransfer.files?.length) {
+        handleEnqueueFiles(Array.from(dataTransfer.files));
+      }
+      return;
     }
+
+    const collectedFiles: File[] = [];
+    const entries: any[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === "file") {
+        const entry = (item as any).webkitGetAsEntry?.() || (item as any).getAsEntry?.();
+        if (entry) {
+          entries.push(entry);
+        } else {
+          const f = item.getAsFile();
+          if (f && isAudioFile(f)) collectedFiles.push(f);
+        }
+      }
+    }
+
+    async function traverseEntry(entry: any): Promise<void> {
+      if (entry.isFile) {
+        await new Promise<void>((resolve) => {
+          entry.file(
+            (f: File) => {
+              if (isAudioFile(f)) collectedFiles.push(f);
+              resolve();
+            },
+            () => resolve()
+          );
+        });
+      } else if (entry.isDirectory) {
+        const reader = entry.createReader();
+        const readEntries = async (): Promise<any[]> => {
+          return new Promise((resolve) => {
+            reader.readEntries((res: any[]) => resolve(res), () => resolve([]));
+          });
+        };
+        let batch: any[];
+        do {
+          batch = await readEntries();
+          for (const child of batch) {
+            await traverseEntry(child);
+          }
+        } while (batch.length > 0);
+      }
+    }
+
+    for (const entry of entries) {
+      await traverseEntry(entry);
+    }
+
+    if (collectedFiles.length > 0) {
+      handleEnqueueFiles(collectedFiles);
+    }
+  };
+
+  const handlePauseTask = (taskId: string) => {
+    const target = uploadTasks.find((t) => t.id === taskId);
+    if (target?.controller) {
+      target.controller.abort();
+    }
+    setUploadTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: "paused" } : t))
+    );
+  };
+
+  const handleResumeTask = (taskId: string) => {
+    const target = uploadTasks.find((t) => t.id === taskId);
+    if (target) {
+      executeUploadTask(taskId, target.file);
+    }
+  };
+
+  const handleCancelTask = (taskId: string) => {
+    const target = uploadTasks.find((t) => t.id === taskId);
+    if (target?.controller) {
+      target.controller.abort();
+    }
+    setUploadTasks((prev) => prev.filter((t) => t.id !== taskId));
+  };
+
+  const handleStartAllUploads = () => {
+    uploadTasks
+      .filter((t) => t.status === "queued" || t.status === "paused")
+      .forEach((t) => executeUploadTask(t.id, t.file));
+  };
+
+  const handlePauseAllUploads = () => {
+    uploadTasks
+      .filter((t) => t.status === "uploading")
+      .forEach((t) => t.controller?.abort());
+    setUploadTasks((prev) =>
+      prev.map((t) => (t.status === "uploading" ? { ...t, status: "paused" } : t))
+    );
+  };
+
+  const handleClearCompletedUploads = () => {
+    setUploadTasks((prev) => prev.filter((t) => t.status !== "completed"));
   };
 
   // 重命名音廊文件
@@ -749,28 +822,11 @@ export function AdminMusicPage() {
 
   const handleBatchDelete = async () => {
     if (!selectedTrackIds.size) return;
-    const toDelete = player.playlist.filter((t) => selectedTrackIds.has(t.id));
-    for (const t of toDelete) {
-      if (t.source === "r2" || t.url.includes("/api/blob/")) {
-        const parts = t.url.split("/api/blob/");
-        const storageKey = parts.length > 1 ? decodeURIComponent(parts[1]) : "";
-        if (storageKey) {
-          deleteR2Track(storageKey).catch(() => {});
-        }
-      }
-    }
     player.setPlaylist(player.playlist.filter((t) => !selectedTrackIds.has(t.id)));
     setSelectedTrackIds(new Set());
   };
 
   const handleDeleteTrack = async (track: MusicTrack) => {
-    if (track.source === "r2" || track.url.includes("/api/blob/")) {
-      const parts = track.url.split("/api/blob/");
-      const storageKey = parts.length > 1 ? decodeURIComponent(parts[1]) : "";
-      if (storageKey) {
-        deleteR2Track(storageKey).catch(() => {});
-      }
-    }
     player.removeTrack(track.id);
   };
 
@@ -805,22 +861,33 @@ export function AdminMusicPage() {
     setCustomStatus("done"); setTimeout(() => setCustomStatus("idle"), 2500);
   };
 
-  const filteredArtists = useMemo(() => ARTIST_DIRECTORY.filter((a) => {
-    const matchCat = selectedArtistCat === "all" || a.cat === selectedArtistCat;
-    const matchInitial = selectedInitial === "全部" || a.initial === selectedInitial;
-    return matchCat && matchInitial;
-  }), [selectedArtistCat, selectedInitial]);
-
   return (
     <div className="flex w-full flex-col gap-4 ani-show">
       <Helmet><title>{`音廊 · 云端音乐资产中枢 - ${siteConfig.name}`}</title></Helmet>
 
-      {/* 隐藏的本地音频上传文件输入框 */}
+      {/* 隐藏的本地音频多文件上传与文件夹上传输入框 */}
       <input
-        ref={audioFileInputRef}
+        ref={audioFilesInputRef}
         type="file"
-        accept="audio/*"
-        onChange={handleAudioUpload}
+        accept="audio/*,.mp3,.flac,.wav,.m4a,.ogg,.aac,.opus,.ape"
+        multiple
+        onChange={(e) => {
+          if (e.target.files) handleEnqueueFiles(Array.from(e.target.files));
+          if (audioFilesInputRef.current) audioFilesInputRef.current.value = "";
+        }}
+        className="hidden"
+      />
+      <input
+        ref={audioFolderInputRef}
+        type="file"
+        // @ts-expect-error webkitdirectory is standard in browser
+        webkitdirectory=""
+        directory=""
+        multiple
+        onChange={(e) => {
+          if (e.target.files) handleEnqueueFiles(Array.from(e.target.files));
+          if (audioFolderInputRef.current) audioFolderInputRef.current.value = "";
+        }}
         className="hidden"
       />
 
@@ -859,16 +926,46 @@ export function AdminMusicPage() {
         </div>
 
         <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+          {/* 上传多文件 */}
           <button
             type="button"
-            onClick={() => audioFileInputRef.current?.click()}
-            disabled={isUploadingR2}
+            onClick={() => audioFilesInputRef.current?.click()}
             className="px-3 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 transition flex items-center gap-1.5"
-            title="上传本地音频文件至云端音廊"
+            title="支持同时选择多个音频文件上传"
           >
-            {isUploadingR2 ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-upload-cloud-line text-sm" />}
-            <span>{isUploadingR2 ? "上传中..." : "上传音频"}</span>
+            <i className="ri-upload-cloud-line text-sm" />
+            <span>上传文件</span>
           </button>
+
+          {/* 上传文件夹 */}
+          <button
+            type="button"
+            onClick={() => audioFolderInputRef.current?.click()}
+            className="px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] text-neutral-600 dark:text-neutral-300 text-xs font-bold hover:border-theme hover:text-theme transition flex items-center gap-1.5"
+            title="选择整个文件夹递归导入全部音频文件"
+          >
+            <i className="ri-folder-upload-line text-sm" />
+            <span>上传文件夹</span>
+          </button>
+
+          {/* 上传任务状态胶囊 */}
+          {uploadTasks.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowUploadPanel(!showUploadPanel)}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                uploadTasks.some((t) => t.status === "uploading")
+                  ? "bg-theme text-white shadow-2xs animate-pulse"
+                  : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              }`}
+              title="查看上传任务详情"
+            >
+              <i className="ri-upload-2-line text-xs" />
+              <span>
+                上传任务 ({uploadTasks.filter((t) => t.status === "completed").length}/{uploadTasks.length})
+              </span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -1069,7 +1166,198 @@ export function AdminMusicPage() {
 
       {/* 4. 视界 A: 音廊资产 (R2 云端资产曲库，融合图 2 Navidrome 与图 4 媒体资产相册) */}
       {activeTab === "gallery" && (
-        <div className="flex flex-col gap-3.5 ani-show">
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOverGallery(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOverGallery(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOverGallery(false);
+            if (e.dataTransfer) {
+              void handleExtractDropFiles(e.dataTransfer);
+            }
+          }}
+          className={`flex flex-col gap-3.5 ani-show relative ${isDragOverGallery ? "ring-2 ring-theme/50 rounded-2xl bg-theme/5" : ""}`}
+        >
+          {/* 拖拽释放蒙层提示 */}
+          {isDragOverGallery && (
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center rounded-2xl bg-w/80 backdrop-blur-md border-2 border-dashed border-theme ani-show pointer-events-none">
+              <i className="ri-folder-music-line text-4xl text-theme animate-bounce" />
+              <p className="mt-2 text-sm font-bold t-primary">松开即可导入所有音频文件与文件夹...</p>
+              <p className="text-xs text-neutral-400 mt-1">自动识别音频格式 · 自动递归解析子目录 · 自动重复排重</p>
+            </div>
+          )}
+
+          {/* 上传任务状态中枢面板 */}
+          {(showUploadPanel || uploadTasks.length > 0) && uploadTasks.length > 0 && (
+            <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3 ani-show">
+              <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-theme/10 text-theme text-xs font-bold">
+                    <i className="ri-upload-cloud-2-line" />
+                  </span>
+                  <span className="font-bold text-xs t-primary">音频上传中枢</span>
+                  <span className="text-[10px] text-neutral-400 font-mono">
+                    (共 {uploadTasks.length} 项 · 成功 {uploadTasks.filter((t) => t.status === "completed").length} · 失败/超限 {uploadTasks.filter((t) => t.status === "error" || t.status === "oversized").length})
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                  <button
+                    type="button"
+                    onClick={handleStartAllUploads}
+                    className="px-2 py-1 rounded-lg bg-theme/10 text-theme font-semibold hover:bg-theme/20 transition flex items-center gap-1 text-[11px]"
+                  >
+                    <i className="ri-play-fill" />
+                    <span>全部开始</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePauseAllUploads}
+                    className="px-2 py-1 rounded-lg bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 font-semibold hover:bg-black/10 transition flex items-center gap-1 text-[11px]"
+                  >
+                    <i className="ri-pause-fill" />
+                    <span>全部暂停</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearCompletedUploads}
+                    className="px-2 py-1 rounded-lg bg-black/5 dark:bg-white/5 text-neutral-400 hover:text-neutral-600 font-semibold transition text-[11px]"
+                  >
+                    清空已完成
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowUploadPanel(false)}
+                    className="p-1 rounded-lg text-neutral-400 hover:text-neutral-600 transition"
+                    title="收起上传面板"
+                  >
+                    <i className="ri-close-line text-sm" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 任务列表 */}
+              <div className="divide-y divide-black/5 dark:divide-white/5 max-h-56 overflow-y-auto scrollbar-thin">
+                {uploadTasks.map((task) => (
+                  <div key={task.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium t-primary truncate max-w-sm block text-[11px]">{task.name}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="font-mono text-[10px] text-neutral-400">
+                            {(task.size / (1024 * 1024)).toFixed(1)} MB
+                          </span>
+                          {/* 状态徽标 */}
+                          {task.status === "uploading" && (
+                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-theme/10 text-theme animate-pulse">
+                              上传中 {task.progress}%
+                            </span>
+                          )}
+                          {task.status === "completed" && (
+                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                              ✓ 完成
+                            </span>
+                          )}
+                          {task.status === "paused" && (
+                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-amber-500/10 text-amber-600">
+                              已暂停
+                            </span>
+                          )}
+                          {task.status === "duplicate" && (
+                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-purple-500/10 text-purple-600">
+                              已存在
+                            </span>
+                          )}
+                          {task.status === "oversized" && (
+                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-rose-500/10 text-rose-600">
+                              超限 (&gt;100MB)
+                            </span>
+                          )}
+                          {task.status === "error" && (
+                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-rose-500/10 text-rose-600" title={task.error}>
+                              失败
+                            </span>
+                          )}
+                          {task.status === "queued" && (
+                            <span className="px-1.5 py-0.2 rounded font-mono text-[9px] font-bold bg-neutral-500/10 text-neutral-400">
+                              排队中
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 进度条 */}
+                      <div className="w-full bg-black/5 dark:bg-white/5 rounded-full h-1 mt-1.5 overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-200 ${
+                            task.status === "completed"
+                              ? "bg-emerald-500"
+                              : task.status === "error" || task.status === "oversized"
+                              ? "bg-rose-500"
+                              : task.status === "paused"
+                              ? "bg-amber-400"
+                              : "bg-theme"
+                          }`}
+                          style={{ width: `${task.status === "completed" ? 100 : task.progress}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 操作按钮区 */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {task.status === "uploading" && (
+                        <button
+                          type="button"
+                          onClick={() => handlePauseTask(task.id)}
+                          className="p-1 rounded text-neutral-400 hover:text-amber-500 transition"
+                          title="暂停上传"
+                        >
+                          <i className="ri-pause-line text-sm" />
+                        </button>
+                      )}
+                      {(task.status === "paused" || task.status === "queued") && (
+                        <button
+                          type="button"
+                          onClick={() => handleResumeTask(task.id)}
+                          className="p-1 rounded text-neutral-400 hover:text-theme transition"
+                          title="开始/继续上传"
+                        >
+                          <i className="ri-play-line text-sm" />
+                        </button>
+                      )}
+                      {task.status === "duplicate" && (
+                        <button
+                          type="button"
+                          onClick={() => handleResumeTask(task.id)}
+                          className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 transition"
+                          title="强制覆盖已存在文件"
+                        >
+                          覆盖上传
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleCancelTask(task.id)}
+                        className="p-1 rounded text-neutral-400 hover:text-rose-500 transition"
+                        title="移除任务"
+                      >
+                        <i className="ri-close-line text-sm" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {/* 搜索与工具控制栏 */}
           <div className="p-3.5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 flex-1">
@@ -1202,7 +1490,7 @@ export function AdminMusicPage() {
             >
               {/* 首格：等高虚线上传卡片 (参考图 4 `/admin/files`) */}
               <div
-                onClick={() => audioFileInputRef.current?.click()}
+                onClick={() => audioFilesInputRef.current?.click()}
                 className="aspect-square rounded-2xl border-2 border-dashed border-black/15 dark:border-white/15 hover:border-theme/60 bg-black/[0.015] hover:bg-theme/5 transition flex flex-col items-center justify-center gap-2 cursor-pointer p-3 text-center group select-none"
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-theme/10 text-theme text-lg group-hover:scale-110 transition-transform">
@@ -1626,7 +1914,7 @@ export function AdminMusicPage() {
               </button>
               <button
                 type="button"
-                onClick={() => player.setPlaylist(DEFAULT_PRESET_TRACKS)}
+                onClick={() => player.clearPlaylist()}
                 className="px-2.5 py-1 rounded-lg text-neutral-400 hover:text-theme text-xs transition"
               >
                 重置
@@ -1938,103 +2226,6 @@ export function AdminMusicPage() {
               </div>
             </div>
 
-            {/* 纯文本流派横幅 */}
-            <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 flex-wrap">
-              <span className="font-bold text-[11px] text-neutral-400 shrink-0">流派：</span>
-              {GENRE_TAGS.map((g, i) => (
-                <span key={g} className="inline-flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchKeyword(g);
-                      void handleSearch(g);
-                    }}
-                    className="hover:text-theme transition font-medium"
-                  >
-                    {g}
-                  </button>
-                  {i < GENRE_TAGS.length - 1 && <span className="opacity-25">|</span>}
-                </span>
-              ))}
-            </div>
-
-            {/* 纯文本热门榜单 */}
-            <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 flex-wrap border-t border-black/5 dark:border-white/5 pt-2">
-              <span className="font-bold text-[11px] text-neutral-400 shrink-0">榜单：</span>
-              {CHART_PRESETS.map((c, i) => (
-                <span key={c.label} className="inline-flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchKeyword(c.query);
-                      void handleSearch(c.query, c.source);
-                    }}
-                    className="hover:text-theme transition font-medium"
-                  >
-                    {c.label}
-                  </button>
-                  {i < CHART_PRESETS.length - 1 && <span className="opacity-25">|</span>}
-                </span>
-              ))}
-            </div>
-
-            {/* 华语男女歌手 A-Z 快速检索词库 */}
-            <div className="p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-[11px] t-primary">歌手检索库</span>
-                <div className="flex items-center gap-1">
-                  {[
-                    { id: "all", label: "全部" },
-                    { id: "male", label: "男歌手" },
-                    { id: "female", label: "女歌手" },
-                    { id: "group", label: "组合" },
-                  ].map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setSelectedArtistCat(c.id as any)}
-                      className={`px-2 py-0.5 rounded-lg text-[11px] transition ${
-                        selectedArtistCat === c.id ? "bg-theme text-white font-bold" : "text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
-                      }`}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1 flex-wrap text-[11px] font-mono">
-                {ALPHABET.map((l) => (
-                  <button
-                    key={l}
-                    type="button"
-                    onClick={() => setSelectedInitial(l)}
-                    className={`px-1.5 py-0.5 rounded transition ${
-                      selectedInitial === l ? "bg-theme text-white font-bold scale-105" : "text-neutral-400 hover:text-theme"
-                    }`}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-1.5 flex-wrap pt-1 max-h-24 overflow-y-auto">
-                {filteredArtists.map((a) => (
-                  <button
-                    key={a.name}
-                    type="button"
-                    onClick={() => {
-                      setSearchKeyword(a.name);
-                      void handleSearch(a.name);
-                    }}
-                    className="px-2.5 py-0.5 rounded-lg bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 text-xs hover:bg-theme hover:text-white transition select-none"
-                  >
-                    {a.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* 搜索框与嗅探按钮 */}
             <div className="flex flex-col sm:flex-row gap-2.5 text-xs">
               <input
@@ -2042,7 +2233,7 @@ export function AdminMusicPage() {
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder={searchMode === "album" ? "输入专辑/歌单名称..." : "输入曲名、歌手或点击上方标签快速检索..."}
+                placeholder={searchMode === "album" ? "输入专辑/歌单名称快速检索..." : "输入曲名或歌手名称快速检索..."}
                 className="flex-1 rounded-xl border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-800 px-3.5 py-2 text-xs t-primary outline-none focus:border-theme transition"
               />
               <div className="flex items-center gap-2 shrink-0">

@@ -444,27 +444,82 @@ export async function deleteR2Track(key: string): Promise<boolean> {
 }
 
 /**
- * 直接上传本地音频文件至 Cloudflare R2
+ * 支持上传进度反馈与 AbortSignal 暂停/取消的原生 XMLHttpRequest 上传
  */
-export async function uploadR2AudioFile(file: File): Promise<{ success: boolean; key?: string; url?: string; name?: string }> {
-  try {
+export interface UploadR2AudioProgressOptions {
+  onProgress?: (loaded: number, total: number, percent: number) => void;
+  signal?: AbortSignal;
+}
+
+export function uploadR2AudioFileWithProgress(
+  file: File,
+  options?: UploadR2AudioProgressOptions
+): Promise<{ success: boolean; key?: string; url?: string; name?: string; error?: string }> {
+  return new Promise((resolve) => {
     const token = getAuthToken() || "";
+    const xhr = new XMLHttpRequest();
+
+    if (options?.signal) {
+      if (options.signal.aborted) {
+        resolve({ success: false, error: "aborted" });
+        return;
+      }
+      options.signal.addEventListener("abort", () => {
+        xhr.abort();
+        resolve({ success: false, error: "aborted" });
+      });
+    }
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && options?.onProgress) {
+        const percent = Math.min(100, Math.round((e.loaded / e.total) * 100));
+        options.onProgress(e.loaded, e.total, percent);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const json = JSON.parse(xhr.responseText);
+          resolve(json);
+        } catch {
+          resolve({ success: true });
+        }
+      } else {
+        let err = `HTTP ${xhr.status}`;
+        try {
+          const json = JSON.parse(xhr.responseText);
+          if (json.error) err = json.error;
+        } catch {}
+        resolve({ success: false, error: err });
+      }
+    };
+
+    xhr.onerror = () => {
+      resolve({ success: false, error: "网络传输异常" });
+    };
+
+    xhr.onabort = () => {
+      resolve({ success: false, error: "aborted" });
+    };
+
     const form = new FormData();
     form.append("file", file);
 
-    const resp = await fetch("/api/music/upload-r2", {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: form,
-    });
-    if (!resp.ok) return { success: false };
-    return await resp.json();
-  } catch {
-    return { success: false };
-  }
+    xhr.open("POST", "/api/music/upload-r2", true);
+    xhr.withCredentials = true;
+    if (token) {
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    }
+    xhr.send(form);
+  });
+}
+
+/**
+ * 直接上传本地音频文件至 Cloudflare R2
+ */
+export async function uploadR2AudioFile(file: File): Promise<{ success: boolean; key?: string; url?: string; name?: string }> {
+  return uploadR2AudioFileWithProgress(file);
 }
 
 /**

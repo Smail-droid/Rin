@@ -11,55 +11,15 @@ import {
 import type { LyricLine, MusicPlayerContextType, MusicTrack, PlayMode } from "./types";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 
-// 预置唯美轻柔的二次元画廊微光氛围背景原声（高可用公共 CDN，杜绝防盗链 404）
-export const DEFAULT_PRESET_TRACKS: MusicTrack[] = [
-  {
-    id: "preset_1",
-    name: "春の微光 (Twilight Piano & Synth)",
-    artist: "Atelier Soundworks",
-    album: "Gallery Memories",
-    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-    pic: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&q=80",
-    lyric: "[00:00.00]微光拂过相纸的边缘\n[00:05.00]记忆在画廊随想中悄然流淌\n[00:15.00]♪ 唯美原声，静候灵感发生 ♪\n[01:00.00]♪ 沉浸式伴奏 ♪",
-    source: "preset",
-    sourceName: "画廊随想",
-  },
-  {
-    id: "preset_2",
-    name: "City of Starlight (Dreamy Lofi)",
-    artist: "Lofi Breeze",
-    album: "Midnight Chill",
-    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-    pic: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&q=80",
-    lyric: "[00:00.00]深夜星芒\n[00:06.00]夜幕低垂，屏幕前微光闪烁\n[00:20.00]♪ 随心漫游，灵感常驻 ♪",
-    source: "preset",
-    sourceName: "画廊随想",
-  },
-  {
-    id: "preset_3",
-    name: "Dreamy Evening Groove",
-    artist: "Acoustic Garden",
-    album: "Sunset Horizons",
-    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-    pic: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
-    lyric: "[00:00.00]落日余晖\n[00:08.00]轻盈旋律漫过每一个页面\n[00:25.00]♪ 全站跨页面沉浸流转 ♪",
-    source: "preset",
-    sourceName: "画廊随想",
-  },
-];
+export const DEFAULT_PRESET_TRACKS: MusicTrack[] = [];
 
 function sanitizePlaylist(list: MusicTrack[]): MusicTrack[] {
-  return list.map((t, idx) => {
-    // 自动置换已失效的旧版网易云防盗链外链
+  return list.filter((t) => {
+    // 过滤掉已失效的旧版网易云防盗链外链
     if (t.url.includes("music.163.com/song/media/outer/url")) {
-      const fallback = DEFAULT_PRESET_TRACKS[idx % DEFAULT_PRESET_TRACKS.length];
-      return {
-        ...t,
-        url: fallback.url,
-        pic: t.pic || fallback.pic,
-      };
+      return false;
     }
-    return t;
+    return true;
   });
 }
 
@@ -91,6 +51,10 @@ function parseLrc(lrcString: string): LyricLine[] {
 
 export function getPlayableAudioUrl(url: string): string {
   if (!url) return "";
+  // R2 音廊自有资产：剥离 origin 使用相对路径直连，杜绝跨域/协议代理中继失败
+  if (url.includes("/api/blob/")) {
+    return url.substring(url.indexOf("/api/blob/"));
+  }
   // 移动端 HTTPS 混合内容 (Mixed Content) 与防盗链中继自愈
   if (url.startsWith("http://")) {
     if (
