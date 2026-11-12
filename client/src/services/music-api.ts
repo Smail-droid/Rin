@@ -574,6 +574,42 @@ export interface R2MusicFileItem {
   size: number;
   uploaded: string;
   url: string;
+  hash?: string;
+  etag?: string;
+}
+
+/**
+ * 极速计算音频文件的特征指纹哈希 (前256KB + 大小 + 尾256KB)，毫秒级完成，杜绝卡顿
+ */
+export async function computeAudioFingerprint(file: File): Promise<string> {
+  try {
+    const headSize = 256 * 1024;
+    let chunks: Blob[];
+    if (file.size <= headSize * 2) {
+      chunks = [file];
+    } else {
+      const head = file.slice(0, headSize);
+      const tail = file.slice(file.size - headSize);
+      chunks = [head, tail];
+    }
+    const buffers = await Promise.all(chunks.map((c) => c.arrayBuffer()));
+    const totalLength = buffers.reduce((acc, b) => acc + b.byteLength, 0) + 8;
+    const combined = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const buf of buffers) {
+      combined.set(new Uint8Array(buf), offset);
+      offset += buf.byteLength;
+    }
+    const view = new DataView(combined.buffer);
+    view.setFloat64(offset, file.size);
+
+    const hashBuffer = await crypto.subtle.digest("SHA-256", combined);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  } catch {
+    return `${file.size}_${file.name}`;
+  }
 }
 
 /**

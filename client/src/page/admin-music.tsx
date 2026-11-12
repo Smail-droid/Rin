@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
@@ -14,6 +14,7 @@ import {
   fetchR2MusicFiles,
   fetchR2StorageStats,
   uploadR2AudioFileWithProgress,
+  computeAudioFingerprint,
   renameR2Track,
   updateR2TrackCover,
   type GdSearchResultItem,
@@ -69,6 +70,9 @@ const AUDIO_EXTS = new Set([
 // 单个音频文件上限 (Cloudflare Worker 请求体上限通常为 100MB)
 const MAX_AUDIO_FILE_SIZE = 100 * 1024 * 1024;
 
+// 上传并发队列上限：严格限制为最多 2 个文件并发，避免上行拥塞与 Cloudflare 边缘 Worker 超时
+const MAX_CONCURRENT_UPLOADS = 2;
+
 export interface AudioUploadTask {
   id: string;
   file: File;
@@ -119,6 +123,8 @@ export function AdminMusicPage() {
   const [editingR2Name, setEditingR2Name] = useState<string>("");
   // 上传任务队列与控制
   const [uploadTasks, setUploadTasks] = useState<AudioUploadTask[]>([]);
+  const tasksRef = useRef<AudioUploadTask[]>([]);
+  tasksRef.current = uploadTasks;
   const [showUploadPanel, setShowUploadPanel] = useState<boolean>(false);
   const [isDragOverGallery, setIsDragOverGallery] = useState<boolean>(false);
   const audioFilesInputRef = useRef<HTMLInputElement>(null);
@@ -352,13 +358,42 @@ export function AdminMusicPage() {
     await loadR2Files();
   };
 
-  // 执行单曲上传
-  const executeUploadTask = (taskId: string, file: File) => {
-    const controller = new AbortController();
+  // 核心：严格限制并发的队列调度泵 (最大并发 MAX_CONCURRENT_UPLOADS = 2，杜绝冲垮网关与请求超时)
+  const pumpUploadQueue = useCallback(() => {
+    setUploadTasks((currentTasks) => {
+      const activeCount = currentTasks.filter((t) => t.status === "uploading").length;
+      const availableSlots = MAX_CONCURRENT_UPLOADS - activeCount;
+      if (availableSlots <= 0) return currentTasks;
 
-    setUploadTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: "uploading", error: undefined, controller } : t))
-    );
+      const queuedTasks = currentTasks.filter((t) => t.status === "queued");
+      if (queuedTasks.length === 0) return currentTasks;
+
+      const toStart = queuedTasks.slice(0, availableSlots);
+      const toStartIds = new Set(toStart.map((t) => t.id));
+
+      const updated = currentTasks.map((t) => {
+        if (toStartIds.has(t.id)) {
+          const controller = new AbortController();
+          return { ...t, status: "uploading" as const, error: undefined, controller };
+        }
+        return t;
+      });
+
+      // 异步触发开始上传
+      toStart.forEach((task) => {
+        setTimeout(() => {
+          runSingleUpload(task.id, task.file);
+        }, 0);
+      });
+
+      return updated;
+    });
+  }, []);
+
+  // 执行单曲上传 (含网络抖动自动重试与槽位回收)
+  const runSingleUpload = (taskId: string, file: File, retryAttempt = 0) => {
+    const currentTask = tasksRef.current.find((t) => t.id === taskId);
+    const controller = currentTask?.controller || new AbortController();
 
     uploadR2AudioFileWithProgress(file, {
       signal: controller.signal,
@@ -374,42 +409,76 @@ export function AdminMusicPage() {
             prev.map((t) => (t.id === taskId ? { ...t, progress: 100, status: "completed" } : t))
           );
           void loadR2Files();
+          // 当前文件成功后，调度队列自动启动后续文件
+          setTimeout(pumpUploadQueue, 50);
         } else {
           if (res.error === "aborted") {
             setUploadTasks((prev) =>
               prev.map((t) => (t.id === taskId ? { ...t, status: "paused" } : t))
             );
+            setTimeout(pumpUploadQueue, 50);
           } else {
-            setUploadTasks((prev) =>
-              prev.map((t) => (t.id === taskId ? { ...t, status: "error", error: res.error || "上传失败" } : t))
-            );
+            // 自动重试机制：非主动取消且首次失败，自动重试 1 次（800ms 缓冲后）
+            if (retryAttempt < 1) {
+              setTimeout(() => {
+                runSingleUpload(taskId, file, retryAttempt + 1);
+              }, 800);
+            } else {
+              setUploadTasks((prev) =>
+                prev.map((t) =>
+                  t.id === taskId ? { ...t, status: "error", error: res.error || "上传失败" } : t
+                )
+              );
+              // 失败后释放并发槽位，继续推进后续任务
+              setTimeout(pumpUploadQueue, 50);
+            }
           }
         }
       })
       .catch((err) => {
-        setUploadTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? { ...t, status: "error", error: err?.message || "上传异常" } : t))
-        );
+        if (retryAttempt < 1) {
+          setTimeout(() => {
+            runSingleUpload(taskId, file, retryAttempt + 1);
+          }, 800);
+        } else {
+          setUploadTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId ? { ...t, status: "error", error: err?.message || "上传异常" } : t
+            )
+          );
+          setTimeout(pumpUploadQueue, 50);
+        }
       });
   };
 
-  // 批量入队音频文件 (带重名检测与 R2 免费容量限制)
+  // 批量入队音频文件 (多重精准排重：字节大小精确比对 + 歌名/歌手归一化比对)
   const handleEnqueueFiles = (incomingFiles: File[]) => {
     const audioList = incomingFiles.filter(isAudioFile);
     if (audioList.length === 0) return;
 
     const currentR2 = r2Files;
+    // 构建精确大小集合、哈希集合与归一化名称集合
+    const r2SizeSet = new Set(currentR2.map((f) => f.size));
+    const r2HashSet = new Set(currentR2.map((f) => f.hash).filter(Boolean));
+    const r2NormalizedNames = new Set(
+      currentR2.map((f) =>
+        f.displayName
+          .replace(/[^\w\u4e00-\u9fa5]/g, "")
+          .toLowerCase()
+      )
+    );
+
     const newTasks: AudioUploadTask[] = audioList.map((file) => {
       const id = `upload_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      const cleanName = file.name.replace(/[^\w\u4e00-\u9fa5\.\-]/g, "_").toLowerCase();
-      const baseName = file.name.replace(/\.[a-zA-Z0-9]+$/, "").trim().toLowerCase();
+      const baseName = file.name.replace(/\.[a-zA-Z0-9]+$/, "").trim();
+      const normName = baseName.replace(/[^\w\u4e00-\u9fa5]/g, "").toLowerCase();
 
-      // 检查是否已经在音廊中存在
-      const isDup = currentR2.some((f) => {
-        const fClean = f.fileName.toLowerCase();
-        const fDisplay = f.displayName.trim().toLowerCase();
-        return fClean.includes(cleanName) || fDisplay === baseName;
-      });
+      // 多维精准查重：
+      // 1. 精确文件大小完全一致 (Size Match，音频文件概率为 99.999% 同文件)
+      // 2. 歌名/歌手清洗归一化完全一致 (Normalized Name Match)
+      const isSizeMatch = r2SizeSet.has(file.size);
+      const isNameMatch = normName && r2NormalizedNames.has(normName);
+      const isDup = isSizeMatch || isNameMatch;
 
       let status: AudioUploadTask["status"] = "queued";
       let error: string | undefined;
@@ -419,7 +488,22 @@ export function AdminMusicPage() {
         error = "超出单文件 100MB 限制";
       } else if (isDup) {
         status = "duplicate";
-        error = "音廊已收录同名曲目";
+        error = isSizeMatch ? "音廊已有相同大小音频" : "音廊已收录同名曲目";
+      }
+
+      // 后台异步进行特征哈希二次指纹校验
+      if (!isDup && status === "queued") {
+        computeAudioFingerprint(file)
+          .then((fp) => {
+            if (r2HashSet.has(fp)) {
+              setUploadTasks((prev) =>
+                prev.map((t) =>
+                  t.id === id ? { ...t, status: "duplicate", error: "哈希指纹完全一致" } : t
+                )
+              );
+            }
+          })
+          .catch(() => {});
       }
 
       return {
@@ -436,10 +520,8 @@ export function AdminMusicPage() {
     setUploadTasks((prev) => [...newTasks, ...prev]);
     setShowUploadPanel(true);
 
-    // 自动触发就绪任务
-    newTasks.filter((t) => t.status === "queued").forEach((t) => {
-      executeUploadTask(t.id, t.file);
-    });
+    // 启动受控并发队列（最多 2 个并发）
+    setTimeout(pumpUploadQueue, 50);
   };
 
   // 递归提取拖拽目录和文件
@@ -506,43 +588,63 @@ export function AdminMusicPage() {
   };
 
   const handlePauseTask = (taskId: string) => {
-    const target = uploadTasks.find((t) => t.id === taskId);
+    const target = tasksRef.current.find((t) => t.id === taskId);
     if (target?.controller) {
       target.controller.abort();
     }
     setUploadTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, status: "paused" } : t))
     );
+    setTimeout(pumpUploadQueue, 50);
   };
 
   const handleResumeTask = (taskId: string) => {
-    const target = uploadTasks.find((t) => t.id === taskId);
-    if (target) {
-      executeUploadTask(taskId, target.file);
-    }
+    setUploadTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: "queued", error: undefined, progress: 0 } : t))
+    );
+    setTimeout(pumpUploadQueue, 50);
   };
 
   const handleCancelTask = (taskId: string) => {
-    const target = uploadTasks.find((t) => t.id === taskId);
+    const target = tasksRef.current.find((t) => t.id === taskId);
     if (target?.controller) {
       target.controller.abort();
     }
     setUploadTasks((prev) => prev.filter((t) => t.id !== taskId));
+    setTimeout(pumpUploadQueue, 50);
   };
 
   const handleStartAllUploads = () => {
-    uploadTasks
-      .filter((t) => t.status === "queued" || t.status === "paused")
-      .forEach((t) => executeUploadTask(t.id, t.file));
+    setUploadTasks((prev) =>
+      prev.map((t) =>
+        t.status === "paused" || t.status === "error" || t.status === "queued"
+          ? { ...t, status: "queued", error: undefined }
+          : t
+      )
+    );
+    setTimeout(pumpUploadQueue, 50);
   };
 
   const handlePauseAllUploads = () => {
-    uploadTasks
+    tasksRef.current
       .filter((t) => t.status === "uploading")
       .forEach((t) => t.controller?.abort());
     setUploadTasks((prev) =>
-      prev.map((t) => (t.status === "uploading" ? { ...t, status: "paused" } : t))
+      prev.map((t) =>
+        t.status === "uploading" || t.status === "queued" ? { ...t, status: "paused" } : t
+      )
     );
+  };
+
+  const handleRetryAllFailed = () => {
+    setUploadTasks((prev) =>
+      prev.map((t) => (t.status === "error" ? { ...t, status: "queued", error: undefined, progress: 0 } : t))
+    );
+    setTimeout(pumpUploadQueue, 50);
+  };
+
+  const handleSkipAllDuplicates = () => {
+    setUploadTasks((prev) => prev.filter((t) => t.status !== "duplicate"));
   };
 
   const handleClearCompletedUploads = () => {
@@ -1227,6 +1329,27 @@ export function AdminMusicPage() {
                     <i className="ri-pause-fill" />
                     <span>全部暂停</span>
                   </button>
+                  {uploadTasks.some((t) => t.status === "error") && (
+                    <button
+                      type="button"
+                      onClick={handleRetryAllFailed}
+                      className="px-2 py-1 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 font-semibold transition flex items-center gap-1 text-[11px]"
+                      title="重试所有失败项"
+                    >
+                      <i className="ri-restart-line" />
+                      <span>重试失败 ({uploadTasks.filter((t) => t.status === "error").length})</span>
+                    </button>
+                  )}
+                  {uploadTasks.some((t) => t.status === "duplicate") && (
+                    <button
+                      type="button"
+                      onClick={handleSkipAllDuplicates}
+                      className="px-2 py-1 rounded-lg bg-black/5 dark:bg-white/5 text-neutral-500 hover:text-neutral-700 font-semibold transition text-[11px]"
+                      title="从列表中跳过已存在的歌曲"
+                    >
+                      跳过已存在
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={handleClearCompletedUploads}
@@ -1332,6 +1455,16 @@ export function AdminMusicPage() {
                           title="开始/继续上传"
                         >
                           <i className="ri-play-line text-sm" />
+                        </button>
+                      )}
+                      {task.status === "error" && (
+                        <button
+                          type="button"
+                          onClick={() => handleResumeTask(task.id)}
+                          className="p-1 rounded text-rose-500 hover:text-theme transition"
+                          title="重新尝试上传"
+                        >
+                          <i className="ri-restart-line text-sm" />
                         </button>
                       )}
                       {task.status === "duplicate" && (

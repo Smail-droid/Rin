@@ -10,6 +10,7 @@ interface TrackMeta {
   album?: string;
   pic?: string;
   quality?: string;
+  hash?: string;
 }
 
 async function loadMusicMetadata(env: any): Promise<Record<string, TrackMeta>> {
@@ -423,6 +424,8 @@ export function MusicService(): Hono {
           const pic = m.pic || obj.customMetadata?.pic || "";
           const quality = m.quality || detectAudioQuality(obj.key, obj.size, obj.httpMetadata?.contentType);
           const url = `${origin}/api/blob/${encodeURIComponent(obj.key)}`;
+          const hash = m.hash || obj.customMetadata?.hash || "";
+          const etag = (obj as any).httpEtag || (obj as any).etag || "";
 
           return {
             key: obj.key,
@@ -434,6 +437,8 @@ export function MusicService(): Hono {
             size: obj.size,
             uploaded: obj.uploaded,
             url,
+            hash,
+            etag,
           };
         });
 
@@ -464,6 +469,12 @@ export function MusicService(): Hono {
       }
 
       const buffer = await file.arrayBuffer();
+      // 计算文件的 SHA-256 内容哈希，用于精准查重与秒传比对
+      const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+      const hashHex = Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+
       const cleanName = file.name.replace(/[^\w\u4e00-\u9fa5\.\-]/g, "_");
       const storageKey = `music/${Date.now()}_${cleanName}`;
       const origin = new URL(c.req.url).origin;
@@ -473,14 +484,27 @@ export function MusicService(): Hono {
         customMetadata: {
           name: file.name.replace(/\.[a-zA-Z0-9]+$/, ""),
           artist: "本地上传",
+          hash: hashHex,
         },
       });
+
+      // 同步轻量索引
+      const metaMap = await loadMusicMetadata(env);
+      metaMap[storageKey] = {
+        name: file.name.replace(/\.[a-zA-Z0-9]+$/, ""),
+        artist: "本地上传",
+        quality: detectAudioQuality(storageKey, buffer.byteLength, file.type),
+        hash: hashHex,
+      };
+      await saveMusicMetadata(env, metaMap);
 
       return c.json({
         success: true,
         key: storageKey,
         url: `${origin}/api/blob/${encodeURIComponent(storageKey)}`,
         name: file.name,
+        hash: hashHex,
+        size: buffer.byteLength,
       });
     } catch (e: any) {
       return c.json({ error: e.message }, 500);
