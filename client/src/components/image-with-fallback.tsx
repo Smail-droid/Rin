@@ -1,5 +1,6 @@
 import type { ImgHTMLAttributes } from "react";
 import { useImageLoadState } from "../utils/use-image-load-state";
+import { normalizeBlobUrl } from "../utils/url";
 
 type ImageWithFallbackProps = Omit<
   ImgHTMLAttributes<HTMLImageElement>,
@@ -17,7 +18,7 @@ export function ImageWithFallback({
   src,
   ...props
 }: ImageWithFallbackProps) {
-  const normalizedSrc = src?.trim() || undefined;
+  const normalizedSrc = (normalizeBlobUrl(src) || src?.trim()) || undefined;
   const { failed, imageRef, loaded, onError, onLoad } = useImageLoadState(normalizedSrc);
   const showFallback = !normalizedSrc || failed;
 
@@ -39,6 +40,7 @@ export function ImageWithFallback({
           ref={imageRef}
           src={normalizedSrc}
           alt={failed ? "" : alt}
+          referrerPolicy="no-referrer"
           onLoad={onLoad}
           onError={onError}
           className={`absolute inset-0 h-full w-full object-cover transition-opacity ${failed ? "opacity-0" : "opacity-100"} ${imageClassName}`}

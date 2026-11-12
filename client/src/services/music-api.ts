@@ -74,18 +74,7 @@ export class GdMusicService {
       count: String(count),
     });
 
-    // 优先尝试直连端点
-    try {
-      const resp = await fetch(`${this.baseEndpoint}?${q.toString()}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (Array.isArray(data)) {
-          return this.normalizeResults(data, source);
-        }
-      }
-    } catch {}
-
-    // 平滑降级至本站 Worker 边缘代理服务
+    // 1. 优先走同源 Worker 边缘代理 (彻底消灭浏览器跨域 CORS 拦截与 net::ERR_FAILED 红色报错)
     try {
       const fallbackUrl = `/api/music/search?${q.toString()}`;
       const resp = await fetch(fallbackUrl);
@@ -95,8 +84,21 @@ export class GdMusicService {
           return this.normalizeResults(data, source);
         }
       }
-    } catch (e) {
-      console.warn(`[GdMusicService] Search for source ${source} failed:`, e);
+    } catch {}
+
+    // 2. 独立调试兜底
+    if (this.baseEndpoint && !this.baseEndpoint.startsWith("/")) {
+      try {
+        const resp = await fetch(`${this.baseEndpoint}?${q.toString()}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (Array.isArray(data)) {
+            return this.normalizeResults(data, source);
+          }
+        }
+      } catch (e) {
+        console.warn(`[GdMusicService] Direct search for source ${source} failed:`, e);
+      }
     }
     return [];
   }
@@ -125,14 +127,6 @@ export class GdMusicService {
     });
 
     try {
-      const resp = await fetch(`${this.baseEndpoint}?${q.toString()}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data?.url) return data.url;
-      }
-    } catch {}
-
-    try {
       const fallbackUrl = `/api/music/song?${q.toString()}`;
       const resp = await fetch(fallbackUrl);
       if (resp.ok) {
@@ -140,6 +134,16 @@ export class GdMusicService {
         if (data?.url) return data.url;
       }
     } catch {}
+
+    if (this.baseEndpoint && !this.baseEndpoint.startsWith("/")) {
+      try {
+        const resp = await fetch(`${this.baseEndpoint}?${q.toString()}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data?.url) return data.url;
+        }
+      } catch {}
+    }
 
     return "";
   }
@@ -157,20 +161,22 @@ export class GdMusicService {
     });
 
     try {
-      const resp = await fetch(`${this.baseEndpoint}?${q.toString()}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data?.url) return data.url;
-      }
-    } catch {}
-
-    try {
       const resp = await fetch(`/api/music/pic?${q.toString()}`);
       if (resp.ok) {
         const data = await resp.json();
         if (data?.url) return data.url;
       }
     } catch {}
+
+    if (this.baseEndpoint && !this.baseEndpoint.startsWith("/")) {
+      try {
+        const resp = await fetch(`${this.baseEndpoint}?${q.toString()}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data?.url) return data.url;
+        }
+      } catch {}
+    }
 
     return "";
   }
@@ -187,20 +193,22 @@ export class GdMusicService {
     });
 
     try {
-      const resp = await fetch(`${this.baseEndpoint}?${q.toString()}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data?.lyric) return data.lyric;
-      }
-    } catch {}
-
-    try {
       const resp = await fetch(`/api/music/lyric?${q.toString()}`);
       if (resp.ok) {
         const data = await resp.json();
         if (data?.lyric) return data.lyric;
       }
     } catch {}
+
+    if (this.baseEndpoint && !this.baseEndpoint.startsWith("/")) {
+      try {
+        const resp = await fetch(`${this.baseEndpoint}?${q.toString()}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data?.lyric) return data.lyric;
+        }
+      } catch {}
+    }
 
     return "";
   }

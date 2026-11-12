@@ -92,10 +92,11 @@ function createStorageResponse(object: R2ObjectBody | R2Object, body?: BodyInit 
     headers.set("Cache-Control", "public, max-age=31536000, immutable");
   }
 
-  if (!headers.has("Access-Control-Allow-Origin")) {
-    headers.set("Access-Control-Allow-Origin", "*");
-  }
-
+  headers.set("Access-Control-Allow-Origin", "*");
+  headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+  headers.set("Access-Control-Allow-Headers", "Range, Content-Type, Accept, Authorization");
+  headers.set("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges, ETag");
+  headers.set("Access-Control-Allow-Private-Network", "true");
   headers.set("X-Content-Type-Options", "nosniff");
 
   return new Response(body ?? null, {

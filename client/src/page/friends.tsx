@@ -1,16 +1,11 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "wouter";
 import { Helmet } from 'react-helmet';
-import { useTranslation } from "react-i18next";
 import { Modal } from "@rin/ui";
-import { useAlert, useConfirm } from "../components/dialog";
+import { useConfirm } from "../components/dialog";
 import { ImageWithFallback } from "../components/image-with-fallback";
 import { Waiting } from "../components/loading";
 import { client } from "../app/runtime";
-import { ClientConfigContext } from "../state/config";
 import { ProfileContext } from "../state/profile";
-
-import { useSiteConfig } from "../hooks/useSiteConfig";
 import { siteName } from "../utils/constants";
 import { safeHttpUrl } from "../utils/url";
 
@@ -28,16 +23,84 @@ export type FriendItem = {
     sort_order?: number | null;
 };
 
-// 预设六大严谨画廊与极客基建分类
-export const PRESET_CATEGORIES = [
-    "全部",
-    "友邻博客",
-    "主机算力",
-    "探针测速",
-    "极客工具",
-    "技术社区",
-    "漫游灵感",
-] as const;
+// 头像呈现模式：dual（子母融合：主站点Logo + 坛友头像角标）、site（仅站点Logo）、ns（仅NodeSeek坛友头像）
+export type AvatarDisplayMode = "dual" | "site" | "ns";
+
+export interface NodeSeekUserData {
+    name?: string;
+    member_name?: string;
+    rank?: number;
+    coin?: number;
+    days?: number | string;
+    join_days?: number | string;
+    posts?: number;
+    nPost?: number;
+    comments?: number;
+    nComment?: number;
+    bio?: string;
+    created_at_str?: string;
+}
+
+// 纯矢量手绘钻石等级切面 SVG 图标 (彻底终结黄色奖杯或系统原生 Emoji 像素失真)
+export function DiamondRankSvg({ className = "w-3 h-3" }: { className?: string }) {
+    return (
+        <svg
+            className={className}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M6 3h12l4 6-10 12L2 9z" fill="currentColor" fillOpacity="0.2" />
+            <path d="M11 3 8 9l4 12 4-12-3-6" />
+            <path d="M2 9h20" />
+        </svg>
+    );
+}
+
+// 复制 NodeSeek 个人空间完整概览文本智能结构化解析
+export function parseNodeSeekPastedText(text: string): {
+    name?: string;
+    rank?: number;
+    coin?: number;
+    days?: number;
+    posts?: number;
+    comments?: number;
+    bio?: string;
+} {
+    const res: any = {};
+    if (!text) return res;
+
+    const rankMatch = text.match(/Lv\.?\s*(\d+)/i);
+    if (rankMatch) res.rank = parseInt(rankMatch[1], 10);
+
+    const coinMatch = text.match(/鸡腿\s*[:：]?\s*(\d+)/i) || text.match(/(\d+)\s*鸡腿/i);
+    if (coinMatch) res.coin = parseInt(coinMatch[1], 10);
+
+    const daysMatch = text.match(/已加入\s*[:：]?\s*(\d+)\s*天/i) || text.match(/加入\s*[:：]?\s*(\d+)\s*天/i) || text.match(/(\d+)\s*天/i);
+    if (daysMatch) res.days = parseInt(daysMatch[1], 10);
+
+    const postsMatch = text.match(/主题\s*[:：]?\s*(\d+)/i) || text.match(/(\d+)\s*主题/i);
+    if (postsMatch) res.posts = parseInt(postsMatch[1], 10);
+
+    const commentsMatch = text.match(/评论\s*[:：]?\s*(\d+)/i) || text.match(/(\d+)\s*评论/i);
+    if (commentsMatch) res.comments = parseInt(commentsMatch[1], 10);
+
+    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length > 0) {
+        const firstLine = lines[0].replace(/NodeSeek/i, "").trim();
+        if (firstLine && !firstLine.includes("Lv") && !firstLine.includes("鸡腿") && firstLine.length <= 25) {
+            res.name = firstLine;
+        }
+    }
+
+    const bioMatch = text.match(/个性签名\s*[:：]?\s*([^\n]+)/i) || text.match(/签名\s*[:：]?\s*([^\n]+)/i);
+    if (bioMatch) res.bio = bioMatch[1].trim();
+
+    return res;
+}
 
 // 历史分类向后兼容标准化映射
 export function normalizeCategory(cat: string): string {
@@ -49,33 +112,163 @@ export function normalizeCategory(cat: string): string {
         raw === "网络测速/路由" ||
         raw === "买鸡/探针监控" ||
         raw === "测速" ||
-        raw === "探针监控"
-    ) return "探针测速";
+        raw === "探针监控" ||
+        raw === "探针测速"
+    ) return "主机算力";
     if (raw === "极客常用工具" || raw === "常用工具") return "极客工具";
     if (raw === "技术极客社区" || raw === "极客社区") return "技术社区";
     if (raw === "其他灵感") return "漫游灵感";
     return raw || "友邻博客";
 }
 
-// 从描述中解析分类标签 [分类] 以及纯净简介
-export function parseFriendCategory(desc: string | null, url: string = ""): { category: string; cleanDesc: string } {
-    if (!desc) {
-        return { category: inferCategoryFallback(url, ""), cleanDesc: "" };
+// 浏览器客户端双轨兜底直连获取 NodeSeek 真实坛友数据
+export async function fetchClientSideNsDetail(uid: string): Promise<NodeSeekUserData | null> {
+    if (!uid) return null;
+    try {
+        const clientMUrl = `https://api.microlink.io/?url=${encodeURIComponent(`https://www.nodeseek.com/api/account/getInfo/${uid}`)}&data.body=%7B%22selector%22%3A%22body%22%7D`;
+        const cmRes = await fetch(clientMUrl, { headers: { "Accept": "application/json" } });
+        if (cmRes.ok) {
+            const cmData = await cmRes.json();
+            const rawBody = cmData?.data?.body || "";
+            const jsonMatch = rawBody.match(/\{"success":true,"detail":\{[\s\S]*?\}\}/);
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                if (parsed?.detail) {
+                    const d = parsed.detail;
+                    let joinDays = d.created_at_str ? d.created_at_str.replace("days ago", "天") : undefined;
+                    if (d.created_at) {
+                        const ts = typeof d.created_at === "number" ? (d.created_at < 1e11 ? d.created_at * 1000 : d.created_at) : new Date(d.created_at).getTime();
+                        if (!isNaN(ts) && ts > 0) {
+                            const days = Math.max(1, Math.floor((Date.now() - ts) / (86400 * 1000)));
+                            joinDays = `${days}天`;
+                        }
+                    }
+                    return {
+                        name: d.member_name,
+                        member_name: d.member_name,
+                        bio: d.bio ? d.bio.trim() : undefined,
+                        rank: typeof d.rank === "number" ? d.rank : undefined,
+                        coin: typeof d.coin === "number" ? d.coin : undefined,
+                        days: joinDays,
+                        join_days: joinDays,
+                        posts: typeof d.nPost === "number" ? d.nPost : undefined,
+                        nPost: typeof d.nPost === "number" ? d.nPost : undefined,
+                        comments: typeof d.nComment === "number" ? d.nComment : undefined,
+                        nComment: typeof d.nComment === "number" ? d.nComment : undefined,
+                        created_at_str: d.created_at_str,
+                    };
+                }
+            }
+        }
+    } catch {}
+    return null;
+}
+
+// 从描述中解析分类标签 [分类]、HTML 注释元数据扩展以及纯净简介
+export function parseFriendCategory(
+    desc: string | null,
+    url: string = "",
+    friendName: string = "",
+    avatar: string = ""
+): {
+    category: string;
+    cleanDesc: string;
+    spaceUrl?: string;
+    probeUrl?: string;
+    nodeCount?: number;
+    nsData?: NodeSeekUserData;
+    avatarMode?: AvatarDisplayMode;
+    nsAvatar?: string;
+    siteAvatar?: string;
+} {
+    let raw = desc || "";
+    let spaceUrl: string | undefined;
+    let probeUrl: string | undefined;
+    let nodeCount: number | undefined;
+    let nsData: NodeSeekUserData | undefined;
+    let avatarMode: AvatarDisplayMode = "dual";
+    let nsAvatar: string | undefined;
+    let siteAvatar: string | undefined;
+
+    // 1. 提取 HTML 注释 metadata: <!--space:xxx|probe:xxx|nodes:5|ns:{...}|avatarMode:dual|nsAvatar:xxx|siteAvatar:xxx-->
+    const commentMatch = raw.match(/<!--(.*?)-->/);
+    if (commentMatch) {
+        const metaStr = commentMatch[1];
+        raw = raw.replace(/<!--.*?-->/, "").trim();
+        metaStr.split("|").forEach(part => {
+            const colonIdx = part.indexOf(":");
+            if (colonIdx !== -1) {
+                const k = part.slice(0, colonIdx).trim();
+                const v = part.slice(colonIdx + 1).trim();
+                if (k === "space" && v) spaceUrl = v;
+                if (k === "probe" && v) probeUrl = v;
+                if (k === "nodes" && v) nodeCount = parseInt(v, 10);
+                if (k === "avatarMode" && (v === "site" || v === "ns" || v === "dual")) avatarMode = v as AvatarDisplayMode;
+                if (k === "nsAvatar" && v) nsAvatar = v;
+                if (k === "siteAvatar" && v) siteAvatar = v;
+                if (k === "ns" && v) {
+                    try {
+                        nsData = JSON.parse(decodeURIComponent(v));
+                    } catch {}
+                }
+            }
+        });
     }
-    const match = desc.match(/^\[(.*?)\]\s*(.*)$/);
-    if (match && match[1]) {
+
+    // 自动推导 spaceUrl
+    if (!spaceUrl) {
+        if (url && (url.includes("nodeseek.com/space/") || url.includes("space/"))) {
+            spaceUrl = url;
+        } else if (friendName) {
+            const uidMatch = friendName.match(/NodeSeek#(\d+)/i) || friendName.match(/UID[:\s#]+(\d+)/i);
+            if (uidMatch && uidMatch[1]) {
+                spaceUrl = `https://www.nodeseek.com/space/${uidMatch[1]}#/general`;
+            }
+        }
+        if (!spaceUrl && avatar) {
+            const avUidMatch = avatar.match(/nodeseek\.com\/avatar\/(\d+)\.png/i);
+            if (avUidMatch && avUidMatch[1]) {
+                spaceUrl = `https://www.nodeseek.com/space/${avUidMatch[1]}#/general`;
+            }
+        }
+    }
+
+    if (spaceUrl && !probeUrl && url && !url.includes("nodeseek.com/space/")) {
+        probeUrl = url;
+    }
+
+    // 2. 匹配开头的分类标识 [分类] 或 【分类】
+    const match = raw.match(/^\[([^\]]+)\]\s*(.*)$/) || raw.match(/^【([^】]+)】\s*(.*)$/);
+    if (match) {
         return {
             category: normalizeCategory(match[1]),
-            cleanDesc: match[2]?.trim() || "",
+            cleanDesc: match[2].trim(),
+            spaceUrl,
+            probeUrl,
+            nodeCount,
+            nsData,
+            avatarMode,
+            nsAvatar,
+            siteAvatar,
         };
     }
+
+    // 3. 启发式回退推导
+    const fallbackCategory = inferCategoryFallback(url, raw);
     return {
-        category: inferCategoryFallback(url, desc),
-        cleanDesc: desc.trim(),
+        category: fallbackCategory,
+        cleanDesc: raw.trim(),
+        spaceUrl,
+        probeUrl,
+        nodeCount,
+        nsData,
+        avatarMode,
+        nsAvatar,
+        siteAvatar,
     };
 }
 
-// 根据 URL 与文本前置启发分类
+// 启发式分类推导引擎
 function inferCategoryFallback(url: string, text: string): string {
     const combined = `${url} ${text}`.toLowerCase();
     if (
@@ -85,7 +278,7 @@ function inferCategoryFallback(url: string, text: string): string {
         combined.includes("server") ||
         combined.includes("idc") ||
         combined.includes("机房") ||
-        combined.includes("买鸡") ||
+        combined.includes("云服务器") ||
         combined.includes("主机")
     ) {
         return "主机算力";
@@ -97,10 +290,13 @@ function inferCategoryFallback(url: string, text: string): string {
         combined.includes("ping") ||
         combined.includes("bgp") ||
         combined.includes("测速") ||
-        combined.includes("探针") ||
         combined.includes("路由") ||
+        combined.includes("回程") ||
+        combined.includes("traceroute") ||
+        combined.includes("探针") ||
         combined.includes("nezha") ||
-        combined.includes("uptime")
+        combined.includes("uptime") ||
+        combined.includes("serverstatus")
     ) {
         return "探针测速";
     }
@@ -110,7 +306,9 @@ function inferCategoryFallback(url: string, text: string): string {
         combined.includes("api") ||
         combined.includes("docker") ||
         combined.includes("dev") ||
-        combined.includes("工具")
+        combined.includes("toolbox") ||
+        combined.includes("工具") ||
+        combined.includes("转换")
     ) {
         return "极客工具";
     }
@@ -138,20 +336,57 @@ function inferCategoryFallback(url: string, text: string): string {
     return "友邻博客";
 }
 
-// 封装带分类标签的完整描述
-export function formatFriendDesc(category: string, cleanDesc: string): string {
-    const trimmedCat = category.trim();
-    const trimmedDesc = cleanDesc.trim();
-    if (!trimmedCat || trimmedCat === "全部") {
-        return trimmedDesc;
+// 规范化拼接分类前缀与 HTML 注释元数据
+export function formatFriendDesc(
+    category: string,
+    desc: string,
+    meta?: {
+        spaceUrl?: string;
+        probeUrl?: string;
+        nodeCount?: number;
+        nsData?: NodeSeekUserData;
+        avatarMode?: AvatarDisplayMode;
+        nsAvatar?: string;
+        siteAvatar?: string;
     }
-    return `[${trimmedCat}] ${trimmedDesc}`;
+): string {
+    const cat = normalizeCategory(category);
+    const cleanDesc = desc.trim();
+
+    let metaParts: string[] = [];
+    if (meta) {
+        if (meta.spaceUrl) metaParts.push(`space:${meta.spaceUrl.trim()}`);
+        if (meta.probeUrl) metaParts.push(`probe:${meta.probeUrl.trim()}`);
+        if (meta.nodeCount !== undefined && meta.nodeCount > 0 && meta.probeUrl) metaParts.push(`nodes:${meta.nodeCount}`);
+        if (meta.avatarMode) metaParts.push(`avatarMode:${meta.avatarMode}`);
+        if (meta.nsAvatar) metaParts.push(`nsAvatar:${meta.nsAvatar.trim()}`);
+        if (meta.siteAvatar) metaParts.push(`siteAvatar:${meta.siteAvatar.trim()}`);
+        if (meta.nsData) {
+            try {
+                metaParts.push(`ns:${encodeURIComponent(JSON.stringify(meta.nsData))}`);
+            } catch {}
+        }
+    }
+    const metaStr = metaParts.length > 0 ? `<!--${metaParts.join("|")}-->` : "";
+
+    const combined = cat && cat !== "全部"
+        ? `[${cat}] ${cleanDesc}`
+        : cleanDesc;
+
+    return metaStr ? `${metaStr} ${combined}`.trim() : combined;
 }
 
+export const PRESET_CATEGORIES = [
+    "全部",
+    "友邻博客",
+    "主机算力",
+    "探针测速",
+    "极客工具",
+    "技术社区",
+    "漫游灵感"
+];
+
 export function FriendsPage() {
-    const { t } = useTranslation();
-    const siteConfig = useSiteConfig();
-    const config = useContext(ClientConfigContext);
     const profile = useContext(ProfileContext);
 
     const [allFriends, setAllFriends] = useState<FriendItem[]>([]);
@@ -165,6 +400,7 @@ export function FriendsPage() {
     const [formName, setFormName] = useState("");
     const [formDesc, setFormDesc] = useState("");
     const [formAvatar, setFormAvatar] = useState("");
+    const [formSpaceUrl, setFormSpaceUrl] = useState("");
     const [formCategory, setFormCategory] = useState("友邻博客");
     const [isSniffing, setIsSniffing] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -172,623 +408,729 @@ export function FriendsPage() {
     // 视图风格切换 (画册卡片 / 高密书签 / 拍立得便签)
     const [viewStyle, setViewStyle] = useState<"card" | "compact" | "polaroid">(() => {
         try {
-            return (localStorage.getItem("rin_friends_view_style") || "card") as any;
+            const saved = localStorage.getItem("rin_friends_view_style");
+            if (saved === "compact" || saved === "polaroid") return saved;
+            return "card";
         } catch {
             return "card";
         }
     });
 
+    // 来源头像自动提取与 R2 专属转存状态
+    const [sourceAvatarUrl, setSourceAvatarUrl] = useState("");
+    const [isExtractingAvatar, setIsExtractingAvatar] = useState(false);
+    const [isRefiningDesc, setIsRefiningDesc] = useState(false);
+    const [siteFaviconUrl, setSiteFaviconUrl] = useState("");
+    const [nsAvatarUrl, setNsAvatarUrl] = useState("");
+    const [nsUserData, setNsUserData] = useState<any | null>(null);
+    const [iconChoice, setIconChoice] = useState<AvatarDisplayMode>("dual");
+
     // 编辑友链状态
     const [editingFriend, setEditingFriend] = useState<FriendItem | null>(null);
 
     const ref = useRef(false);
-    const { showAlert, AlertUI } = useAlert();
     const { showConfirm, ConfirmUI } = useConfirm();
 
-    // 加载友链列表
-    const reloadFriends = useCallback(() => {
-        client.friend.list().then(({ data }) => {
-            if (data) {
-                setAllFriends(data.friend_list || []);
-            }
-            setStatus('idle');
-        });
-    }, []);
+    const [extractBtnFeedback, setExtractBtnFeedback] = useState("");
+    const extractDebounceTimer = useRef<any>(null);
 
-    useEffect(() => {
-        if (ref.current) return;
-        reloadFriends();
-        ref.current = true;
-    }, [reloadFriends]);
+    // 输入 NodeSeek 链接或纯数字 UID 实时响应空间直达链接，并智能防抖自动触发提取
+    const handleSourceAvatarInputChange = (val: string) => {
+        setSourceAvatarUrl(val);
+        const trimmed = val.trim();
+        const pureDigits = trimmed.match(/^\d{1,8}$/);
+        const spaceMatch = trimmed.match(/nodeseek\.com\/space\/(\d+)/i) || trimmed.match(/space\/(\d+)/i);
+        const uid = pureDigits ? pureDigits[0] : spaceMatch ? spaceMatch[1] : null;
+        if (uid) {
+            setFormSpaceUrl(`https://www.nodeseek.com/space/${uid}#/general`);
+            setNsAvatarUrl(`https://www.nodeseek.com/avatar/${uid}.png`);
 
-    // 区分已过审与待审核列表
-    const acceptedFriends = useMemo(() => {
-        return allFriends.filter(f => f.accepted === 1);
-    }, [allFriends]);
-
-    const pendingFriends = useMemo(() => {
-        return allFriends.filter(f => f.accepted === 0);
-    }, [allFriends]);
-
-    const rejectedFriends = useMemo(() => {
-        return allFriends.filter(f => f.accepted === -1);
-    }, [allFriends]);
-
-    // 过滤列表
-    const filteredFriends = useMemo(() => {
-        let list: FriendItem[] = [];
-        if (activeCategory === "待审核") {
-            list = pendingFriends;
-        } else if (activeCategory === "已拒绝") {
-            list = rejectedFriends;
-        } else {
-            list = acceptedFriends.filter(item => {
-                if (activeCategory === "全部") return true;
-                const { category } = parseFriendCategory(item.desc, item.url);
-                return category === activeCategory;
-            });
+            if (extractDebounceTimer.current) clearTimeout(extractDebounceTimer.current);
+            extractDebounceTimer.current = setTimeout(() => {
+                void handleExtractSourceAvatar(trimmed);
+            }, 400);
+        } else if (trimmed.startsWith("http")) {
+            setFormSpaceUrl(trimmed);
         }
+    };
 
-        if (!searchKeyword.trim()) {
-            return list;
-        }
+    // 一键从 NodeSeek 空间提取真实头像、昵称与资产数据并存入 R2 avatars/ 独立目录
+    const handleExtractSourceAvatar = async (overrideUrl?: string) => {
+        const targetUrl = (overrideUrl || sourceAvatarUrl).trim();
+        if (!targetUrl) return;
 
-        const kw = searchKeyword.toLowerCase().trim();
-        return list.filter(item => {
-            const { category, cleanDesc } = parseFriendCategory(item.desc, item.url);
-            return (
-                item.name.toLowerCase().includes(kw) ||
-                (cleanDesc && cleanDesc.toLowerCase().includes(kw)) ||
-                category.toLowerCase().includes(kw) ||
-                item.url.toLowerCase().includes(kw)
-            );
-        });
-    }, [activeCategory, acceptedFriends, pendingFriends, rejectedFriends, searchKeyword]);
-
-    // 一键智能嗅探 URL
-    const handleSniffUrl = async () => {
-        let raw = formUrl.trim();
-        if (!raw) {
-            showAlert("请先输入站点 URL 地址");
-            return;
-        }
-        if (!raw.startsWith("http://") && !raw.startsWith("https://")) {
-            raw = `https://${raw}`;
-            setFormUrl(raw);
-        }
-
-        setIsSniffing(true);
+        setIsExtractingAvatar(true);
+        setExtractBtnFeedback("");
         try {
-            const { data, error } = await client.friend.inspect(raw);
-            if (error || !data) {
-                // 嗅探受阻时平滑兜底
-                try {
-                    const parsed = new URL(raw);
-                    const domain = parsed.hostname;
-                    setFormName(prev => prev || domain);
-                    setFormAvatar(prev => prev || `https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
-                    setFormCategory(prev => prev || inferCategoryFallback(raw, ""));
-                } catch {}
-                showAlert("站点嗅探响应超时或受防护阻断，已为您自动补全域名，可直接微调后提交");
-            } else {
-                setFormName(data.name || "");
-                setFormDesc(data.desc || "");
-                setFormAvatar(data.avatar || `https://www.google.com/s2/favicons?domain=${data.domain}&sz=128`);
-                if (data.category) {
-                    setFormCategory(data.category);
+            const token = localStorage.getItem("rin_auth_token") || "";
+            const res = await fetch("/api/friend/extract-source-avatar", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({
+                    sourceUrl: targetUrl,
+                    name: formName,
+                }),
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.avatarUrl) {
+                    setNsAvatarUrl(data.avatarUrl);
+                    if (!formAvatar || iconChoice === "ns" || iconChoice === "dual") {
+                        setFormAvatar(data.avatarUrl);
+                    }
+                }
+                if (data.spaceUrl && !formSpaceUrl) {
+                    setFormSpaceUrl(data.spaceUrl);
+                }
+
+                let finalNsDetail = data.nsDetail;
+                const uidMatch = targetUrl.match(/^\d{1,8}$/) || targetUrl.match(/space\/(\d+)/i);
+                if (!finalNsDetail && uidMatch) {
+                    const clientDetail = await fetchClientSideNsDetail(uidMatch[1] || uidMatch[0]);
+                    if (clientDetail) {
+                        finalNsDetail = clientDetail;
+                    }
+                }
+
+                if (finalNsDetail) {
+                    setNsUserData(finalNsDetail);
+                    if (finalNsDetail.member_name) {
+                        setFormName(finalNsDetail.member_name);
+                        setExtractBtnFeedback(`✓ 已识别: ${finalNsDetail.member_name}`);
+                    }
+                    if (finalNsDetail.bio && !formDesc) {
+                        setFormDesc(finalNsDetail.bio.slice(0, 40));
+                    }
+                } else if (data.inferredName && (!formName || formName.includes("NodeSeek#"))) {
+                    setFormName(data.inferredName);
+                    setExtractBtnFeedback(`✓ 已识别: ${data.inferredName}`);
+                }
+                if (data.suggestedDesc && !formDesc) {
+                    setFormDesc(data.suggestedDesc);
                 }
             }
         } catch (err: any) {
-            showAlert("嗅探异常，请手动补充信息");
+            console.error("Extract source avatar failed:", err);
+        } finally {
+            setIsExtractingAvatar(false);
+            setTimeout(() => setExtractBtnFeedback(""), 3500);
+        }
+    };
+
+    // 智能精炼简介 (不超过 10 个汉字，单行说清核心)
+    const handleRefineDesc = async () => {
+        setIsRefiningDesc(true);
+        try {
+            const token = localStorage.getItem("rin_auth_token") || "";
+            const res = await fetch("/api/friend/ai-refine-desc", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({
+                    url: formUrl,
+                    title: formName,
+                    currentDesc: formDesc,
+                    nsData: nsUserData,
+                    category: formCategory,
+                }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.desc) {
+                    setFormDesc(data.desc);
+                }
+            }
+        } catch (err) {
+            console.error("Refine desc failed:", err);
+        } finally {
+            setIsRefiningDesc(false);
+        }
+    };
+
+    // 粘贴或输入目标站点 URL 自动智能嗅探标题、Favicon 与分类
+    const handleSniffUrl = async () => {
+        if (!formUrl || !formUrl.startsWith("http")) return;
+        setIsSniffing(true);
+        try {
+            const token = localStorage.getItem("rin_auth_token") || "";
+            const res = await fetch("/api/friend/inspect", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({ url: formUrl }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.name && !formName) setFormName(data.name);
+                if (data.desc && !formDesc) setFormDesc(data.desc);
+                if (data.avatar) {
+                    setSiteFaviconUrl(data.avatar);
+                    if (!formAvatar || iconChoice === "site") setFormAvatar(data.avatar);
+                }
+                if (data.category) setFormCategory(data.category);
+            }
+        } catch (err) {
+            console.error("Sniff URL failed:", err);
         } finally {
             setIsSniffing(false);
         }
     };
 
-    // 提交新站点（游客提交或管理员发布）
-    const handleSubmitNew = async () => {
-        if (!formUrl.trim() || !formName.trim() || !formAvatar.trim()) {
-            showAlert("请完整填写站点 URL、名称以及图标地址");
+    // 切换子母头像展示形态
+    const handleIconChoiceChange = (mode: AvatarDisplayMode) => {
+        setIconChoice(mode);
+        if (mode === "site" && siteFaviconUrl) {
+            setFormAvatar(siteFaviconUrl);
+        } else if (mode === "ns" && nsAvatarUrl) {
+            setFormAvatar(nsAvatarUrl);
+        } else if (mode === "dual") {
+            setFormAvatar(siteFaviconUrl || nsAvatarUrl || formAvatar);
+        }
+    };
+
+    const reloadFriends = useCallback(() => {
+        setStatus('loading');
+        client.friend.list().then(({ data }) => {
+            if (data?.friend_list) {
+                setAllFriends(data.friend_list);
+            }
+            setStatus('idle');
+        }).catch(() => {
+            setStatus('idle');
+        });
+    }, []);
+
+    useEffect(() => {
+        if (!ref.current) {
+            ref.current = true;
+            reloadFriends();
+        }
+    }, [reloadFriends]);
+
+    const acceptedFriends = useMemo(() => {
+        return allFriends.filter((f) => f.accepted === 1);
+    }, [allFriends]);
+
+    const pendingFriends = useMemo(() => {
+        return allFriends.filter((f) => f.accepted === 0);
+    }, [allFriends]);
+
+    const filteredFriends = useMemo(() => {
+        let list = acceptedFriends;
+        if (activeCategory !== "全部") {
+            list = list.filter((f) => {
+                const parsed = parseFriendCategory(f.desc, f.url, f.name, f.avatar);
+                return parsed.category === activeCategory;
+            });
+        }
+        if (searchKeyword.trim()) {
+            const kw = searchKeyword.toLowerCase().trim();
+            list = list.filter((f) => {
+                const parsed = parseFriendCategory(f.desc, f.url, f.name, f.avatar);
+                return (
+                    f.name.toLowerCase().includes(kw) ||
+                    f.url.toLowerCase().includes(kw) ||
+                    (f.desc && f.desc.toLowerCase().includes(kw)) ||
+                    parsed.cleanDesc.toLowerCase().includes(kw) ||
+                    parsed.category.toLowerCase().includes(kw)
+                );
+            });
+        }
+        return list;
+    }, [acceptedFriends, activeCategory, searchKeyword]);
+
+    const handleViewStyleChange = (style: "card" | "compact" | "polaroid") => {
+        setViewStyle(style);
+        try {
+            localStorage.setItem("rin_friends_view_style", style);
+        } catch {}
+    };
+
+    const handleApprove = async (id: number) => {
+        await client.friend.update(id, { accepted: 1 });
+        reloadFriends();
+    };
+
+    const handleReject = async (id: number) => {
+        await client.friend.update(id, { accepted: -1 });
+        reloadFriends();
+    };
+
+    const handleDelete = (id: number, name: string) => {
+        showConfirm("删除友链", `确定要删除「${name}」吗？此操作无法撤销。`, async () => {
+            await client.friend.delete(id);
+            reloadFriends();
+        });
+    };
+
+    const [submitError, setSubmitError] = useState("");
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSubmitError("");
+        if (!formName.trim() || !formUrl.trim()) {
+            setSubmitError("请完整填写名称与站点链接");
             return;
         }
 
-        const safeUrl = formUrl.trim().startsWith("http") ? formUrl.trim() : `https://${formUrl.trim()}`;
-        const finalDesc = formatFriendDesc(formCategory, formDesc);
-
         setIsSubmitting(true);
         try {
-            const apiCall = (profile?.permission || profile?.id)
-                ? client.friend.create({
-                    name: formName.trim().slice(0, 20),
-                    desc: finalDesc.slice(0, 100),
-                    avatar: formAvatar.trim().slice(0, 200),
-                    url: safeUrl.slice(0, 200),
-                })
-                : client.friend.apply({
-                    name: formName.trim().slice(0, 25),
-                    desc: finalDesc.slice(0, 120),
-                    avatar: formAvatar.trim().slice(0, 200),
-                    url: safeUrl.slice(0, 200),
+            const finalAvatar = iconChoice === "ns"
+                ? (nsAvatarUrl || formAvatar)
+                : iconChoice === "site"
+                ? (siteFaviconUrl || formAvatar)
+                : (siteFaviconUrl || formAvatar || nsAvatarUrl || "https://dummyimage.com/128x128/ff4d79/ffffff&text=Rin");
+
+            const formattedDesc = formatFriendDesc(formCategory, formDesc, {
+                spaceUrl: formSpaceUrl,
+                nsData: nsUserData || undefined,
+                avatarMode: iconChoice,
+                nsAvatar: nsAvatarUrl,
+                siteAvatar: siteFaviconUrl,
+            });
+
+            if (profile?.permission) {
+                await client.friend.create({
+                    name: formName.trim(),
+                    desc: formattedDesc,
+                    avatar: finalAvatar.trim(),
+                    url: formUrl.trim(),
                 });
-
-            const { error } = await apiCall;
-
-            if (error) {
-                showAlert(typeof error === "string" ? error : (error.value as string) || "提交失败");
             } else {
-                setIsAddModalOpen(false);
-                // 重置表单
-                setFormUrl("");
-                setFormName("");
-                setFormDesc("");
-                setFormAvatar("");
-                setFormCategory("友邻博客");
-
-                if (profile?.permission) {
-                    showAlert("已成功收录并发布到星廊！", () => reloadFriends());
-                } else {
-                    showAlert("已提交收录申请！站长审核通过后将即刻展示在星廊中。", () => reloadFriends());
+                const res = await fetch("/api/friend/apply", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: formName.trim(),
+                        desc: formattedDesc,
+                        avatar: finalAvatar.trim(),
+                        url: formUrl.trim(),
+                    }),
+                });
+                if (!res.ok) {
+                    const txt = await res.text();
+                    throw new Error(txt || "申请提交失败");
                 }
             }
-        } catch (e: any) {
-            showAlert(e.message || "提交失败");
+
+            setIsAddModalOpen(false);
+            setFormUrl("");
+            setFormName("");
+            setFormDesc("");
+            setFormAvatar("");
+            setFormSpaceUrl("");
+            setFormCategory("友邻博客");
+            setSourceAvatarUrl("");
+            setSiteFaviconUrl("");
+            setNsAvatarUrl("");
+            setNsUserData(null);
+            setIconChoice("dual");
+            reloadFriends();
+        } catch (err: any) {
+            setSubmitError(err.message || "提交失败，请重试");
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // 管理员快捷通过
-    const handleApprove = (friend: FriendItem) => {
-        client.friend.update(friend.id, {
-            name: friend.name,
-            desc: friend.desc || "",
-            url: friend.url,
-            accepted: 1,
-        }).then(({ error }) => {
-            if (error) {
-                showAlert(typeof error === "string" ? error : (error.value as string) || "操作失败");
-            } else {
-                showAlert("已审核通过并发布！", () => reloadFriends());
-            }
-        });
-    };
-
-    // 管理员快捷拒绝
-    const handleReject = (friend: FriendItem) => {
-        showConfirm("拒绝申请", "确定要将此申请标记为拒绝状态吗？", () => {
-            client.friend.update(friend.id, {
-                name: friend.name,
-                desc: friend.desc || "",
-                url: friend.url,
-                accepted: -1,
-            }).then(({ error }) => {
-                if (error) {
-                    showAlert(typeof error === "string" ? error : (error.value as string) || "操作失败");
-                } else {
-                    showAlert("已标记为拒绝", () => reloadFriends());
-                }
-            });
-        });
-    };
-
-    // 删除友链
-    const handleDelete = (id: number) => {
-        showConfirm(t('delete.title'), t('delete.confirm'), () => {
-            client.friend.delete(id).then(({ error }) => {
-                if (error) {
-                    showAlert(typeof error === "string" ? error : (error.value as string) || "删除失败");
-                } else {
-                    showAlert(t('delete.success'), () => reloadFriends());
-                }
-            });
-        });
-    };
-
     return (
-        <>
+        <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
             <Helmet>
-                <title>{`星廊 · 灵感星图与友邻漫游 - ${siteConfig.name}`}</title>
-                <meta property="og:site_name" content={siteName} />
-                <meta property="og:title" content={`星廊 · 灵感星图与友邻漫游`} />
-                <meta property="og:image" content={siteConfig.avatar} />
-                <meta property="og:type" content="article" />
-                <meta property="og:url" content={document.URL} />
+                <title>{`星标友链 · 画廊漫游 - ${siteName}`}</title>
             </Helmet>
+            <ConfirmUI />
 
-            <Waiting for={status === "idle"}>
-                <main className="w-full flex flex-col justify-start items-center pt-2 sm:pt-4 mb-12 t-primary ani-show">
-                    {/* 顶部标题与行动导航 */}
-                    <div className="wauto py-6 mb-6 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 text-rose-500 dark:bg-rose-500/20 dark:text-rose-400 text-xs font-bold mb-2 shadow-2xs">
-                                <i className="ri-sparkling-fill text-theme text-sm" />
-                                <span>星廊 · 灵感星图与友邻漫游</span>
-                            </div>
-                            <h1 className={`text-3xl sm:text-4xl font-extrabold tracking-tight art-title-${siteConfig.friendsTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"}`}>
-                                星廊
-                            </h1>
-                            <p className="mt-1 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 font-normal">
-                                漫游网络星群的灵感岛屿 · 友邻博客与极客数字基建
-                            </p>
-                        </div>
+            {/* 顶栏：标题、描述与新增/申请按钮 */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight t-primary flex items-center gap-2">
+                        <span className="text-theme">🌸</span>
+                        <span>星标友链 · 画廊漫游</span>
+                    </h1>
+                    <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+                        汇聚优秀的友邻博客、极客工具与技术漫游星空。
+                    </p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-theme text-white text-sm font-medium hover:opacity-90 transition shadow-sm cursor-pointer"
+                    >
+                        <i className="ri-add-line text-base" />
+                        <span>{profile?.permission ? "收录星标站点" : "申请加入星标"}</span>
+                    </button>
+                </div>
+            </div>
 
-                        {/* 右侧操作按钮 */}
-                        <div className="flex items-center gap-2.5 shrink-0">
-                            {(profile?.permission || config.get("friend_apply_enable")) && (
-                                <button
-                                    onClick={() => setIsAddModalOpen(true)}
-                                    className="inline-flex items-center gap-1.5 rounded-full bg-theme px-4 py-2 text-xs font-bold text-white shadow-md shadow-rose-500/20 hover:bg-theme-hover active:scale-95 transition-all select-none"
-                                >
-                                    <i className="ri-add-line text-sm" />
-                                    <span>{profile?.permission ? "收录站点" : "申请入廊 / 推荐站点"}</span>
-                                </button>
-                            )}
-
-                            <Link
-                                href="/"
-                                className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 backdrop-blur-md px-4 py-2 text-xs font-semibold t-primary shadow-2xs hover:bg-neutral-50 active:scale-95 transition dark:border-white/10 dark:bg-neutral-900/80"
+            {/* 控制条：分类筛选 Tab、视图风格切换与搜索框 */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 mb-6 border-b border-black/5 dark:border-white/5">
+                {/* 分类 Tab 胶囊 */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                    {PRESET_CATEGORIES.map((cat) => {
+                        const isActive = activeCategory === cat;
+                        return (
+                            <button
+                                key={cat}
+                                type="button"
+                                onClick={() => setActiveCategory(cat)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition cursor-pointer ${
+                                    isActive
+                                        ? "bg-theme text-white shadow-2xs"
+                                        : "bg-black/[0.03] dark:bg-white/[0.03] text-neutral-600 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5"
+                                }`}
                             >
-                                <i className="ri-arrow-left-line" />
-                                <span>返回画廊</span>
-                            </Link>
-                        </div>
-                    </div>
+                                {cat}
+                            </button>
+                        );
+                    })}
+                </div>
 
-                    {/* 分类过滤器与实时搜索栏 */}
-                    <div className="wauto mb-6 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                        {/* 分类 Tags */}
-                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 sm:pb-0 scrollbar-none">
-                            {PRESET_CATEGORIES.map(cat => {
-                                const isActive = activeCategory === cat;
-                                return (
-                                    <button
-                                        key={cat}
-                                        onClick={() => setActiveCategory(cat)}
-                                        className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 select-none ${
-                                            isActive
-                                                ? "bg-theme text-white shadow-sm font-bold scale-[1.02]"
-                                                : "bg-black/5 hover:bg-theme/10 hover:text-theme dark:bg-white/5 dark:hover:bg-theme/20 text-neutral-600 dark:text-neutral-300"
-                                        }`}
-                                    >
-                                        {cat}
-                                    </button>
-                                );
-                            })}
-
-                            {/* 管理员专属待审核 Tab */}
-                            {profile?.permission && (
-                                <button
-                                    onClick={() => setActiveCategory("待审核")}
-                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 select-none ${
-                                        activeCategory === "待审核"
-                                            ? "bg-amber-500 text-white shadow-sm font-bold scale-[1.02]"
-                                            : "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:bg-amber-500/15 dark:text-amber-400"
-                                    }`}
-                                >
-                                    <i className="ri-time-line text-xs" />
-                                    <span>待审核</span>
-                                    {pendingFriends.length > 0 && (
-                                        <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-2xs animate-pulse">
-                                            {pendingFriends.length}
-                                        </span>
-                                    )}
-                                </button>
-                            )}
-
-                            {profile?.permission && rejectedFriends.length > 0 && (
-                                <button
-                                    onClick={() => setActiveCategory("已拒绝")}
-                                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 select-none ${
-                                        activeCategory === "已拒绝"
-                                            ? "bg-neutral-600 text-white shadow-sm font-bold scale-[1.02]"
-                                            : "bg-black/5 text-neutral-500 hover:bg-black/10 dark:bg-white/5"
-                                    }`}
-                                >
-                                    已拒绝 ({rejectedFriends.length})
-                                </button>
-                            )}
-                        </div>
-
-                        {/* 实时搜索与风格切换 */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <div className="relative min-w-[200px] sm:w-64">
-                                <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
-                                <input
-                                    type="text"
-                                    value={searchKeyword}
-                                    onChange={e => setSearchKeyword(e.target.value)}
-                                    placeholder="搜索站点名称/描述..."
-                                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-theme/40 focus:bg-white dark:focus:bg-neutral-900 focus:outline-hidden transition placeholder:text-neutral-400"
-                                />
-                                {searchKeyword && (
-                                    <button
-                                        onClick={() => setSearchKeyword("")}
-                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
-                                    >
-                                        <i className="ri-close-circle-fill text-xs" />
-                                    </button>
-                                )}
-                            </div>
-
-                            {/* 风格切换器：画册卡片 / 高密书签 / 拍立得便签 */}
-                            <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-black/5 dark:bg-white/5 shrink-0 text-xs">
-                                <button
-                                    type="button"
-                                    onClick={() => { setViewStyle("card"); try { localStorage.setItem("rin_friends_view_style", "card"); } catch {} }}
-                                    className={`px-2.5 py-1 rounded-lg transition select-none flex items-center gap-1 font-semibold ${
-                                        viewStyle === "card" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200"
-                                    }`}
-                                    title="画册卡片视图"
-                                >
-                                    <i className="ri-grid-fill text-xs" />
-                                    <span className="hidden sm:inline">卡片</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => { setViewStyle("compact"); try { localStorage.setItem("rin_friends_view_style", "compact"); } catch {} }}
-                                    className={`px-2.5 py-1 rounded-lg transition select-none flex items-center gap-1 font-semibold ${
-                                        viewStyle === "compact" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200"
-                                    }`}
-                                    title="高密书签视图"
-                                >
-                                    <i className="ri-list-check text-xs" />
-                                    <span className="hidden sm:inline">书签</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => { setViewStyle("polaroid"); try { localStorage.setItem("rin_friends_view_style", "polaroid"); } catch {} }}
-                                    className={`px-2.5 py-1 rounded-lg transition select-none flex items-center gap-1 font-semibold ${
-                                        viewStyle === "polaroid" ? "bg-w text-theme font-bold shadow-2xs" : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200"
-                                    }`}
-                                    title="拍立得便签视图"
-                                >
-                                    <i className="ri-sticky-note-line text-xs" />
-                                    <span className="hidden sm:inline">便签</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 画廊展示流 (支持画册卡片、高密书签、拍立得便签三种风格) */}
-                    {filteredFriends.length === 0 ? (
-                        <div className="wauto flex flex-col items-center justify-center py-20 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-dashed border-black/10 dark:border-white/10 text-center">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/10 text-rose-500 mb-3 text-2xl">
-                                <i className="ri-inbox-line" />
-                            </div>
-                            <p className="text-sm font-semibold text-neutral-600 dark:text-neutral-300">
-                                {searchKeyword ? "没有找到符合搜索条件的站点" : "暂无相关收录站点"}
-                            </p>
-                            <p className="mt-1 text-xs text-neutral-400">
-                                点击右上角「+ 申请入廊 / 推荐站点」添加第一个精彩星岛吧
-                            </p>
-                        </div>
-                    ) : viewStyle === "compact" ? (
-                        <div className="wauto flex flex-col gap-2">
-                            {filteredFriends.map((friend, idx) => (
-                                <CompactFriendRow
-                                    key={friend.id}
-                                    friend={friend}
-                                    index={idx}
-                                    onEdit={() => setEditingFriend(friend)}
-                                    onDelete={() => handleDelete(friend.id)}
-                                    onApprove={() => handleApprove(friend)}
-                                    onReject={() => handleReject(friend)}
-                                />
-                            ))}
-                        </div>
-                    ) : viewStyle === "polaroid" ? (
-                        <div className="wauto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-7 pt-3">
-                            {filteredFriends.map((friend, idx) => (
-                                <PolaroidFriendCard
-                                    key={friend.id}
-                                    friend={friend}
-                                    index={idx}
-                                    onEdit={() => setEditingFriend(friend)}
-                                    onDelete={() => handleDelete(friend.id)}
-                                    onApprove={() => handleApprove(friend)}
-                                    onReject={() => handleReject(friend)}
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="wauto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-                            {filteredFriends.map((friend) => (
-                                <FriendCard
-                                    key={friend.id}
-                                    friend={friend}
-                                    onEdit={() => setEditingFriend(friend)}
-                                    onDelete={() => handleDelete(friend.id)}
-                                    onApprove={() => handleApprove(friend)}
-                                    onReject={() => handleReject(friend)}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </main>
-            </Waiting>
-
-            {/* 申请/添加友链居中磨砂弹窗 */}
-            <Modal
-                isOpen={isAddModalOpen}
-                onRequestClose={() => !isSniffing && !isSubmitting && setIsAddModalOpen(false)}
-                contentLabel="推荐站点 / 申请友链"
-                panelClassName="overflow-visible p-4 sm:p-7 max-w-[94vw] sm:max-w-lg w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
-            >
-                <div className="flex flex-col w-full">
-                    {/* 弹窗头部 */}
-                    <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
-                        <div className="flex items-center gap-2">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-base shadow-2xs">
-                                <i className="ri-sparkling-fill" />
-                            </span>
-                            <div>
-                                <h3 className="text-base font-bold t-primary">
-                                    {profile?.permission ? "收录精彩站点" : "申请友链 / 推荐站点"}
-                                </h3>
-                                <p className="text-[11px] text-neutral-400">
-                                    输入网址一键 AI 嗅探，自动提取标题、简介与高清图标
-                                </p>
-                            </div>
-                        </div>
+                <div className="flex items-center gap-3 shrink-0">
+                    {/* 视图风格切换 */}
+                    <div className="inline-flex items-center p-1 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5 text-neutral-500">
                         <button
-                            onClick={() => setIsAddModalOpen(false)}
-                            disabled={isSniffing || isSubmitting}
-                            className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/5 transition"
+                            type="button"
+                            onClick={() => handleViewStyleChange("card")}
+                            className={`p-1.5 rounded-lg transition cursor-pointer ${viewStyle === "card" ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs" : "hover:text-neutral-700 dark:hover:text-neutral-200"}`}
+                            title="经典卡片视图"
                         >
-                            <i className="ri-close-line text-lg" />
+                            <i className="ri-grid-fill text-sm" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleViewStyleChange("compact")}
+                            className={`p-1.5 rounded-lg transition cursor-pointer ${viewStyle === "compact" ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs" : "hover:text-neutral-700 dark:hover:text-neutral-200"}`}
+                            title="高密书签行视图"
+                        >
+                            <i className="ri-list-check-2 text-sm" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleViewStyleChange("polaroid")}
+                            className={`p-1.5 rounded-lg transition cursor-pointer ${viewStyle === "polaroid" ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs" : "hover:text-neutral-700 dark:hover:text-neutral-200"}`}
+                            title="拍立得和纸胶带便签视图"
+                        >
+                            <i className="ri-polaroid-line text-sm" />
                         </button>
                     </div>
 
-                    {/* URL 输入与一键智能解析 */}
-                    <div className="mt-4">
-                        <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 flex items-center justify-between">
-                            <span>站点链接 (URL) *</span>
-                            <span className="text-[10px] text-rose-500 font-normal">支持直接回车解析</span>
-                        </label>
-                        <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <i className="ri-global-line absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm" />
-                                <input
-                                    type="text"
-                                    value={formUrl}
-                                    onChange={e => setFormUrl(e.target.value)}
-                                    onKeyDown={e => e.key === "Enter" && handleSniffUrl()}
-                                    placeholder="https://example.com"
-                                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition"
-                                />
-                            </div>
+                    {/* 搜索输入框 */}
+                    <div className="relative w-48 sm:w-60">
+                        <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
+                        <input
+                            type="text"
+                            value={searchKeyword}
+                            onChange={(e) => setSearchKeyword(e.target.value)}
+                            placeholder="搜索友邻名称或网址..."
+                            className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5 focus:outline-none focus:border-theme/40 transition placeholder:text-neutral-400"
+                        />
+                        {searchKeyword && (
                             <button
-                                onClick={handleSniffUrl}
-                                disabled={isSniffing}
-                                className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-60 transition shrink-0"
+                                type="button"
+                                onClick={() => setSearchKeyword("")}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
                             >
-                                {isSniffing ? (
-                                    <>
-                                        <i className="ri-loader-4-line animate-spin text-sm" />
-                                        <span>AI 解析中...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <i className="ri-magic-line text-sm" />
-                                        <span>一键智能解析</span>
-                                    </>
-                                )}
+                                <i className="ri-close-circle-line text-xs" />
                             </button>
-                        </div>
-                        {isSniffing && (
-                            <p className="mt-1.5 text-[11px] text-rose-500 animate-pulse flex items-center gap-1">
-                                <i className="ri-radar-line" />
-                                <span>正在嗅探站点信息并由 AI 自动精炼与归类...</span>
-                            </p>
                         )}
                     </div>
+                </div>
+            </div>
 
-                    {/* 分类选择 */}
-                    <div className="mt-3.5">
-                        <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1.5 block">
-                            推荐归类 *
-                        </label>
-                        <div className="flex flex-wrap gap-1.5">
-                            {PRESET_CATEGORIES.filter(c => c !== "全部").map(cat => (
+            {/* 管理员待审批提示条 */}
+            {profile?.permission && pendingFriends.length > 0 && (
+                <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-xs font-medium">
+                        <i className="ri-time-line text-base" />
+                        <span>有 {pendingFriends.length} 条待审核的友链申请等待处理</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {pendingFriends.map((p) => (
+                            <div key={p.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-neutral-800 border border-amber-500/30 text-xs">
+                                <span className="font-medium truncate max-w-[120px]">{p.name}</span>
                                 <button
-                                    key={cat}
-                                    type="button"
-                                    onClick={() => setFormCategory(cat)}
-                                    className={`px-2.5 py-1 rounded-lg text-xs transition select-none ${
-                                        formCategory === cat
-                                            ? "bg-theme text-white font-bold shadow-2xs"
-                                            : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
-                                    }`}
+                                    onClick={() => handleApprove(p.id)}
+                                    className="text-emerald-600 hover:text-emerald-700 font-bold ml-1"
+                                    title="通过审核"
                                 >
-                                    {cat}
+                                    ✓
                                 </button>
-                            ))}
+                                <button
+                                    onClick={() => handleReject(p.id)}
+                                    className="text-rose-500 hover:text-rose-600 font-bold ml-1"
+                                    title="拒绝申请"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* 核心内容区：按视图风格流体排布 */}
+            {status === "loading" && allFriends.length === 0 ? (
+                <div className="py-20 flex justify-center">
+                    <Waiting />
+                </div>
+            ) : filteredFriends.length === 0 ? (
+                <div className="py-24 text-center">
+                    <i className="ri-inbox-line text-4xl text-neutral-300 dark:text-neutral-600" />
+                    <p className="mt-3 text-sm text-neutral-500">暂无匹配的友链或星标站点</p>
+                </div>
+            ) : viewStyle === "compact" ? (
+                <div className="flex flex-col gap-2">
+                    {filteredFriends.map((friend, idx) => (
+                        <CompactFriendRow
+                            key={friend.id}
+                            friend={friend}
+                            index={idx}
+                            onEdit={() => setEditingFriend(friend)}
+                            onDelete={() => handleDelete(friend.id, friend.name)}
+                            onApprove={() => handleApprove(friend.id)}
+                            onReject={() => handleReject(friend.id)}
+                        />
+                    ))}
+                </div>
+            ) : viewStyle === "polaroid" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
+                    {filteredFriends.map((friend, idx) => (
+                        <PolaroidFriendCard
+                            key={friend.id}
+                            friend={friend}
+                            index={idx}
+                            onEdit={() => setEditingFriend(friend)}
+                            onDelete={() => handleDelete(friend.id, friend.name)}
+                            onApprove={() => handleApprove(friend.id)}
+                            onReject={() => handleReject(friend.id)}
+                        />
+                    ))}
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 items-start">
+                    {filteredFriends.map((friend, idx) => (
+                        <FriendCard
+                            key={friend.id}
+                            friend={friend}
+                            index={idx}
+                            onEdit={() => setEditingFriend(friend)}
+                            onDelete={() => handleDelete(friend.id, friend.name)}
+                            onApprove={() => handleApprove(friend.id)}
+                            onReject={() => handleReject(friend.id)}
+                        />
+                    ))}
+                </div>
+            )}
+
+            {/* 申请/收录弹窗 */}
+            <Modal
+                isOpen={isAddModalOpen}
+                onRequestClose={() => !isSniffing && !isSubmitting && setIsAddModalOpen(false)}
+                contentLabel={profile?.permission ? "收录星标站点" : "申请加入星标画廊"}
+                panelClassName="max-h-[90vh] p-4 sm:p-6 max-w-[94vw] sm:max-w-xl w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+            >
+                <div className="flex items-center justify-between pb-3 mb-4 border-b border-black/5 dark:border-white/5 shrink-0">
+                    <h3 className="text-base font-bold t-primary">
+                        {profile?.permission ? "收录星标站点" : "申请加入星标画廊"}
+                    </h3>
+                    <button
+                        type="button"
+                        onClick={() => setIsAddModalOpen(false)}
+                        className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+                    >
+                        <i className="ri-close-line text-lg" />
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-4 text-xs font-sans overflow-y-auto pr-1">
+                    {submitError && (
+                        <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs">
+                            {submitError}
+                        </div>
+                    )}
+
+                    {/* 1. 站点链接与快速嗅探 */}
+                    <div>
+                        <label className="block text-neutral-500 mb-1">站点链接 (必填)</label>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="url"
+                                required
+                                value={formUrl}
+                                onChange={(e) => setFormUrl(e.target.value)}
+                                placeholder="https://example.com"
+                                className="flex-1 px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 focus:outline-none focus:border-theme/40 text-xs"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleSniffUrl}
+                                disabled={isSniffing || !formUrl}
+                                className="px-3 py-2 rounded-xl bg-theme/10 hover:bg-theme/20 text-theme font-medium whitespace-nowrap transition cursor-pointer disabled:opacity-50"
+                            >
+                                {isSniffing ? "嗅探中..." : "自动嗅探"}
+                            </button>
                         </div>
                     </div>
 
-                    {/* 站点名称与图标回填 */}
-                    <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* 2. 站点名称与分类 */}
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 block">
-                                站点名称 *
-                            </label>
+                            <label className="block text-neutral-500 mb-1">站点名称 (必填)</label>
                             <input
                                 type="text"
+                                required
                                 value={formName}
-                                onChange={e => setFormName(e.target.value)}
-                                placeholder="例如: 某某小站 / 探针"
-                                className="w-full px-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition"
+                                onChange={(e) => setFormName(e.target.value)}
+                                placeholder="例如: 某某的个人博客"
+                                className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 focus:outline-none focus:border-theme/40 text-xs"
                             />
                         </div>
-
                         <div>
-                            <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 block">
-                                图标/Favicon 地址 *
-                            </label>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="text"
-                                    value={formAvatar}
-                                    onChange={e => setFormAvatar(e.target.value)}
-                                    placeholder="https://.../favicon.ico"
-                                    className="w-full px-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition"
-                                />
-                                {formAvatar && (
-                                    <div className="h-8 w-8 shrink-0 rounded-lg bg-black/5 dark:bg-white/5 p-1 flex items-center justify-center overflow-hidden border border-black/10 dark:border-white/10">
-                                        <ImageWithFallback
-                                            src={formAvatar}
-                                            alt="preview"
-                                            className="h-full w-full object-cover rounded-md"
-                                        />
-                                    </div>
-                                )}
-                            </div>
+                            <label className="block text-neutral-500 mb-1">站点分类</label>
+                            <select
+                                value={formCategory}
+                                onChange={(e) => setFormCategory(e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 focus:outline-none focus:border-theme/40 text-xs"
+                            >
+                                {PRESET_CATEGORIES.filter(c => c !== "全部").map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 
-                    {/* 站点描述与 AI 精炼简介 */}
-                    <div className="mt-3.5">
-                        <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 flex items-center justify-between">
-                            <span>站点简介 / 寄语</span>
-                            <span className="text-[10px] text-neutral-400">建议 40 字以内</span>
-                        </label>
-                        <textarea
+                    {/* 3. 来源空间 (NodeSeek 坛友识别) */}
+                    <div>
+                        <div className="flex items-center justify-between mb-1">
+                            <label className="text-neutral-500">NodeSeek 空间或数字 UID (选填)</label>
+                            {extractBtnFeedback && (
+                                <span className="text-[11px] text-emerald-600 font-bold animate-fade-in">
+                                    {extractBtnFeedback}
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="text"
+                                value={sourceAvatarUrl}
+                                onChange={(e) => handleSourceAvatarInputChange(e.target.value)}
+                                placeholder="输入数字 UID (如 38057) 或空间主页"
+                                className="flex-1 px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 focus:outline-none focus:border-theme/40 text-xs font-mono"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => handleExtractSourceAvatar()}
+                                disabled={isExtractingAvatar || !sourceAvatarUrl}
+                                className="px-3 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 font-medium whitespace-nowrap transition cursor-pointer disabled:opacity-50"
+                            >
+                                {isExtractingAvatar ? "识别中..." : "提取资产"}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 4. 站点简介与 AI 精炼 */}
+                    <div>
+                        <div className="flex items-center justify-between mb-1">
+                            <label className="text-neutral-500">极炼简介 (不超过40字)</label>
+                            <button
+                                type="button"
+                                onClick={handleRefineDesc}
+                                disabled={isRefiningDesc}
+                                className="text-[11px] text-theme hover:underline flex items-center gap-0.5"
+                            >
+                                <i className="ri-magic-line text-xs" />
+                                <span>{isRefiningDesc ? "提炼中..." : "AI 智能精炼"}</span>
+                            </button>
+                        </div>
+                        <input
+                            type="text"
+                            maxLength={40}
                             value={formDesc}
-                            onChange={e => setFormDesc(e.target.value)}
-                            rows={2}
-                            placeholder="站点核心定位或博主寄语..."
-                            className="w-full px-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden transition resize-none"
+                            onChange={(e) => setFormDesc(e.target.value)}
+                            placeholder="个人技术生活随想"
+                            className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 focus:outline-none focus:border-theme/40 text-xs"
                         />
                     </div>
 
-                    {/* 提交按钮栏 */}
-                    <div className="mt-5 flex items-center justify-end gap-2.5 pt-3 border-t border-black/5 dark:border-white/5">
+                    {/* 5. 头像 URL 与头像展示模式 */}
+                    <div>
+                        <label className="block text-neutral-500 mb-1">头像图标 URL (必填)</label>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="url"
+                                required
+                                value={formAvatar}
+                                onChange={(e) => setFormAvatar(e.target.value)}
+                                placeholder="https://example.com/avatar.png"
+                                className="flex-1 px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 focus:outline-none focus:border-theme/40 text-xs"
+                            />
+                            {formAvatar && (
+                                <ImageWithFallback
+                                    src={formAvatar}
+                                    alt="预览"
+                                    className="w-8 h-8 rounded-lg object-cover border border-black/10 dark:border-white/10 shrink-0"
+                                />
+                            )}
+                        </div>
+                        {nsAvatarUrl && siteFaviconUrl && (
+                            <div className="flex items-center gap-3 mt-2 text-[11px] text-neutral-500">
+                                <span>展示模式:</span>
+                                <label className="inline-flex items-center gap-1 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="avatar_mode"
+                                        checked={iconChoice === "dual"}
+                                        onChange={() => handleIconChoiceChange("dual")}
+                                    />
+                                    <span>子母双图融合</span>
+                                </label>
+                                <label className="inline-flex items-center gap-1 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="avatar_mode"
+                                        checked={iconChoice === "site"}
+                                        onChange={() => handleIconChoiceChange("site")}
+                                    />
+                                    <span>仅站点Logo</span>
+                                </label>
+                                <label className="inline-flex items-center gap-1 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="avatar_mode"
+                                        checked={iconChoice === "ns"}
+                                        onChange={() => handleIconChoiceChange("ns")}
+                                    />
+                                    <span>仅坛友头像</span>
+                                </label>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="pt-3 border-t border-black/5 dark:border-white/5 flex items-center justify-end gap-2">
                         <button
+                            type="button"
                             onClick={() => setIsAddModalOpen(false)}
-                            disabled={isSubmitting}
-                            className="px-4 py-2 text-xs font-semibold rounded-xl text-neutral-500 hover:bg-black/5 dark:hover:bg-white/5 transition"
+                            className="px-4 py-2 rounded-xl bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-400 hover:bg-black/10 transition cursor-pointer"
                         >
                             取消
                         </button>
                         <button
-                            onClick={handleSubmitNew}
-                            disabled={isSubmitting || !formUrl || !formName}
-                            className="inline-flex items-center gap-1.5 px-6 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-md shadow-rose-500/20 hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition"
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="px-5 py-2 rounded-xl bg-theme text-white font-medium hover:opacity-90 transition shadow-sm cursor-pointer disabled:opacity-50"
                         >
-                            {isSubmitting ? (
-                                <>
-                                    <i className="ri-loader-4-line animate-spin" />
-                                    <span>提交中...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <i className="ri-check-line font-bold" />
-                                    <span>{profile?.permission ? "立即收录并发布" : "提交收录申请"}</span>
-                                </>
-                            )}
+                            {isSubmitting ? "正在提交..." : profile?.permission ? "立即收录" : "提交申请"}
                         </button>
                     </div>
-                </div>
+                </form>
             </Modal>
 
             {/* 编辑友链弹窗 */}
@@ -802,202 +1144,12 @@ export function FriendsPage() {
                     }}
                 />
             )}
-
-            <AlertUI />
-            <ConfirmUI />
-        </>
-    );
-}
-
-// 单个友链/导航画廊卡片
-function FriendCard({
-    friend,
-    onEdit,
-    onDelete,
-    onApprove,
-    onReject,
-}: {
-    friend: FriendItem;
-    onEdit: () => void;
-    onDelete: () => void;
-    onApprove: () => void;
-    onReject: () => void;
-}) {
-    const profile = useContext(ProfileContext);
-    const { category, cleanDesc } = parseFriendCategory(friend.desc, friend.url);
-    const isUnhealthy = friend.health && friend.health.length > 0;
-    const isTop = (friend.sort_order ?? 0) > 0;
-    const safeUrl = safeHttpUrl(friend.url);
-
-    // 分类徽标配色
-    const badgeColor = useMemo(() => {
-        switch (category) {
-            case "主机算力":
-            case "VPS/基础设施":
-                return "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400";
-            case "探针测速":
-            case "测速/探针监控":
-                return "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400";
-            case "极客工具":
-            case "极客常用工具":
-                return "bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400";
-            case "技术社区":
-            case "技术极客社区":
-                return "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400";
-            case "漫游灵感":
-            case "其他灵感":
-                return "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400";
-            case "友邻博客":
-            case "友友们":
-            default:
-                return "bg-rose-500/10 text-theme dark:bg-rose-500/20 dark:text-rose-400";
-        }
-    }, [category]);
-
-    return (
-        <div className="group relative flex flex-col justify-between rounded-2xl bg-white/70 dark:bg-neutral-900/70 backdrop-blur-md p-4 sm:p-5 border border-black/5 dark:border-white/5 shadow-xs hover:shadow-xl hover:shadow-rose-500/10 hover:border-theme/40 hover:-translate-y-1 transition-all duration-300 select-none">
-            {/* 和纸胶带装饰 */}
-            <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-10 h-3 bg-theme/20 dark:bg-theme/30 backdrop-blur-xs rounded-xs rotate-[-2deg] pointer-events-none" />
-
-            {/* 卡片顶部：状态微点与置顶徽标 */}
-            <div className="flex items-center justify-between w-full mb-3">
-                <div className="flex items-center gap-1.5">
-                    {/* 健康状态指示小圆点 */}
-                    {isUnhealthy ? (
-                        <span
-                            className="flex h-2.5 w-2.5 rounded-full bg-rose-500 shadow-xs"
-                            title={`访问异常: ${errorHumanize(friend.health)}`}
-                        />
-                    ) : (
-                        <span
-                            className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-xs"
-                            title="站点状态良好"
-                        />
-                    )}
-
-                    {/* 分类徽标 */}
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeColor}`}>
-                        {category}
-                    </span>
-
-                    {/* 置顶指示 */}
-                    {isTop ? (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                            <i className="ri-pushpin-2-fill text-[9px]" />
-                            <span>置顶</span>
-                        </span>
-                    ) : null}
-                </div>
-
-                {/* 审核状态小提示 */}
-                {friend.accepted === 0 && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                        待审核
-                    </span>
-                )}
-                {friend.accepted === -1 && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500">
-                        已拒绝
-                    </span>
-                )}
-            </div>
-
-            {/* 卡片主体：头像与文字 */}
-            <a
-                href={safeUrl || "#"}
-                target={safeUrl ? "_blank" : undefined}
-                rel="noopener noreferrer"
-                title={friend.name}
-                className="flex items-start gap-3 flex-1 min-w-0"
-            >
-                {/* 网站 Favicon (带加载兜底) */}
-                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] p-1 shadow-inner border border-black/5 dark:border-white/5 group-hover:scale-105 transition-transform overflow-hidden">
-                    <ImageWithFallback
-                        className="h-full w-full rounded-xl object-cover"
-                        imageClassName={isUnhealthy ? "grayscale" : ""}
-                        src={friend.avatar}
-                        alt={friend.name}
-                    />
-                </div>
-
-                {/* 站点名称与精炼简介 */}
-                <div className="flex-1 min-w-0 text-start">
-                    <h4 className="font-bold text-sm text-neutral-800 dark:text-neutral-100 truncate group-hover:text-theme transition-colors">
-                        {friend.name}
-                    </h4>
-                    <p className="mt-1 line-clamp-2 text-xs text-neutral-500 dark:text-neutral-400 [overflow-wrap:anywhere] leading-snug">
-                        {cleanDesc || "这位博主很神秘，还没有写下寄语~"}
-                    </p>
-                    {isUnhealthy && (
-                        <p className="mt-1 text-[10px] text-rose-500 truncate flex items-center gap-0.5">
-                            <i className="ri-error-warning-line text-xs" />
-                            <span>{errorHumanize(friend.health)}</span>
-                        </p>
-                    )}
-                </div>
-            </a>
-
-            {/* 底部操作区（管理员或提交者视角） */}
-            {(profile?.permission || profile?.id === friend.uid) && (
-                <div className="mt-3 pt-2.5 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-xs">
-                    {/* 管理员待审核快捷处理 */}
-                    {profile?.permission && friend.accepted === 0 ? (
-                        <div className="flex items-center gap-1.5 w-full justify-between">
-                            <button
-                                onClick={onApprove}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white font-bold text-[11px] transition shadow-2xs"
-                            >
-                                <i className="ri-check-line" />
-                                <span>通过</span>
-                            </button>
-                            <button
-                                onClick={onReject}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500 text-amber-600 hover:text-white font-bold text-[11px] transition"
-                            >
-                                <i className="ri-close-line" />
-                                <span>拒绝</span>
-                            </button>
-                            <button
-                                onClick={onEdit}
-                                className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-theme/10 transition"
-                                title="编辑"
-                            >
-                                <i className="ri-edit-line text-sm" />
-                            </button>
-                            <button
-                                onClick={onDelete}
-                                className="p-1 rounded-md text-neutral-400 hover:text-rose-500 hover:bg-rose-500/10 transition"
-                                title="删除"
-                            >
-                                <i className="ri-delete-bin-line text-sm" />
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="flex items-center justify-end gap-1 w-full">
-                            <button
-                                onClick={onEdit}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-neutral-500 hover:text-theme hover:bg-theme/10 transition"
-                            >
-                                <i className="ri-edit-line text-xs" />
-                                <span>管理</span>
-                            </button>
-                            <button
-                                onClick={onDelete}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-neutral-400 hover:text-rose-500 hover:bg-rose-500/10 transition"
-                            >
-                                <i className="ri-delete-bin-line text-xs" />
-                                <span>删除</span>
-                            </button>
-                        </div>
-                    )}
-                </div>
-            )}
         </div>
     );
 }
 
-// 风格 2: 高密单行书签行 (Compact List)
-function CompactFriendRow({
+// 风格 1: 画廊经典卡片 (FriendCard)
+function FriendCard({
     friend,
     index,
     onEdit,
@@ -1013,101 +1165,221 @@ function CompactFriendRow({
     onReject: () => void;
 }) {
     const profile = useContext(ProfileContext);
-    const { category, cleanDesc } = parseFriendCategory(friend.desc, friend.url);
-    const isUnhealthy = friend.health && friend.health.length > 0;
-    const isTop = (friend.sort_order ?? 0) > 0;
-    const safeUrl = safeHttpUrl(friend.url);
+    const parsed = parseFriendCategory(friend.desc, friend.url, friend.name, friend.avatar);
+    const { category, cleanDesc, spaceUrl, nsData } = parsed;
+
+    // 提取数字 UID
+    const uidMatch = (spaceUrl || friend.url).match(/nodeseek\.com\/space\/(\d+)/i) || (spaceUrl || friend.url).match(/space\/(\d+)/i) || friend.name.match(/UID[:\s#]+(\d+)/i);
+    const uid = uidMatch ? uidMatch[1] : null;
+
+    let displayName = friend.name;
+    if (friend.name.includes("NodeSeek#") || friend.name.startsWith("UID:")) {
+        const stripped = friend.name.replace(/NodeSeek#\d+\s*的?空间?/i, "").trim();
+        if (stripped) {
+            displayName = stripped;
+        } else if (uid) {
+            displayName = `UID: ${uid}`;
+        }
+    }
+
+    const primaryUrl = safeHttpUrl(spaceUrl) || safeHttpUrl(friend.url);
+
+    // 拍立得手绘微倾角：奇数项向左倾斜 -1.8deg，偶数项向右倾斜 1.6deg
+    const tiltClass = index % 2 === 0 ? "hover:rotate-[1.6deg]" : "hover:rotate-[-1.8deg]";
+
+    const [isRefreshingNs, setIsRefreshingNs] = useState(false);
+    const [refreshNsDone, setRefreshNsDone] = useState(false);
+
+    // 一键就地更正/同步坛友资产
+    const handleQuickRefreshNs = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const target = spaceUrl || (uid ? `https://www.nodeseek.com/space/${uid}#/general` : (friend.url.includes("nodeseek") ? friend.url : ""));
+        if (!target) return;
+        setIsRefreshingNs(true);
+        setRefreshNsDone(false);
+        try {
+            const token = localStorage.getItem("rin_auth_token") || "";
+            const res = await fetch("/api/friend/extract-source-avatar", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({ sourceUrl: target }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                let finalNsDetail = data.nsDetail;
+                if (!finalNsDetail && uid) {
+                    finalNsDetail = await fetchClientSideNsDetail(uid);
+                }
+
+                if (finalNsDetail) {
+                    const isFriendBlog = category === "友邻博客";
+                    const nextName = isFriendBlog ? friend.name : (finalNsDetail.member_name || displayName);
+                    const nextDesc = isFriendBlog
+                        ? (cleanDesc && cleanDesc !== "个人技术生活随想" ? cleanDesc : friend.name)
+                        : (finalNsDetail.bio ? finalNsDetail.bio.trim().slice(0, 40) : (data.suggestedDesc || `${nextName}的空间`));
+
+                    const newFormattedDesc = formatFriendDesc(category, nextDesc, {
+                        spaceUrl: data.spaceUrl || spaceUrl || (uid ? `https://www.nodeseek.com/space/${uid}#/general` : undefined),
+                        avatarMode: parsed.avatarMode,
+                        siteAvatar: parsed.siteAvatar,
+                        nsAvatar: data.avatarUrl || parsed.nsAvatar,
+                        nsData: {
+                            name: finalNsDetail.member_name,
+                            rank: finalNsDetail.rank,
+                            coin: finalNsDetail.coin,
+                            days: finalNsDetail.days || finalNsDetail.join_days,
+                            posts: finalNsDetail.posts || finalNsDetail.nPost,
+                            comments: finalNsDetail.comments || finalNsDetail.nComment,
+                            bio: finalNsDetail.bio,
+                        },
+                    });
+
+                    await client.friend.update(friend.id, {
+                        name: nextName,
+                        desc: newFormattedDesc,
+                        avatar: data.avatarUrl || friend.avatar,
+                    });
+                    setRefreshNsDone(true);
+                    setTimeout(() => setRefreshNsDone(false), 2500);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsRefreshingNs(false);
+        }
+    };
 
     return (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-2xl border border-black/5 dark:border-white/5 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-md hover:border-theme/40 hover:shadow-md transition-all select-none">
-            {/* 核心内容区 */}
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-                <span className="font-mono text-xs font-bold text-neutral-400 w-5 text-center shrink-0">#{index + 1}</span>
-                <div className="relative h-9 w-9 shrink-0 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] p-1 border border-black/5 dark:border-white/5 overflow-hidden">
-                    <ImageWithFallback
-                        className="h-full w-full rounded-lg object-cover"
-                        imageClassName={isUnhealthy ? "grayscale" : ""}
-                        src={friend.avatar}
-                        alt={friend.name}
-                    />
-                </div>
-                <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
-                    <a
-                        href={safeUrl || "#"}
-                        target={safeUrl ? "_blank" : undefined}
-                        rel="noopener noreferrer"
-                        className="font-bold text-xs t-primary hover:text-theme transition truncate"
-                    >
-                        {friend.name}
-                    </a>
-                    <span className="text-[10px] font-mono px-2 py-0.2 rounded-md bg-theme/10 text-theme shrink-0 font-bold">
-                        {category}
+        <div className={`group relative p-4 rounded-3xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/5 backdrop-blur-md shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between gap-3 font-sans ${tiltClass}`}>
+            {/* 顶部标签栏与分类 */}
+            <div className="flex items-center justify-between text-[11px]">
+                <span className="px-2 py-0.5 rounded-lg bg-theme/10 text-theme font-medium">
+                    {category}
+                </span>
+                {friend.accepted === 0 && (
+                    <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-600 font-bold">
+                        待审核
                     </span>
-                    {isTop ? (
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
-                            📌 置顶
-                        </span>
-                    ) : null}
-                    <span className="text-xs text-neutral-400 truncate hidden md:inline">
-                        {cleanDesc || "暂无简介"}
-                    </span>
-                </div>
-                {/* 手机端访问纯图标直达 (放在标题行右侧，不显示冗长文字) */}
-                {safeUrl && (
-                    <a
-                        href={safeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="sm:hidden p-1.5 rounded-lg bg-theme/10 hover:bg-theme hover:text-white text-theme transition flex items-center justify-center shrink-0 shadow-2xs"
-                        title="访问站点"
-                    >
-                        <i className="ri-arrow-right-up-line text-xs font-bold" />
-                    </a>
                 )}
             </div>
 
-            {/* 手机端显示展开的单行简介 (PC已在上方内联显示) */}
-            {cleanDesc && (
-                <p className="sm:hidden text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1 pl-8 [overflow-wrap:anywhere]">
-                    {cleanDesc}
-                </p>
+            {/* 卡片核心主体 */}
+            <div className="flex items-start gap-3">
+                {/* 头像区域：支持子母双图融合 */}
+                <div className="relative shrink-0">
+                    <ImageWithFallback
+                        src={friend.avatar}
+                        alt={friend.name}
+                        className="w-12 h-12 rounded-2xl object-cover border border-black/10 dark:border-white/10 shadow-2xs group-hover:scale-105 transition-transform"
+                    />
+                    {parsed.nsAvatar && parsed.siteAvatar && parsed.avatarMode === "dual" && (
+                        <ImageWithFallback
+                            src={parsed.nsAvatar}
+                            alt="NodeSeek"
+                            className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full object-cover border-2 border-white dark:border-neutral-900 shadow-xs"
+                            title="NodeSeek 坛友认证"
+                        />
+                    )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                    <a
+                        href={primaryUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-bold text-sm t-primary hover:text-theme transition truncate block"
+                        title={displayName}
+                    >
+                        {displayName}
+                    </a>
+                    <a
+                        href={safeHttpUrl(friend.url)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition truncate block font-mono mt-0.5"
+                    >
+                        {friend.url.replace(/^https?:\/\//, "").replace(/\/+$/, "")} ↗
+                    </a>
+                </div>
+            </div>
+
+            {/* 简介说明 */}
+            <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2 min-h-[32px]">
+                {cleanDesc || "个人技术生活随想"}
+            </p>
+
+            {/* NodeSeek 坛友专属资产勋章栏 */}
+            {(uid || nsData) && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-black/5 dark:border-white/5 text-[10px] font-mono">
+                    {uid && (
+                        <a
+                            href={`https://www.nodeseek.com/space/${uid}#/general`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold hover:bg-purple-500/20 transition"
+                            title="直达 NodeSeek 个人空间"
+                        >
+                            UID: {uid}
+                        </a>
+                    )}
+                    {nsData?.rank !== undefined && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 font-bold">
+                            <DiamondRankSvg className="w-2.5 h-2.5" />
+                            <span>Lv.{nsData.rank}</span>
+                        </span>
+                    )}
+                    {nsData?.coin !== undefined && (
+                        <span className="px-1.5 py-0.5 rounded-md bg-orange-500/10 text-orange-600 font-bold" title="鸡腿资产">
+                            🍗 {nsData.coin}
+                        </span>
+                    )}
+                    {nsData?.days !== undefined && (
+                        <span className="px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 font-bold" title="加入天数">
+                            🕒 {nsData.days}
+                        </span>
+                    )}
+                </div>
             )}
 
-            {/* 动作栏：PC在右侧一行呈现，手机在底栏靠右舒展对齐，绝不挤占上方标题与简介 */}
-            <div className="flex items-center justify-end gap-1.5 shrink-0 pl-8 sm:pl-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-black/5 dark:border-white/5">
-                {safeUrl && (
-                    <a
-                        href={safeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hidden sm:inline-flex p-1.5 rounded-lg bg-theme/10 hover:bg-theme hover:text-white text-theme transition items-center justify-center shadow-2xs"
-                        title="访问站点"
-                    >
-                        <i className="ri-arrow-right-up-line text-xs font-bold" />
-                    </a>
-                )}
-                {(profile?.permission || profile?.id === friend.uid) && (
-                    <div className="flex items-center gap-1">
-                        {profile?.permission && friend.accepted === 0 && (
-                            <>
-                                <button
-                                    onClick={onApprove}
-                                    className="px-2 py-0.5 rounded-lg bg-emerald-500 text-white text-[11px] font-bold shadow-2xs"
-                                >
-                                    通过
-                                </button>
-                                <button
-                                    onClick={onReject}
-                                    className="px-2 py-0.5 rounded-lg bg-amber-500 text-white text-[11px] font-bold shadow-2xs"
-                                >
-                                    拒绝
-                                </button>
-                            </>
-                        )}
+            {/* 管理员操作栏 */}
+            {profile?.permission && (
+                <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-xs">
+                    {friend.accepted === 0 ? (
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={onApprove}
+                                className="px-2 py-0.5 rounded-md bg-emerald-500 text-white font-bold text-[11px]"
+                            >
+                                通过
+                            </button>
+                            <button
+                                onClick={onReject}
+                                className="px-2 py-0.5 rounded-md bg-amber-500 text-white font-bold text-[11px]"
+                            >
+                                拒绝
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={handleQuickRefreshNs}
+                            disabled={isRefreshingNs}
+                            className="inline-flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400 hover:underline cursor-pointer disabled:opacity-50"
+                        >
+                            <i className={`ri-refresh-line ${isRefreshingNs ? "animate-spin" : ""}`} />
+                            <span>{isRefreshingNs ? "更正中" : refreshNsDone ? "✓ 已更正" : "更正数据"}</span>
+                        </button>
+                    )}
+                    <div className="flex items-center gap-2 ml-auto">
                         <button
                             onClick={onEdit}
                             className="p-1 rounded-md text-neutral-400 hover:text-theme transition"
-                            title="管理"
+                            title="编辑"
                         >
                             <i className="ri-edit-line text-xs" />
                         </button>
@@ -1119,6 +1391,79 @@ function CompactFriendRow({
                             <i className="ri-delete-bin-line text-xs" />
                         </button>
                     </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// 风格 2: 高密单行书签行 (Compact List)
+function CompactFriendRow({
+    friend,
+    onEdit,
+    onDelete,
+    onApprove,
+}: {
+    friend: FriendItem;
+    index: number;
+    onEdit: () => void;
+    onDelete: () => void;
+    onApprove: () => void;
+    onReject: () => void;
+}) {
+    const profile = useContext(ProfileContext);
+    const parsed = parseFriendCategory(friend.desc, friend.url, friend.name, friend.avatar);
+    const { category, cleanDesc, spaceUrl } = parsed;
+    const primaryUrl = safeHttpUrl(spaceUrl) || safeHttpUrl(friend.url);
+
+    return (
+        <div className="group flex items-center justify-between p-3 rounded-2xl bg-white/60 dark:bg-neutral-900/60 border border-black/5 dark:border-white/5 hover:bg-white dark:hover:bg-neutral-800 transition gap-3 text-xs font-sans">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+                <ImageWithFallback
+                    src={friend.avatar}
+                    alt={friend.name}
+                    className="w-7 h-7 rounded-lg object-cover shrink-0"
+                />
+                <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 text-[10px] text-neutral-500 shrink-0">
+                    {category}
+                </span>
+                <a
+                    href={primaryUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-bold t-primary hover:text-theme transition truncate shrink-0 max-w-[150px]"
+                >
+                    {friend.name}
+                </a>
+                <span className="text-neutral-400 truncate hidden sm:inline">
+                    {cleanDesc || "个人技术生活随想"}
+                </span>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+                <a
+                    href={safeHttpUrl(friend.url)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-neutral-400 hover:text-theme p-1"
+                    title="访问站点"
+                >
+                    <i className="ri-external-link-line" />
+                </a>
+                {profile?.permission && (
+                    <>
+                        {friend.accepted === 0 && (
+                            <button onClick={onApprove} className="text-emerald-600 font-bold px-1.5 py-0.5 rounded bg-emerald-500/10">
+                                通过
+                            </button>
+                        )}
+                        <button onClick={onEdit} className="text-neutral-400 hover:text-theme p-1">
+                            <i className="ri-edit-line" />
+                        </button>
+                        <button onClick={onDelete} className="text-neutral-400 hover:text-rose-500 p-1">
+                            <i className="ri-delete-bin-line" />
+                        </button>
+                    </>
                 )}
             </div>
         </div>
@@ -1131,8 +1476,6 @@ function PolaroidFriendCard({
     index,
     onEdit,
     onDelete,
-    onApprove,
-    onReject,
 }: {
     friend: FriendItem;
     index: number;
@@ -1142,118 +1485,58 @@ function PolaroidFriendCard({
     onReject: () => void;
 }) {
     const profile = useContext(ProfileContext);
-    const { category, cleanDesc } = parseFriendCategory(friend.desc, friend.url);
-    const isUnhealthy = friend.health && friend.health.length > 0;
-    const isTop = friend.sort_order && friend.sort_order > 0;
-    const safeUrl = safeHttpUrl(friend.url);
+    const parsed = parseFriendCategory(friend.desc, friend.url, friend.name, friend.avatar);
+    const { category, cleanDesc, spaceUrl } = parsed;
+    const primaryUrl = safeHttpUrl(spaceUrl) || safeHttpUrl(friend.url);
 
-    // 拍立得交错微倾角
-    const tiltAngles = [
-        "rotate-[-2deg]",
-        "rotate-[1.5deg]",
-        "rotate-[-1deg]",
-        "rotate-[2deg]",
-        "rotate-[-1.5deg]",
-        "rotate-[1deg]",
-    ];
-    const tilt = tiltAngles[index % tiltAngles.length];
-
-    // 和纸胶带色彩
-    const tapeColors = [
-        "bg-rose-300/60 dark:bg-rose-500/30",
-        "bg-amber-300/60 dark:bg-amber-500/30",
-        "bg-sky-300/60 dark:bg-sky-500/30",
-        "bg-emerald-300/60 dark:bg-emerald-500/30",
-        "bg-purple-300/60 dark:bg-purple-500/30",
-    ];
-    const tape = tapeColors[index % tapeColors.length];
+    const tilt = index % 2 === 0 ? "rotate-1" : "-rotate-1";
 
     return (
-        <div
-            className={`group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-neutral-900 p-4 pt-6 border border-black/10 dark:border-white/10 shadow-md hover:shadow-2xl transition-all duration-300 transform ${tilt} hover:rotate-0 hover:scale-[1.03] hover:z-20 select-none`}
-        >
-            {/* 拍立得和纸胶带 */}
-            <div
-                className={`absolute -top-3 left-1/2 -translate-x-1/2 w-14 h-4.5 ${tape} rounded-xs shadow-2xs rotate-[-1deg] pointer-events-none z-10`}
-            />
+        <div className={`relative pt-5 pb-4 px-4 bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 shadow-md hover:shadow-xl transition-all duration-300 rounded-sm font-sans ${tilt}`}>
+            {/* 顶端半透明彩色和纸胶带拟物 */}
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-5 bg-pink-400/40 dark:bg-pink-500/30 backdrop-blur-xs border-t border-b border-white/40 rotate-1 shadow-2xs pointer-events-none" />
 
-            <a
-                href={safeUrl || "#"}
-                target={safeUrl ? "_blank" : undefined}
-                rel="noopener noreferrer"
-                title={friend.name}
-                className="flex flex-col items-center text-center gap-2.5 flex-1 min-w-0"
-            >
-                <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] p-1.5 shadow-inner border border-black/5 dark:border-white/5 group-hover:scale-110 transition-transform overflow-hidden">
-                    <ImageWithFallback
-                        className="h-full w-full rounded-xl object-cover"
-                        imageClassName={isUnhealthy ? "grayscale" : ""}
-                        src={friend.avatar}
-                        alt={friend.name}
-                    />
-                </div>
+            <div className="aspect-video w-full rounded bg-neutral-100 dark:bg-neutral-800 overflow-hidden mb-3 border border-black/5">
+                <ImageWithFallback
+                    src={friend.avatar}
+                    alt={friend.name}
+                    className="w-full h-full object-cover"
+                />
+            </div>
 
-                <div className="w-full">
-                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-sm text-neutral-800 dark:text-neutral-100 group-hover:text-theme transition-colors">
-                            {friend.name}
-                        </span>
-                        {isTop ? (
-                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                                📌
-                            </span>
-                        ) : null}
-                    </div>
-                    <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-theme/10 text-theme font-mono">
-                        {category}
-                    </span>
-                    <p className="mt-1.5 line-clamp-2 text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed px-1">
-                        {cleanDesc || "漫步星廊，静候回响~"}
-                    </p>
-                </div>
-            </a>
+            <div className="flex items-center justify-between mb-1">
+                <a
+                    href={primaryUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-bold text-sm t-primary hover:text-theme transition truncate block"
+                >
+                    {friend.name}
+                </a>
+                <span className="text-[10px] text-theme font-medium px-1.5 py-0.2 rounded bg-theme/10">
+                    {category}
+                </span>
+            </div>
 
-            {(profile?.permission || profile?.id === friend.uid) && (
-                <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-1 text-xs">
-                    {profile?.permission && friend.accepted === 0 ? (
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={onApprove}
-                                className="px-2 py-0.5 rounded-lg bg-emerald-500 text-white text-[10px] font-bold shadow-2xs"
-                            >
-                                通过
-                            </button>
-                            <button
-                                onClick={onReject}
-                                className="px-2 py-0.5 rounded-lg bg-amber-500 text-white text-[10px] font-bold shadow-2xs"
-                            >
-                                拒绝
-                            </button>
-                        </div>
-                    ) : <span />}
-                    <div className="flex items-center gap-1">
-                        <button
-                            onClick={onEdit}
-                            className="p-1 rounded-md text-neutral-400 hover:text-theme transition text-xs"
-                            title="编辑"
-                        >
-                            <i className="ri-edit-line" />
-                        </button>
-                        <button
-                            onClick={onDelete}
-                            className="p-1 rounded-md text-neutral-400 hover:text-rose-500 transition text-xs"
-                            title="删除"
-                        >
-                            <i className="ri-delete-bin-line" />
-                        </button>
-                    </div>
+            <p className="text-xs text-neutral-500 line-clamp-2 min-h-[32px]">
+                {cleanDesc || "个人技术生活随想"}
+            </p>
+
+            {profile?.permission && (
+                <div className="pt-2 mt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-end gap-2 text-xs">
+                    <button onClick={onEdit} className="text-neutral-400 hover:text-theme">
+                        <i className="ri-edit-line" />
+                    </button>
+                    <button onClick={onDelete} className="text-neutral-400 hover:text-rose-500">
+                        <i className="ri-delete-bin-line" />
+                    </button>
                 </div>
             )}
         </div>
     );
 }
 
-// 编辑友链弹窗组件
+// 编辑/更新友链弹窗
 function EditFriendModal({
     friend,
     onClose,
@@ -1263,191 +1546,172 @@ function EditFriendModal({
     onClose: () => void;
     onSuccess: () => void;
 }) {
-    const { t } = useTranslation();
-    const profile = useContext(ProfileContext);
-    const { showAlert, AlertUI } = useAlert();
-
-    const parsed = parseFriendCategory(friend.desc, friend.url);
+    const parsed = parseFriendCategory(friend.desc, friend.url, friend.name, friend.avatar);
     const [name, setName] = useState(friend.name);
     const [desc, setDesc] = useState(parsed.cleanDesc);
     const [avatar, setAvatar] = useState(friend.avatar);
     const [url, setUrl] = useState(friend.url);
-    const [category, setCategory] = useState(parsed.category || "友友们");
-    const [status, setStatus] = useState(friend.accepted);
+    const [category, setCategory] = useState(parsed.category || "友邻博客");
+    const [spaceUrl, setSpaceUrl] = useState(parsed.spaceUrl || "");
     const [sortOrder, setSortOrder] = useState(friend.sort_order || 0);
+    const [accepted, setAccepted] = useState(friend.accepted);
     const [isSaving, setIsSaving] = useState(false);
 
-    const handleSave = async () => {
-        if (!name.trim() || !url.trim() || !avatar.trim()) {
-            showAlert("请完整填写必填项");
-            return;
-        }
-
-        const finalDesc = formatFriendDesc(category, desc);
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
         setIsSaving(true);
         try {
-            const { error } = await client.friend.update(friend.id, {
-                name: name.trim(),
-                desc: finalDesc,
-                avatar: avatar.trim(),
-                url: url.trim(),
-                accepted: status,
-                sort_order: sortOrder,
+            const formattedDesc = formatFriendDesc(category, desc, {
+                spaceUrl,
+                nsData: parsed.nsData,
+                avatarMode: parsed.avatarMode,
+                nsAvatar: parsed.nsAvatar,
+                siteAvatar: parsed.siteAvatar,
             });
 
-            if (error) {
-                showAlert(typeof error === "string" ? error : (error.value as string) || "更新失败");
-            } else {
-                showAlert(t('update.success'), () => onSuccess());
-            }
-        } catch (e: any) {
-            showAlert(e.message || "更新失败");
+            await client.friend.update(friend.id, {
+                name: name.trim(),
+                desc: formattedDesc,
+                avatar: avatar.trim(),
+                url: url.trim(),
+                accepted,
+                sort_order: sortOrder,
+            });
+            onSuccess();
+        } catch (err) {
+            console.error("Save friend failed:", err);
         } finally {
             setIsSaving(false);
         }
     };
 
-    const statusOptions = [
-        { value: -1, label: t('friends.review.rejected') },
-        { value: 0, label: t('friends.review.waiting') },
-        { value: 1, label: t('friends.review.accepted') },
-    ];
-
     return (
         <Modal
             isOpen={true}
             onRequestClose={onClose}
-            contentLabel={`编辑友链 - ${friend.name}`}
+            contentLabel={`编辑友链: ${friend.name}`}
             panelClassName="overflow-visible p-4 sm:p-7 max-w-[94vw] sm:max-w-lg w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
         >
-            <div className="flex flex-col w-full">
-                <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
-                    <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg overflow-hidden bg-black/5 dark:bg-white/5 p-1 border border-black/10 dark:border-white/10">
-                            <ImageWithFallback src={avatar} alt="logo" className="h-full w-full object-cover rounded-md" />
-                        </div>
-                        <h3 className="text-base font-bold t-primary">
-                            编辑收录站点信息
-                        </h3>
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-black/5 dark:border-white/5">
+                <h3 className="text-base font-bold t-primary">{`编辑友链: ${friend.name}`}</h3>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+                >
+                    <i className="ri-close-line text-lg" />
+                </button>
+            </div>
+            <form onSubmit={handleSave} className="space-y-4 text-xs font-sans">
+                <div className="grid grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-neutral-500 mb-1">站点名称</label>
+                        <input
+                            type="text"
+                            required
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs"
+                        />
                     </div>
-                    <button onClick={onClose} className="p-1 rounded-md text-neutral-400 hover:text-neutral-700">
-                        <i className="ri-close-line text-lg" />
-                    </button>
-                </div>
-
-                {/* 管理员专属配置 */}
-                {profile?.permission && (
-                    <div className="mt-3.5 p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex flex-col gap-2.5">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300">审核状态</span>
-                            <select
-                                value={status}
-                                onChange={(e) => setStatus(Number(e.target.value))}
-                                className="w-36 px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w text-xs font-bold t-primary outline-none focus:border-theme cursor-pointer"
-                            >
-                                {statusOptions.map((o) => (
-                                    <option key={o.value} value={o.value}>
-                                        {o.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300">置顶权重 (数字越大越靠前)</span>
-                            <input
-                                type="number"
-                                value={sortOrder}
-                                onChange={e => setSortOrder(parseInt(e.target.value) || 0)}
-                                className="w-24 px-2 py-1 text-xs rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 text-center"
-                            />
-                        </div>
-                    </div>
-                )}
-
-                {/* 分类快捷切换 */}
-                <div className="mt-3.5">
-                    <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 block">站点分类</label>
-                    <div className="flex flex-wrap gap-1.5">
-                        {PRESET_CATEGORIES.filter(c => c !== "全部").map(cat => (
-                            <button
-                                key={cat}
-                                type="button"
-                                onClick={() => setCategory(cat)}
-                                className={`px-2.5 py-1 rounded-lg text-xs transition ${
-                                    category === cat
-                                        ? "bg-theme text-white font-bold shadow-2xs"
-                                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300"
-                                }`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
+                    <div>
+                        <label className="block text-neutral-500 mb-1">分类</label>
+                        <select
+                            value={category}
+                            onChange={(e) => setCategory(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs"
+                        >
+                            {PRESET_CATEGORIES.filter(c => c !== "全部").map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
 
-                <div className="mt-3.5">
-                    <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 block">站点名称</label>
+                <div>
+                    <label className="block text-neutral-500 mb-1">站点链接</label>
                     <input
-                        type="text"
-                        value={name}
-                        onChange={e => setName(e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden"
-                    />
-                </div>
-
-                <div className="mt-3">
-                    <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 block">站点简介</label>
-                    <textarea
-                        value={desc}
-                        onChange={e => setDesc(e.target.value)}
-                        rows={2}
-                        className="w-full px-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden resize-none"
-                    />
-                </div>
-
-                <div className="mt-3">
-                    <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 block">图标地址</label>
-                    <input
-                        type="text"
-                        value={avatar}
-                        onChange={e => setAvatar(e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden"
-                    />
-                </div>
-
-                <div className="mt-3">
-                    <label className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-1 block">跳转网址</label>
-                    <input
-                        type="text"
+                        type="url"
+                        required
                         value={url}
-                        onChange={e => setUrl(e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:border-theme focus:outline-hidden"
+                        onChange={(e) => setUrl(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs"
                     />
                 </div>
 
-                <div className="mt-5 flex items-center justify-end gap-2 pt-3 border-t border-black/5 dark:border-white/5">
-                    <button onClick={onClose} className="px-4 py-2 text-xs font-semibold rounded-xl text-neutral-500">
+                <div>
+                    <label className="block text-neutral-500 mb-1">头像链接</label>
+                    <input
+                        type="url"
+                        required
+                        value={avatar}
+                        onChange={(e) => setAvatar(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-neutral-500 mb-1">空间地址或论坛直达 (选填)</label>
+                    <input
+                        type="text"
+                        value={spaceUrl}
+                        onChange={(e) => setSpaceUrl(e.target.value)}
+                        placeholder="https://www.nodeseek.com/space/UID"
+                        className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-neutral-500 mb-1">站点简介</label>
+                    <input
+                        type="text"
+                        value={desc}
+                        onChange={(e) => setDesc(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs"
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-neutral-500 mb-1">审核状态</label>
+                        <select
+                            value={accepted}
+                            onChange={(e) => setAccepted(Number(e.target.value))}
+                            className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs"
+                        >
+                            <option value={1}>已通过</option>
+                            <option value={0}>待审核</option>
+                            <option value={-1}>已拒绝</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-neutral-500 mb-1">排序权重 (数字越大越靠前)</label>
+                        <input
+                            type="number"
+                            value={sortOrder}
+                            onChange={(e) => setSortOrder(Number(e.target.value))}
+                            className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs font-mono"
+                        />
+                    </div>
+                </div>
+
+                <div className="pt-3 border-t border-black/5 dark:border-white/5 flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-4 py-2 rounded-xl bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-400"
+                    >
                         取消
                     </button>
                     <button
-                        onClick={handleSave}
+                        type="submit"
                         disabled={isSaving}
-                        className="px-6 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-md hover:bg-theme-hover active:scale-95 transition"
+                        className="px-5 py-2 rounded-xl bg-theme text-white font-medium hover:opacity-90 disabled:opacity-50"
                     >
-                        {isSaving ? "保存中..." : t('save')}
+                        {isSaving ? "正在保存..." : "保存修改"}
                     </button>
                 </div>
-            </div>
-            <AlertUI />
+            </form>
         </Modal>
     );
-}
-
-function errorHumanize(error: string) {
-    if (error === "certificate has expired" || error === "526") {
-        return "证书已过期";
-    } else if (error.includes("Unable to connect") || error === "521" || error === "522") {
-        return "无法访问 / 超时";
-    }
-    return error || "检测异常";
 }

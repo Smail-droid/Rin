@@ -43,6 +43,42 @@ function detectAudioQuality(key: string, size: number, contentType: string = "")
   return "MP3";
 }
 
+// 自动将外部网络封面图片拉取并转存至 R2 对象存储，彻底消灭防盗链 403 与图片撕裂
+async function persistCoverImageToR2(
+  env: any,
+  picUrl: string,
+  keyPrefix: string,
+  origin: string
+): Promise<string> {
+  if (!picUrl || !picUrl.startsWith("http") || !env.R2_BUCKET) return picUrl;
+  if (picUrl.includes("/api/blob/")) return picUrl;
+
+  try {
+    const resp = await fetch(picUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+      },
+    });
+    if (!resp.ok) return picUrl;
+
+    const buffer = await resp.arrayBuffer();
+    const contentType = resp.headers.get("content-type") || "image/jpeg";
+    const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
+    const safeBase = keyPrefix.replace(/^music\//, "").replace(/[^\w\u4e00-\u9fa5\-]/g, "_").slice(0, 36);
+    const coverKey = `music/covers/${safeBase}_${crypto.randomUUID().slice(0, 6)}.${ext}`;
+
+    await env.R2_BUCKET.put(coverKey, buffer, {
+      httpMetadata: { contentType },
+    });
+
+    return `${origin}/api/blob/${encodeURIComponent(coverKey)}`;
+  } catch (e) {
+    console.warn("Failed to persist cover to R2:", e);
+    return picUrl;
+  }
+}
+
 export function MusicService(): Hono {
   const app = new Hono();
 
@@ -355,16 +391,35 @@ export function MusicService(): Hono {
         loadMusicMetadata(env),
       ]);
 
+      const AUDIO_EXTS = new Set([
+        "mp3", "flac", "wav", "m4a", "ogg", "aac", "opus", "wma", "webm", "ape", "alac", "aiff"
+      ]);
+
       const origin = new URL(c.req.url).origin;
       const files = listing.objects
-        .filter((obj) => obj.key !== MUSIC_META_KEY)
+        .filter((obj) => {
+          if (obj.key === MUSIC_META_KEY) return false;
+          // 严格排除 covers 目录以及任何非音频格式文件，杜绝 0MB 黑胶唱片
+          if (obj.key.startsWith("music/covers/") || obj.key.includes("/covers/")) return false;
+          const ext = obj.key.split(".").pop()?.toLowerCase() || "";
+          return AUDIO_EXTS.has(ext);
+        })
         .map((obj) => {
           const fileName = obj.key.replace(/^music\//, "");
           const rawName = fileName.replace(/\.[a-zA-Z0-9]+$/, "");
-          const parts = rawName.split("_");
+          let coreName = rawName;
+          const tsMatch = rawName.match(/^\d{10,14}_(?:[a-zA-Z0-9]+_)?(.+)$/);
+          if (tsMatch) coreName = tsMatch[1];
           const m = metaMap[obj.key] || {};
-          const displayName = m.name || obj.customMetadata?.name || parts[0] || rawName;
-          const artist = m.artist || obj.customMetadata?.artist || (parts.length > 1 ? parts[1] : "");
+          let displayName = m.name || obj.customMetadata?.name || coreName;
+          let artist = m.artist || obj.customMetadata?.artist || "";
+          if (coreName.includes("-") && (!artist || artist === "本地上传")) {
+            const parts = coreName.split("-").map((s) => s.trim());
+            if (parts.length >= 2 && parts[0] && parts[1]) {
+              artist = parts[0];
+              displayName = parts.slice(1).join("-").trim();
+            }
+          }
           const pic = m.pic || obj.customMetadata?.pic || "";
           const quality = m.quality || detectAudioQuality(obj.key, obj.size, obj.httpMetadata?.contentType);
           const url = `${origin}/api/blob/${encodeURIComponent(obj.key)}`;
@@ -483,7 +538,16 @@ export function MusicService(): Hono {
         return c.json({ error: "Missing key" }, 400);
       }
 
-      const finalPic = (pic || "").trim();
+      let finalPic = (pic || "").trim();
+      const origin = new URL(c.req.url).origin;
+
+      // 如果是外部网络图片（网易云、QQ音乐等），自动由 Worker 后端拉取转存至 R2，彻底消灭防盗链 403 与图片撕裂
+      if (finalPic.startsWith("http://") || finalPic.startsWith("https://")) {
+        if (!finalPic.includes("/api/blob/")) {
+          finalPic = await persistCoverImageToR2(env, finalPic, key, origin);
+        }
+      }
+
       const metaMap = await loadMusicMetadata(env);
       metaMap[key] = {
         ...(metaMap[key] || {}),

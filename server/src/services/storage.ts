@@ -238,6 +238,20 @@ export function StorageService(): Hono {
 export function BlobService(): Hono {
     const app = new Hono();
 
+    app.options("/*", async () => {
+        return new Response(null, {
+            status: 204,
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+                "Access-Control-Allow-Headers": "Range, Content-Type, Accept, Authorization",
+                "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges, ETag",
+                "Access-Control-Allow-Private-Network": "true",
+                "Access-Control-Max-Age": "86400",
+            },
+        });
+    });
+
     app.get("/*", async (c: AppContext) => {
         const env = c.get("env");
         const key = c.req.path.replace(/^\/blob\/?/, "");

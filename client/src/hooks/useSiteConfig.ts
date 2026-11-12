@@ -3,6 +3,7 @@ import { ClientConfigContext } from "../state/config";
 import { normalizeFeedCardVariant } from "../components/feed-card-options";
 import { normalizeFeedLayout } from "../components/feed-layout-options";
 import { normalizeThemeOpacity } from "../utils/theme-color";
+import { normalizeBlobUrl } from "../utils/url";
 
 // Site configuration keys
 export const SITE_CONFIG_KEYS = {
@@ -116,7 +117,7 @@ export function useSiteConfig() {
     return {
         name: config.get<string>(SITE_CONFIG_KEYS.name) || "Rin",
         description: config.get<string>(SITE_CONFIG_KEYS.description) || "",
-        avatar: config.get<string>(SITE_CONFIG_KEYS.avatar) || "",
+        avatar: normalizeBlobUrl(config.get<string>(SITE_CONFIG_KEYS.avatar)) || config.get<string>(SITE_CONFIG_KEYS.avatar) || "",
         pageSize: Number.isFinite(parsedPageSize) ? parsedPageSize : 5,
         headerBehavior: config.get<string>(SITE_CONFIG_KEYS.headerBehavior) || "fixed",
         feedLayout: normalizeFeedLayout(config.get<string>(SITE_CONFIG_KEYS.feedLayout) || "list"),
