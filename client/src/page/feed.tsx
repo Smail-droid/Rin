@@ -752,7 +752,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                   </div>
                 </div>
               </article>
-              {id !== "about" && <AdjacentSection id={id} setError={setError} />}
+              {id !== "about" && <AdjacentSection id={id} currentFeed={feed} setError={setError} />}
               {feed && (
                 <GalleryComments
                   feedId={`${feed.id}`}
