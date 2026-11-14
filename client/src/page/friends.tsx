@@ -8,6 +8,7 @@ import { client } from "../app/runtime";
 import { ProfileContext } from "../state/profile";
 import { siteName } from "../utils/constants";
 import { safeHttpUrl } from "../utils/url";
+import { useSiteConfig } from "../hooks/useSiteConfig";
 
 export type FriendItem = {
     name: string;
@@ -429,6 +430,14 @@ export const PRESET_CATEGORIES = [
 
 export function FriendsPage() {
     const profile = useContext(ProfileContext);
+    const siteConfig = useSiteConfig();
+
+    const [categories, setCategories] = useState<string[]>(() => {
+        return (siteConfig as any).friendsCategories || [
+            "友邻博客", "主机算力", "探针测速", "极客工具", "技术社区", "漫游灵感"
+        ];
+    });
+    const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
 
     const [allFriends, setAllFriends] = useState<FriendItem[]>([]);
     const [status, setStatus] = useState<'idle' | 'loading'>('loading');
@@ -814,9 +823,9 @@ export function FriendsPage() {
 
             {/* 控制条：分类筛选 Tab、视图风格切换与搜索框 */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 mb-6 border-b border-black/5 dark:border-white/5">
-                {/* 分类 Tab 胶囊 */}
+                {/* 分类 Tab 胶囊与自定义管理 */}
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                    {PRESET_CATEGORIES.map((cat) => {
+                    {["全部", ...categories].map((cat) => {
                         const isActive = activeCategory === cat;
                         return (
                             <button
@@ -833,6 +842,18 @@ export function FriendsPage() {
                             </button>
                         );
                     })}
+
+                    {profile?.permission && (
+                        <button
+                            type="button"
+                            onClick={() => setIsManageCategoriesOpen(true)}
+                            className="px-2.5 py-1.5 rounded-xl border border-dashed border-black/15 dark:border-white/15 bg-black/[0.015] dark:bg-white/[0.02] text-neutral-500 hover:text-theme hover:border-theme/40 text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                            title="自定义新增、重命名或重排全站星廊分类"
+                        >
+                            <i className="ri-settings-3-line text-xs" />
+                            <span>管理分类</span>
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0">
@@ -1044,7 +1065,7 @@ export function FriendsPage() {
                                 onChange={(e) => setFormCategory(e.target.value)}
                                 className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 focus:outline-none focus:border-theme/40 text-xs"
                             >
-                                {PRESET_CATEGORIES.filter(c => c !== "全部").map(cat => (
+                                {categories.map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>
                                 ))}
                             </select>
@@ -1181,10 +1202,26 @@ export function FriendsPage() {
             {editingFriend && (
                 <EditFriendModal
                     friend={editingFriend}
+                    categories={categories}
                     onClose={() => setEditingFriend(null)}
                     onSuccess={() => {
                         setEditingFriend(null);
                         reloadFriends();
+                    }}
+                />
+            )}
+
+            {/* 星廊动态分类自定义管理弹窗 */}
+            {isManageCategoriesOpen && (
+                <ManageCategoriesModal
+                    isOpen={isManageCategoriesOpen}
+                    onClose={() => setIsManageCategoriesOpen(false)}
+                    currentCategories={categories}
+                    onSave={async (newCats) => {
+                        await client.config.update("client", {
+                            "friends.categories": JSON.stringify(newCats),
+                        });
+                        setCategories(newCats);
                     }}
                 />
             )}
@@ -1693,10 +1730,12 @@ function PolaroidFriendCard({
 // 编辑/更新友链弹窗
 function EditFriendModal({
     friend,
+    categories = ["友邻博客", "主机算力", "探针测速", "极客工具", "技术社区", "漫游灵感"],
     onClose,
     onSuccess,
 }: {
     friend: FriendItem;
+    categories?: string[];
     onClose: () => void;
     onSuccess: () => void;
 }) {
@@ -1775,7 +1814,7 @@ function EditFriendModal({
                             onChange={(e) => setCategory(e.target.value)}
                             className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs"
                         >
-                            {PRESET_CATEGORIES.filter(c => c !== "全部").map(cat => (
+                            {categories.map(cat => (
                                 <option key={cat} value={cat}>{cat}</option>
                             ))}
                         </select>
@@ -1866,6 +1905,168 @@ function EditFriendModal({
                     </button>
                 </div>
             </form>
+        </Modal>
+    );
+}
+
+// 星廊动态分类自定义管理弹窗
+function ManageCategoriesModal({
+    isOpen,
+    onClose,
+    currentCategories,
+    onSave,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    currentCategories: string[];
+    onSave: (categories: string[]) => Promise<void>;
+}) {
+    const [categories, setCategories] = useState<string[]>(currentCategories);
+    const [newCatName, setNewCatName] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        setCategories(currentCategories);
+    }, [currentCategories]);
+
+    const handleAdd = () => {
+        const trimmed = newCatName.trim();
+        if (!trimmed) return;
+        if (categories.includes(trimmed)) return;
+        setCategories([...categories, trimmed]);
+        setNewCatName("");
+    };
+
+    const handleMove = (index: number, direction: "up" | "down") => {
+        const targetIndex = direction === "up" ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= categories.length) return;
+        const copy = [...categories];
+        const [moved] = copy.splice(index, 1);
+        copy.splice(targetIndex, 0, moved);
+        setCategories(copy);
+    };
+
+    const handleDelete = (cat: string) => {
+        if (categories.length <= 1) return;
+        setCategories(categories.filter((c) => c !== cat));
+    };
+
+    const handleRename = (index: number, newName: string) => {
+        const copy = [...categories];
+        copy[index] = newName;
+        setCategories(copy);
+    };
+
+    const handleConfirmSave = async () => {
+        const cleaned = categories.map((c) => c.trim()).filter(Boolean);
+        if (cleaned.length === 0) return;
+        setIsSaving(true);
+        try {
+            await onSave(cleaned);
+            onClose();
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal
+            isOpen={isOpen}
+            onRequestClose={onClose}
+            contentLabel="星廊分类管理"
+            panelClassName="p-5 max-w-[94vw] sm:max-w-md w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl space-y-4"
+        >
+            <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+                <div className="flex items-center gap-1.5 font-bold text-sm t-primary">
+                    <i className="ri-folder-settings-line text-theme" />
+                    <span>星廊分类自定义管理</span>
+                </div>
+                <button type="button" onClick={onClose} className="p-1 rounded text-neutral-400 hover:text-neutral-600">
+                    <i className="ri-close-line text-lg" />
+                </button>
+            </div>
+
+            <p className="text-[11px] text-neutral-400">
+                可自由新建、重命名、上下排序或删除分类，配置立即全局生效。
+            </p>
+
+            {/* 分类列表 */}
+            <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                {categories.map((cat, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-1.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/5 dark:border-white/5">
+                        <input
+                            type="text"
+                            value={cat}
+                            onChange={(e) => handleRename(idx, e.target.value)}
+                            className="flex-1 px-2.5 py-1 text-xs rounded-lg bg-white dark:bg-neutral-800 border border-black/10 dark:border-white/10 outline-none focus:border-theme font-medium"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => handleMove(idx, "up")}
+                            disabled={idx === 0}
+                            className="p-1 rounded text-neutral-400 hover:text-theme disabled:opacity-30 cursor-pointer"
+                            title="上移"
+                        >
+                            <i className="ri-arrow-up-line text-xs" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleMove(idx, "down")}
+                            disabled={idx === categories.length - 1}
+                            className="p-1 rounded text-neutral-400 hover:text-theme disabled:opacity-30 cursor-pointer"
+                            title="下移"
+                        >
+                            <i className="ri-arrow-down-line text-xs" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleDelete(cat)}
+                            disabled={categories.length <= 1}
+                            className="p-1 rounded text-neutral-400 hover:text-rose-500 disabled:opacity-30 cursor-pointer"
+                            title="删除分类"
+                        >
+                            <i className="ri-delete-bin-line text-xs" />
+                        </button>
+                    </div>
+                ))}
+            </div>
+
+            {/* 新增分类输入 */}
+            <div className="flex items-center gap-2 pt-1 border-t border-black/5 dark:border-white/5">
+                <input
+                    type="text"
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAdd())}
+                    placeholder="输入新分类名称 (如：设计灵感、二次元)..."
+                    className="flex-1 px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 text-xs outline-none focus:border-theme bg-transparent"
+                />
+                <button
+                    type="button"
+                    onClick={handleAdd}
+                    disabled={!newCatName.trim()}
+                    className="px-3 py-1.5 rounded-xl bg-theme/10 hover:bg-theme/20 text-theme text-xs font-bold disabled:opacity-40 transition shrink-0 cursor-pointer"
+                >
+                    + 新增
+                </button>
+            </div>
+
+            {/* 底部操作 */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/5 text-xs">
+                <button type="button" onClick={onClose} className="px-3.5 py-1.5 rounded-xl text-neutral-400 hover:bg-black/5 cursor-pointer">
+                    取消
+                </button>
+                <button
+                    type="button"
+                    onClick={handleConfirmSave}
+                    disabled={isSaving}
+                    className="px-4 py-1.5 rounded-xl bg-theme text-white font-bold shadow-xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition cursor-pointer"
+                >
+                    {isSaving ? "保存中..." : "保存生效"}
+                </button>
+            </div>
         </Modal>
     );
 }

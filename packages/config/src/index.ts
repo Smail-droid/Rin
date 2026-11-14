@@ -37,6 +37,7 @@ export const CLIENT_CONFIG_DEFAULTS = new Map(
     "gallery.card_gap": 24,
     "comment.enabled": true,
     "login.enabled": true,
+    "friends.categories": JSON.stringify(["友邻博客", "主机算力", "探针测速", "极客工具", "技术社区", "漫游灵感"]),
     "site.name": "Rin",
     "site.description": "A lightweight personal blogging system",
     "site.avatar": "",

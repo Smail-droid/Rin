@@ -214,6 +214,17 @@ export function useSiteConfig() {
         galleryTiltMode: String(config.get(SITE_CONFIG_KEYS.galleryTiltMode) ?? "subtle"),
 
         danmakuSpeed: String(config.get(SITE_CONFIG_KEYS.danmakuSpeed) ?? "normal"),
+
+        friendsCategories: (() => {
+            try {
+                const raw = config.get("friends.categories");
+                if (raw) {
+                    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+                    if (Array.isArray(parsed) && parsed.length > 0) return parsed as string[];
+                }
+            } catch {}
+            return ["友邻博客", "主机算力", "探针测速", "极客工具", "技术社区", "漫游灵感"];
+        })(),
     };
 }
 

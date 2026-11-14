@@ -17,7 +17,7 @@ import { timeago } from "../utils/timeago";
 import { Button } from "../components/button";
 import { Tips } from "../components/tips";
 import { renderMermaidElements } from "../utils/render-mermaid";
-import { AdjacentSection, ArticleRoamSidebar } from "../components/adjacent_feed.tsx";
+import { AdjacentSection } from "../components/adjacent_feed.tsx";
 import { stripImageUrlMetadata } from "../utils/image-upload";
 import { GalleryComments } from "../components/gallery-comments";
 import { Modal } from "@rin/ui";
@@ -714,9 +714,9 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                 <Markdown content={feed.content} />
                 <div className="mt-6 flex flex-col gap-2">
                   {hashtags.length > 0 && (
-                    <div className="flex flex-row flex-wrap gap-x-2">
+                    <div className="flex flex-row flex-wrap gap-2">
                       {hashtags.map(({ name }, index) => (
-                        <HashTag key={index} name={name} />
+                        <HashTag key={index} name={name} currentFeedId={feed.id} />
                       ))}
                     </div>
                   )}
@@ -804,9 +804,6 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                     </div>
                   </div>
                 )}
-
-                {/* 文章漫游推荐卡片 (停靠在标签漫游正下方，显示上下文文章与播放器风格打乱刷新) */}
-                {id !== "about" && <ArticleRoamSidebar id={id} currentFeed={feed} />}
               </div>
             </div>
           </>
