@@ -561,7 +561,12 @@ export function FriendService(): Hono {
                 const aiRes = await executeAIChat(env, serverConfig, [
                     {
                         role: "system",
-                        content: `你是一个专业的画廊博客鉴赏官。请根据提供的站点与博主信息，为该站点生成一段【严格不超过10个汉字】的极炼一句话定位说明（要求：必须在4到10个字之间，严格禁止超过10个汉字，严禁诗意抒情、排比长句或任何多余标点，一行说清核心业务）。直接输出最终文字，不要带有任何标点前缀或引号。`
+                        content: `你是一个专业的画廊博客与知识库鉴赏官。请根据提供的站点与博主信息，为该站点生成一段【8到24个汉字之间】的精炼一句话定位简介。
+要求：
+1. 语言沉稳专业，单行直接说清核心技术方向、业务特色或博主调性；
+2. 严禁客套抒情套话（如“欢迎访问”、“记录生活”等无信息量废话），严禁任何引号、前缀、感叹号或多余修饰标点；
+3. 若为探针测速/主机服务，突出集群监控与网络节点特征；若为技术社区/极客工具，突出开源生产力与领域专注；若为个人随笔，突出生活哲学与审美沉淀；
+4. 严格直接输出最终纯文本文字。`
                     },
                     {
                         role: "user",
@@ -570,7 +575,7 @@ export function FriendService(): Hono {
                 ]);
 
                 if (aiRes.success && aiRes.reply) {
-                    aiRefined = aiRes.reply.replace(/["'“”‘’]/g, "").trim().slice(0, 10);
+                    aiRefined = aiRes.reply.replace(/["'“”‘’]/g, "").trim().slice(0, 30);
                 }
             }
         } catch {}

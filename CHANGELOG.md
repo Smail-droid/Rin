@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.0.6] - 2026-11-14
+
+### Added
+- **AI Description Refinement in Edit Modal**: Added "☆ AI 智能精炼" button to `EditFriendModal`, aligned with the add-link modal for quick one-click synthesis.
+- **Upgraded AI Refinement System Prompt**: Restructured prompt guidelines to generate concise, professional 8-24 character descriptions without conversational fluff or extraneous punctuation.
+- **Full NodeSeek Badge Row in Polaroid View**: Restored missing UID link, Diamond Rank Lv badge, chicken leg count, and registration days badge in polaroid notes.
+- **SVG Image Recognition (`isValidImageBuffer`)**: Added SVG XML recognition in image buffering to safely store NodeSeek vector avatars into R2 as `.svg` assets.
+- **Historic Corrupted Avatar Auto-Unwrap (`sanitizeAvatarUrl`)**: Automatically strips defunct `images.weserv.nl` wrappers across views, modals, and updates, reverting to native official avatars.
+
+### Changed
+- **Preserved User-Customized Descriptions**: Protected custom site descriptions and titles from being overwritten during batch or single NodeSeek asset updates.
+- **Polaroid Photo Viewport Tightening**: Replaced large `aspect-video` container with compact `h-28 sm:h-32` frame and tightened grid gaps to `gap-4 sm:gap-5`, cutting empty white space by 35%.
+- **Sub-3.5s Sniffing & Update Timeouts**: Trimmed frontend and backend proxy cascade timeouts to strictly under 3.5 seconds for instant feedback.
+
+### Fixed
+- **403 Forbidden on Weserv Proxy**: Completely removed defunct `images.weserv.nl` references blocked by NodeSeek's anti-hotlinking protections.
+
+---
+
 ## [v1.0.5] - 2026-11-07
 
 ### Added

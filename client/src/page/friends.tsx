@@ -891,8 +891,14 @@ export function FriendsPage() {
                     finalDetail = await fetchClientSideNsDetail(uid);
                 }
                 if (finalDetail || uid || data?.avatarUrl) {
-                    const nextName = parsed.category === "友邻博客" ? f.name : (finalDetail?.member_name || f.name);
-                    const nextDesc = finalDetail?.bio ? finalDetail.bio.slice(0, 40) : (data?.suggestedDesc || `${nextName}的空间`);
+                    const isFriendBlog = parsed.category === "友邻博客";
+                    const isTempName = f.name.includes("NodeSeek#") || f.name.startsWith("UID:");
+                    const nextName = isFriendBlog ? f.name : (isTempName && finalDetail?.member_name ? finalDetail.member_name : f.name);
+                    const existingCleanDesc = parsed.cleanDesc?.trim() || "";
+                    const hasCustomDesc = existingCleanDesc && existingCleanDesc !== "个人技术生活随想" && !existingCleanDesc.endsWith("的空间");
+                    const nextDesc = hasCustomDesc
+                        ? existingCleanDesc
+                        : (finalDetail?.bio ? finalDetail.bio.slice(0, 40) : (data?.suggestedDesc || `${nextName}的空间`));
                     const isR2 = data?.avatarUrl && data.avatarUrl.includes("/api/blob/");
                     const finalAvatar = isR2 ? data.avatarUrl : (uid ? `https://www.nodeseek.com/avatar/${uid}.png` : sanitizeAvatarUrl(f.avatar));
                     const formatted = formatFriendDesc(parsed.category, nextDesc, {
@@ -1496,9 +1502,12 @@ function useFriendNsRefresh(
 
             if (finalNsDetail) {
                 const isFriendBlog = category === "友邻博客";
-                const nextName = isFriendBlog ? friend.name : (finalNsDetail.member_name || displayName);
-                const nextDesc = isFriendBlog
-                    ? (cleanDesc && cleanDesc !== "个人技术生活随想" ? cleanDesc : friend.name)
+                const isTempName = friend.name.includes("NodeSeek#") || friend.name.startsWith("UID:");
+                const nextName = isFriendBlog ? friend.name : (isTempName && finalNsDetail.member_name ? finalNsDetail.member_name : (displayName || friend.name));
+                const existingCleanDesc = cleanDesc?.trim() || "";
+                const hasCustomDesc = existingCleanDesc && existingCleanDesc !== "个人技术生活随想" && !existingCleanDesc.endsWith("的空间");
+                const nextDesc = hasCustomDesc
+                    ? existingCleanDesc
                     : (finalNsDetail.bio ? finalNsDetail.bio.trim().slice(0, 40) : (serverData?.suggestedDesc || `${nextName}的空间`));
 
                 const newFormattedDesc = formatFriendDesc(category, nextDesc, {
@@ -2061,6 +2070,39 @@ function EditFriendModal({
     const [sortOrder, setSortOrder] = useState(friend.sort_order || 0);
     const [accepted, setAccepted] = useState(friend.accepted);
     const [isSaving, setIsSaving] = useState(false);
+    const [isRefiningDesc, setIsRefiningDesc] = useState(false);
+
+    // AI 智能精炼简介
+    const handleRefineDesc = async () => {
+        setIsRefiningDesc(true);
+        try {
+            const token = localStorage.getItem("rin_auth_token") || "";
+            const res = await fetch("/api/friend/ai-refine-desc", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({
+                    url,
+                    title: name,
+                    currentDesc: desc,
+                    nsData: parsed.nsData,
+                    category,
+                }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.desc) {
+                    setDesc(data.desc);
+                }
+            }
+        } catch (err) {
+            console.error("Refine desc failed:", err);
+        } finally {
+            setIsRefiningDesc(false);
+        }
+    };
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -2167,11 +2209,23 @@ function EditFriendModal({
                 </div>
 
                 <div>
-                    <label className="block text-neutral-500 mb-1">站点简介</label>
+                    <div className="flex items-center justify-between mb-1">
+                        <label className="text-neutral-500">站点简介 (不超过40字)</label>
+                        <button
+                            type="button"
+                            onClick={handleRefineDesc}
+                            disabled={isRefiningDesc}
+                            className="text-[11px] text-theme hover:underline flex items-center gap-0.5 cursor-pointer disabled:opacity-50"
+                        >
+                            <i className="ri-magic-line text-xs" />
+                            <span>{isRefiningDesc ? "提炼中..." : "AI 智能精炼"}</span>
+                        </button>
+                    </div>
                     <input
                         type="text"
                         value={desc}
                         onChange={(e) => setDesc(e.target.value)}
+                        placeholder="一句话介绍此站点"
                         className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs"
                     />
                 </div>
