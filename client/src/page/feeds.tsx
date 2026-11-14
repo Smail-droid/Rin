@@ -1390,14 +1390,15 @@ export function FeedsPage() {
         updateTagsConfig({ customOrder: nextOrder });
     };
 
-    // 预设上限联动：点击 4个/6个/8个/12个/全部 时，自动将前 N 个置为开启展示，其余自动置为隐藏
+    // 首页展示数量上限切换：纯净设置上限额度，绝不强行篡改用户在下方表格自定义的勾选状态
     const handleSelectTagLimit = (val: number | "all") => {
-        if (val === "all") {
-            updateTagsConfig({ limit: "all", hiddenIds: [] });
-        } else {
-            const nextHidden = tagOrderList.slice(val);
-            updateTagsConfig({ limit: val, hiddenIds: nextHidden });
-        }
+        updateTagsConfig({ limit: val });
+    };
+
+    // 快捷按当前上限仅勾选排名前 N 项
+    const handleQuickEnableTopN = (count: number) => {
+        const nextHidden = tagOrderList.slice(count);
+        updateTagsConfig({ hiddenIds: nextHidden });
     };
 
     // 全选：所有标签开启展示
@@ -1688,15 +1689,24 @@ export function FeedsPage() {
                                 "rotate-[1.5deg]",
                             ][i % 8];
                             const bg = getTagColorClass(i);
+                            const tagData = (tags || []).find((t: any) => t.id === tag.id) as any;
+                            const isSingleArticle = tagData?.feeds === 1 && Boolean(tagData?.singleFeedId);
+                            const targetHref = isSingleArticle
+                                ? `/feed/${tagData.singleFeedId}`
+                                : `/hashtag/${encodeURIComponent(tag.name)}`;
                             const tagDisplayName = homepageTagsConfig.aliases?.[tag.id] || tag.name;
                             return (
                                 <Link
                                     key={tag.id}
-                                    href={`/hashtag/${encodeURIComponent(tag.name)}`}
+                                    href={targetHref}
                                     className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border shadow-2xs text-xs font-semibold transform ${rot} hover:rotate-0 hover:scale-110 hover:shadow-md transition-all duration-300 ${bg}`}
+                                    title={isSingleArticle ? `独家文章，点击直达正文！` : `浏览 #${tag.name} 标签聚合`}
                                 >
-                                    <span className="opacity-60 text-[10px]">🏷️</span>
+                                    <span className="opacity-60 text-[10px]">{isSingleArticle ? "📖" : "🏷️"}</span>
                                     <span>#{tagDisplayName}</span>
+                                    {isSingleArticle && (
+                                        <i className="ri-arrow-right-up-line text-[10px] text-theme opacity-80" />
+                                    )}
                                 </Link>
                             );
                         })}
@@ -2185,7 +2195,9 @@ export function FeedsPage() {
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div>
                                     <span className="font-bold text-xs t-primary">首页展示数量上限</span>
-                                    <span className="text-[11px] text-neutral-400 block sm:inline sm:ml-2">控制画廊首页前台最多推荐呈现的标签个数</span>
+                                    <span className="text-[11px] text-neutral-400 block sm:inline sm:ml-2">
+                                        控制画廊首页前台最多推荐呈现的标签个数 (当前可用总数: {orderedTagObjects.length} 个)
+                                    </span>
                                 </div>
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                     {[
@@ -2201,7 +2213,7 @@ export function FeedsPage() {
                                                 key={String(opt.val)}
                                                 type="button"
                                                 onClick={() => handleSelectTagLimit(opt.val)}
-                                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition select-none ${
+                                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition select-none cursor-pointer ${
                                                     isSel
                                                         ? "bg-theme text-white shadow-2xs font-bold"
                                                         : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-400 hover:bg-black/10"
@@ -2253,28 +2265,36 @@ export function FeedsPage() {
                             <div className="flex items-center gap-2 text-xs flex-wrap">
                                 <span className="font-bold t-primary">标签展示状态：</span>
                                 <span className="px-2.5 py-0.5 rounded-full bg-theme/10 text-theme font-mono font-bold text-xs">
-                                    已启用 {orderedTagObjects.filter((t) => !homepageTagsConfig.hiddenIds.includes(t.id)).length} / {orderedTagObjects.length} 个
+                                    已开启 {orderedTagObjects.filter((t) => !homepageTagsConfig.hiddenIds.includes(t.id)).length} / {orderedTagObjects.length} 个
                                 </span>
-                                {homepageTagsConfig.limit !== "all" && (
-                                    <span className="text-[11px] text-neutral-400 font-medium">
-                                        (推荐前 {homepageTagsConfig.limit} 个)
-                                    </span>
-                                )}
+                                <span className="text-[11px] text-neutral-400 font-mono font-medium">
+                                    (前台呈现: {displayTags.length} 个 {homepageTagsConfig.limit !== "all" ? `· 上限 ${homepageTagsConfig.limit} 个` : "· 不设上限"})
+                                </span>
                             </div>
 
                             <div className="flex items-center gap-1.5 flex-wrap self-end sm:self-auto">
                                 <button
                                     type="button"
                                     onClick={handleSelectAllTags}
-                                    className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme hover:text-theme text-xs font-semibold t-primary transition shadow-2xs active:scale-95"
+                                    className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme hover:text-theme text-xs font-semibold t-primary transition shadow-2xs active:scale-95 cursor-pointer"
                                     title="开启所有标签的首页展示"
                                 >
                                     全选 (全部启用)
                                 </button>
+                                {homepageTagsConfig.limit !== "all" && typeof homepageTagsConfig.limit === "number" && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleQuickEnableTopN(homepageTagsConfig.limit as number)}
+                                        className="px-2.5 py-1 rounded-lg border border-theme/30 text-theme hover:bg-theme/10 text-xs font-semibold transition shadow-2xs active:scale-95 cursor-pointer"
+                                        title={`一键仅开启排名前 ${homepageTagsConfig.limit} 的标签，隐藏其余标签`}
+                                    >
+                                        仅开启前 {homepageTagsConfig.limit} 个
+                                    </button>
+                                )}
                                 <button
                                     type="button"
                                     onClick={handleInvertTagsVisibility}
-                                    className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme hover:text-theme text-xs font-semibold t-primary transition shadow-2xs active:scale-95"
+                                    className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme hover:text-theme text-xs font-semibold t-primary transition shadow-2xs active:scale-95 cursor-pointer"
                                     title="反转所有标签的展示开关"
                                 >
                                     反选
@@ -2282,7 +2302,7 @@ export function FeedsPage() {
                                 <button
                                     type="button"
                                     onClick={handleDisableAllTags}
-                                    className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:bg-black/5 text-xs text-neutral-400 hover:text-rose-500 transition shadow-2xs active:scale-95"
+                                    className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:bg-black/5 text-xs text-neutral-400 hover:text-rose-500 transition shadow-2xs active:scale-95 cursor-pointer"
                                     title="关闭全部标签展示"
                                 >
                                     全关
