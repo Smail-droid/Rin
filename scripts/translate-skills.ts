@@ -1,7 +1,10 @@
 import fs from "fs";
 import path from "path";
 
-const skillsDir = "C:/Users/Administrator/.jeikcode/skills";
+const skillsDirs = [
+  "C:/Users/Administrator/.jeikcode/skills",
+  "C:/Users/Administrator/.agents/skills",
+];
 
 // 1. 核心中文映射表 (前 80 个核心技能 + 常用设计技能)
 const translations: Record<string, string> = {
@@ -148,43 +151,46 @@ function getFallbackChineseDesc(name: string): string {
   return `🛠️【工程工具】${name} 专业开发辅助技能。`;
 }
 
-// 执行全量 195 个技能描述的替换
+// 执行全量技能描述的替换
 let updatedCount = 0;
-const entries = fs.readdirSync(skillsDir);
+for (const skillsDir of skillsDirs) {
+  if (!fs.existsSync(skillsDir)) continue;
+  const entries = fs.readdirSync(skillsDir);
 
-for (const skillName of entries) {
-  const filePath = path.join(skillsDir, skillName, "SKILL.md");
-  if (!fs.existsSync(filePath)) continue;
+  for (const skillName of entries) {
+    const filePath = path.join(skillsDir, skillName, "SKILL.md");
+    if (!fs.existsSync(filePath)) continue;
 
-  const content = fs.readFileSync(filePath, "utf-8");
-  const newDesc = getFallbackChineseDesc(skillName);
+    const content = fs.readFileSync(filePath, "utf-8");
+    const newDesc = getFallbackChineseDesc(skillName);
 
-  // 解析并重构 YAML Frontmatter
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!match) continue;
+    // 解析并重构 YAML Frontmatter
+    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (!match) continue;
 
-  const frontmatter = match[1];
-  const body = content.slice(match[0].length);
+    const frontmatter = match[1];
+    const body = content.slice(match[0].length);
 
-  // 替换其中的 description 字段
-  let newFrontmatter = frontmatter;
-  if (/description:\s*(\|[\s\S]*?(?=\r?\n[a-zA-Z0-9_\-]+:|$))/m.test(newFrontmatter)) {
-    newFrontmatter = newFrontmatter.replace(
-      /description:\s*(\|[\s\S]*?(?=\r?\n[a-zA-Z0-9_\-]+:|$))/m,
-      `description: "${newDesc}"`
-    );
-  } else if (/description:\s*[^\r\n]*/.test(newFrontmatter)) {
-    newFrontmatter = newFrontmatter.replace(
-      /description:\s*[^\r\n]*/,
-      `description: "${newDesc}"`
-    );
-  } else {
-    newFrontmatter += `\ndescription: "${newDesc}"`;
+    // 替换其中的 description 字段
+    let newFrontmatter = frontmatter;
+    if (/description:\s*(\|[\s\S]*?(?=\r?\n[a-zA-Z0-9_\-]+:|$))/m.test(newFrontmatter)) {
+      newFrontmatter = newFrontmatter.replace(
+        /description:\s*(\|[\s\S]*?(?=\r?\n[a-zA-Z0-9_\-]+:|$))/m,
+        `description: "${newDesc}"`
+      );
+    } else if (/description:\s*[^\r\n]*/.test(newFrontmatter)) {
+      newFrontmatter = newFrontmatter.replace(
+        /description:\s*[^\r\n]*/,
+        `description: "${newDesc}"`
+      );
+    } else {
+      newFrontmatter += `\ndescription: "${newDesc}"`;
+    }
+
+    const finalContent = `---\n${newFrontmatter.trim()}\n---${body}`;
+    fs.writeFileSync(filePath, finalContent, "utf-8");
+    updatedCount++;
   }
-
-  const finalContent = `---\n${newFrontmatter.trim()}\n---${body}`;
-  fs.writeFileSync(filePath, finalContent, "utf-8");
-  updatedCount++;
 }
 
 console.log(`成功将 ${updatedCount} 个技能的 description 全量替换为中文分类描述！`);
@@ -269,24 +275,27 @@ const uiShortcuts: { name: string; target: string; desc: string }[] = [
 ];
 
 let shortcutCount = 0;
-for (const sc of uiShortcuts) {
-  const scDir = path.join(skillsDir, sc.name);
-  const targetFile = path.join(skillsDir, sc.target, "SKILL.md");
+for (const skillsDir of skillsDirs) {
+  if (!fs.existsSync(skillsDir)) continue;
+  for (const sc of uiShortcuts) {
+    const scDir = path.join(skillsDir, sc.name);
+    const targetFile = path.join(skillsDir, sc.target, "SKILL.md");
 
-  let baseContent = "";
-  if (fs.existsSync(targetFile)) {
-    baseContent = fs.readFileSync(targetFile, "utf-8");
-    // 清除原有 frontmatter
-    baseContent = baseContent.replace(/^---\r?\n[\s\S]*?\r?\n---/, "");
+    let baseContent = "";
+    if (fs.existsSync(targetFile)) {
+      baseContent = fs.readFileSync(targetFile, "utf-8");
+      // 清除原有 frontmatter
+      baseContent = baseContent.replace(/^---\r?\n[\s\S]*?\r?\n---/, "");
+    }
+
+    if (!fs.existsSync(scDir)) {
+      fs.mkdirSync(scDir, { recursive: true });
+    }
+
+    const scSkillContent = `---\nname: ${sc.name}\ndescription: "${sc.desc}"\n---\n${baseContent.trim()}`;
+    fs.writeFileSync(path.join(scDir, "SKILL.md"), scSkillContent, "utf-8");
+    shortcutCount++;
   }
-
-  if (!fs.existsSync(scDir)) {
-    fs.mkdirSync(scDir, { recursive: true });
-  }
-
-  const scSkillContent = `---\nname: ${sc.name}\ndescription: "${sc.desc}"\n---\n${baseContent.trim()}`;
-  fs.writeFileSync(path.join(scDir, "SKILL.md"), scSkillContent, "utf-8");
-  shortcutCount++;
 }
 
-console.log(`成功在全局 ~/.jeikcode/skills 中建立了 ${shortcutCount} 个极速调取别名！`);
+console.log(`成功建立了 ${shortcutCount} 个极速调取别名！`);
