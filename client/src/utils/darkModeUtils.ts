@@ -51,8 +51,13 @@ export function listenSystemMode() {
 
   // 判断当前模式
   darkModeHandler();
-  // 监听模式变化
+  // 监听系统偏好变化
   mediaQuery.addEventListener("change", darkModeHandler);
+
+  // 每 60 秒检查一次，若处于系统自动模式且跨越了日出/日落时间，自动平滑切换
+  if (typeof window !== "undefined") {
+    setInterval(darkModeHandler, 60000);
+  }
 }
 
 export function getCurrentColorMode(): "light" | "dark" {

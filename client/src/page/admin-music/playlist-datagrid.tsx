@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import type { MusicTrack } from "../../components/music-player/types";
 import { VinylDiscArt } from "../../components/music-player/vinyl-disc-art";
 import { formatCleanSourceName } from "./types";
@@ -72,11 +73,25 @@ export function PlaylistDataGrid({
   onPause,
   onDeleteTrack,
 }: PlaylistDataGridProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const finalPlaylist = useMemo(() => {
+    if (!searchQuery.trim()) return displayedPlaylist;
+    const q = searchQuery.trim().toLowerCase();
+    return displayedPlaylist.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        (t.artist && t.artist.toLowerCase().includes(q)) ||
+        (t.album && t.album.toLowerCase().includes(q)) ||
+        (t.group && t.group.toLowerCase().includes(q))
+    );
+  }, [displayedPlaylist, searchQuery]);
+
   return (
     <div className="flex flex-col gap-3.5 ani-show">
       {/* 分组与过滤条 */}
       <div className="p-3.5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap flex-1">
           <span className="font-bold text-xs t-primary mr-1">分类：</span>
           <div className="flex items-center gap-1 rounded-xl bg-black/5 dark:bg-white/5 p-0.5 text-xs mr-2">
             {[
@@ -133,6 +148,27 @@ export function PlaylistDataGrid({
           >
             + 新建分组
           </button>
+
+          {/* 歌单即时搜索框 */}
+          <div className="relative w-36 sm:w-48 ml-1">
+            <i className="ri-search-line absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-xs pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜索歌名/歌手..."
+              className="w-full pl-7 pr-6 py-1 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-theme text-xs outline-none transition"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 text-xs"
+              >
+                <i className="ri-close-line" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap justify-between md:justify-end">
@@ -233,14 +269,14 @@ export function PlaylistDataGrid({
             </tr>
           </thead>
           <tbody className="divide-y divide-black/5 dark:divide-white/5">
-            {displayedPlaylist.length === 0 ? (
+            {finalPlaylist.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-16 text-center text-neutral-400">
-                  播放列表为空，请在上方「音廊资产」或「曲库探索」中收录
+                  {searchQuery ? `未找到匹配 “${searchQuery}” 的曲目` : "播放列表为空，请在上方「音廊资产」或「曲库探索」中收录"}
                 </td>
               </tr>
             ) : (
-              displayedPlaylist.map((track, idx) => {
+              finalPlaylist.map((track, idx) => {
                 const isCur = currentTrack?.id === track.id;
                 const isSel = selectedTrackIds.has(track.id);
                 const isR2 = track.source === "r2" || track.url.includes("/api/blob/music/");

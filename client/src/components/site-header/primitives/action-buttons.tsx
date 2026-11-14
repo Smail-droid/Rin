@@ -9,7 +9,7 @@ import { removeAuthToken } from "../../../utils/auth";
 import { ImageWithFallback } from "../../image-with-fallback";
 import { HEADER_POPUP_PANEL_CLASS } from "../shared";
 
-import { setThemeMode, useColorMode, type ThemeMode } from "../../../utils/darkModeUtils";
+import { getStoredThemeMode, setThemeMode, useColorMode, type ThemeMode } from "../../../utils/darkModeUtils";
 
 export function HeaderActions({
   profile,
@@ -32,29 +32,57 @@ export function HeaderActions({
   );
 }
 
-// 纯净日月日夜切换按钮 (移至顶栏右侧，黄太阳/粉月亮，纯单键无旁白文字，绝不跑偏)
+// 纯净日月日夜切换按钮 (三档循环：系统自动 -> 浅色日间 -> 深色夜间，长久记忆与时间感应)
 export function ThemeToggle({ className = "", plain = false }: { className?: string; plain?: boolean }) {
   const colorMode = useColorMode();
+  const [storedMode, setStoredMode] = useState<ThemeMode>(() => getStoredThemeMode());
 
-  const toggleTheme = () => {
-    const next: ThemeMode = colorMode === "dark" ? "light" : "dark";
+  useEffect(() => {
+    const handleSync = () => {
+      setStoredMode(getStoredThemeMode());
+    };
+    window.addEventListener("colorSchemeChange", handleSync);
+    return () => window.removeEventListener("colorSchemeChange", handleSync);
+  }, []);
+
+  const cycleTheme = () => {
+    const current = getStoredThemeMode();
+    // 三档循环：系统自动 (根据时间+系统) -> 强制浅色 -> 强制深色 -> 系统自动
+    const next: ThemeMode = current === "system" ? "light" : current === "light" ? "dark" : "system";
     setThemeMode(next);
+    setStoredMode(next);
   };
+
+  const titleText =
+    storedMode === "system"
+      ? `日夜模式: 自动 (系统/时间感应，当前: ${colorMode === "dark" ? "深色" : "浅色"})`
+      : storedMode === "light"
+      ? "日夜模式: 浅色日间 (已手动锁定)"
+      : "日夜模式: 深色夜间 (已手动锁定)";
 
   return (
     <div className={className + " flex flex-row items-center"}>
       <button
         type="button"
-        onClick={toggleTheme}
+        onClick={cycleTheme}
         aria-label="切换日夜模式"
-        title={colorMode === "dark" ? "当前: 夜间模式 (点击切换为日间)" : "当前: 日间模式 (点击切换为夜间)"}
+        title={titleText}
         className={
           plain
-            ? "flex h-8 w-8 items-center justify-center transition-transform hover:scale-115 active:scale-95 select-none"
-            : "flex h-8 w-8 items-center justify-center rounded-full border border-black/10 dark:border-white/10 bg-w hover:border-theme shadow-2xs transition-transform hover:scale-110 active:scale-95 select-none"
+            ? "flex h-8 w-8 items-center justify-center transition-transform hover:scale-115 active:scale-95 select-none relative"
+            : "flex h-8 w-8 items-center justify-center rounded-full border border-black/10 dark:border-white/10 bg-w hover:border-theme shadow-2xs transition-transform hover:scale-110 active:scale-95 select-none relative"
         }
       >
-        <i className={colorMode === "dark" ? "ri-moon-line text-rose-400 text-base" : "ri-sun-line text-amber-500 text-base"} />
+        {storedMode === "system" ? (
+          <i className={colorMode === "dark" ? "ri-contrast-2-line text-theme text-base" : "ri-contrast-line text-theme text-base"} />
+        ) : storedMode === "dark" ? (
+          <i className="ri-moon-line text-rose-400 text-base" />
+        ) : (
+          <i className="ri-sun-line text-amber-500 text-base" />
+        )}
+        {storedMode === "system" && (
+          <span className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full bg-theme ring-1 ring-white dark:ring-neutral-900" />
+        )}
       </button>
     </div>
   );

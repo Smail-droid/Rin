@@ -1674,7 +1674,7 @@ export function FeedsPage() {
                 </div>
 
                 {/* 🏷️ Floating Washi Tape Charms (Scattered delicately around the whitespace) */}
-                {displayTags.length > 0 && listState === "normal" && (
+                {displayTags.length > 0 && listState === "normal" ? (
                     <div className="flex flex-wrap items-center justify-center gap-3 my-4 px-2 select-none ani-show">
                         {displayTags.map((tag, i) => {
                             const rot = [
@@ -1704,7 +1704,7 @@ export function FeedsPage() {
                             <button
                                 type="button"
                                 onClick={() => setIsTagSettingsOpen(true)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-neutral-800/80 hover:bg-theme/10 hover:text-theme text-xs font-semibold t-primary border border-black/10 dark:border-white/10 shadow-2xs transition select-none active:scale-95"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-neutral-800/80 hover:bg-theme/10 hover:text-theme text-xs font-semibold t-primary border border-black/10 dark:border-white/10 shadow-2xs transition select-none active:scale-95 cursor-pointer"
                                 title="管理画廊首页推荐标签展示与顺序 (Dense DataGrid)"
                             >
                                 <i className="ri-settings-3-line text-xs" />
@@ -1712,6 +1712,20 @@ export function FeedsPage() {
                             </button>
                         )}
                     </div>
+                ) : (
+                    listState === "normal" && Boolean(profile?.permission) && (
+                        <div className="flex justify-center my-4 select-none ani-show">
+                            <button
+                                type="button"
+                                onClick={() => setIsTagSettingsOpen(true)}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-dashed border-theme/40 text-theme text-xs font-semibold hover:bg-theme/5 transition cursor-pointer"
+                                title="所有首页推荐标签已被隐藏，点击重新配置或启用"
+                            >
+                                <i className="ri-price-tag-3-line text-xs" />
+                                <span>首页标签已全部隐藏 · 点击管理标签</span>
+                            </button>
+                        </div>
+                    )
                 )}
 
                 {/* Main Atelier Canvas: Staggered, Organic Columns with Large Posters */}

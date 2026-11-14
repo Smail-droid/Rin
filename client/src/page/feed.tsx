@@ -684,6 +684,19 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         )}
                       </div>
                     </div>
+
+                    {/* 文章页顶部：灵感流转标签胶囊栏 */}
+                    {hashtags.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-black/5 dark:border-white/5 ani-show">
+                        <span className="text-xs text-neutral-400 flex items-center gap-1 shrink-0 font-medium">
+                          <i className="ri-price-tag-3-line text-theme text-xs" />
+                          <span>灵感流转：</span>
+                        </span>
+                        {hashtags.map(({ name }, index) => (
+                          <HashTag key={index} name={name} currentFeedId={feed.id} />
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                 {(hasAISummary || showAISummaryState) && (
@@ -713,13 +726,6 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                 )}
                 <Markdown content={feed.content} />
                 <div className="mt-6 flex flex-col gap-2">
-                  {hashtags.length > 0 && (
-                    <div className="flex flex-row flex-wrap gap-2">
-                      {hashtags.map(({ name }, index) => (
-                        <HashTag key={index} name={name} currentFeedId={feed.id} />
-                      ))}
-                    </div>
-                  )}
                   <div className="flex min-w-0 flex-row items-center">
                     <ImageWithFallback
                       src={feed.user.avatar || "/avatar.png"}
@@ -733,6 +739,26 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                     </div>
                   </div>
                 </div>
+
+                {/* 底部：灵感流转 · 同题漫步 */}
+                {hashtags.length > 0 && (
+                  <div className="mt-8 p-3.5 sm:p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ani-show">
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-theme/10 text-theme text-sm">
+                        <i className="ri-compass-3-line" />
+                      </span>
+                      <div>
+                        <span className="font-bold t-primary block">同题灵感漫步</span>
+                        <span className="text-[10px] text-neutral-400 block">点击标签右侧「换一篇」直接切入同类随想</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {hashtags.map(({ name }, index) => (
+                        <HashTag key={index} name={name} currentFeedId={feed.id} />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* 原创版权与底部分享条 */}
                 <div className="mt-8 p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">

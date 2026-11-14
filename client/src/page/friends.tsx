@@ -122,6 +122,32 @@ export function normalizeCategory(cat: string): string {
     return raw || "友邻博客";
 }
 
+// 浏览器客户端通过纯净 IPv4 图像代理抓取 NodeSeek 原生头像并转为 Base64（彻底绕开 NodeSeek IPv6 封锁）
+export async function fetchClientAvatarBase64(uid: string): Promise<string | null> {
+    if (!uid) return null;
+    const urls = [
+        `https://images.weserv.nl/?url=www.nodeseek.com/avatar/${uid}.png`,
+        `https://corsproxy.io/?url=${encodeURIComponent(`https://www.nodeseek.com/avatar/${uid}.png`)}`,
+    ];
+    for (const u of urls) {
+        try {
+            const res = await fetch(u, { signal: AbortSignal.timeout(6000) });
+            if (res.ok) {
+                const blob = await res.blob();
+                if (blob.size > 100 && (blob.type.startsWith("image/") || blob.type.includes("octet-stream"))) {
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.onerror = () => resolve(null);
+                        reader.readAsDataURL(blob);
+                    });
+                }
+            }
+        } catch {}
+    }
+    return null;
+}
+
 // 浏览器客户端多级兜底直连获取 NodeSeek 真实坛友数据（利用用户本地 IPv4 网络穿透 IPv6 封锁）
 export async function fetchClientSideNsDetail(uid: string): Promise<NodeSeekUserData | null> {
     if (!uid) return null;
@@ -791,6 +817,116 @@ export function FriendsPage() {
         }
     };
 
+    // 一键批量更正全部 NodeSeek 坛友数据
+    const [isBatchRefreshing, setIsBatchRefreshing] = useState(false);
+    const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
+
+    const handleBatchRefreshAll = async () => {
+        const nsFriends = allFriends.filter((f) => {
+            const parsed = parseFriendCategory(f.desc, f.url, f.name, f.avatar);
+            const uidMatch = (parsed.spaceUrl || f.url).match(/nodeseek\.com\/space\/(\d+)/i)
+                || (parsed.spaceUrl || f.url).match(/space\/(\d+)/i)
+                || f.name.match(/UID[:\s#]+(\d+)/i)
+                || (f.avatar && f.avatar.match(/ns_(\d+)/i));
+            return Boolean(uidMatch);
+        });
+        if (nsFriends.length === 0) return;
+
+        setIsBatchRefreshing(true);
+        setBatchProgress({ current: 0, total: nsFriends.length });
+        let successCount = 0;
+        for (let i = 0; i < nsFriends.length; i++) {
+            const f = nsFriends[i];
+            setBatchProgress({ current: i + 1, total: nsFriends.length });
+            try {
+                const parsed = parseFriendCategory(f.desc, f.url, f.name, f.avatar);
+                const uidMatch = (parsed.spaceUrl || f.url).match(/nodeseek\.com\/space\/(\d+)/i)
+                    || (parsed.spaceUrl || f.url).match(/space\/(\d+)/i)
+                    || f.name.match(/UID[:\s#]+(\d+)/i)
+                    || (f.avatar && f.avatar.match(/ns_(\d+)/i));
+                const uid = uidMatch ? uidMatch[1] : "";
+                let localNsDetail: any = null;
+                let localAvatarBase64: any = null;
+                if (uid) {
+                    [localNsDetail, localAvatarBase64] = await Promise.all([
+                        fetchClientSideNsDetail(uid),
+                        fetchClientAvatarBase64(uid),
+                    ]);
+                }
+                const token = localStorage.getItem("rin_auth_token") || "";
+                const res = await fetch("/api/friend/extract-source-avatar", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify({
+                        sourceUrl: parsed.spaceUrl || (uid ? `https://www.nodeseek.com/space/${uid}#/general` : f.url),
+                        name: f.name,
+                        clientNsDetail: localNsDetail,
+                        clientAvatarBase64: localAvatarBase64,
+                    }),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const finalDetail = data.nsDetail || localNsDetail;
+                    if (finalDetail) {
+                        const nextName = parsed.category === "友邻博客" ? f.name : (finalDetail.member_name || f.name);
+                        const nextDesc = finalDetail.bio ? finalDetail.bio.slice(0, 40) : (data.suggestedDesc || `${nextName}的空间`);
+                        const isR2 = data.avatarUrl && data.avatarUrl.includes("/api/blob/");
+                        const finalAvatar = isR2 ? data.avatarUrl : (uid ? `https://images.weserv.nl/?url=www.nodeseek.com/avatar/${uid}.png` : f.avatar);
+                        const formatted = formatFriendDesc(parsed.category, nextDesc, {
+                            spaceUrl: data.spaceUrl || parsed.spaceUrl,
+                            avatarMode: parsed.avatarMode,
+                            siteAvatar: parsed.siteAvatar,
+                            nsAvatar: finalAvatar,
+                            nsData: {
+                                name: finalDetail.member_name,
+                                rank: finalDetail.rank,
+                                coin: finalDetail.coin,
+                                days: finalDetail.days || finalDetail.join_days,
+                                posts: finalDetail.posts || finalDetail.nPost,
+                                comments: finalDetail.comments || finalDetail.nComment,
+                                bio: finalDetail.bio,
+                            },
+                        });
+                        await client.friend.update(f.id, {
+                            name: nextName,
+                            desc: formatted,
+                            avatar: finalAvatar,
+                        });
+                        successCount++;
+                    }
+                }
+            } catch {}
+        }
+        setIsBatchRefreshing(false);
+        setBatchProgress(null);
+        reloadFriends();
+    };
+
+    // 快捷直接移动分类
+    const handleQuickMoveCategory = async (friend: FriendItem, newCat: string) => {
+        const parsed = parseFriendCategory(friend.desc, friend.url, friend.name, friend.avatar);
+        const formatted = formatFriendDesc(newCat, parsed.cleanDesc, {
+            spaceUrl: parsed.spaceUrl,
+            probeUrl: parsed.probeUrl,
+            nodeCount: parsed.nodeCount,
+            avatarMode: parsed.avatarMode,
+            siteAvatar: parsed.siteAvatar,
+            nsAvatar: parsed.nsAvatar,
+            nsData: parsed.nsData,
+        });
+        await client.friend.update(friend.id, { desc: formatted });
+        reloadFriends();
+    };
+
+    // 输入权重数字敲回车即时排序
+    const handleQuickReorder = async (friendId: number, newSortOrder: number) => {
+        await client.friend.update(friendId, { sort_order: newSortOrder });
+        reloadFriends();
+    };
+
     return (
         <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
             <Helmet>
@@ -809,7 +945,19 @@ export function FriendsPage() {
                         汇聚优秀的友邻博客、极客工具与技术漫游星空。
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                    {profile?.permission && (
+                        <button
+                            type="button"
+                            onClick={handleBatchRefreshAll}
+                            disabled={isBatchRefreshing}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 text-xs font-semibold transition cursor-pointer disabled:opacity-50"
+                            title="一键自动更正全部 NodeSeek 坛友最新头像与等级鸡腿数据"
+                        >
+                            <i className={`ri-refresh-line ${isBatchRefreshing ? "animate-spin" : ""}`} />
+                            <span>{isBatchRefreshing ? `更正中 (${batchProgress?.current}/${batchProgress?.total})` : "一键更正全部"}</span>
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={() => setIsAddModalOpen(true)}
@@ -956,11 +1104,14 @@ export function FriendsPage() {
                             key={friend.id}
                             friend={friend}
                             index={idx}
+                            categories={categories}
                             onEdit={() => setEditingFriend(friend)}
                             onDelete={() => handleDelete(friend.id, friend.name)}
                             onApprove={() => handleApprove(friend.id)}
                             onReject={() => handleReject(friend.id)}
                             onUpdate={reloadFriends}
+                            onMoveCategory={handleQuickMoveCategory}
+                            onReorder={handleQuickReorder}
                         />
                     ))}
                 </div>
@@ -971,11 +1122,14 @@ export function FriendsPage() {
                             key={friend.id}
                             friend={friend}
                             index={idx}
+                            categories={categories}
                             onEdit={() => setEditingFriend(friend)}
                             onDelete={() => handleDelete(friend.id, friend.name)}
                             onApprove={() => handleApprove(friend.id)}
                             onReject={() => handleReject(friend.id)}
                             onUpdate={reloadFriends}
+                            onMoveCategory={handleQuickMoveCategory}
+                            onReorder={handleQuickReorder}
                         />
                     ))}
                 </div>
@@ -986,11 +1140,14 @@ export function FriendsPage() {
                             key={friend.id}
                             friend={friend}
                             index={idx}
+                            categories={categories}
                             onEdit={() => setEditingFriend(friend)}
                             onDelete={() => handleDelete(friend.id, friend.name)}
                             onApprove={() => handleApprove(friend.id)}
                             onReject={() => handleReject(friend.id)}
                             onUpdate={reloadFriends}
+                            onMoveCategory={handleQuickMoveCategory}
+                            onReorder={handleQuickReorder}
                         />
                     ))}
                 </div>
@@ -1232,11 +1389,14 @@ export function FriendsPage() {
 interface FriendCardProps {
     friend: FriendItem;
     index: number;
+    categories?: string[];
     onEdit: () => void;
     onDelete: () => void;
     onApprove: () => void;
     onReject: () => void;
     onUpdate?: () => void;
+    onMoveCategory?: (friend: FriendItem, newCat: string) => void;
+    onReorder?: (friendId: number, newSortOrder: number) => void;
 }
 
 // 抽取 NodeSeek 资产更正与就地同步状态机 Hook
@@ -1282,13 +1442,17 @@ function useFriendNsRefresh(
         try {
             const token = localStorage.getItem("rin_auth_token") || "";
 
-            // 1. 客户端先用本地 IPv4 网络 (或公共代理) 尝试提取最新数据作为稳妥兜底
+            // 1. 客户端先用本地 IPv4 网络 (或公共代理) 尝试提取最新数据与头像 Base64 作为稳妥兜底
             let localNsDetail: NodeSeekUserData | null = null;
+            let localAvatarBase64: string | null = null;
             if (uid) {
-                localNsDetail = await fetchClientSideNsDetail(uid);
+                [localNsDetail, localAvatarBase64] = await Promise.all([
+                    fetchClientSideNsDetail(uid),
+                    fetchClientAvatarBase64(uid),
+                ]);
             }
 
-            // 2. 请求服务端转存与提取（服务端内置多级 IPv4 代理穿透）
+            // 2. 请求服务端转存与提取（服务端内置多级 IPv4 代理穿透与 Base64 解码存储）
             let serverData: any = null;
             try {
                 const res = await fetch("/api/friend/extract-source-avatar", {
@@ -1301,6 +1465,7 @@ function useFriendNsRefresh(
                         sourceUrl: target || (uid ? `https://www.nodeseek.com/space/${uid}#/general` : ""),
                         name: friend.name,
                         clientNsDetail: localNsDetail,
+                        clientAvatarBase64: localAvatarBase64,
                     }),
                 });
                 if (res.ok) {
@@ -1315,13 +1480,12 @@ function useFriendNsRefresh(
                 finalNsDetail = await fetchClientSideNsDetail(uid);
             }
 
-            // 头像处理：优先使用服务端转存好的 R2 链接；如果服务端因 IPv6 问题未转存，但已有 R2 头像，则保留已有 R2 头像
+            // 头像处理：优先使用服务端新鲜转存好的 R2 链接 (带时间戳刷新防缓存)；如果服务端没有成功写 R2，则使用 weserv 图像直链作为可靠的 IPv4 直连回退，严禁保留以前受损的旧 R2 链接！
             const serverAvatarUrl = serverData?.avatarUrl || "";
             const isR2Avatar = serverAvatarUrl.includes("/api/blob/");
-            const existingIsR2 = friend.avatar && friend.avatar.includes("/api/blob/");
             const finalAvatarUrl = isR2Avatar
                 ? serverAvatarUrl
-                : (existingIsR2 ? friend.avatar : (uid ? `https://images.weserv.nl/?url=www.nodeseek.com/avatar/${uid}.png` : (serverAvatarUrl || friend.avatar)));
+                : (uid ? `https://images.weserv.nl/?url=www.nodeseek.com/avatar/${uid}.png` : (serverAvatarUrl || friend.avatar));
 
             if (finalNsDetail) {
                 const isFriendBlog = category === "友邻博客";
@@ -1378,11 +1542,14 @@ function useFriendNsRefresh(
 function FriendCard({
     friend,
     index,
+    categories,
     onEdit,
     onDelete,
     onApprove,
     onReject,
     onUpdate,
+    onMoveCategory,
+    onReorder,
 }: FriendCardProps) {
     const profile = useContext(ProfileContext);
     const parsed = parseFriendCategory(friend.desc, friend.url, friend.name, friend.avatar);
@@ -1398,14 +1565,51 @@ function FriendCard({
         <div className={`group relative p-4 rounded-3xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/5 backdrop-blur-md shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between gap-3 font-sans ${tiltClass}`}>
             {/* 顶部标签栏与分类 */}
             <div className="flex items-center justify-between text-[11px]">
-                <span className="px-2 py-0.5 rounded-lg bg-theme/10 text-theme font-medium">
-                    {category}
-                </span>
-                {friend.accepted === 0 && (
-                    <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-600 font-bold">
-                        待审核
+                {profile?.permission && categories && onMoveCategory ? (
+                    <select
+                        value={category}
+                        onChange={(e) => onMoveCategory(friend, e.target.value)}
+                        className="px-2 py-0.5 rounded-lg bg-theme/10 text-theme font-medium text-[11px] outline-none cursor-pointer border border-transparent hover:border-theme/40"
+                        title="点击直接切换此友链分类"
+                    >
+                        {categories.map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                        ))}
+                    </select>
+                ) : (
+                    <span className="px-2 py-0.5 rounded-lg bg-theme/10 text-theme font-medium">
+                        {category}
                     </span>
                 )}
+                <div className="flex items-center gap-1.5">
+                    {profile?.permission && onReorder && (
+                        <div className="flex items-center gap-0.5 font-mono text-[11px] text-neutral-400">
+                            <span>#</span>
+                            <input
+                                type="number"
+                                defaultValue={friend.sort_order ?? 0}
+                                key={`${friend.id}_${friend.sort_order}`}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        const val = parseInt(e.currentTarget.value, 10);
+                                        if (!isNaN(val)) onReorder(friend.id, val);
+                                    }
+                                }}
+                                onBlur={(e) => {
+                                    const val = parseInt(e.currentTarget.value, 10);
+                                    if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
+                                }}
+                                className="w-10 text-center rounded bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme focus:border-theme outline-none text-[10px] font-mono font-bold py-0.2"
+                                title="输入排序权重敲回车即时排序 (数字越大越靠前)"
+                            />
+                        </div>
+                    )}
+                    {friend.accepted === 0 && (
+                        <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-600 font-bold">
+                            待审核
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* 卡片核心主体 */}
@@ -1540,11 +1744,14 @@ function FriendCard({
 // 风格 2: 高密单行书签行 (Compact List)
 function CompactFriendRow({
     friend,
+    categories,
     onEdit,
     onDelete,
     onApprove,
     onReject,
     onUpdate,
+    onMoveCategory,
+    onReorder,
 }: FriendCardProps) {
     const profile = useContext(ProfileContext);
     const parsed = parseFriendCategory(friend.desc, friend.url, friend.name, friend.avatar);
@@ -1560,9 +1767,41 @@ function CompactFriendRow({
                     alt={friend.name}
                     className="w-7 h-7 rounded-lg object-cover shrink-0"
                 />
-                <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 text-[10px] text-neutral-500 shrink-0">
-                    {category}
-                </span>
+                {profile?.permission && categories && onMoveCategory ? (
+                    <select
+                        value={category}
+                        onChange={(e) => onMoveCategory(friend, e.target.value)}
+                        className="px-1.5 py-0.5 rounded-md bg-black/5 dark:bg-white/5 text-[10px] text-neutral-500 outline-none cursor-pointer border border-transparent hover:border-theme shrink-0"
+                        title="点击直接切换此友链分类"
+                    >
+                        {categories.map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                        ))}
+                    </select>
+                ) : (
+                    <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 text-[10px] text-neutral-500 shrink-0">
+                        {category}
+                    </span>
+                )}
+                {profile?.permission && onReorder && (
+                    <input
+                        type="number"
+                        defaultValue={friend.sort_order ?? 0}
+                        key={`${friend.id}_${friend.sort_order}`}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                const val = parseInt(e.currentTarget.value, 10);
+                                if (!isNaN(val)) onReorder(friend.id, val);
+                            }
+                        }}
+                        onBlur={(e) => {
+                            const val = parseInt(e.currentTarget.value, 10);
+                            if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
+                        }}
+                        className="w-9 text-center rounded bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme outline-none text-[10px] font-mono font-bold py-0.2 shrink-0"
+                        title="输入排序权重后敲回车立即换序"
+                    />
+                )}
                 <a
                     href={primaryUrl}
                     target="_blank"
@@ -1626,11 +1865,14 @@ function CompactFriendRow({
 function PolaroidFriendCard({
     friend,
     index,
+    categories,
     onEdit,
     onDelete,
     onApprove,
     onReject,
     onUpdate,
+    onMoveCategory,
+    onReorder,
 }: FriendCardProps) {
     const profile = useContext(ProfileContext);
     const parsed = parseFriendCategory(friend.desc, friend.url, friend.name, friend.avatar);
@@ -1671,7 +1913,7 @@ function PolaroidFriendCard({
                 </div>
             </div>
 
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-1 gap-1">
                 <a
                     href={primaryUrl}
                     target="_blank"
@@ -1681,9 +1923,41 @@ function PolaroidFriendCard({
                 >
                     {displayName}
                 </a>
-                <span className="text-[10px] text-theme font-medium px-1.5 py-0.2 rounded bg-theme/10 shrink-0 ml-1">
-                    {category}
-                </span>
+                {profile?.permission && categories && onMoveCategory ? (
+                    <select
+                        value={category}
+                        onChange={(e) => onMoveCategory(friend, e.target.value)}
+                        className="text-[10px] text-theme font-medium px-1.5 py-0.2 rounded bg-theme/10 shrink-0 border border-transparent hover:border-theme/40 outline-none cursor-pointer"
+                        title="点击直接切换此友链分类"
+                    >
+                        {categories.map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                        ))}
+                    </select>
+                ) : (
+                    <span className="text-[10px] text-theme font-medium px-1.5 py-0.2 rounded bg-theme/10 shrink-0">
+                        {category}
+                    </span>
+                )}
+                {profile?.permission && onReorder && (
+                    <input
+                        type="number"
+                        defaultValue={friend.sort_order ?? 0}
+                        key={`${friend.id}_${friend.sort_order}`}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                const val = parseInt(e.currentTarget.value, 10);
+                                if (!isNaN(val)) onReorder(friend.id, val);
+                            }
+                        }}
+                        onBlur={(e) => {
+                            const val = parseInt(e.currentTarget.value, 10);
+                            if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
+                        }}
+                        className="w-9 text-center rounded bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme outline-none text-[10px] font-mono font-bold py-0.2 shrink-0"
+                        title="输入排序权重后敲回车立即换序"
+                    />
+                )}
             </div>
 
             <p className="text-xs text-neutral-500 line-clamp-2 min-h-[32px]">

@@ -15,6 +15,7 @@ export function AdminTagsPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterMode, setFilterMode] = useState<"all" | "linked" | "unlinked">("all");
 
   // 关联文章状态
   const [associatingTag, setAssociatingTag] = useState<Tag | null>(null);
@@ -147,9 +148,19 @@ export function AdminTagsPage() {
     fetchTags();
   }, [fetchTags]);
 
+  const unlinkedTags = useMemo(() => tags.filter((t) => !((t as any).feeds > 0)), [tags]);
+  const linkedTags = useMemo(() => tags.filter((t) => (t as any).feeds > 0), [tags]);
+
   // 搜索与排序
   const sortedAndFilteredTags = useMemo(() => {
     let result = [...tags];
+
+    if (filterMode === "linked") {
+      result = result.filter((t) => (t as any).feeds > 0);
+    } else if (filterMode === "unlinked") {
+      result = result.filter((t) => !((t as any).feeds > 0));
+    }
+
     const q = searchQuery.trim().toLowerCase();
     if (q) {
       result = result.filter(
@@ -330,6 +341,35 @@ export function AdminTagsPage() {
     );
   };
 
+  // 一键选中所有未关联空标签
+  const handleSelectAllUnlinked = () => {
+    setSelectedIds(new Set(unlinkedTags.map((t) => t.id)));
+  };
+
+  // 一键清理所有未关联空标签
+  const handleDeleteAllUnlinked = () => {
+    if (unlinkedTags.length === 0) return;
+    showConfirm(
+      "清理未关联空标签确认",
+      `确定要一键清理全部 ${unlinkedTags.length} 个未关联任何文章的空标签吗？`,
+      async () => {
+        setLoading(true);
+        let count = 0;
+        try {
+          for (const tag of unlinkedTags) {
+            const { error } = await client.tag.delete(tag.id);
+            if (!error) count++;
+          }
+          showAlert(`🎉 成功清理 ${count} 个未关联空标签！`);
+          setSelectedIds(new Set());
+          fetchTags();
+        } finally {
+          setLoading(false);
+        }
+      }
+    );
+  };
+
   return (
     <div className="flex w-full flex-col gap-4 ani-show select-none">
       <Helmet>
@@ -342,7 +382,7 @@ export function AdminTagsPage() {
           1. 顶部操作与批量工具栏
           ==================================================================== */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs">
-        {/* 左侧动作组: [添加] [批量删除] [统计信息] */}
+        {/* 左侧动作组: [添加] [分类切换] [批量删除] [统计信息] */}
         <div className="flex flex-wrap items-center gap-2">
           {/* 添加标签输入组 */}
           <form onSubmit={handleCreateTag} className="flex items-center gap-1.5">
@@ -351,24 +391,73 @@ export function AdminTagsPage() {
               value={newTagName}
               onChange={(e) => setNewTagName(e.target.value)}
               placeholder="输入新标签名 (如: Linux / AI / 随笔)..."
-              className="rounded-xl border border-black/10 bg-black/[0.02] px-3 py-1.5 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-white/[0.03] w-48 sm:w-64"
+              className="rounded-xl border border-black/10 bg-black/[0.02] px-3 py-1.5 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-white/[0.03] w-40 sm:w-56"
             />
             <button
               type="submit"
               disabled={creating || !newTagName.trim()}
-              className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover active:scale-95 transition disabled:opacity-50"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover active:scale-95 transition disabled:opacity-50 cursor-pointer"
             >
               <i className="ri-add-line text-sm" />
               <span>{creating ? "添加中…" : "添加"}</span>
             </button>
           </form>
 
+          {/* 分类筛选 Tab 胶囊 */}
+          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-black/5 dark:bg-white/5 text-xs">
+            {[
+              { id: "all", label: "全部", count: tags.length },
+              { id: "linked", label: "已关联", count: linkedTags.length },
+              { id: "unlinked", label: "空标签", count: unlinkedTags.length },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setFilterMode(tab.id as any);
+                  setCurrentPage(1);
+                }}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer select-none flex items-center gap-1 ${
+                  filterMode === tab.id
+                    ? "bg-w text-theme font-bold shadow-2xs"
+                    : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span className="font-mono text-[10px] opacity-70">({tab.count})</span>
+              </button>
+            ))}
+          </div>
+
+          {/* 未关联标签快速操作 */}
+          {unlinkedTags.length > 0 && (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleSelectAllUnlinked}
+                className="px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 text-xs font-bold transition cursor-pointer"
+                title="一键选中所有 0 篇关联文章的空标签"
+              >
+                选中所有空标签 ({unlinkedTags.length})
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAllUnlinked}
+                className="px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                title="一键批量清理删除所有未关联文章的空标签"
+              >
+                <i className="ri-delete-bin-line text-xs" />
+                <span>清理所有空标签</span>
+              </button>
+            </div>
+          )}
+
           {/* 批量删除按钮 (选中有高亮) */}
           {selectedIds.size > 0 && (
             <button
               type="button"
               onClick={handleBatchDelete}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-500 text-white text-xs font-bold hover:bg-rose-600 active:scale-95 transition"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-500 text-white text-xs font-bold hover:bg-rose-600 active:scale-95 transition cursor-pointer shadow-xs"
             >
               <i className="ri-delete-bin-line text-xs" />
               <span>删除选中 ({selectedIds.size})</span>

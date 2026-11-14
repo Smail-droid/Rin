@@ -490,16 +490,16 @@ export function FriendService(): Hono {
                 }
             }
 
-            let finalAvatarUrl = avatarFetchUrl;
+            let finalAvatarUrl = nsUid ? `https://images.weserv.nl/?url=www.nodeseek.com/avatar/${nsUid}.png` : avatarFetchUrl;
             if (imageBuffer && imageBuffer.byteLength > 100 && env?.R2_BUCKET) {
                 const safeKey = nsUid ? `avatars/ns_${nsUid}.${fileExt}` : `avatars/site_${Math.random().toString(36).slice(2, 10)}.${fileExt}`;
                 try {
                     await env.R2_BUCKET.put(safeKey, imageBuffer, {
                         httpMetadata: { contentType },
                     });
-                    finalAvatarUrl = `${origin}/api/blob/${safeKey}`;
+                    finalAvatarUrl = `${origin}/api/blob/${safeKey}?t=${Date.now()}`;
                 } catch {
-                    finalAvatarUrl = avatarFetchUrl;
+                    finalAvatarUrl = nsUid ? `https://images.weserv.nl/?url=www.nodeseek.com/avatar/${nsUid}.png` : avatarFetchUrl;
                 }
             }
 

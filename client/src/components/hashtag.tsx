@@ -11,7 +11,7 @@ interface HashTagProps {
 /**
  * 灵感流转标签 (Topic Flow Capsule)
  * 点击标签文字 -> 跳转至标签星云聚合汇总
- * 点击微光洗牌 🔀 -> 顺着同类灵感脉络无缝切入下一篇随想，实现沉浸式漫游探索
+ * 点击「换一篇」 -> 顺着同类灵感脉络无缝切入下一篇随想，实现沉浸式漫游探索
  */
 export function HashTag({ name, currentFeedId, enableFlow = true }: HashTagProps) {
   const [, setLocation] = useLocation();
@@ -43,14 +43,14 @@ export function HashTag({ name, currentFeedId, enableFlow = true }: HashTagProps
   };
 
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] text-xs font-semibold group/tag hover:border-theme/40 hover:bg-theme/5 transition select-none">
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] text-xs font-semibold group/tag hover:border-theme/40 hover:bg-theme/5 transition select-none">
       <button
         type="button"
         onClick={(e) => {
           e.preventDefault();
           setLocation(`/hashtag/${encodeURIComponent(name)}`);
         }}
-        className="text-neutral-500 hover:text-theme group-hover/tag:text-theme transition"
+        className="text-neutral-600 dark:text-neutral-300 hover:text-theme group-hover/tag:text-theme transition cursor-pointer"
       >
         #{name}
       </button>
@@ -60,10 +60,11 @@ export function HashTag({ name, currentFeedId, enableFlow = true }: HashTagProps
           type="button"
           onClick={handleHop}
           disabled={isHopping}
-          className="text-neutral-300 dark:text-neutral-600 hover:text-theme p-0.5 transition cursor-pointer"
-          title={`顺着 #${name} 漫游下一篇`}
+          className="flex items-center gap-0.5 text-[10px] text-theme hover:text-theme-hover font-bold border-l border-black/10 dark:border-white/10 pl-1.5 transition cursor-pointer"
+          title={`顺着 #${name} 换一篇随想`}
         >
-          <i className={`ri-shuffle-line text-[11px] ${isHopping ? "animate-spin text-theme" : ""}`} />
+          <i className={`ri-shuffle-line ${isHopping ? "animate-spin" : ""}`} />
+          <span>{isHopping ? "寻找中" : "换一篇"}</span>
         </button>
       )}
     </span>

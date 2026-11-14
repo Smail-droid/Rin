@@ -2313,7 +2313,29 @@ export function Settings() {
       {/* Tab 4: Extensions & Services Settings (全站服务、通知与维护中枢) */}
       {activeCategory === "services" && (
         <div className="w-full flex flex-col space-y-4 ani-show">
-          {/* 切片 1: Webhook 外部通知广播中枢 */}
+          {/* 切片 1: AI 智能导读与核心大模型引擎 (置顶优先呈现) */}
+          <AISummarySettings
+            value={aiValue}
+            onChange={(updates) => {
+              if (updates.enabled !== undefined) {
+                setConfigValue("server", "ai_summary.enabled", updates.enabled);
+              }
+              if (updates.provider !== undefined) {
+                setConfigValue("server", "ai_summary.provider", updates.provider);
+              }
+              if (updates.model !== undefined) {
+                setConfigValue("server", "ai_summary.model", updates.model);
+              }
+              if (updates.apiUrl !== undefined) {
+                setConfigValue("server", "ai_summary.api_url", updates.apiUrl);
+              }
+              if (updates.apiKey !== undefined) {
+                setConfigValue("server", "ai_summary.api_key", updates.apiKey);
+              }
+            }}
+          />
+
+          {/* 切片 2: Webhook 外部通知广播中枢 */}
           <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 gap-2">
               <div className="flex items-center gap-2">
@@ -2328,9 +2350,9 @@ export function Settings() {
               <p className="text-xs text-neutral-400">文章发布、友链申请与新评论实时外部 Webhook 广播推送</p>
             </div>
 
-            {/* URL 与 请求方法组合条 */}
+            {/* URL 与 请求方法组合条 (严格防溢出排布) */}
             <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 flex flex-col gap-1 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+              <div className="flex-1 min-w-0 flex flex-col gap-1 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold t-primary">{t("settings.webhook.url.title")}</label>
                   <span className="text-[10px] text-neutral-400 font-mono">WEBHOOK_URL</span>
@@ -2345,19 +2367,19 @@ export function Settings() {
                 />
               </div>
 
-              <div className="w-full sm:w-48 flex flex-col gap-1 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+              <div className="w-full sm:w-44 shrink-0 flex flex-col gap-1 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
                 <label className="text-xs font-bold t-primary">{t("settings.webhook.method.title")}</label>
                 <p className="text-[11px] text-neutral-400">HTTP 请求方法</p>
                 <div className="mt-1">
-                  <SearchableSelect
+                  <select
                     value={String(serverConfig.get("webhook.method") ?? "POST")}
-                    onChange={(value) => setConfigValue("server", "webhook.method", value)}
-                    options={WEBHOOK_METHOD_OPTIONS}
-                    placeholder="POST"
-                    searchPlaceholder="请求方法"
-                    emptyLabel={t("no_more")}
-                    searchable={false}
-                  />
+                    onChange={(e) => setConfigValue("server", "webhook.method", e.target.value)}
+                    className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-w px-3 py-2 text-xs font-bold t-primary outline-hidden focus:border-theme transition cursor-pointer"
+                  >
+                    {WEBHOOK_METHOD_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -2606,29 +2628,6 @@ export function Settings() {
               </div>
             </div>
           </div>
-
-          {/* 切片 4: AI 智能导读与大模型引擎 */}
-
-          <AISummarySettings
-            value={aiValue}
-            onChange={(updates) => {
-              if (updates.enabled !== undefined) {
-                setConfigValue("server", "ai_summary.enabled", updates.enabled);
-              }
-              if (updates.provider !== undefined) {
-                setConfigValue("server", "ai_summary.provider", updates.provider);
-              }
-              if (updates.model !== undefined) {
-                setConfigValue("server", "ai_summary.model", updates.model);
-              }
-              if (updates.apiUrl !== undefined) {
-                setConfigValue("server", "ai_summary.api_url", updates.apiUrl);
-              }
-              if (updates.apiKey !== undefined) {
-                setConfigValue("server", "ai_summary.api_key", updates.apiKey);
-              }
-            }}
-          />
         </div>
       )}
 
