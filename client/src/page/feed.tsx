@@ -17,7 +17,7 @@ import { timeago } from "../utils/timeago";
 import { Button } from "../components/button";
 import { Tips } from "../components/tips";
 import { renderMermaidElements } from "../utils/render-mermaid";
-import { AdjacentSection } from "../components/adjacent_feed.tsx";
+import { AdjacentSection, ArticleRoamSidebar } from "../components/adjacent_feed.tsx";
 import { stripImageUrlMetadata } from "../utils/image-upload";
 import { GalleryComments } from "../components/gallery-comments";
 import { Modal } from "@rin/ui";
@@ -752,7 +752,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                   </div>
                 </div>
               </article>
-              {id !== "about" && <AdjacentSection id={id} currentFeed={feed} setError={setError} />}
+              {id !== "about" && <AdjacentSection id={id} setError={setError} />}
               {feed && (
                 <GalleryComments
                   feedId={`${feed.id}`}
@@ -804,6 +804,9 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                     </div>
                   </div>
                 )}
+
+                {/* 文章漫游推荐卡片 (停靠在标签漫游正下方，显示上下文文章与播放器风格打乱刷新) */}
+                {id !== "about" && <ArticleRoamSidebar id={id} currentFeed={feed} />}
               </div>
             </div>
           </>
