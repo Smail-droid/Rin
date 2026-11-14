@@ -340,7 +340,7 @@ export function FriendService(): Hono {
 
                 const safeFetch = async (url: string, opts: any = {}): Promise<string> => {
                     const ctrl = new AbortController();
-                    const tid = setTimeout(() => ctrl.abort(), 5000);
+                    const tid = setTimeout(() => ctrl.abort(), 3500);
                     try {
                         const r = await fetch(url, { ...opts, signal: ctrl.signal });
                         clearTimeout(tid);
@@ -441,21 +441,45 @@ export function FriendService(): Hono {
                 } catch {}
             }
 
-            const fetchImageWithFallback = async (primaryUrl: string): Promise<{ buffer: ArrayBuffer | null; ct: string }> => {
+            const isValidImageBuffer = (buf: ArrayBuffer, ct: string): { valid: boolean; ext: string; contentType: string } => {
+                if (!buf || buf.byteLength < 100) return { valid: false, ext: "png", contentType: "image/png" };
+                const u8 = new Uint8Array(buf);
+                // 1. 常见二进制图片魔数判断
+                if (u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4e && u8[3] === 0x47) {
+                    return { valid: true, ext: "png", contentType: "image/png" };
+                }
+                if (u8[0] === 0xff && u8[1] === 0xd8 && u8[2] === 0xff) {
+                    return { valid: true, ext: "jpg", contentType: "image/jpeg" };
+                }
+                if (u8[0] === 0x47 && u8[1] === 0x49 && u8[2] === 0x46) {
+                    return { valid: true, ext: "gif", contentType: "image/gif" };
+                }
+                if (u8[0] === 0x52 && u8[1] === 0x49 && u8[2] === 0x46 && u8[3] === 0x46) {
+                    return { valid: true, ext: "webp", contentType: "image/webp" };
+                }
+                // 2. SVG 矢量图片文本嗅探（兼容 NodeSeek 原生 SVG 头像）
+                const snippet = new TextDecoder().decode(u8.slice(0, 400)).trim().toLowerCase();
+                if (snippet.includes("<svg") && (snippet.includes("xmlns") || snippet.includes("viewbox") || snippet.includes("width") || snippet.includes("height"))) {
+                    if (!snippet.includes("<!doctype") && !snippet.includes("<html") && !snippet.includes("just a moment")) {
+                        return { valid: true, ext: "svg", contentType: "image/svg+xml" };
+                    }
+                }
+                return { valid: false, ext: "png", contentType: "image/png" };
+            };
+
+            const fetchImageWithFallback = async (primaryUrl: string): Promise<{ buffer: ArrayBuffer | null; ct: string; ext: string }> => {
                 const urls = [
-                    // NodeSeek 头像优先走 weserv 全球图像代理（纯净 IPv4 边缘出口，完美绕过 NodeSeek IPv6 封锁与防盗链）
-                    ...(nsUid ? [`https://images.weserv.nl/?url=www.nodeseek.com/avatar/${nsUid}.png`] : []),
-                    `https://corsproxy.io/?url=${encodeURIComponent(primaryUrl)}`,
-                    `https://api.allorigins.win/raw?url=${encodeURIComponent(primaryUrl)}`,
                     primaryUrl,
+                    `https://corsproxy.io/?url=${encodeURIComponent(primaryUrl)}`,
                 ];
                 for (const url of urls) {
                     try {
                         const ctrl = new AbortController();
-                        const tid = setTimeout(() => ctrl.abort(), 6000);
+                        const tid = setTimeout(() => ctrl.abort(), 3500);
                         const imgRes = await fetch(url, {
                             headers: {
                                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                                "Referer": "https://www.nodeseek.com/",
                                 "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
                             },
                             signal: ctrl.signal,
@@ -463,34 +487,28 @@ export function FriendService(): Hono {
                         clearTimeout(tid);
                         if (imgRes.ok) {
                             const ct = imgRes.headers.get("content-type") || "";
-                            if (ct.includes("text/html")) continue;
+                            if (ct.includes("text/html") && !ct.includes("svg")) continue;
                             const buf = await imgRes.arrayBuffer();
-                            if (buf.byteLength < 100) continue;
-                            const u8 = new Uint8Array(buf);
-                            // 严禁将任何 HTML 文本（首字节为 '<' 或含 <!DOCTYPE/NodeSeek提醒）存入 R2 作为图片
-                            if (u8[0] === 0x3c) continue;
-                            return { buffer: buf, ct };
+                            const checked = isValidImageBuffer(buf, ct);
+                            if (checked.valid) {
+                                return { buffer: buf, ct: checked.contentType, ext: checked.ext };
+                            }
                         }
                     } catch {}
                 }
-                return { buffer: null, ct: "image/png" };
+                return { buffer: null, ct: "image/png", ext: "png" };
             };
 
             if (!imageBuffer && avatarFetchUrl) {
                 const result = await fetchImageWithFallback(avatarFetchUrl);
                 imageBuffer = result.buffer;
-                if (result.ct) {
-                    const ct = result.ct;
-                    if (ct.includes("image/jpeg") || ct.includes("image/jpg")) fileExt = "jpg";
-                    else if (ct.includes("image/webp")) fileExt = "webp";
-                    else if (ct.includes("image/gif")) fileExt = "gif";
-                    else if (ct.includes("image/svg")) fileExt = "svg";
-                    else fileExt = "png";
-                    contentType = ct || `image/${fileExt}`;
+                if (result.buffer) {
+                    fileExt = result.ext;
+                    contentType = result.ct;
                 }
             }
 
-            let finalAvatarUrl = nsUid ? `https://images.weserv.nl/?url=www.nodeseek.com/avatar/${nsUid}.png` : avatarFetchUrl;
+            let finalAvatarUrl = avatarFetchUrl;
             if (imageBuffer && imageBuffer.byteLength > 100 && env?.R2_BUCKET) {
                 const safeKey = nsUid ? `avatars/ns_${nsUid}.${fileExt}` : `avatars/site_${Math.random().toString(36).slice(2, 10)}.${fileExt}`;
                 try {
@@ -499,7 +517,7 @@ export function FriendService(): Hono {
                     });
                     finalAvatarUrl = `${origin}/api/blob/${safeKey}?t=${Date.now()}`;
                 } catch {
-                    finalAvatarUrl = nsUid ? `https://images.weserv.nl/?url=www.nodeseek.com/avatar/${nsUid}.png` : avatarFetchUrl;
+                    finalAvatarUrl = avatarFetchUrl;
                 }
             }
 

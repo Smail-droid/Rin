@@ -122,16 +122,40 @@ export function normalizeCategory(cat: string): string {
     return raw || "友邻博客";
 }
 
-// 浏览器客户端通过纯净 IPv4 图像代理抓取 NodeSeek 原生头像并转为 Base64（彻底绕开 NodeSeek IPv6 封锁）
+// 清洗脱壳历史受损的 weserv 头像链接，还原为真实的原图直链
+export function sanitizeAvatarUrl(url: string | null | undefined): string {
+    if (!url) return "";
+    const trimmed = url.trim();
+    // 匹配 images.weserv.nl 代理的 NodeSeek 头像
+    const weservNsMatch = trimmed.match(/images\.weserv\.nl\/\?url=(?:https?:\/\/)?(?:www\.)?nodeseek\.com\/avatar\/(\d+)\.png/i);
+    if (weservNsMatch && weservNsMatch[1]) {
+        return `https://www.nodeseek.com/avatar/${weservNsMatch[1]}.png`;
+    }
+    // 匹配通用 images.weserv.nl 包装的外部图片链接
+    const generalWeservMatch = trimmed.match(/images\.weserv\.nl\/\?url=([^\s&]+)/i);
+    if (generalWeservMatch && generalWeservMatch[1]) {
+        let raw = generalWeservMatch[1];
+        try {
+            raw = decodeURIComponent(raw);
+        } catch {}
+        if (!raw.startsWith("http://") && !raw.startsWith("https://")) {
+            raw = `https://${raw}`;
+        }
+        return raw;
+    }
+    return trimmed;
+}
+
+// 浏览器客户端轻量兜底抓取 NodeSeek 原生头像并转为 Base64
 export async function fetchClientAvatarBase64(uid: string): Promise<string | null> {
     if (!uid) return null;
     const urls = [
-        `https://images.weserv.nl/?url=www.nodeseek.com/avatar/${uid}.png`,
+        `https://www.nodeseek.com/avatar/${uid}.png`,
         `https://corsproxy.io/?url=${encodeURIComponent(`https://www.nodeseek.com/avatar/${uid}.png`)}`,
     ];
     for (const u of urls) {
         try {
-            const res = await fetch(u, { signal: AbortSignal.timeout(6000) });
+            const res = await fetch(u, { signal: AbortSignal.timeout(2500) });
             if (res.ok) {
                 const blob = await res.blob();
                 if (blob.size > 100 && (blob.type.startsWith("image/") || blob.type.includes("octet-stream"))) {
@@ -181,11 +205,11 @@ export async function fetchClientSideNsDetail(uid: string): Promise<NodeSeekUser
 
     const apiUrl = `https://www.nodeseek.com/api/account/getInfo/${uid}`;
 
-    // 第 1 级：浏览器本地 IPv4 网络直连 NodeSeek API
+    // 第 1 级：浏览器本地网络直连 NodeSeek API
     try {
         const directRes = await fetch(apiUrl, {
             headers: { "Accept": "application/json" },
-            signal: AbortSignal.timeout(5000),
+            signal: AbortSignal.timeout(3000),
         });
         if (directRes.ok) {
             const text = await directRes.text();
@@ -196,11 +220,11 @@ export async function fetchClientSideNsDetail(uid: string): Promise<NodeSeekUser
         }
     } catch {}
 
-    // 第 2 级：通过 corsproxy.io 公共 IPv4 代理
+    // 第 2 级：通过 corsproxy.io 公共代理
     try {
         const proxyRes = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`, {
             headers: { "Accept": "application/json" },
-            signal: AbortSignal.timeout(6000),
+            signal: AbortSignal.timeout(3000),
         });
         if (proxyRes.ok) {
             const text = await proxyRes.text();
@@ -272,8 +296,8 @@ export function parseFriendCategory(
                 if (k === "probe" && v) probeUrl = v;
                 if (k === "nodes" && v) nodeCount = parseInt(v, 10);
                 if (k === "avatarMode" && (v === "site" || v === "ns" || v === "dual")) avatarMode = v as AvatarDisplayMode;
-                if (k === "nsAvatar" && v) nsAvatar = v;
-                if (k === "siteAvatar" && v) siteAvatar = v;
+                if (k === "nsAvatar" && v) nsAvatar = sanitizeAvatarUrl(v);
+                if (k === "siteAvatar" && v) siteAvatar = sanitizeAvatarUrl(v);
                 if (k === "ns" && v) {
                     try {
                         nsData = JSON.parse(decodeURIComponent(v));
@@ -294,7 +318,8 @@ export function parseFriendCategory(
             }
         }
         if (!spaceUrl && avatar) {
-            const avUidMatch = avatar.match(/nodeseek\.com\/avatar\/(\d+)\.png/i);
+            const cleanAv = sanitizeAvatarUrl(avatar);
+            const avUidMatch = cleanAv.match(/nodeseek\.com\/avatar\/(\d+)\.png/i);
             if (avUidMatch && avUidMatch[1]) {
                 spaceUrl = `https://www.nodeseek.com/space/${avUidMatch[1]}#/general`;
             }
@@ -845,14 +870,6 @@ export function FriendsPage() {
                     || f.name.match(/UID[:\s#]+(\d+)/i)
                     || (f.avatar && f.avatar.match(/ns_(\d+)/i));
                 const uid = uidMatch ? uidMatch[1] : "";
-                let localNsDetail: any = null;
-                let localAvatarBase64: any = null;
-                if (uid) {
-                    [localNsDetail, localAvatarBase64] = await Promise.all([
-                        fetchClientSideNsDetail(uid),
-                        fetchClientAvatarBase64(uid),
-                    ]);
-                }
                 const token = localStorage.getItem("rin_auth_token") || "";
                 const res = await fetch("/api/friend/extract-source-avatar", {
                     method: "POST",
@@ -863,40 +880,42 @@ export function FriendsPage() {
                     body: JSON.stringify({
                         sourceUrl: parsed.spaceUrl || (uid ? `https://www.nodeseek.com/space/${uid}#/general` : f.url),
                         name: f.name,
-                        clientNsDetail: localNsDetail,
-                        clientAvatarBase64: localAvatarBase64,
                     }),
                 });
+                let data: any = null;
                 if (res.ok) {
-                    const data = await res.json();
-                    const finalDetail = data.nsDetail || localNsDetail;
-                    if (finalDetail) {
-                        const nextName = parsed.category === "友邻博客" ? f.name : (finalDetail.member_name || f.name);
-                        const nextDesc = finalDetail.bio ? finalDetail.bio.slice(0, 40) : (data.suggestedDesc || `${nextName}的空间`);
-                        const isR2 = data.avatarUrl && data.avatarUrl.includes("/api/blob/");
-                        const finalAvatar = isR2 ? data.avatarUrl : (uid ? `https://images.weserv.nl/?url=www.nodeseek.com/avatar/${uid}.png` : f.avatar);
-                        const formatted = formatFriendDesc(parsed.category, nextDesc, {
-                            spaceUrl: data.spaceUrl || parsed.spaceUrl,
-                            avatarMode: parsed.avatarMode,
-                            siteAvatar: parsed.siteAvatar,
-                            nsAvatar: finalAvatar,
-                            nsData: {
-                                name: finalDetail.member_name,
-                                rank: finalDetail.rank,
-                                coin: finalDetail.coin,
-                                days: finalDetail.days || finalDetail.join_days,
-                                posts: finalDetail.posts || finalDetail.nPost,
-                                comments: finalDetail.comments || finalDetail.nComment,
-                                bio: finalDetail.bio,
-                            },
-                        });
-                        await client.friend.update(f.id, {
-                            name: nextName,
-                            desc: formatted,
-                            avatar: finalAvatar,
-                        });
-                        successCount++;
-                    }
+                    data = await res.json();
+                }
+                let finalDetail = data?.nsDetail;
+                if (!finalDetail && uid) {
+                    finalDetail = await fetchClientSideNsDetail(uid);
+                }
+                if (finalDetail || uid || data?.avatarUrl) {
+                    const nextName = parsed.category === "友邻博客" ? f.name : (finalDetail?.member_name || f.name);
+                    const nextDesc = finalDetail?.bio ? finalDetail.bio.slice(0, 40) : (data?.suggestedDesc || `${nextName}的空间`);
+                    const isR2 = data?.avatarUrl && data.avatarUrl.includes("/api/blob/");
+                    const finalAvatar = isR2 ? data.avatarUrl : (uid ? `https://www.nodeseek.com/avatar/${uid}.png` : sanitizeAvatarUrl(f.avatar));
+                    const formatted = formatFriendDesc(parsed.category, nextDesc, {
+                        spaceUrl: data?.spaceUrl || parsed.spaceUrl || (uid ? `https://www.nodeseek.com/space/${uid}#/general` : undefined),
+                        avatarMode: parsed.avatarMode,
+                        siteAvatar: parsed.siteAvatar,
+                        nsAvatar: finalAvatar,
+                        nsData: finalDetail ? {
+                            name: finalDetail.member_name,
+                            rank: finalDetail.rank,
+                            coin: finalDetail.coin,
+                            days: finalDetail.days || finalDetail.join_days,
+                            posts: finalDetail.posts || finalDetail.nPost,
+                            comments: finalDetail.comments || finalDetail.nComment,
+                            bio: finalDetail.bio,
+                        } : parsed.nsData,
+                    });
+                    await client.friend.update(f.id, {
+                        name: nextName,
+                        desc: formatted,
+                        avatar: finalAvatar,
+                    });
+                    successCount++;
                 }
             } catch {}
         }
@@ -1116,7 +1135,7 @@ export function FriendsPage() {
                     ))}
                 </div>
             ) : viewStyle === "polaroid" ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 items-start">
                     {filteredFriends.map((friend, idx) => (
                         <PolaroidFriendCard
                             key={friend.id}
@@ -1134,7 +1153,7 @@ export function FriendsPage() {
                     ))}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 items-start">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 items-start">
                     {filteredFriends.map((friend, idx) => (
                         <FriendCard
                             key={friend.id}
@@ -1442,17 +1461,7 @@ function useFriendNsRefresh(
         try {
             const token = localStorage.getItem("rin_auth_token") || "";
 
-            // 1. 客户端先用本地 IPv4 网络 (或公共代理) 尝试提取最新数据与头像 Base64 作为稳妥兜底
-            let localNsDetail: NodeSeekUserData | null = null;
-            let localAvatarBase64: string | null = null;
-            if (uid) {
-                [localNsDetail, localAvatarBase64] = await Promise.all([
-                    fetchClientSideNsDetail(uid),
-                    fetchClientAvatarBase64(uid),
-                ]);
-            }
-
-            // 2. 请求服务端转存与提取（服务端内置多级 IPv4 代理穿透与 Base64 解码存储）
+            // 1. 请求服务端转存与提取（内置纯净直连与快速降级）
             let serverData: any = null;
             try {
                 const res = await fetch("/api/friend/extract-source-avatar", {
@@ -1464,8 +1473,6 @@ function useFriendNsRefresh(
                     body: JSON.stringify({
                         sourceUrl: target || (uid ? `https://www.nodeseek.com/space/${uid}#/general` : ""),
                         name: friend.name,
-                        clientNsDetail: localNsDetail,
-                        clientAvatarBase64: localAvatarBase64,
                     }),
                 });
                 if (res.ok) {
@@ -1475,17 +1482,17 @@ function useFriendNsRefresh(
                 console.warn("Server extract error, falling back to client-only:", netErr);
             }
 
-            let finalNsDetail = serverData?.nsDetail || localNsDetail;
+            let finalNsDetail = serverData?.nsDetail;
             if (!finalNsDetail && uid) {
                 finalNsDetail = await fetchClientSideNsDetail(uid);
             }
 
-            // 头像处理：优先使用服务端新鲜转存好的 R2 链接 (带时间戳刷新防缓存)；如果服务端没有成功写 R2，则使用 weserv 图像直链作为可靠的 IPv4 直连回退，严禁保留以前受损的旧 R2 链接！
+            // 头像处理：优先使用服务端转存好的 R2 链接 (带时间戳刷新防缓存)；如果服务端没有成功写 R2，则使用官方直链回退
             const serverAvatarUrl = serverData?.avatarUrl || "";
             const isR2Avatar = serverAvatarUrl.includes("/api/blob/");
             const finalAvatarUrl = isR2Avatar
                 ? serverAvatarUrl
-                : (uid ? `https://images.weserv.nl/?url=www.nodeseek.com/avatar/${uid}.png` : (serverAvatarUrl || friend.avatar));
+                : (uid ? `https://www.nodeseek.com/avatar/${uid}.png` : sanitizeAvatarUrl(serverAvatarUrl || friend.avatar));
 
             if (finalNsDetail) {
                 const isFriendBlog = category === "友邻博客";
@@ -1617,13 +1624,13 @@ function FriendCard({
                 {/* 头像区域：支持子母双图融合 */}
                 <div className="relative shrink-0">
                     <ImageWithFallback
-                        src={friend.avatar}
+                        src={sanitizeAvatarUrl(friend.avatar)}
                         alt={friend.name}
                         className="w-12 h-12 rounded-2xl object-cover border border-black/10 dark:border-white/10 shadow-2xs group-hover:scale-105 transition-transform"
                     />
                     {parsed.nsAvatar && parsed.siteAvatar && parsed.avatarMode === "dual" && (
                         <ImageWithFallback
-                            src={parsed.nsAvatar}
+                            src={sanitizeAvatarUrl(parsed.nsAvatar)}
                             alt="NodeSeek"
                             className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full object-cover border-2 border-white dark:border-neutral-900 shadow-xs"
                             title="NodeSeek 坛友认证"
@@ -1763,7 +1770,7 @@ function CompactFriendRow({
         <div className="group flex items-center justify-between p-3 rounded-2xl bg-white/60 dark:bg-neutral-900/60 border border-black/5 dark:border-white/5 hover:bg-white dark:hover:bg-neutral-800 transition gap-3 text-xs font-sans">
             <div className="flex items-center gap-3 min-w-0 flex-1">
                 <ImageWithFallback
-                    src={friend.avatar}
+                    src={sanitizeAvatarUrl(friend.avatar)}
                     alt={friend.name}
                     className="w-7 h-7 rounded-lg object-cover shrink-0"
                 />
@@ -1879,94 +1886,125 @@ function PolaroidFriendCard({
     const { category, cleanDesc, spaceUrl } = parsed;
     const { uid, displayName, isRefreshingNs, refreshNsDone, handleQuickRefreshNs } = useFriendNsRefresh(friend, parsed, onUpdate);
     const primaryUrl = safeHttpUrl(spaceUrl) || safeHttpUrl(friend.url);
+    const safeAvatar = sanitizeAvatarUrl(friend.avatar);
 
     const tilt = index % 2 === 0 ? "rotate-1" : "-rotate-1";
 
     return (
-        <div className={`relative pt-5 pb-4 px-4 bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 shadow-md hover:shadow-xl transition-all duration-300 rounded-sm font-sans ${tilt}`}>
+        <div className={`relative pt-4 pb-3.5 px-3.5 sm:px-4 bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 shadow-md hover:shadow-xl transition-all duration-300 rounded-sm font-sans flex flex-col justify-between ${tilt}`}>
             {/* 顶端半透明彩色和纸胶带拟物 */}
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-5 bg-pink-400/40 dark:bg-pink-500/30 backdrop-blur-xs border-t border-b border-white/40 rotate-1 shadow-2xs pointer-events-none" />
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-4.5 bg-pink-400/40 dark:bg-pink-500/30 backdrop-blur-xs border-t border-b border-white/40 rotate-1 shadow-2xs pointer-events-none" />
 
-            {/* 拍立得照片视窗：弥散微光暗纹背景 + 居中高清主体，彻底杜绝小图拉伸发虚 */}
-            <div className="aspect-video w-full rounded-xl bg-gradient-to-br from-theme/10 via-black/5 to-theme/5 dark:from-white/5 dark:to-white/[0.02] overflow-hidden mb-3 border border-black/5 dark:border-white/5 relative flex items-center justify-center select-none group/polaroid">
-                {/* 提取头像主色作为环境氛围弥散光 */}
-                <img
-                    src={friend.avatar}
-                    alt=""
-                    aria-hidden="true"
-                    className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-125 pointer-events-none"
-                />
-                <div className="absolute inset-0 bg-white/20 dark:bg-black/25 backdrop-blur-[2px] pointer-events-none" />
-
-                {/* 居中高清无损头像主体 (64px~80px 黄金尺寸，保留原生锐度) */}
-                <div className="relative z-10 flex flex-col items-center justify-center p-2">
-                    <ImageWithFallback
-                        src={friend.avatar}
-                        alt={friend.name}
-                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover shadow-lg border-2 border-white dark:border-neutral-800 transition-transform duration-300 group-hover/polaroid:scale-105"
+            <div>
+                {/* 拍立得照片视窗：弥散微光暗纹背景 + 居中高清主体，彻底杜绝小图拉伸发虚 */}
+                <div className="h-28 sm:h-32 w-full rounded-xl bg-gradient-to-br from-theme/10 via-black/5 to-theme/5 dark:from-white/5 dark:to-white/[0.02] overflow-hidden mb-2.5 border border-black/5 dark:border-white/5 relative flex items-center justify-center select-none group/polaroid">
+                    {/* 提取头像主色作为环境氛围弥散光 */}
+                    <img
+                        src={safeAvatar}
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-125 pointer-events-none"
                     />
-                    {parsed.nsData && (
-                        <span className="mt-1.5 px-2 py-0.5 rounded-full bg-white/85 dark:bg-neutral-800/85 backdrop-blur-sm text-[10px] font-bold text-theme shadow-2xs">
-                            Lv.{parsed.nsData.rank ?? 1} · {parsed.nsData.coin ?? 0} 🍗
+                    <div className="absolute inset-0 bg-white/20 dark:bg-black/25 backdrop-blur-[2px] pointer-events-none" />
+
+                    {/* 居中高清无损头像主体 (56px~64px 黄金尺寸，保留原生锐度) */}
+                    <div className="relative z-10 flex flex-col items-center justify-center p-1.5">
+                        <ImageWithFallback
+                            src={safeAvatar}
+                            alt={friend.name}
+                            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover shadow-lg border-2 border-white dark:border-neutral-800 transition-transform duration-300 group-hover/polaroid:scale-105"
+                        />
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between mb-1 gap-1">
+                    <a
+                        href={primaryUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-bold text-sm t-primary hover:text-theme transition truncate block flex-1"
+                        title={displayName}
+                    >
+                        {displayName}
+                    </a>
+                    {profile?.permission && categories && onMoveCategory ? (
+                        <select
+                            value={category}
+                            onChange={(e) => onMoveCategory(friend, e.target.value)}
+                            className="text-[10px] text-theme font-medium px-1.5 py-0.2 rounded bg-theme/10 shrink-0 border border-transparent hover:border-theme/40 outline-none cursor-pointer"
+                            title="点击直接切换此友链分类"
+                        >
+                            {categories.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <span className="text-[10px] text-theme font-medium px-1.5 py-0.2 rounded bg-theme/10 shrink-0">
+                            {category}
                         </span>
                     )}
-                </div>
-            </div>
-
-            <div className="flex items-center justify-between mb-1 gap-1">
-                <a
-                    href={primaryUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-bold text-sm t-primary hover:text-theme transition truncate block flex-1"
-                    title={displayName}
-                >
-                    {displayName}
-                </a>
-                {profile?.permission && categories && onMoveCategory ? (
-                    <select
-                        value={category}
-                        onChange={(e) => onMoveCategory(friend, e.target.value)}
-                        className="text-[10px] text-theme font-medium px-1.5 py-0.2 rounded bg-theme/10 shrink-0 border border-transparent hover:border-theme/40 outline-none cursor-pointer"
-                        title="点击直接切换此友链分类"
-                    >
-                        {categories.map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                        ))}
-                    </select>
-                ) : (
-                    <span className="text-[10px] text-theme font-medium px-1.5 py-0.2 rounded bg-theme/10 shrink-0">
-                        {category}
-                    </span>
-                )}
-                {profile?.permission && onReorder && (
-                    <input
-                        type="number"
-                        defaultValue={friend.sort_order ?? 0}
-                        key={`${friend.id}_${friend.sort_order}`}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
+                    {profile?.permission && onReorder && (
+                        <input
+                            type="number"
+                            defaultValue={friend.sort_order ?? 0}
+                            key={`${friend.id}_${friend.sort_order}`}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    const val = parseInt(e.currentTarget.value, 10);
+                                    if (!isNaN(val)) onReorder(friend.id, val);
+                                }
+                            }}
+                            onBlur={(e) => {
                                 const val = parseInt(e.currentTarget.value, 10);
-                                if (!isNaN(val)) onReorder(friend.id, val);
-                            }
-                        }}
-                        onBlur={(e) => {
-                            const val = parseInt(e.currentTarget.value, 10);
-                            if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
-                        }}
-                        className="w-9 text-center rounded bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme outline-none text-[10px] font-mono font-bold py-0.2 shrink-0"
-                        title="输入排序权重后敲回车立即换序"
-                    />
+                                if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
+                            }}
+                            className="w-9 text-center rounded bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme outline-none text-[10px] font-mono font-bold py-0.2 shrink-0"
+                            title="输入排序权重后敲回车立即换序"
+                        />
+                    )}
+                </div>
+
+                <p className="text-xs text-neutral-500 line-clamp-2 min-h-[30px] my-1 leading-relaxed">
+                    {cleanDesc || "个人技术生活随想"}
+                </p>
+
+                {/* NodeSeek 坛友专属资产勋章栏（UID直达、Lv等级、🍗鸡腿、🕒加入天数） */}
+                {(uid || parsed.nsData) && (
+                    <div className="flex flex-wrap items-center gap-1 my-1.5 py-1 px-1.5 rounded-lg bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5 text-[10px] font-mono">
+                        {uid && (
+                            <a
+                                href={`https://www.nodeseek.com/space/${uid}#/general`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold hover:bg-purple-500/20 transition shrink-0"
+                                title="直达 NodeSeek 个人空间"
+                            >
+                                UID: {uid}
+                            </a>
+                        )}
+                        {parsed.nsData?.rank !== undefined && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 font-bold shrink-0">
+                                <DiamondRankSvg className="w-2.5 h-2.5" />
+                                <span>Lv.{parsed.nsData.rank}</span>
+                            </span>
+                        )}
+                        {parsed.nsData?.coin !== undefined && (
+                            <span className="px-1.5 py-0.2 rounded bg-orange-500/10 text-orange-600 font-bold shrink-0" title="鸡腿资产">
+                                🍗 {parsed.nsData.coin}
+                            </span>
+                        )}
+                        {parsed.nsData?.days !== undefined && (
+                            <span className="px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-600 font-bold shrink-0" title="加入天数">
+                                🕒 {parsed.nsData.days}
+                            </span>
+                        )}
+                    </div>
                 )}
             </div>
-
-            <p className="text-xs text-neutral-500 line-clamp-2 min-h-[32px]">
-                {cleanDesc || "个人技术生活随想"}
-            </p>
 
             {/* 管理员操作栏 */}
             {profile?.permission && (
-                <div className="pt-2 mt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-xs">
+                <div className="pt-2 mt-1.5 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-xs">
                     {friend.accepted === 0 ? (
                         <div className="flex items-center gap-1.5">
                             <button onClick={onApprove} className="text-emerald-600 font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-[11px]">
@@ -2016,7 +2054,7 @@ function EditFriendModal({
     const parsed = parseFriendCategory(friend.desc, friend.url, friend.name, friend.avatar);
     const [name, setName] = useState(friend.name);
     const [desc, setDesc] = useState(parsed.cleanDesc);
-    const [avatar, setAvatar] = useState(friend.avatar);
+    const [avatar, setAvatar] = useState(() => sanitizeAvatarUrl(friend.avatar));
     const [url, setUrl] = useState(friend.url);
     const [category, setCategory] = useState(parsed.category || "友邻博客");
     const [spaceUrl, setSpaceUrl] = useState(parsed.spaceUrl || "");
@@ -2039,7 +2077,7 @@ function EditFriendModal({
             await client.friend.update(friend.id, {
                 name: name.trim(),
                 desc: formattedDesc,
-                avatar: avatar.trim(),
+                avatar: sanitizeAvatarUrl(avatar.trim()),
                 url: url.trim(),
                 accepted,
                 sort_order: sortOrder,
