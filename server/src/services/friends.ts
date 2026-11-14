@@ -187,7 +187,7 @@ export function FriendService(): Hono {
                     const aiResult = await executeAIChat(env, serverConfig, [
                         {
                             role: "system",
-                            content: `你是一个专业的网站信息精炼与分类助手。根据用户提供的网站信息，输出一段【严格不超过10个汉字】的极炼一句话简介（严禁抒情长句，一行说清站点核心定位），并将其归类为以下类别之一：['友邻博客', '主机算力', '极客工具', '技术社区', '漫游灵感']。请直接返回规范的 JSON 格式：{"desc": "极炼简介（10字以内）", "category": "分类名称"}`
+                            content: `你是一个专业的网站信息精炼与分类助手。根据用户提供的网站信息，输出一段【严格不超过10个汉字】的极炼一句话简介（严禁抒情长句，一行说清站点核心定位），并将其归类为以下类别之一：['友邻博客', '主机算力', '探针测速', '极客工具', '技术社区', '漫游灵感']。请直接返回规范的 JSON 格式：{"desc": "极炼简介（10字以内）", "category": "分类名称"}`
                         },
                         {
                             role: "user",
@@ -222,6 +222,22 @@ export function FriendService(): Hono {
             if (suggestedCategory === "友邻博客" || suggestedCategory === "漫游灵感" || suggestedCategory === "友友们") {
                 const combinedContent = `${domain} ${siteTitle} ${siteDesc} ${rawHtmlText}`.toLowerCase();
                 if (
+                    combinedContent.includes("speedtest") ||
+                    combinedContent.includes("looking glass") ||
+                    combinedContent.includes("probe") ||
+                    combinedContent.includes("ping") ||
+                    combinedContent.includes("bgp") ||
+                    combinedContent.includes("测速") ||
+                    combinedContent.includes("路由") ||
+                    combinedContent.includes("回程") ||
+                    combinedContent.includes("traceroute") ||
+                    combinedContent.includes("探针") ||
+                    combinedContent.includes("nezha") ||
+                    combinedContent.includes("uptime") ||
+                    combinedContent.includes("serverstatus")
+                ) {
+                    suggestedCategory = "探针测速";
+                } else if (
                     combinedContent.includes("vps") ||
                     combinedContent.includes("cloud") ||
                     combinedContent.includes("host") ||
@@ -310,62 +326,66 @@ export function FriendService(): Hono {
 
             let debugLog: any = {};
             if (nsUid) {
-                const nsHeaders1 = {
-                    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.40(0x1800282c) NetType/WIFI Language/zh_CN",
-                    "Referer": `https://www.nodeseek.com/space/${nsUid}`,
-                    "Accept": "application/json, text/plain, */*",
-                };
-                const nsHeaders2 = {
-                    "User-Agent": "Mozilla/5.0 (Linux; Android 14; Mobile; rv:120.0) Gecko/120.0 Firefox/120.0",
+                const nsHeaders = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
                     "Referer": `https://www.nodeseek.com/space/${nsUid}`,
                     "Accept": "application/json, text/plain, */*",
                 };
 
-                const fetchNsApi = async (u: string, proxy?: string, headers = nsHeaders1) => {
+                // 尝试直接 fetch 并验证响应是有效 JSON 而非 IPv6 错误页面
+                const tryParseNsJson = (text: string): any => {
+                    if (!text || text.includes("<!DOCTYPE") || text.includes("ipv6") || text.includes("IPv6") || text.includes("DNS")) return null;
+                    try { return JSON.parse(text); } catch { return null; }
+                };
+
+                const safeFetch = async (url: string, opts: any = {}): Promise<string> => {
                     const ctrl = new AbortController();
-                    const tid = setTimeout(() => ctrl.abort(), 4000);
+                    const tid = setTimeout(() => ctrl.abort(), 5000);
                     try {
-                        const init: any = { headers, signal: ctrl.signal };
-                        if (proxy) init.proxy = proxy;
-                        const r = await fetch(u, init);
+                        const r = await fetch(url, { ...opts, signal: ctrl.signal });
                         clearTimeout(tid);
-                        const status = r.status;
-                        const text = await r.text().catch(() => "");
-                        if (!debugLog.direct) {
-                            debugLog.direct = { status, len: text.length, snippet: text.slice(0, 150) };
-                        }
-                        if (r.ok && !text.includes("ipv6已关闭") && !text.includes("<!DOCTYPE")) {
-                            try {
-                                return JSON.parse(text);
-                            } catch {
-                                return null;
-                            }
-                        }
-                    } catch (err: any) {
+                        return r.ok ? await r.text().catch(() => "") : "";
+                    } catch {
                         clearTimeout(tid);
-                        if (!debugLog.direct) debugLog.direct = { error: err.message };
+                        return "";
                     }
-                    return null;
                 };
 
                 const apiUrl = `https://www.nodeseek.com/api/account/getInfo/${nsUid}`;
-                let infoRes: any = await fetchNsApi(apiUrl);
+                let infoRes: any = null;
+
+                // 降级链第 1 级：Worker 直连（可能被 IPv6 阻断）
+                const directText = await safeFetch(apiUrl, { headers: nsHeaders });
+                infoRes = tryParseNsJson(directText);
+                debugLog.direct = { len: directText.length, snippet: directText.slice(0, 120), parsed: !!infoRes?.detail };
+
+                // 降级链第 2 级：corsproxy.io 公共 IPv4 代理穿透
                 if (!infoRes?.detail) {
-                    infoRes = await fetchNsApi(apiUrl, "http://127.0.0.1:10808");
-                }
-                if (!infoRes?.detail) {
-                    infoRes = (await fetchNsApi(apiUrl, undefined, nsHeaders2))
-                        || (await fetchNsApi(apiUrl, "http://127.0.0.1:10808", nsHeaders2));
+                    const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;
+                    const proxyText = await safeFetch(proxyUrl, { headers: { "Accept": "application/json" } });
+                    infoRes = tryParseNsJson(proxyText);
+                    debugLog.corsproxy = { len: proxyText.length, snippet: proxyText.slice(0, 120), parsed: !!infoRes?.detail };
                 }
 
-                // NodeSeek IPv6 回落穿透处理
+                // 降级链第 3 级：allorigins 公共代理穿透
+                if (!infoRes?.detail) {
+                    try {
+                        const aoUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
+                        const aoText = await safeFetch(aoUrl, { headers: { "Accept": "application/json" } });
+                        infoRes = tryParseNsJson(aoText);
+                        debugLog.allorigins = { len: aoText.length, snippet: aoText.slice(0, 120), parsed: !!infoRes?.detail };
+                    } catch (err: any) {
+                        debugLog.allorigins = { error: err.message };
+                    }
+                }
+
+                // 降级链第 4 级：microlink.io HTML 嗅探（最后兜底）
                 if (!infoRes?.detail) {
                     try {
                         const mUrl = `https://api.microlink.io/?url=${encodeURIComponent(apiUrl)}&data.body=%7B%22selector%22%3A%22body%22%7D`;
-                        const mRes = await fetch(mUrl, { headers: { "Accept": "application/json" } });
-                        const mText = await mRes.text().catch(() => "");
-                        debugLog.microlink = { status: mRes.status, len: mText.length, snippet: mText.slice(0, 200) };
-                        if (mRes.ok) {
+                        const mText = await safeFetch(mUrl, { headers: { "Accept": "application/json" } });
+                        debugLog.microlink = { len: mText.length, snippet: mText.slice(0, 200) };
+                        if (mText) {
                             const mData: any = JSON.parse(mText);
                             const rawHtml = mData?.data?.body || "";
                             const jsonMatch = rawHtml.match(/\{"success":true,"detail":\{[\s\S]*?\}\}/);
@@ -380,7 +400,12 @@ export function FriendService(): Hono {
 
                 if (infoRes?.detail) {
                     nsDetail = infoRes.detail;
+                } else if (body?.clientNsDetail) {
+                    // 接收前端客户端本地网络兜底抓取的真实坛友资料
+                    nsDetail = body.clientNsDetail;
                 }
+                // 标记数据来源：后端已获取 vs 需要客户端兜底
+                debugLog.nsDetailResolved = !!nsDetail;
                 inferredName = nsDetail?.member_name || body?.name?.trim() || "";
                 avatarFetchUrl = `https://www.nodeseek.com/avatar/${nsUid}.png`;
             } else if (rawUrl.includes("github.com/")) {
@@ -396,35 +421,73 @@ export function FriendService(): Hono {
                 avatarFetchUrl = `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=128`;
             }
 
-            // 拉取头像并安全持久化至 R2
+            // 拉取头像并安全持久化至 R2（增加多级 IPv4 代理穿透降级，杜绝将 IPv6 错误页存入 R2）
             let imageBuffer: ArrayBuffer | null = null;
             let contentType = "image/png";
 
-            if (avatarFetchUrl) {
+            // 优先检查客户端是否传来了 Base64 图片数据（客户端直连兜底）
+            if (body?.clientAvatarBase64 && typeof body.clientAvatarBase64 === "string") {
                 try {
-                    const ctrl = new AbortController();
-                    const tid = setTimeout(() => ctrl.abort(), 5000);
-                    const imgRes = await fetch(avatarFetchUrl, {
-                        headers: {
-                            "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.40(0x1800282c)",
-                            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-                        },
-                        signal: ctrl.signal,
-                    });
-                    clearTimeout(tid);
-
-                    if (imgRes.ok) {
-                        const ct = imgRes.headers.get("content-type") || "";
-                        if (ct.includes("image/jpeg") || ct.includes("image/jpg")) fileExt = "jpg";
-                        else if (ct.includes("image/webp")) fileExt = "webp";
-                        else if (ct.includes("image/gif")) fileExt = "gif";
-                        else if (ct.includes("image/svg")) fileExt = "svg";
-                        else fileExt = "png";
-
-                        contentType = ct || `image/${fileExt}`;
-                        imageBuffer = await imgRes.arrayBuffer();
+                    const base64Data = body.clientAvatarBase64.replace(/^data:image\/\w+;base64,/, "");
+                    const binaryString = atob(base64Data);
+                    const len = binaryString.length;
+                    const bytes = new Uint8Array(len);
+                    for (let i = 0; i < len; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    if (bytes.length > 100 && bytes[0] !== 0x3c) {
+                        imageBuffer = bytes.buffer;
                     }
                 } catch {}
+            }
+
+            const fetchImageWithFallback = async (primaryUrl: string): Promise<{ buffer: ArrayBuffer | null; ct: string }> => {
+                const urls = [
+                    // NodeSeek 头像优先走 weserv 全球图像代理（纯净 IPv4 边缘出口，完美绕过 NodeSeek IPv6 封锁与防盗链）
+                    ...(nsUid ? [`https://images.weserv.nl/?url=www.nodeseek.com/avatar/${nsUid}.png`] : []),
+                    `https://corsproxy.io/?url=${encodeURIComponent(primaryUrl)}`,
+                    `https://api.allorigins.win/raw?url=${encodeURIComponent(primaryUrl)}`,
+                    primaryUrl,
+                ];
+                for (const url of urls) {
+                    try {
+                        const ctrl = new AbortController();
+                        const tid = setTimeout(() => ctrl.abort(), 6000);
+                        const imgRes = await fetch(url, {
+                            headers: {
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                                "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                            },
+                            signal: ctrl.signal,
+                        });
+                        clearTimeout(tid);
+                        if (imgRes.ok) {
+                            const ct = imgRes.headers.get("content-type") || "";
+                            if (ct.includes("text/html")) continue;
+                            const buf = await imgRes.arrayBuffer();
+                            if (buf.byteLength < 100) continue;
+                            const u8 = new Uint8Array(buf);
+                            // 严禁将任何 HTML 文本（首字节为 '<' 或含 <!DOCTYPE/NodeSeek提醒）存入 R2 作为图片
+                            if (u8[0] === 0x3c) continue;
+                            return { buffer: buf, ct };
+                        }
+                    } catch {}
+                }
+                return { buffer: null, ct: "image/png" };
+            };
+
+            if (!imageBuffer && avatarFetchUrl) {
+                const result = await fetchImageWithFallback(avatarFetchUrl);
+                imageBuffer = result.buffer;
+                if (result.ct) {
+                    const ct = result.ct;
+                    if (ct.includes("image/jpeg") || ct.includes("image/jpg")) fileExt = "jpg";
+                    else if (ct.includes("image/webp")) fileExt = "webp";
+                    else if (ct.includes("image/gif")) fileExt = "gif";
+                    else if (ct.includes("image/svg")) fileExt = "svg";
+                    else fileExt = "png";
+                    contentType = ct || `image/${fileExt}`;
+                }
             }
 
             let finalAvatarUrl = avatarFetchUrl;
