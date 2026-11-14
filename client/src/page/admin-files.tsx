@@ -749,9 +749,9 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                     </div>
                                 </div>
 
-                                {/* 4-Color Format Switcher Buttons (统一冷灰工业级线框，消除刺眼黄色) */}
+                                {/* 4-Color Format Switcher Buttons (四色格式直观切换，经典鲜明配色) */}
                                 <div className="grid grid-cols-4 gap-1 pt-1.5 border-t border-black/5 dark:border-white/5 text-xs">
-                                    {/* 1. Raw URL */}
+                                    {/* 1. Raw URL (Lime Green) */}
                                     <button
                                         type="button"
                                         onClick={() =>
@@ -761,16 +761,16 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                             }))
                                         }
                                         title="切换为 URL 格式"
-                                        className={`flex items-center justify-center rounded-lg py-1 transition text-[11px] font-semibold ${
+                                        className={`flex items-center justify-center rounded-lg py-1 transition text-[11px] font-semibold cursor-pointer ${
                                             currentFormat === "url"
-                                                ? "bg-theme text-white font-bold shadow-2xs"
-                                                : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-theme hover:text-theme"
+                                                ? "bg-lime-500 text-white font-bold shadow-xs scale-[1.02]"
+                                                : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-lime-500 hover:text-lime-600"
                                         }`}
                                     >
                                         <i className="ri-link text-xs" />
                                     </button>
 
-                                    {/* 2. HTML */}
+                                    {/* 2. HTML (Amber Yellow) */}
                                     <button
                                         type="button"
                                         onClick={() =>
@@ -780,16 +780,16 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                             }))
                                         }
                                         title="切换为 HTML 格式"
-                                        className={`flex items-center justify-center rounded-lg py-1 transition text-[11px] font-bold ${
+                                        className={`flex items-center justify-center rounded-lg py-1 transition text-[11px] font-bold cursor-pointer ${
                                             currentFormat === "html"
-                                                ? "bg-theme text-white font-bold shadow-2xs"
-                                                : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-theme hover:text-theme"
+                                                ? "bg-amber-400 text-neutral-900 font-bold shadow-xs scale-[1.02]"
+                                                : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-amber-400 hover:text-amber-500"
                                         }`}
                                     >
                                         &lt;/&gt;
                                     </button>
 
-                                    {/* 3. Markdown */}
+                                    {/* 3. Markdown (Sky Blue) */}
                                     <button
                                         type="button"
                                         onClick={() =>
@@ -799,16 +799,16 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                             }))
                                         }
                                         title="切换为 Markdown 格式"
-                                        className={`flex items-center justify-center rounded-lg py-1 transition text-[11px] font-bold ${
+                                        className={`flex items-center justify-center rounded-lg py-1 transition text-[11px] font-bold cursor-pointer ${
                                             currentFormat === "markdown"
-                                                ? "bg-theme text-white font-bold shadow-2xs"
-                                                : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-theme hover:text-theme"
+                                                ? "bg-sky-400 text-white font-bold shadow-xs scale-[1.02]"
+                                                : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-sky-400 hover:text-sky-500"
                                         }`}
                                     >
                                         M&darr;
                                     </button>
 
-                                    {/* 4. BBCode */}
+                                    {/* 4. BBCode (Rose Red) */}
                                     <button
                                         type="button"
                                         onClick={() =>
@@ -818,10 +818,10 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                             }))
                                         }
                                         title="切换为 BBCode 格式"
-                                        className={`flex items-center justify-center rounded-lg py-1 transition text-[10px] font-bold ${
+                                        className={`flex items-center justify-center rounded-lg py-1 transition text-[10px] font-bold cursor-pointer ${
                                             currentFormat === "bbcode"
-                                                ? "bg-theme text-white font-bold shadow-2xs"
-                                                : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-theme hover:text-theme"
+                                                ? "bg-rose-400 text-white font-bold shadow-xs scale-[1.02]"
+                                                : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-rose-400 hover:text-rose-500"
                                         }`}
                                     >
                                         BB

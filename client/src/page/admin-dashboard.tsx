@@ -5,6 +5,7 @@ import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { useAlert, useConfirm } from "../components/dialog";
 import { Modal } from "@rin/ui";
+import { normalizeBlobUrl } from "../utils/url";
 import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
 import { fetchR2StorageStats, type R2StorageStats } from "../services/music-api";
 
@@ -256,7 +257,11 @@ export function AdminDashboardPage() {
       } else {
         showAlert(`文章 #${coverTarget.id} 封面已成功置换！`);
         setAllFeeds((prev) =>
-          prev.map((f) => (f.id === coverTarget.id ? { ...f, coverImage: newCoverUrl.trim() } : f))
+          prev.map((f) =>
+            f.id === coverTarget.id
+              ? { ...f, coverImage: newCoverUrl.trim(), avatar: newCoverUrl.trim() }
+              : f
+          )
         );
         setCoverTarget(null);
         setNewCoverUrl("");
@@ -631,7 +636,7 @@ export function AdminDashboardPage() {
                   const isDraft = feed.draft === 1;
                   const isTop = feed.top > 0;
                   const isSelected = selectedIds.has(feed.id);
-                  const cover = feed.coverImage || "";
+                  const cover = normalizeBlobUrl(feed.avatar || feed.coverImage) || "";
 
                   return (
                     <tr
@@ -675,7 +680,15 @@ export function AdminDashboardPage() {
                             title="快捷更换此文章封面"
                           >
                             {cover ? (
-                              <img src={cover} alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform" />
+                              <img
+                                src={cover}
+                                alt=""
+                                referrerPolicy="no-referrer"
+                                className="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                }}
+                              />
                             ) : (
                               <div className="h-full w-full flex items-center justify-center text-neutral-400">
                                 <i className="ri-image-line text-lg" />
@@ -872,78 +885,116 @@ export function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 封面更换弹窗 (支持直链、本地上传与 R2 相册挑选) */}
+      {/* 快捷更换文章封面弹窗 (对齐前台就地置换统一规范) */}
       {coverTarget && (
         <Modal
           isOpen={Boolean(coverTarget)}
-          onRequestClose={() => setCoverTarget(null)}
-          contentLabel="更换文章封面"
-          panelClassName="p-5 max-w-md w-full bg-w dark:bg-neutral-900 border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl space-y-4"
+          onRequestClose={() => !isUploadingCover && setCoverTarget(null)}
+          contentLabel="快捷更换文章封面"
+          panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-md w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
         >
-          <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
-            <h4 className="font-bold text-sm t-primary flex items-center gap-2">
-              <i className="ri-image-edit-line text-theme" />
-              <span>更换封面 · #{coverTarget.id}</span>
-            </h4>
-            <button onClick={() => setCoverTarget(null)} className="text-neutral-400 hover:text-neutral-600">
-              <i className="ri-close-line text-lg" />
-            </button>
-          </div>
-
-          <div className="space-y-2 text-xs">
-            <label className="text-[11px] font-bold text-neutral-500">封面图片直链 URL</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="url"
-                value={newCoverUrl}
-                onChange={(e) => setNewCoverUrl(e.target.value)}
-                placeholder="https://example.com/cover.webp"
-                className="flex-1 rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] px-3 py-2 text-xs outline-none focus:border-theme"
-              />
+          <div className="flex flex-col gap-4 text-xs font-sans">
+            <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+              <div>
+                <h3 className="text-sm font-bold t-primary">快捷更换文章封面</h3>
+                <p className="text-[11px] text-neutral-400 truncate max-w-xs mt-0.5">
+                  #{coverTarget.id} {coverTarget.title || "无标题文章"}
+                </p>
+              </div>
               <button
-                type="button"
-                onClick={() => setIsR2PickerOpen(true)}
-                className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 font-bold shrink-0 transition"
-              >
-                媒体相册
-              </button>
-            </div>
-
-            <div className="pt-1">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => setCoverTarget(null)}
                 disabled={isUploadingCover}
-                className="w-full py-2 rounded-xl border border-dashed border-theme/40 hover:bg-theme/5 text-theme font-bold transition flex items-center justify-center gap-1.5"
+                className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
               >
-                {isUploadingCover ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-upload-cloud-line" />}
-                <span>{isUploadingCover ? "上传中..." : "上传本地图片"}</span>
+                <i className="ri-close-line text-lg" />
               </button>
             </div>
-          </div>
 
-          {newCoverUrl.trim() && (
-            <div className="flex items-center justify-center p-2 rounded-xl bg-black/5 dark:bg-white/5">
-              <img src={newCoverUrl.trim()} alt="封面预览" className="h-28 w-44 rounded-xl object-cover shadow-sm" />
+            {/* 封面实时预览区 */}
+            <div className="flex flex-col items-center justify-center p-3 rounded-xl border border-dashed border-black/15 dark:border-white/15 bg-black/[0.02] dark:bg-white/[0.02]">
+              {newCoverUrl.trim() ? (
+                <div className="relative h-36 w-full rounded-lg overflow-hidden group/img">
+                  <img
+                    src={normalizeBlobUrl(newCoverUrl.trim()) || newCoverUrl.trim()}
+                    alt="cover preview"
+                    referrerPolicy="no-referrer"
+                    className="h-full w-full object-cover rounded-lg shadow-inner"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">封面实时预览</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-8 flex flex-col items-center justify-center text-neutral-400">
+                  <i className="ri-image-line text-3xl mb-1 opacity-40" />
+                  <span>暂无封面，请输入网络链接或选择媒体图片</span>
+                </div>
+              )}
             </div>
-          )}
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/5 text-xs">
-            <button
-              type="button"
-              onClick={() => setCoverTarget(null)}
-              className="px-4 py-1.5 rounded-xl text-neutral-500 hover:bg-black/5 font-semibold"
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveCover}
-              disabled={!newCoverUrl.trim()}
-              className="px-4 py-1.5 rounded-xl bg-theme text-white font-bold shadow-xs hover:bg-theme-hover disabled:opacity-40"
-            >
-              保存封面
-            </button>
+            {/* 图片链接输入 */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
+                图片网络 URL
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newCoverUrl}
+                  onChange={(e) => setNewCoverUrl(e.target.value)}
+                  placeholder="https://example.com/cover.jpg"
+                  className="flex-1 rounded-xl border border-black/10 bg-transparent px-3 py-1.5 text-xs outline-none focus:border-theme dark:border-white/10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsR2PickerOpen(true)}
+                  disabled={isUploadingCover}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-theme/10 hover:bg-theme/20 text-theme text-xs font-semibold shrink-0 transition"
+                  title="从 Cloudflare R2 存储桶中点选已有相册图片"
+                >
+                  <i className="ri-folder-image-line" />
+                  <span>R2 相册</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingCover}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/5 text-xs font-semibold shrink-0 transition"
+                >
+                  {isUploadingCover ? (
+                    <>
+                      <i className="ri-loader-4-line animate-spin" />
+                      <span>上传中...</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="ri-upload-cloud-line" />
+                      <span>本地图床</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* 底部按钮 */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/5">
+              <button
+                type="button"
+                onClick={() => setCoverTarget(null)}
+                disabled={isUploadingCover}
+                className="px-3.5 py-1.5 rounded-xl text-neutral-500 hover:bg-black/5 font-semibold"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveCover}
+                disabled={isUploadingCover || !newCoverUrl.trim()}
+                className="px-5 py-1.5 rounded-xl bg-theme text-white font-bold shadow-xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition"
+              >
+                更新封面
+              </button>
+            </div>
           </div>
         </Modal>
       )}

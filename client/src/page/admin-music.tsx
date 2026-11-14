@@ -697,26 +697,6 @@ export function AdminMusicPage() {
         </div>
 
         <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
-          <button
-            type="button"
-            onClick={() => uploadQueue.audioFilesInputRef.current?.click()}
-            className="px-3 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 transition flex items-center gap-1.5"
-            title="支持同时选择多个音频文件上传"
-          >
-            <i className="ri-upload-cloud-line text-sm" />
-            <span>上传文件</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => uploadQueue.audioFolderInputRef.current?.click()}
-            className="px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] text-neutral-600 dark:text-neutral-300 text-xs font-bold hover:border-theme hover:text-theme transition flex items-center gap-1.5"
-            title="选择整个文件夹递归导入全部音频文件"
-          >
-            <i className="ri-folder-upload-line text-sm" />
-            <span>上传文件夹</span>
-          </button>
-
           {uploadQueue.uploadTasks.length > 0 && (
             <button
               type="button"
