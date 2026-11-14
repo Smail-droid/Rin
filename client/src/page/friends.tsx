@@ -4,7 +4,6 @@ import { Modal } from "@rin/ui";
 import { useConfirm } from "../components/dialog";
 import { ImageWithFallback } from "../components/image-with-fallback";
 import { OriginChronicleLens } from "../components/origin-chronicle-lens";
-import { JeikCodeInspectorBadge } from "../components/jeikcode-copilot";
 import { Waiting } from "../components/loading";
 import { client } from "../app/runtime";
 import { ProfileContext } from "../state/profile";
@@ -977,10 +976,6 @@ export function FriendsPage() {
                                 "拍立得手账和纸便签微光美学与高密单屏超级表格自由切换",
                                 "AI 智能简介精炼与秒级更正超时熔断"
                             ]}
-                        />
-                        <JeikCodeInspectorBadge
-                            componentName="FriendsGallery"
-                            filePath="client/src/page/friends.tsx"
                         />
                     </h1>
                     <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">

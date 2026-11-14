@@ -20,7 +20,6 @@ import { renderMermaidElements } from "../utils/render-mermaid";
 import { AdjacentSection } from "../components/adjacent_feed.tsx";
 import { stripImageUrlMetadata } from "../utils/image-upload";
 import { GalleryComments } from "../components/gallery-comments";
-import { JeikCodeInspectorBadge } from "../components/jeikcode-copilot";
 import { Modal } from "@rin/ui";
 
 function extractFirstMarkdownImageUrl(content: string) {
@@ -602,10 +601,6 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
 
                       {/* 右侧独立操作按钮群 */}
                       <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
-                        <JeikCodeInspectorBadge
-                          componentName="FeedArticle"
-                          filePath="client/src/page/feed.tsx"
-                        />
                         {/* 一键复制链接 */}
                         <button
                           type="button"
@@ -828,10 +823,6 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                       <div className="flex items-center gap-1.5 text-xs font-bold t-primary">
                         <span className="text-theme animate-pulse">🔖</span>
                         <span>灵感书签漫游</span>
-                        <JeikCodeInspectorBadge
-                          componentName="BookmarkRoamer"
-                          filePath="client/src/components/hashtag.tsx"
-                        />
                       </div>
                       <Link href="/hashtags" className="text-[11px] text-neutral-400 hover:text-theme transition">
                         星云 ➔
