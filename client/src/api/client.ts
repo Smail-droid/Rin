@@ -376,6 +376,11 @@ class TagAPI {
   async delete(id: number): Promise<ApiResponse<string>> {
     return this.http.delete<string>(`/api/tag/${id}`);
   }
+
+  // DELETE /api/tag/unlinked
+  async deleteUnlinked(): Promise<ApiResponse<{ success: boolean; count: number; deletedIds: number[] }>> {
+    return this.http.delete<{ success: boolean; count: number; deletedIds: number[] }>("/api/tag/unlinked");
+  }
 }
 
 /**

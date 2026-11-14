@@ -93,12 +93,23 @@ export function HashTag({
     >
       <button
         type="button"
-        onClick={(e) => {
+        onClick={async (e) => {
           e.preventDefault();
+          try {
+            const res = await client.tag.get(name);
+            if (res.data?.feeds && res.data.feeds.length === 1) {
+              const targetFeed = res.data.feeds[0];
+              if (String(targetFeed.id) !== String(currentFeedId)) {
+                setLocation(`/feed/${targetFeed.id}`);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                return;
+              }
+            }
+          } catch {}
           setLocation(`/hashtag/${encodeURIComponent(name)}`);
         }}
         className="text-neutral-600 dark:text-neutral-300 hover:text-theme group-hover/tag:text-theme transition cursor-pointer"
-        title={`查看 #${name} 标签星云`}
+        title={`查看 #${name} 标签星云 (单篇独家标签将直接直达正文)`}
       >
         #{name}
       </button>

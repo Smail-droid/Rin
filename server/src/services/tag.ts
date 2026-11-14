@@ -20,7 +20,8 @@ export function TagService(): Hono {
         
         const result = tag_list.map((tag: any) => ({
             ...tag,
-            feeds: tag.feeds.length
+            feeds: tag.feeds.length,
+            singleFeedId: tag.feeds.length === 1 ? tag.feeds[0].feedId : null,
         }));
         
         return c.json(result);
@@ -104,6 +105,25 @@ export function TagService(): Hono {
 
         await db.update(hashtags).set({ name: newName, updatedAt: new Date() }).where(eq(hashtags.id, id_num));
         return c.json({ id: id_num, name: newName });
+    });
+
+    // DELETE /tag/unlinked - 一键批量删除所有未关联任何文章的孤儿标签 (admin only)
+    app.delete('/unlinked', async (c: AppContext) => {
+        const admin = c.get('admin');
+        if (!admin) return c.text('Permission denied', 403);
+        const db = c.get('db');
+
+        const linked = await db.selectDistinct({ hashtagId: feedHashtags.hashtagId }).from(feedHashtags);
+        const linkedIds = new Set(linked.map((r: any) => r.hashtagId));
+
+        const allTags = await db.select({ id: hashtags.id }).from(hashtags);
+        const unlinkedIds = allTags.filter((t: any) => !linkedIds.has(t.id)).map((t: any) => t.id);
+
+        if (unlinkedIds.length > 0) {
+            await db.delete(hashtags).where(inArray(hashtags.id, unlinkedIds));
+        }
+
+        return c.json({ success: true, count: unlinkedIds.length, deletedIds: unlinkedIds });
     });
 
     // DELETE /tag/:id - Delete a tag (admin only)
