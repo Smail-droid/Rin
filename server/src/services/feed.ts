@@ -237,6 +237,63 @@ export function FeedService(): Hono<{
         },
     }), { message: 'Permission denied', status: 403 }));
 
+    // GET /feed/random - 随机漫游获取一篇文章 (排除当前阅读的文章，可选指定标签)
+    app.get('/random', async (c) => {
+        const db = c.get('db');
+        const admin = c.get('admin');
+        const excludeId = parseFeedId(c.req.query('exclude') || "");
+        const tag = (c.req.query('tag') || "").trim();
+
+        const candidateFeeds = await db.query.feeds.findMany({
+            where: admin ? undefined : and(eq(feeds.draft, 0), eq(feeds.listed, 1)),
+            columns: {
+                id: true,
+                title: true,
+                alias: true,
+            },
+            with: {
+                hashtags: {
+                    columns: {},
+                    with: { hashtag: { columns: { name: true } } },
+                },
+            },
+            limit: 100,
+            orderBy: [desc(feeds.createdAt)],
+        });
+
+        let pool = candidateFeeds;
+        if (excludeId) {
+            pool = pool.filter(f => f.id !== excludeId);
+        }
+
+        if (tag) {
+            const tagPool = pool.filter(f =>
+                f.hashtags?.some((h: any) => h.hashtag?.name === tag)
+            );
+            if (tagPool.length > 0) {
+                pool = tagPool;
+            }
+        }
+
+        if (pool.length === 0) {
+            pool = candidateFeeds;
+        }
+
+        if (pool.length === 0) {
+            return c.json({ feed: null });
+        }
+
+        const picked = pool[Math.floor(Math.random() * pool.length)];
+        return c.json({
+            feed: {
+                id: picked.id,
+                title: picked.title,
+                alias: picked.alias,
+                url: `/feed/${picked.alias || picked.id}`,
+            },
+        });
+    });
+
     // GET /feed/:id
     app.get('/:id', async (c) => {
         const db = c.get('db');

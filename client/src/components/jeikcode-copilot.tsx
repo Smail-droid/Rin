@@ -13,6 +13,82 @@ const DEFAULT_CONFIG: CopilotConfig = {
     token: "sk-7dd8-18e341d3b1c51710",
 };
 
+// 预置主流路由的组件地图与快捷标签，实现 100% 自动关联与极速点选
+interface RouteContextPreset {
+    pattern: RegExp;
+    defaultComponent: string;
+    defaultFile: string;
+    chips: Array<{ label: string; component: string; file: string }>;
+}
+
+const ROUTE_PRESETS: RouteContextPreset[] = [
+    {
+        pattern: /^\/feed\//,
+        defaultComponent: "FeedArticle (文章正文/漫游)",
+        defaultFile: "client/src/page/feed.tsx",
+        chips: [
+            { label: "🔖 灵感书签漫游", component: "灵感书签漫游 (BookmarkRoamer)", file: "client/src/components/hashtag.tsx" },
+            { label: "📖 文章正文排版", component: "文章正文排版 (MarkdownBody)", file: "client/src/components/markdown.tsx" },
+            { label: "📑 前后章节导航", component: "章节导航 (AdjacentSection)", file: "client/src/components/adjacent_feed.tsx" },
+            { label: "💬 读者留言评论区", component: "读者留言区 (GalleryComments)", file: "client/src/components/gallery-comments.tsx" },
+            { label: "🧭 目录大纲", component: "目录大纲 (TOC)", file: "client/src/components/toc-header.tsx" },
+            { label: "🖼️ 封面全屏灯箱", component: "封面画廊灯箱 (Lightbox)", file: "client/src/page/feed.tsx" },
+        ],
+    },
+    {
+        pattern: /^\/friends/,
+        defaultComponent: "FriendsGallery (星标画廊)",
+        defaultFile: "client/src/page/friends.tsx",
+        chips: [
+            { label: "🌸 拍立得拟物卡片", component: "拍立得卡片 (PolaroidFriendCard)", file: "client/src/page/friends.tsx" },
+            { label: "🔖 高密单行书签", component: "高密单行书签 (CompactFriendRow)", file: "client/src/page/friends.tsx" },
+            { label: "➕ 推荐/申请友链弹窗", component: "申请弹窗 (AddFriendModal)", file: "client/src/page/friends.tsx" },
+            { label: "✏️ 编辑友链弹窗", component: "编辑弹窗 (EditFriendModal)", file: "client/src/page/friends.tsx" },
+            { label: "🪐 诞生初衷透镜", component: "初衷透镜 (OriginChronicleLens)", file: "client/src/components/origin-chronicle-lens.tsx" },
+        ],
+    },
+    {
+        pattern: /^\/admin\/music/,
+        defaultComponent: "AdminMusic (云端音廊资产)",
+        defaultFile: "client/src/page/admin-music.tsx",
+        chips: [
+            { label: "🎨 画册全宽网格", component: "画册网格 (GalleryView)", file: "client/src/page/admin-music/gallery-view.tsx" },
+            { label: "📋 播放列表数据表格", component: "播放列表 (PlaylistDataGrid)", file: "client/src/page/admin-music/playlist-datagrid.tsx" },
+            { label: "📤 音频上传中枢", component: "音频上传中心 (AudioUploadCenter)", file: "client/src/page/admin-music/audio-upload-center.tsx" },
+            { label: "🎵 浮空双音符播放器", component: "悬浮音符播放器 (GlobalMusicPlayer)", file: "client/src/components/music-player/global-music-player.tsx" },
+        ],
+    },
+    {
+        pattern: /^\/admin\/files/,
+        defaultComponent: "AdminFiles (R2图床画廊)",
+        defaultFile: "client/src/page/admin-files.tsx",
+        chips: [
+            { label: "🖼️ 沉浸大图画廊灯箱", component: "画廊灯箱 (Lightbox)", file: "client/src/page/admin-files.tsx" },
+            { label: "📁 拖拽上传与粘贴区", component: "文件上传区 (UploadDropZone)", file: "client/src/page/admin-files.tsx" },
+            { label: "🌐 OpenList边缘挂载条", component: "网盘挂载条 (OpenListMountBar)", file: "client/src/page/admin-files.tsx" },
+        ],
+    },
+    {
+        pattern: /^\/admin\/dashboard/,
+        defaultComponent: "AdminDashboard (管理概览中枢)",
+        defaultFile: "client/src/page/admin-dashboard.tsx",
+        chips: [
+            { label: "📊 概览超级数据表格", component: "文章管理表格 (DenseDataGrid)", file: "client/src/page/admin-dashboard.tsx" },
+            { label: "🎛️ 15大中枢快捷导航", component: "中枢矩阵 (HubGrid)", file: "client/src/page/admin-dashboard.tsx" },
+        ],
+    },
+    {
+        pattern: /^\/($|feeds)/,
+        defaultComponent: "FeedListPage (画廊漫游首页)",
+        defaultFile: "client/src/page/feeds.tsx",
+        chips: [
+            { label: "🎴 文章卡片瀑布流", component: "文章卡片 (FeedCard)", file: "client/src/components/feed_card.tsx" },
+            { label: "🧭 艺术字族顶栏导航", component: "站点顶栏 (Header)", file: "client/src/components/header.tsx" },
+            { label: "🏷️ 首页标签常驻管理", component: "标签抽屉 (TagsModal)", file: "client/src/page/feeds.tsx" },
+        ],
+    },
+];
+
 // 全局事件总线，支持任意页面任意组件直接唤起 Copilot 并预填上下文
 type CopilotOpenDetail = {
     componentName?: string;
@@ -85,9 +161,28 @@ export function JeikCodeCopilot() {
     const [inspectComponent, setInspectComponent] = useState("");
     const [inspectFilePath, setInspectFilePath] = useState("");
     const [inspectFeedback, setInspectFeedback] = useState("");
+    const [lastCopiedContext, setLastCopiedContext] = useState("");
     const [toastMsg, setToastMsg] = useState("");
 
+    // 页面元素探针点击选取模式
+    const [isPickerActive, setIsPickerActive] = useState(false);
+
     const iframeRef = useRef<HTMLIFrameElement>(null);
+
+    // 获取当前路由对应的智能预置
+    const currentPreset = useMemo(() => {
+        if (typeof window === "undefined") return null;
+        const path = window.location.pathname;
+        return ROUTE_PRESETS.find((p) => p.pattern.test(path)) || null;
+    }, [isOpen]);
+
+    // 打开面板或切换至 inspect tab 时，若组件为空自动预填
+    useEffect(() => {
+        if (isOpen && !inspectComponent && currentPreset) {
+            setInspectComponent(currentPreset.defaultComponent);
+            setInspectFilePath(currentPreset.defaultFile);
+        }
+    }, [isOpen, currentPreset]);
 
     // 监听外部组件发起的精准唤醒
     useEffect(() => {
@@ -104,6 +199,66 @@ export function JeikCodeCopilot() {
         window.addEventListener("rin:jeikcode-open", handler);
         return () => window.removeEventListener("rin:jeikcode-open", handler);
     }, []);
+
+    // 交互式页面元素探针选取模式
+    useEffect(() => {
+        if (!isPickerActive) return;
+
+        let lastHovered: HTMLElement | null = null;
+
+        const onMouseMove = (e: MouseEvent) => {
+            const target = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+            if (target && target !== lastHovered && !target.closest("[data-jeikcode-copilot]")) {
+                if (lastHovered) {
+                    lastHovered.classList.remove("rin-inspect-ring");
+                }
+                target.classList.add("rin-inspect-ring");
+                lastHovered = target;
+            }
+        };
+
+        const onClick = (e: MouseEvent) => {
+            const target = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+            if (target && !target.closest("[data-jeikcode-copilot]")) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (lastHovered) {
+                    lastHovered.classList.remove("rin-inspect-ring");
+                }
+
+                // 提炼元素信息
+                const tagName = target.tagName.toLowerCase();
+                const textSnippet = (target.innerText || "").trim().slice(0, 45).replace(/\s+/g, " ");
+                const componentDesc = `[元素: <${tagName}>] "${textSnippet || target.className.slice(0, 30)}"`;
+
+                setInspectComponent(componentDesc);
+                setIsPickerActive(false);
+                setIsOpen(true);
+                setActiveTab("inspect");
+                showToast(`✓ 已成功选取现场元素: <${tagName}>`);
+            }
+        };
+
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                if (lastHovered) lastHovered.classList.remove("rin-inspect-ring");
+                setIsPickerActive(false);
+                setIsOpen(true);
+            }
+        };
+
+        document.addEventListener("mousemove", onMouseMove, true);
+        document.addEventListener("click", onClick, true);
+        document.addEventListener("keydown", onKeyDown, true);
+
+        return () => {
+            if (lastHovered) lastHovered.classList.remove("rin-inspect-ring");
+            document.removeEventListener("mousemove", onMouseMove, true);
+            document.removeEventListener("click", onClick, true);
+            document.removeEventListener("keydown", onKeyDown, true);
+        };
+    }, [isPickerActive]);
 
     // 连线性探测 (每 20 秒探测一次 JeikCode 13459 端口状态)
     useEffect(() => {
@@ -128,7 +283,7 @@ export function JeikCodeCopilot() {
 
     const showToast = (msg: string) => {
         setToastMsg(msg);
-        setTimeout(() => setToastMsg(""), 3500);
+        setTimeout(() => setToastMsg(""), 4500);
     };
 
     const handleSaveSettings = (e: React.FormEvent) => {
@@ -168,10 +323,20 @@ export function JeikCodeCopilot() {
         ].filter(Boolean).join("\n");
 
         if (navigator.clipboard) {
-            navigator.clipboard.writeText(lines);
+            void navigator.clipboard.writeText(lines);
         }
 
-        showToast("✓ 已抓取上下文并复制！已自动切至现场对话，按 Ctrl+V 即可直接发送！");
+        setLastCopiedContext(lines);
+
+        // 尝试向 iframe 发送 postMessage (跨域安全保护兜底)
+        try {
+            iframeRef.current?.contentWindow?.postMessage({
+                type: "jeikcode:prompt",
+                prompt: lines,
+            }, "*");
+        } catch {}
+
+        showToast("✓ 已自动捕获上下文并复制到剪贴板！已为您切换至会话窗口，按 Ctrl + V 粘贴即可发送！");
         setActiveTab("chat");
     };
 
@@ -186,14 +351,47 @@ export function JeikCodeCopilot() {
 
     return (
         <>
+            {/* 注入探针高亮样式 */}
+            <style>{`
+                .rin-inspect-ring {
+                    outline: 2px dashed #fc466b !important;
+                    outline-offset: 2px !important;
+                    background-color: rgba(252, 70, 107, 0.08) !important;
+                    cursor: crosshair !important;
+                    transition: all 0.15s ease !important;
+                }
+            `}</style>
+
+            {/* 探针选取模式浮动提醒胶囊 */}
+            {isPickerActive && (
+                <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100000] px-4 py-2 rounded-full bg-neutral-900/90 text-white border border-theme shadow-2xl backdrop-blur-xl flex items-center gap-3 text-xs ani-show">
+                    <span className="w-2 h-2 rounded-full bg-theme animate-ping" />
+                    <span className="font-bold">🎯 现场探针已激活：请鼠标点击页面任意组件或文字</span>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setIsPickerActive(false);
+                            setIsOpen(true);
+                        }}
+                        className="px-2 py-0.5 rounded-full bg-white/20 hover:bg-white/30 text-white font-mono text-[10px] cursor-pointer"
+                    >
+                        ESC 取消
+                    </button>
+                </div>
+            )}
+
             {/* 1. 屏幕边缘微光常驻悬浮球 */}
             <div
+                data-jeikcode-copilot
                 className="fixed bottom-6 left-6 z-[9000] select-none ani-show"
                 style={{ filter: "drop-shadow(0 10px 20px rgba(0,0,0,0.15))" }}
             >
                 <button
                     type="button"
-                    onClick={() => setIsOpen((prev) => !prev)}
+                    onClick={() => {
+                        setIsPickerActive(false);
+                        setIsOpen((prev) => !prev);
+                    }}
                     className="group flex items-center gap-2 px-3.5 py-2 rounded-full bg-neutral-900/90 text-white dark:bg-white/95 dark:text-neutral-900 border border-theme/40 backdrop-blur-xl hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-theme/20"
                     title="展开 JeikCode 现场随行伴侣 · 即时调试与无感对话"
                 >
@@ -216,7 +414,10 @@ export function JeikCodeCopilot() {
 
             {/* 2. 现场抽屉式随行工作台 (通过 Portal 挂载到顶层，杜绝样式溢出裁切) */}
             {isOpen && typeof document !== "undefined" && createPortal(
-                <div className="fixed inset-0 z-[99999] flex justify-end select-none ani-show pointer-events-auto">
+                <div
+                    data-jeikcode-copilot
+                    className="fixed inset-0 z-[99999] flex justify-end select-none ani-show pointer-events-auto"
+                >
                     {/* 半透明毛玻璃遮罩 */}
                     <div
                         onClick={() => setIsOpen(false)}
@@ -322,12 +523,45 @@ export function JeikCodeCopilot() {
                         {/* 主内容区域 */}
                         <div className="flex-1 relative overflow-hidden flex flex-col">
                             {/* Tab 1: 嵌入式现场实时对话 (Iframe) */}
-                            <div className={`flex-1 w-full h-full ${activeTab === "chat" ? "flex" : "hidden"}`}>
+                            <div className={`flex-1 w-full h-full flex flex-col ${activeTab === "chat" ? "flex" : "hidden"}`}>
+                                {/* 即时提示条：已复制提示词并引导按 Ctrl+V 直接发送 */}
+                                {lastCopiedContext && (
+                                    <div className="px-4 py-2 bg-gradient-to-r from-theme/15 via-purple-500/10 to-transparent border-b border-theme/20 flex items-center justify-between gap-2 text-xs shrink-0 ani-show">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="w-2 h-2 rounded-full bg-theme animate-ping shrink-0" />
+                                            <span className="font-bold text-theme shrink-0">📋 现场上下文已在剪贴板中！</span>
+                                            <span className="text-neutral-600 dark:text-neutral-300 truncate">
+                                                点击下方输入框按 <kbd className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono font-bold text-theme">Ctrl + V</kbd> 敲回车即可直接发送 ➔
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(lastCopiedContext);
+                                                    showToast("✓ 已重新复制到剪贴板！");
+                                                }}
+                                                className="px-2 py-0.5 rounded-md bg-theme/20 text-theme hover:bg-theme/30 text-[11px] font-bold transition cursor-pointer"
+                                            >
+                                                重新复制
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setLastCopiedContext("")}
+                                                className="text-neutral-400 hover:text-neutral-600 text-sm cursor-pointer"
+                                                title="关闭提示"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <iframe
                                     ref={iframeRef}
                                     src={targetUrl}
                                     title="JeikCode Live Workspace"
-                                    className="w-full h-full border-0 select-text"
+                                    className="w-full h-full border-0 select-text flex-1"
                                     allow="clipboard-read; clipboard-write; microphone; camera"
                                 />
                             </div>
@@ -341,9 +575,18 @@ export function JeikCodeCopilot() {
                                                 <i className="ri-scan-2-line" />
                                                 <span>已自动捕获当前浏览现场环境</span>
                                             </span>
-                                            <span className="text-[10px] text-neutral-400 font-mono">
-                                                {typeof window !== "undefined" ? `${window.innerWidth}×${window.innerHeight}` : ""}
-                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsOpen(false);
+                                                    setIsPickerActive(true);
+                                                }}
+                                                className="px-2.5 py-1 rounded-lg bg-theme/15 hover:bg-theme/25 text-theme font-bold text-[11px] transition flex items-center gap-1 cursor-pointer"
+                                                title="在页面上点击任意元素自动抓取"
+                                            >
+                                                <i className="ri-focus-2-line" />
+                                                <span>🎯 鼠标选取页面元素</span>
+                                            </button>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2 text-[11px] text-neutral-600 dark:text-neutral-400 font-mono">
                                             <div>📍 页面路由: <span className="t-primary font-bold">{typeof window !== "undefined" ? window.location.pathname : ""}</span></div>
@@ -351,9 +594,40 @@ export function JeikCodeCopilot() {
                                         </div>
                                     </div>
 
+                                    {/* 当前页面快捷候选组件芯片 */}
+                                    {currentPreset?.chips && (
+                                        <div>
+                                            <div className="text-neutral-400 text-[11px] mb-1.5 font-medium flex items-center gap-1">
+                                                <span>⚡ 当前页面主要功能组件 (点击一键定位)：</span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {currentPreset.chips.map((chip) => {
+                                                    const isSelected = inspectComponent === chip.component;
+                                                    return (
+                                                        <button
+                                                            key={chip.label}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setInspectComponent(chip.component);
+                                                                setInspectFilePath(chip.file);
+                                                            }}
+                                                            className={`px-2.5 py-1 rounded-xl text-xs font-medium border transition cursor-pointer select-none ${
+                                                                isSelected
+                                                                    ? "bg-theme text-white border-theme shadow-2xs font-bold"
+                                                                    : "bg-black/[0.03] dark:bg-white/[0.03] border-black/5 dark:border-white/5 text-neutral-600 dark:text-neutral-300 hover:border-theme/40"
+                                                            }`}
+                                                        >
+                                                            {chip.label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div>
                                         <label className="block text-neutral-500 font-medium mb-1">
-                                            目标组件 / 区域定位 (选填)
+                                            目标组件 / 区域定位 (已根据当前页面智能预填)
                                         </label>
                                         <input
                                             type="text"
@@ -366,7 +640,7 @@ export function JeikCodeCopilot() {
 
                                     <div>
                                         <label className="block text-neutral-500 font-medium mb-1">
-                                            相关代码文件 (选填)
+                                            相关代码文件 (自动推导关联)
                                         </label>
                                         <input
                                             type="text"
@@ -385,7 +659,7 @@ export function JeikCodeCopilot() {
                                             rows={5}
                                             value={inspectFeedback}
                                             onChange={(e) => setInspectFeedback(e.target.value)}
-                                            placeholder="直接用大白话输入你想改进的地方，例如：&#10;- 这个卡片的上下留白感觉有点大，调紧凑一点&#10;- 点击更正数据时加一个明确的进度提示条&#10;- 这个按钮在手机端被遮挡了，优化响应式"
+                                            placeholder="直接用大白话输入你想改进的地方，例如：&#10;- 这个卡片的上下留白感觉有点大，调紧凑一点&#10;- 灵感标签增加书签折角质感与下一篇/随机换篇按钮&#10;- 这个按钮在手机端被遮挡了，优化响应式"
                                             className="w-full p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs resize-none focus:outline-none focus:border-theme/40 leading-relaxed font-sans"
                                         />
                                     </div>
@@ -394,13 +668,13 @@ export function JeikCodeCopilot() {
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                setInspectComponent("");
-                                                setInspectFilePath("");
+                                                setInspectComponent(currentPreset?.defaultComponent || "");
+                                                setInspectFilePath(currentPreset?.defaultFile || "");
                                                 setInspectFeedback("");
                                             }}
                                             className="px-3 py-2 rounded-xl text-neutral-400 hover:text-neutral-600 text-xs cursor-pointer"
                                         >
-                                            清空输入
+                                            重置默认
                                         </button>
                                         <button
                                             type="button"

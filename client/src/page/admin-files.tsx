@@ -5,6 +5,7 @@ import { Link } from "wouter";
 import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { OriginChronicleLens } from "../components/origin-chronicle-lens";
+import { JeikCodeInspectorBadge } from "../components/jeikcode-copilot";
 import type { StorageFileItem } from "../api/client";
 
 function formatFileSize(bytes: number): string {
@@ -431,6 +432,10 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                     "Markdown / HTML / BBCode / 原始直链 4 格式一键直拷",
                                     "拖拽粘贴即传与剪贴板自动抓取",
                                 ]}
+                            />
+                            <JeikCodeInspectorBadge
+                                componentName="AdminFiles"
+                                filePath="client/src/page/admin-files.tsx"
                             />
                         </h1>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">

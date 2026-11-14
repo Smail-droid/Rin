@@ -20,6 +20,7 @@ import { renderMermaidElements } from "../utils/render-mermaid";
 import { AdjacentSection } from "../components/adjacent_feed.tsx";
 import { stripImageUrlMetadata } from "../utils/image-upload";
 import { GalleryComments } from "../components/gallery-comments";
+import { JeikCodeInspectorBadge } from "../components/jeikcode-copilot";
 import { Modal } from "@rin/ui";
 
 function extractFirstMarkdownImageUrl(content: string) {
@@ -172,6 +173,28 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
   const [top, setTop] = useState<number>(0);
   const [readingProgress, setReadingProgress] = useState<number>(0);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [isWandering, setIsWandering] = useState(false);
+
+  const handleRandomWander = async () => {
+    if (isWandering) return;
+    setIsWandering(true);
+    try {
+      const res = await fetch(`/api/feed/random?exclude=${feed?.id || id || ""}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.feed?.url || data.feed?.id) {
+          setLocation(data.feed.url || `/feed/${data.feed.id}`);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+      }
+      setLocation("/feeds");
+    } catch {
+      setLocation("/feeds");
+    } finally {
+      setIsWandering(false);
+    }
+  };
   const config = useContext(ClientConfigContext);
   const counterEnabled = config.getBoolean('counter.enabled');
   const hasAISummary = Boolean(feed?.ai_summary?.trim());
@@ -579,6 +602,10 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
 
                       {/* 右侧独立操作按钮群 */}
                       <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                        <JeikCodeInspectorBadge
+                          componentName="FeedArticle"
+                          filePath="client/src/page/feed.tsx"
+                        />
                         {/* 一键复制链接 */}
                         <button
                           type="button"
@@ -794,39 +821,46 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
               >
                 <TOC />
 
-                {/* 灵感标签漫游推荐卡片 (仅 PC 端右侧宽屏呈现，不破坏正文与移动端视觉) */}
+                {/* 灵感书签漫游推荐卡片 (仅 PC 端右侧宽屏呈现) */}
                 {recommendedTags.length > 0 && (
-                  <div className="p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white/75 dark:bg-neutral-900/75 backdrop-blur-md shadow-2xs space-y-2.5 ani-show">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-black/5 dark:border-white/5">
+                  <div className="p-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-xs space-y-3 ani-show">
+                    <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
                       <div className="flex items-center gap-1.5 text-xs font-bold t-primary">
-                        <span className="text-theme">🏷️</span>
-                        <span>灵感标签漫游</span>
+                        <span className="text-theme animate-pulse">🔖</span>
+                        <span>灵感书签漫游</span>
+                        <JeikCodeInspectorBadge
+                          componentName="BookmarkRoamer"
+                          filePath="client/src/components/hashtag.tsx"
+                        />
                       </div>
                       <Link href="/hashtags" className="text-[11px] text-neutral-400 hover:text-theme transition">
                         星云 ➔
                       </Link>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5 text-xs">
-                      {recommendedTags.map((tag, idx) => {
-                        const pastel = [
-                          "bg-amber-100/80 text-amber-900 border-amber-300/50 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800/40",
-                          "bg-sky-100/80 text-sky-900 border-sky-300/50 dark:bg-sky-950/40 dark:text-sky-200 dark:border-sky-800/40",
-                          "bg-rose-100/80 text-rose-900 border-rose-300/50 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-800/40",
-                          "bg-emerald-100/80 text-emerald-900 border-emerald-300/50 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800/40",
-                          "bg-purple-100/80 text-purple-900 border-purple-300/50 dark:bg-purple-950/40 dark:text-purple-200 dark:border-purple-800/40",
-                        ];
-                        const colorClass = pastel[idx % pastel.length];
-                        return (
-                          <Link
-                            key={tag.id}
-                            href={`/hashtag/${encodeURIComponent(tag.name)}`}
-                            className={`px-2.5 py-0.5 rounded-full border text-[11px] font-semibold transition hover:scale-105 select-none ${colorClass}`}
-                          >
-                            #{tag.name}
-                          </Link>
-                        );
-                      })}
+                    {/* 顶部一键随机漫游操作栏 */}
+                    <button
+                      type="button"
+                      onClick={handleRandomWander}
+                      disabled={isWandering}
+                      className="w-full py-2 px-3 rounded-2xl bg-theme/10 hover:bg-theme/20 text-theme text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-2xs hover:scale-[1.02] active:scale-95"
+                      title="全站随机漫游换一篇随想"
+                    >
+                      <i className={`ri-shuffle-line ${isWandering ? "animate-spin" : ""}`} />
+                      <span>{isWandering ? "正在漫游中..." : "🎲 全站随机换一篇"}</span>
+                    </button>
+
+                    {/* 书签形态功能标签流 */}
+                    <div className="flex flex-col gap-2 pt-1">
+                      {recommendedTags.map((tag) => (
+                        <HashTag
+                          key={tag.id}
+                          name={tag.name}
+                          currentFeedId={feed?.id}
+                          variant="ribbon"
+                          className="w-full justify-between"
+                        />
+                      ))}
                     </div>
                   </div>
                 )}

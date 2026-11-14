@@ -5,6 +5,7 @@ import { useSiteConfig } from "../hooks/useSiteConfig";
 import { useMusicPlayer } from "../components/music-player/music-player-context";
 import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
 import { OriginChronicleLens } from "../components/origin-chronicle-lens";
+import { JeikCodeInspectorBadge } from "../components/jeikcode-copilot";
 import {
   gdMusicService,
   syncOpenListFiles,
@@ -688,6 +689,10 @@ export function AdminMusicPage() {
                   "FLAC、Hi-Res、320K 无损高光音质自动识别",
                   "全宽画册网格多列密度自由切换与四角交互",
                 ]}
+              />
+              <JeikCodeInspectorBadge
+                componentName="AdminMusic"
+                filePath="client/src/page/admin-music.tsx"
               />
             </div>
             <div className="flex items-center gap-2 text-xs text-neutral-400 mt-1 flex-wrap">
