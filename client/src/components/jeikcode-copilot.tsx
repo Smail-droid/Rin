@@ -8,13 +8,15 @@ interface CopilotConfig {
 }
 
 const STORAGE_KEY = "rin_jeikcode_copilot_config";
+// 默认采用当前设备局域网 IP，确保同一 Wi-Fi 下手机与移动端访问时畅通连线
 const DEFAULT_CONFIG: CopilotConfig = {
-    host: "http://127.0.0.1:13459",
+    host: "http://192.168.0.246:13459",
     token: "sk-7dd8-18e341d3b1c51710",
 };
 
-// 预置主流路由的组件地图与快捷标签，实现 100% 自动关联与极速点选
+// 预置全站 10 大核心模块卡带的组件地图，支持跨页面随时调阅与一键点选
 interface RouteContextPreset {
+    name: string;
     pattern: RegExp;
     defaultComponent: string;
     defaultFile: string;
@@ -23,19 +25,7 @@ interface RouteContextPreset {
 
 const ROUTE_PRESETS: RouteContextPreset[] = [
     {
-        pattern: /^\/feed\//,
-        defaultComponent: "FeedArticle (文章正文/漫游)",
-        defaultFile: "client/src/page/feed.tsx",
-        chips: [
-            { label: "🔖 灵感书签漫游", component: "灵感书签漫游 (BookmarkRoamer)", file: "client/src/components/hashtag.tsx" },
-            { label: "📖 文章正文排版", component: "文章正文排版 (MarkdownBody)", file: "client/src/components/markdown.tsx" },
-            { label: "📑 前后章节导航", component: "章节导航 (AdjacentSection)", file: "client/src/components/adjacent_feed.tsx" },
-            { label: "💬 读者留言评论区", component: "读者留言区 (GalleryComments)", file: "client/src/components/gallery-comments.tsx" },
-            { label: "🧭 目录大纲", component: "目录大纲 (TOC)", file: "client/src/components/toc-header.tsx" },
-            { label: "🖼️ 封面全屏灯箱", component: "封面画廊灯箱 (Lightbox)", file: "client/src/page/feed.tsx" },
-        ],
-    },
-    {
+        name: "🌸 星标画廊",
         pattern: /^\/friends/,
         defaultComponent: "FriendsGallery (星标画廊)",
         defaultFile: "client/src/page/friends.tsx",
@@ -48,6 +38,22 @@ const ROUTE_PRESETS: RouteContextPreset[] = [
         ],
     },
     {
+        name: "📖 文章阅读",
+        pattern: /^\/feed\//,
+        defaultComponent: "FeedArticle (文章正文/漫游)",
+        defaultFile: "client/src/page/feed.tsx",
+        chips: [
+            { label: "🏷️ 文章标签组合栏", component: "文章标签栏 (ArticleTagBar)", file: "client/src/components/hashtag.tsx" },
+            { label: "🔖 灵感漫游侧栏", component: "灵感漫游卡片 (RecommendedTags)", file: "client/src/page/feed.tsx" },
+            { label: "📖 文章正文排版", component: "文章正文排版 (MarkdownBody)", file: "client/src/components/markdown.tsx" },
+            { label: "📑 前后章节导航", component: "章节导航 (AdjacentSection)", file: "client/src/components/adjacent_feed.tsx" },
+            { label: "💬 读者留言评论区", component: "读者留言区 (GalleryComments)", file: "client/src/components/gallery-comments.tsx" },
+            { label: "🧭 目录大纲", component: "目录大纲 (TOC)", file: "client/src/components/toc-header.tsx" },
+            { label: "🖼️ 封面全屏灯箱", component: "封面画廊灯箱 (Lightbox)", file: "client/src/page/feed.tsx" },
+        ],
+    },
+    {
+        name: "🎵 云端音廊",
         pattern: /^\/admin\/music/,
         defaultComponent: "AdminMusic (云端音廊资产)",
         defaultFile: "client/src/page/admin-music.tsx",
@@ -59,6 +65,7 @@ const ROUTE_PRESETS: RouteContextPreset[] = [
         ],
     },
     {
+        name: "📷 R2图床",
         pattern: /^\/admin\/files/,
         defaultComponent: "AdminFiles (R2图床画廊)",
         defaultFile: "client/src/page/admin-files.tsx",
@@ -69,6 +76,30 @@ const ROUTE_PRESETS: RouteContextPreset[] = [
         ],
     },
     {
+        name: "🏷️ 标签星云",
+        pattern: /^\/hashtags/,
+        defaultComponent: "HashtagsPage (标签星云页)",
+        defaultFile: "client/src/page/hashtags.tsx",
+        chips: [
+            { label: "🏷️ 散落彩色标签墙", component: "便签标签墙 (HashtagWall)", file: "client/src/page/hashtags.tsx" },
+            { label: "🧹 站长空标签清理栏", component: "站长管理栏 (AdminBar)", file: "client/src/page/hashtags.tsx" },
+            { label: "🎲 全站漫游动作按钮", component: "漫游按钮 (RandomActionCapsule)", file: "client/src/page/hashtags.tsx" },
+        ],
+    },
+    {
+        name: "🏠 漫游首页",
+        pattern: /^\/($|feeds)/,
+        defaultComponent: "FeedListPage (画廊漫游首页)",
+        defaultFile: "client/src/page/feeds.tsx",
+        chips: [
+            { label: "🎴 文章卡片瀑布流", component: "文章卡片 (FeedCard)", file: "client/src/components/feed_card.tsx" },
+            { label: "🧭 艺术字族顶栏导航", component: "站点顶栏 (Header)", file: "client/src/components/header.tsx" },
+            { label: "🏷️ 首页标签常驻管理", component: "标签超级表格 (TagsModal)", file: "client/src/page/feeds.tsx" },
+            { label: "📝 首页便签微模块", component: "首页便签 (AtelierNotes)", file: "client/src/page/feeds.tsx" },
+        ],
+    },
+    {
+        name: "📊 管理大盘",
         pattern: /^\/admin\/dashboard/,
         defaultComponent: "AdminDashboard (管理概览中枢)",
         defaultFile: "client/src/page/admin-dashboard.tsx",
@@ -78,13 +109,24 @@ const ROUTE_PRESETS: RouteContextPreset[] = [
         ],
     },
     {
-        pattern: /^\/($|feeds)/,
-        defaultComponent: "FeedListPage (画廊漫游首页)",
-        defaultFile: "client/src/page/feeds.tsx",
+        name: "⚙️ 全局设置",
+        pattern: /^\/admin\/settings/,
+        defaultComponent: "SettingsPage (全局系统设置)",
+        defaultFile: "client/src/page/settings.tsx",
         chips: [
-            { label: "🎴 文章卡片瀑布流", component: "文章卡片 (FeedCard)", file: "client/src/components/feed_card.tsx" },
-            { label: "🧭 艺术字族顶栏导航", component: "站点顶栏 (Header)", file: "client/src/components/header.tsx" },
-            { label: "🏷️ 首页标签常驻管理", component: "标签抽屉 (TagsModal)", file: "client/src/page/feeds.tsx" },
+            { label: "🎨 18款色彩预设方案", component: "主题色盘 (ThemeColorPresets)", file: "client/src/page/settings.tsx" },
+            { label: "✍️ 12款艺术字族切换", component: "字族控制 (FontFamilySetting)", file: "client/src/page/settings.tsx" },
+            { label: "🔒 权限与密码中枢", component: "安全控制台 (SecurityPanel)", file: "client/src/page/settings.tsx" },
+        ],
+    },
+    {
+        name: "🧭 站点SEO",
+        pattern: /^\/admin\/seo/,
+        defaultComponent: "AdminSeo (SEO全景控制中心)",
+        defaultFile: "client/src/page/admin-seo.tsx",
+        chips: [
+            { label: "📑 站长直达与Sitemap", component: "SEO大盘 (SeoDashboard)", file: "client/src/page/admin-seo.tsx" },
+            { label: "🐾 页脚版权与Favicon", component: "页脚定制 (FooterBranding)", file: "client/src/page/admin-seo.tsx" },
         ],
     },
 ];
@@ -103,38 +145,6 @@ export function openJeikCodeCopilot(detail: CopilotOpenDetail = {}) {
 }
 
 /**
- * 专供各个业务组件快捷挂载的微光连线徽标 (Component-level In-situ Badge)
- */
-export function JeikCodeInspectorBadge({
-    componentName,
-    filePath,
-    className = "",
-}: {
-    componentName: string;
-    filePath?: string;
-    className?: string;
-}) {
-    const profile = useContext(ProfileContext);
-    if (!profile?.permission) return null;
-
-    return (
-        <button
-            type="button"
-            onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                openJeikCodeCopilot({ componentName, filePath });
-            }}
-            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-neutral-900/10 dark:bg-white/10 hover:bg-theme/20 text-neutral-600 dark:text-neutral-300 hover:text-theme text-[10px] font-mono transition-all cursor-pointer select-none border border-black/5 dark:border-white/5 ${className}`}
-            title={`向 JeikCode 现场反馈关于 ${componentName} 的改进意见`}
-        >
-            <i className="ri-terminal-box-line text-theme" />
-            <span>检视</span>
-        </button>
-    );
-}
-
-/**
  * 🌸 JeikCode 现场随行伴侣与即时交互工作台 (JeikCode In-Situ Copilot)
  * 仅在管理员登录状态下呈现，支持现场抓取上下文、内嵌 WebUI 对话与一键精准提交
  */
@@ -142,20 +152,30 @@ export function JeikCodeCopilot() {
     const profile = useContext(ProfileContext);
     const [isOpen, setIsOpen] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
-    const [activeTab, setActiveTab] = useState<"chat" | "inspect" | "settings">("chat");
+    // 打开时默认第一页为「🎯 现场定位」
+    const [activeTab, setActiveTab] = useState<"chat" | "inspect" | "settings">("inspect");
 
     const [config, setConfig] = useState<CopilotConfig>(() => {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
-            return saved ? { ...DEFAULT_CONFIG, ...JSON.parse(saved) } : DEFAULT_CONFIG;
-        } catch {
-            return DEFAULT_CONFIG;
-        }
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // 兼容老版本 127.0.0.1，自动平滑升级为局域网 IP，确保移动端局域网连通
+                if (parsed.host === "http://127.0.0.1:13459") {
+                    parsed.host = DEFAULT_CONFIG.host;
+                }
+                return { ...DEFAULT_CONFIG, ...parsed };
+            }
+        } catch {}
+        return DEFAULT_CONFIG;
     });
 
     const [tempHost, setTempHost] = useState(config.host);
     const [tempToken, setTempToken] = useState(config.token);
     const [isOnline, setIsOnline] = useState<boolean | null>(null);
+
+    // 跨页面/模块快捷切换索引
+    const [selectedPresetIndex, setSelectedPresetIndex] = useState<number>(0);
 
     // 现场检视上下文表单
     const [inspectComponent, setInspectComponent] = useState("");
@@ -169,20 +189,27 @@ export function JeikCodeCopilot() {
 
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
-    // 获取当前路由对应的智能预置
-    const currentPreset = useMemo(() => {
-        if (typeof window === "undefined") return null;
+    // 根据当前真实路由智能探测初始匹配
+    const matchedRouteIndex = useMemo(() => {
+        if (typeof window === "undefined") return 0;
         const path = window.location.pathname;
-        return ROUTE_PRESETS.find((p) => p.pattern.test(path)) || null;
+        const found = ROUTE_PRESETS.findIndex((p) => p.pattern.test(path));
+        return found !== -1 ? found : 0;
     }, [isOpen]);
 
-    // 打开面板或切换至 inspect tab 时，若组件为空自动预填
+    // 打开面板时自动预填当前页面的预设
     useEffect(() => {
-        if (isOpen && !inspectComponent && currentPreset) {
-            setInspectComponent(currentPreset.defaultComponent);
-            setInspectFilePath(currentPreset.defaultFile);
+        if (isOpen) {
+            setSelectedPresetIndex(matchedRouteIndex);
+            const preset = ROUTE_PRESETS[matchedRouteIndex];
+            if (preset && !inspectComponent) {
+                setInspectComponent(preset.defaultComponent);
+                setInspectFilePath(preset.defaultFile);
+            }
         }
-    }, [isOpen, currentPreset]);
+    }, [isOpen, matchedRouteIndex]);
+
+    const activePreset = ROUTE_PRESETS[selectedPresetIndex] || ROUTE_PRESETS[0];
 
     // 监听外部组件发起的精准唤醒
     useEffect(() => {
@@ -260,7 +287,7 @@ export function JeikCodeCopilot() {
         };
     }, [isPickerActive]);
 
-    // 连线性探测 (每 20 秒探测一次 JeikCode 13459 端口状态)
+    // 连线性探测 (每 20 秒探测一次端口连通状态)
     useEffect(() => {
         let active = true;
         const probe = async () => {
@@ -297,7 +324,7 @@ export function JeikCodeCopilot() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
         } catch {}
         showToast("✓ 连线配置已保存");
-        setActiveTab("chat");
+        setActiveTab("inspect");
     };
 
     // 智能打包现场上下文并发送
@@ -328,7 +355,7 @@ export function JeikCodeCopilot() {
 
         setLastCopiedContext(lines);
 
-        // 尝试向 iframe 发送 postMessage (跨域安全保护兜底)
+        // 尝试向 iframe 发送 postMessage
         try {
             iframeRef.current?.contentWindow?.postMessage({
                 type: "jeikcode:prompt",
@@ -336,7 +363,7 @@ export function JeikCodeCopilot() {
             }, "*");
         } catch {}
 
-        showToast("✓ 已自动捕获上下文并复制到剪贴板！已为您切换至会话窗口，按 Ctrl + V 粘贴即可发送！");
+        showToast("✓ 上下文已复制！已为您切换至会话窗口，按 Ctrl + V 粘贴即可发送！");
         setActiveTab("chat");
     };
 
@@ -380,39 +407,50 @@ export function JeikCodeCopilot() {
                 </div>
             )}
 
-            {/* 1. 屏幕边缘微光常驻悬浮球 */}
+            {/* 1. 纯矢量二次元极简悬浮圆纽 (Compact Floating Vector Button) */}
+            {/* 避开底部播放器高度，杜绝长文本遮挡视觉 */}
             <div
                 data-jeikcode-copilot
-                className="fixed bottom-6 left-6 z-[9000] select-none ani-show"
-                style={{ filter: "drop-shadow(0 10px 20px rgba(0,0,0,0.15))" }}
+                className="fixed bottom-24 left-4 sm:bottom-7 sm:left-7 z-[9000] select-none ani-show"
+                style={{ filter: "drop-shadow(0 8px 18px rgba(0,0,0,0.18))" }}
             >
                 <button
                     type="button"
                     onClick={() => {
                         setIsPickerActive(false);
-                        setIsOpen((prev) => !prev);
+                        setIsOpen((prev) => {
+                            if (!prev) setActiveTab("inspect"); // 展开时始终默认停在第一页「现场定位」
+                            return !prev;
+                        });
                     }}
-                    className="group flex items-center gap-2 px-3.5 py-2 rounded-full bg-neutral-900/90 text-white dark:bg-white/95 dark:text-neutral-900 border border-theme/40 backdrop-blur-xl hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-theme/20"
-                    title="展开 JeikCode 现场随行伴侣 · 即时调试与无感对话"
+                    className="group relative flex h-11 w-11 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-900/95 text-neutral-800 dark:text-neutral-100 border border-theme/40 backdrop-blur-xl shadow-lg hover:shadow-xl hover:scale-110 active:scale-95 transition-all duration-300 cursor-pointer"
+                    title="JeikCode 现场随行伴侣 · 智能检视与调试"
+                    aria-label="展开 JeikCode 现场伴侣"
                 >
-                    <div className="relative flex items-center justify-center">
-                        <i className="ri-terminal-box-fill text-base text-theme group-hover:rotate-12 transition-transform" />
-                        <span
-                            className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${
-                                isOnline ? "bg-emerald-400 animate-ping" : "bg-neutral-400"
-                            }`}
-                        />
-                    </div>
-                    <span className="text-xs font-bold tracking-tight font-sans">
-                        JeikCode 现场伴侣
-                    </span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-theme/15 text-theme font-semibold">
-                        {isOnline ? "13459 在线" : "就绪"}
-                    </span>
+                    {/* 纯矢量手绘微光终端 SVG */}
+                    <svg viewBox="0 0 24 24" className="w-5 h-5 text-theme transition-transform duration-300 group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
+                        <polyline points="7 8 10 10 7 12" />
+                        <line x1="13" y1="12" x2="17" y2="12" />
+                    </svg>
+
+                    {/* 连线状态微光指示呼吸点 */}
+                    <span
+                        className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-neutral-900 ${
+                            isOnline ? "bg-emerald-400 animate-ping" : "bg-neutral-400"
+                        }`}
+                    />
+                    <span
+                        className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-neutral-900 ${
+                            isOnline ? "bg-emerald-500" : "bg-neutral-400"
+                        }`}
+                    />
                 </button>
             </div>
 
-            {/* 2. 现场抽屉式随行工作台 (通过 Portal 挂载到顶层，杜绝样式溢出裁切) */}
+            {/* 2. 现场抽屉式随行工作台 (通过 Portal 挂载到顶层，移动端防截断防锁定) */}
             {isOpen && typeof document !== "undefined" && createPortal(
                 <div
                     data-jeikcode-copilot
@@ -421,7 +459,7 @@ export function JeikCodeCopilot() {
                     {/* 半透明毛玻璃遮罩 */}
                     <div
                         onClick={() => setIsOpen(false)}
-                        className="fixed inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity"
+                        className="fixed inset-0 bg-black/45 backdrop-blur-[2px] transition-opacity"
                     />
 
                     {/* 随行工作台侧栏抽屉 */}
@@ -432,51 +470,48 @@ export function JeikCodeCopilot() {
                                 : "w-full sm:w-[540px] md:w-[680px] lg:w-[820px] xl:w-[940px] h-full"
                         }`}
                     >
-                        {/* 顶栏控制中枢 */}
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] shrink-0">
-                            <div className="flex items-center gap-2.5">
-                                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-theme/15 text-theme text-sm">
+                        {/* 顶栏控制中枢 (移动端优化排布，保障退出按钮 100% 显式固定在右上角) */}
+                        <div className="flex items-center justify-between px-3 py-2.5 sm:px-4 sm:py-3 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] shrink-0 gap-1.5">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-theme/15 text-theme text-sm shrink-0">
                                     <i className="ri-terminal-box-line" />
                                 </span>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="font-bold text-xs t-primary">JeikCode 现场伴侣</h3>
-                                        <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded">
-                                            🟢 127.0.0.1:13459
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                        <h3 className="font-bold text-xs t-primary truncate">JeikCode 现场伴侣</h3>
+                                        <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1 py-0.2 rounded shrink-0 hidden sm:inline-block">
+                                            🟢 192.168.0.246
                                         </span>
                                     </div>
-                                    <p className="text-[10px] text-neutral-400 truncate max-w-[280px]">
-                                        即时定位现场组件与代码调试，免切窗口实时交互
-                                    </p>
                                 </div>
                             </div>
 
-                            {/* 控制按钮与 Tab 切换 */}
-                            <div className="flex items-center gap-1.5">
-                                <div className="flex items-center p-0.5 rounded-lg bg-black/5 dark:bg-white/5 text-[11px] font-medium mr-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveTab("chat")}
-                                        className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
-                                            activeTab === "chat" ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs font-bold" : "text-neutral-500 hover:text-neutral-700"
-                                        }`}
-                                    >
-                                        💬 现场对话
-                                    </button>
+                            {/* 控制按钮与 Tab 切换 (紧凑防挤压) */}
+                            <div className="flex items-center gap-1 shrink-0">
+                                <div className="flex items-center p-0.5 rounded-lg bg-black/5 dark:bg-white/5 text-[11px] font-medium mr-1">
                                     <button
                                         type="button"
                                         onClick={() => setActiveTab("inspect")}
-                                        className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                                        className={`px-2 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
                                             activeTab === "inspect" ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs font-bold" : "text-neutral-500 hover:text-neutral-700"
                                         }`}
                                     >
-                                        <span>🎯 现场定位</span>
+                                        <span>🎯 定位</span>
                                         {inspectComponent && <span className="w-1.5 h-1.5 rounded-full bg-theme animate-ping" />}
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setActiveTab("settings")}
+                                        onClick={() => setActiveTab("chat")}
                                         className={`px-2 py-1 rounded-md transition cursor-pointer ${
+                                            activeTab === "chat" ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs font-bold" : "text-neutral-500 hover:text-neutral-700"
+                                        }`}
+                                    >
+                                        💬 对话
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab("settings")}
+                                        className={`px-1.5 py-1 rounded-md transition cursor-pointer ${
                                             activeTab === "settings" ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs" : "text-neutral-400 hover:text-neutral-600"
                                         }`}
                                         title="连线配置"
@@ -488,7 +523,7 @@ export function JeikCodeCopilot() {
                                 <button
                                     type="button"
                                     onClick={() => window.open(targetUrl, "_blank")}
-                                    className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition cursor-pointer"
+                                    className="p-1 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition cursor-pointer hidden sm:block"
                                     title="在新窗口独立弹出 JeikCode"
                                 >
                                     <i className="ri-external-link-line text-sm" />
@@ -496,18 +531,21 @@ export function JeikCodeCopilot() {
                                 <button
                                     type="button"
                                     onClick={() => setIsFullScreen((prev) => !prev)}
-                                    className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition cursor-pointer hidden sm:block"
+                                    className="p-1 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition cursor-pointer hidden sm:block"
                                     title={isFullScreen ? "恢复侧边栏" : "最大化全屏"}
                                 >
                                     <i className={isFullScreen ? "ri-fullscreen-exit-line text-sm" : "ri-fullscreen-line text-sm"} />
                                 </button>
+
+                                {/* 移动端与桌面端通用的显式大关闭按纽，确保 100% 随时可退 */}
                                 <button
                                     type="button"
                                     onClick={() => setIsOpen(false)}
-                                    className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-500 transition cursor-pointer"
-                                    title="收起"
+                                    className="h-8 w-8 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-rose-500 hover:text-white text-neutral-600 dark:text-neutral-300 transition flex items-center justify-center cursor-pointer shrink-0 ml-1"
+                                    title="退出现场伴侣"
+                                    aria-label="关闭抽屉"
                                 >
-                                    <i className="ri-close-line text-base" />
+                                    <i className="ri-close-line text-lg font-bold" />
                                 </button>
                             </div>
                         </div>
@@ -522,57 +560,14 @@ export function JeikCodeCopilot() {
 
                         {/* 主内容区域 */}
                         <div className="flex-1 relative overflow-hidden flex flex-col">
-                            {/* Tab 1: 嵌入式现场实时对话 (Iframe) */}
-                            <div className={`flex-1 w-full h-full flex flex-col ${activeTab === "chat" ? "flex" : "hidden"}`}>
-                                {/* 即时提示条：已复制提示词并引导按 Ctrl+V 直接发送 */}
-                                {lastCopiedContext && (
-                                    <div className="px-4 py-2 bg-gradient-to-r from-theme/15 via-purple-500/10 to-transparent border-b border-theme/20 flex items-center justify-between gap-2 text-xs shrink-0 ani-show">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <span className="w-2 h-2 rounded-full bg-theme animate-ping shrink-0" />
-                                            <span className="font-bold text-theme shrink-0">📋 现场上下文已在剪贴板中！</span>
-                                            <span className="text-neutral-600 dark:text-neutral-300 truncate">
-                                                点击下方输入框按 <kbd className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono font-bold text-theme">Ctrl + V</kbd> 敲回车即可直接发送 ➔
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(lastCopiedContext);
-                                                    showToast("✓ 已重新复制到剪贴板！");
-                                                }}
-                                                className="px-2 py-0.5 rounded-md bg-theme/20 text-theme hover:bg-theme/30 text-[11px] font-bold transition cursor-pointer"
-                                            >
-                                                重新复制
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setLastCopiedContext("")}
-                                                className="text-neutral-400 hover:text-neutral-600 text-sm cursor-pointer"
-                                                title="关闭提示"
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <iframe
-                                    ref={iframeRef}
-                                    src={targetUrl}
-                                    title="JeikCode Live Workspace"
-                                    className="w-full h-full border-0 select-text flex-1"
-                                    allow="clipboard-read; clipboard-write; microphone; camera"
-                                />
-                            </div>
-
-                            {/* Tab 2: 现场上下文嗅探与精准提问 */}
+                            {/* Tab 1: 现场上下文嗅探与精准提问 (默认首屏) */}
                             {activeTab === "inspect" && (
-                                <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs font-sans">
-                                    <div className="p-3.5 rounded-2xl bg-theme/5 border border-theme/15 flex flex-col gap-2">
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-bold text-theme flex items-center gap-1.5 text-xs">
-                                                <i className="ri-scan-2-line" />
+                                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 text-xs font-sans">
+                                    {/* 现场环境感知 */}
+                                    <div className="p-3 sm:p-3.5 rounded-2xl bg-theme/5 border border-theme/15 flex flex-col gap-2">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="font-bold text-theme flex items-center gap-1.5 text-xs truncate">
+                                                <i className="ri-scan-2-line shrink-0" />
                                                 <span>已自动捕获当前浏览现场环境</span>
                                             </span>
                                             <button
@@ -581,27 +576,59 @@ export function JeikCodeCopilot() {
                                                     setIsOpen(false);
                                                     setIsPickerActive(true);
                                                 }}
-                                                className="px-2.5 py-1 rounded-lg bg-theme/15 hover:bg-theme/25 text-theme font-bold text-[11px] transition flex items-center gap-1 cursor-pointer"
+                                                className="px-2.5 py-1 rounded-lg bg-theme/15 hover:bg-theme/25 text-theme font-bold text-[11px] transition flex items-center gap-1 cursor-pointer shrink-0"
                                                 title="在页面上点击任意元素自动抓取"
                                             >
                                                 <i className="ri-focus-2-line" />
-                                                <span>🎯 鼠标选取页面元素</span>
+                                                <span>🎯 探针选取元素</span>
                                             </button>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2 text-[11px] text-neutral-600 dark:text-neutral-400 font-mono">
                                             <div>📍 页面路由: <span className="t-primary font-bold">{typeof window !== "undefined" ? window.location.pathname : ""}</span></div>
-                                            <div>📄 页面标题: <span className="t-primary font-bold truncate inline-block max-w-[160px] align-bottom">{typeof document !== "undefined" ? document.title : ""}</span></div>
+                                            <div>📱 视口: <span className="t-primary font-bold">{typeof window !== "undefined" ? `${window.innerWidth}×${window.innerHeight}` : ""}</span></div>
                                         </div>
                                     </div>
 
-                                    {/* 当前页面快捷候选组件芯片 */}
-                                    {currentPreset?.chips && (
-                                        <div>
-                                            <div className="text-neutral-400 text-[11px] mb-1.5 font-medium flex items-center gap-1">
-                                                <span>⚡ 当前页面主要功能组件 (点击一键定位)：</span>
+                                    {/* 跨页面/跨模块便捷切换台 (彻底告别硬编码限制，自由切换全站任意模块) */}
+                                    <div className="space-y-1.5">
+                                        <div className="text-neutral-500 dark:text-neutral-400 text-[11px] font-medium flex items-center justify-between">
+                                            <span>🌐 目标页面与模块快速切换：</span>
+                                            <span className="text-[10px] text-theme font-mono">共 {ROUTE_PRESETS.length} 大世界</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none select-none">
+                                            {ROUTE_PRESETS.map((p, idx) => {
+                                                const isCurrent = selectedPresetIndex === idx;
+                                                return (
+                                                    <button
+                                                        key={p.name}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedPresetIndex(idx);
+                                                            setInspectComponent(p.defaultComponent);
+                                                            setInspectFilePath(p.defaultFile);
+                                                        }}
+                                                        className={`px-2.5 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 border ${
+                                                            isCurrent
+                                                                ? "bg-theme text-white border-theme shadow-xs font-bold"
+                                                                : "bg-black/[0.03] dark:bg-white/[0.03] border-black/5 dark:border-white/5 text-neutral-600 dark:text-neutral-400 hover:border-theme/40"
+                                                        }`}
+                                                    >
+                                                        {p.name}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* 所选页面/模块的候选核心组件芯片 */}
+                                    {activePreset?.chips && (
+                                        <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-2">
+                                            <div className="text-neutral-400 text-[11px] font-medium flex items-center justify-between">
+                                                <span>⚡ 【{activePreset.name}】候选核心组件 (点击一键定位)：</span>
+                                                <span className="text-[10px] font-mono text-neutral-400 hidden sm:inline">{activePreset.defaultFile}</span>
                                             </div>
                                             <div className="flex flex-wrap gap-1.5">
-                                                {currentPreset.chips.map((chip) => {
+                                                {activePreset.chips.map((chip) => {
                                                     const isSelected = inspectComponent === chip.component;
                                                     return (
                                                         <button
@@ -613,8 +640,8 @@ export function JeikCodeCopilot() {
                                                             }}
                                                             className={`px-2.5 py-1 rounded-xl text-xs font-medium border transition cursor-pointer select-none ${
                                                                 isSelected
-                                                                    ? "bg-theme text-white border-theme shadow-2xs font-bold"
-                                                                    : "bg-black/[0.03] dark:bg-white/[0.03] border-black/5 dark:border-white/5 text-neutral-600 dark:text-neutral-300 hover:border-theme/40"
+                                                                    ? "bg-theme text-white border-theme shadow-2xs font-bold scale-[1.02]"
+                                                                    : "bg-white dark:bg-neutral-800 border-black/5 dark:border-white/5 text-neutral-600 dark:text-neutral-300 hover:border-theme/40"
                                                             }`}
                                                         >
                                                             {chip.label}
@@ -627,7 +654,7 @@ export function JeikCodeCopilot() {
 
                                     <div>
                                         <label className="block text-neutral-500 font-medium mb-1">
-                                            目标组件 / 区域定位 (已根据当前页面智能预填)
+                                            目标组件 / 区域定位 (已智能关联)
                                         </label>
                                         <input
                                             type="text"
@@ -656,20 +683,20 @@ export function JeikCodeCopilot() {
                                             现场改动要求 / 想要解决的 Bug
                                         </label>
                                         <textarea
-                                            rows={5}
+                                            rows={4}
                                             value={inspectFeedback}
                                             onChange={(e) => setInspectFeedback(e.target.value)}
-                                            placeholder="直接用大白话输入你想改进的地方，例如：&#10;- 这个卡片的上下留白感觉有点大，调紧凑一点&#10;- 灵感标签增加书签折角质感与下一篇/随机换篇按钮&#10;- 这个按钮在手机端被遮挡了，优化响应式"
+                                            placeholder="直接输入你想改进的地方，例如：&#10;- 移动端抽屉增加显式关闭按钮&#10;- 标签管理在手机上自适应撑满高度&#10;- 悬浮图标改用紧凑 SVG，避免遮挡播放器"
                                             className="w-full p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs resize-none focus:outline-none focus:border-theme/40 leading-relaxed font-sans"
                                         />
                                     </div>
 
-                                    <div className="pt-2 flex items-center justify-between gap-3">
+                                    <div className="pt-1 flex items-center justify-between gap-3">
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                setInspectComponent(currentPreset?.defaultComponent || "");
-                                                setInspectFilePath(currentPreset?.defaultFile || "");
+                                                setInspectComponent(activePreset.defaultComponent);
+                                                setInspectFilePath(activePreset.defaultFile);
                                                 setInspectFeedback("");
                                             }}
                                             className="px-3 py-2 rounded-xl text-neutral-400 hover:text-neutral-600 text-xs cursor-pointer"
@@ -688,23 +715,77 @@ export function JeikCodeCopilot() {
                                 </div>
                             )}
 
+                            {/* Tab 2: 嵌入式现场实时对话 (Iframe) */}
+                            <div className={`flex-1 w-full h-full flex flex-col relative ${activeTab === "chat" ? "flex" : "hidden"}`}>
+                                {/* 移动端 iframe 内置悬浮退出按钮，确保 100% 随时逃逸 */}
+                                <button
+                                    type="button"
+                                    onClick={() => setIsOpen(false)}
+                                    className="sm:hidden absolute top-2.5 right-2.5 z-40 h-8 w-8 rounded-full bg-neutral-900/80 text-white shadow-xl flex items-center justify-center backdrop-blur-md cursor-pointer border border-white/20"
+                                    title="关闭抽屉"
+                                >
+                                    <i className="ri-close-line text-base font-bold" />
+                                </button>
+
+                                {/* 即时提示条：已复制提示词并引导按 Ctrl+V 直接发送 */}
+                                {lastCopiedContext && (
+                                    <div className="px-3 py-2 sm:px-4 bg-gradient-to-r from-theme/15 via-purple-500/10 to-transparent border-b border-theme/20 flex items-center justify-between gap-2 text-xs shrink-0 ani-show">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="w-2 h-2 rounded-full bg-theme animate-ping shrink-0" />
+                                            <span className="font-bold text-theme shrink-0">📋 上下文已复制！</span>
+                                            <span className="text-neutral-600 dark:text-neutral-300 truncate">
+                                                请在下方输入框按 <kbd className="px-1 py-0.2 rounded bg-black/10 dark:bg-white/10 font-mono font-bold text-theme">Ctrl + V</kbd> 回车发送 ➔
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(lastCopiedContext);
+                                                    showToast("✓ 已重新复制到剪贴板！");
+                                                }}
+                                                className="px-2 py-0.5 rounded-md bg-theme/20 text-theme hover:bg-theme/30 text-[11px] font-bold transition cursor-pointer"
+                                            >
+                                                重复制
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setLastCopiedContext("")}
+                                                className="text-neutral-400 hover:text-neutral-600 text-sm cursor-pointer p-0.5"
+                                                title="关闭提示"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <iframe
+                                    ref={iframeRef}
+                                    src={targetUrl}
+                                    title="JeikCode Live Workspace"
+                                    className="w-full h-full border-0 select-text flex-1"
+                                    allow="clipboard-read; clipboard-write; microphone; camera"
+                                />
+                            </div>
+
                             {/* Tab 3: 连线配置 */}
                             {activeTab === "settings" && (
-                                <form onSubmit={handleSaveSettings} className="flex-1 overflow-y-auto p-5 space-y-4 text-xs font-sans">
+                                <form onSubmit={handleSaveSettings} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs font-sans">
                                     <div className="p-3.5 rounded-2xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 text-xs leading-relaxed">
-                                        💡 <strong>说明</strong>：JeikCode 桌面端默认通过内置轻量 HTTP/WebSocket 服务在本地 <code>13459</code> 端口提供 Web 交互。在此配置您的监听地址与 Token 后，博客可在管理员端内嵌连线，实现免切窗口的现场极速调试。
+                                        💡 <strong>局域网连线提示</strong>：已默认预填为您的局域网通信地址 <code>http://192.168.0.246:13459</code>。无论是电脑端还是同 Wi-Fi 下的手机端访问博客，均可直接连通 JeikCode 桌面端展开现场调试。
                                     </div>
 
                                     <div>
                                         <label className="block text-neutral-500 font-medium mb-1">
-                                            JeikCode 本地服务地址
+                                            JeikCode 本地/局域网服务地址
                                         </label>
                                         <input
                                             type="text"
                                             required
                                             value={tempHost}
                                             onChange={(e) => setTempHost(e.target.value)}
-                                            placeholder="http://127.0.0.1:13459"
+                                            placeholder="http://192.168.0.246:13459"
                                             className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs font-mono"
                                         />
                                     </div>
@@ -731,7 +812,7 @@ export function JeikCodeCopilot() {
                                             }}
                                             className="text-neutral-400 hover:text-neutral-600 text-xs cursor-pointer"
                                         >
-                                            恢复默认 (127.0.0.1:13459)
+                                            恢复默认 (192.168.0.246:13459)
                                         </button>
                                         <button
                                             type="submit"

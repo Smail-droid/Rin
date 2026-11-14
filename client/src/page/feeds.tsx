@@ -2168,24 +2168,24 @@ export function FeedsPage() {
                     isOpen={isTagSettingsOpen}
                     onRequestClose={() => setIsTagSettingsOpen(false)}
                     contentLabel="首页推荐标签管理 (Dense DataGrid)"
-                    panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-2xl w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
+                    panelClassName="p-3 sm:p-6 max-w-[96vw] sm:max-w-2xl w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden"
                 >
-                    <div className="flex flex-col gap-3.5 max-h-[82vh]">
-                        <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
-                            <div className="flex items-center gap-2">
-                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-base shadow-2xs">
+                    <div className="flex flex-col gap-2.5 sm:gap-3.5 flex-1 min-h-0 overflow-hidden">
+                        <div className="flex items-center justify-between pb-2.5 border-b border-black/5 dark:border-white/5 shrink-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-sm sm:text-base shadow-2xs shrink-0">
                                     <i className="ri-price-tag-3-line" />
                                 </span>
-                                <div>
-                                    <h3 className="text-sm font-bold t-primary">画廊首页推荐标签管理 (Dense DataGrid)</h3>
-                                    <p className="text-[11px] text-neutral-400">支持鼠标按住“=”手柄自由拖拽排列顺序、展示上限与色彩方案联动</p>
+                                <div className="min-w-0">
+                                    <h3 className="text-xs sm:text-sm font-bold t-primary truncate">画廊首页推荐标签管理 (Dense DataGrid)</h3>
+                                    <p className="text-[10px] sm:text-[11px] text-neutral-400 truncate hidden sm:block">支持输入数字直接跳位排序、展示上限与色彩方案联动</p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setIsTagSettingsOpen(false)}
-                                className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                                className="h-7 w-7 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 transition flex items-center justify-center cursor-pointer shrink-0"
                             >
-                                <i className="ri-close-line text-lg" />
+                                <i className="ri-close-line text-lg font-bold" />
                             </button>
                         </div>
 
@@ -2310,15 +2310,15 @@ export function FeedsPage() {
                             </div>
                         </div>
 
-                        {/* 高密超级表格 (支持输入数字直接跳位排序、拖拽手柄、别名就地修改) */}
-                        <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10 bg-w max-h-[50vh] overflow-y-auto scrollbar-thin">
-                            <table className="w-full text-left text-xs border-collapse min-w-[500px]">
+                        {/* 高密超级表格 (自适应纵向撑满，移动端 8~10 行尽览无阻) */}
+                        <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10 bg-w flex-1 min-h-[220px] overflow-y-auto scrollbar-thin">
+                            <table className="w-full text-left text-xs border-collapse min-w-full sm:min-w-[480px]">
                                 <thead>
-                                    <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-500 dark:text-neutral-400 font-mono text-xs sticky top-0 bg-white dark:bg-neutral-900 z-10">
-                                        <th className="py-2.5 px-3 w-28 text-center">序号(跳位)</th>
-                                        <th className="py-2.5 px-3">标签预览与别名</th>
-                                        <th className="py-2.5 px-3 w-28 text-center">首页展示</th>
-                                        <th className="py-2.5 px-3 w-24 text-right pr-4">微调次序</th>
+                                    <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-500 dark:text-neutral-400 font-mono text-[11px] sm:text-xs sticky top-0 bg-white dark:bg-neutral-900 z-10">
+                                        <th className="py-2 px-1 sm:px-3 w-12 sm:w-24 text-center">序号</th>
+                                        <th className="py-2 px-2 sm:px-3">标签预览与别名</th>
+                                        <th className="py-2 px-1 sm:px-3 w-14 sm:w-24 text-center">首页展示</th>
+                                        <th className="py-2 px-1 sm:px-3 w-14 sm:w-20 text-right pr-2 sm:pr-4">微调</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-black/5 dark:divide-white/5">
