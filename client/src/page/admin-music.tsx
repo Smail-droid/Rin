@@ -4,6 +4,7 @@ import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { useMusicPlayer } from "../components/music-player/music-player-context";
 import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
+import { OriginChronicleLens } from "../components/origin-chronicle-lens";
 import {
   gdMusicService,
   syncOpenListFiles,
@@ -670,13 +671,24 @@ export function AdminMusicPage() {
             <i className="ri-disc-line" />
           </span>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base font-bold t-primary">音廊 · 云端音乐资产中枢</h2>
               <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
                 musicEnabled ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-neutral-500/10 text-neutral-400"
               }`}>
                 {musicEnabled ? "已启用" : "未开启"}
               </span>
+              <OriginChronicleLens
+                slug="music"
+                pageTitle="边缘音廊 · 听觉漫游"
+                description="基于 Cloudflare R2 对象存储与轻量索引的自托管音频资产与可爱悬浮音符播放器。"
+                highlights={[
+                  "纯矢量手绘日系双音符 SVG 与 8 秒顺时针慢速旋转微光动效",
+                  "轻量级 10KB 独立索引架构 (music/metadata.json)，封面修改秒级完成",
+                  "FLAC、Hi-Res、320K 无损高光音质自动识别",
+                  "全宽画册网格多列密度自由切换与四角交互",
+                ]}
+              />
             </div>
             <div className="flex items-center gap-2 text-xs text-neutral-400 mt-1 flex-wrap">
               <span className="rounded-full bg-neutral-100 dark:bg-white/10 px-2 py-0.5 font-semibold text-neutral-600 dark:text-neutral-300 text-[11px]">

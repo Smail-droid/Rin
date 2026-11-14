@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet';
 import { Modal } from "@rin/ui";
 import { useConfirm } from "../components/dialog";
 import { ImageWithFallback } from "../components/image-with-fallback";
+import { OriginChronicleLens } from "../components/origin-chronicle-lens";
 import { Waiting } from "../components/loading";
 import { client } from "../app/runtime";
 import { ProfileContext } from "../state/profile";
@@ -962,9 +963,20 @@ export function FriendsPage() {
             {/* 顶栏：标题、描述与新增/申请按钮 */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight t-primary flex items-center gap-2">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight t-primary flex items-center gap-2.5 flex-wrap">
                         <span className="text-theme">🌸</span>
                         <span>星标友链 · 画廊漫游</span>
+                        <OriginChronicleLens
+                            slug="friends"
+                            pageTitle="星标画廊 · 友链罗盘"
+                            description="沉淀优秀友邻博客、主机算力、探针测速与技术社区的自插拔社交漫游世界。"
+                            highlights={[
+                                "纯净直连与 NodeSeek 原生 SVG 矢量头像深度兼容",
+                                "用户自定义专属简介防篡改保护与历史受损链接自动脱壳自愈",
+                                "拍立得手账和纸便签微光美学与高密单屏超级表格自由切换",
+                                "AI 智能简介精炼与秒级更正超时熔断"
+                            ]}
+                        />
                     </h1>
                     <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
                         汇聚优秀的友邻博客、极客工具与技术漫游星空。
