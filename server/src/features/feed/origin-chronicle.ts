@@ -116,7 +116,9 @@ export async function synthesizeOriginChronicle(
 
     let markdownBody = "";
 
-    // 尝试调用 AI 执行高情商、深度工程思考的纪事生成
+    let isAi = false;
+
+    // 尝试调用 AI 执行高情商、深度工程思考的纪事生成 (设 12 秒快速熔断兜底，杜绝无限悬挂)
     try {
         const aiPrompt = [
             `模块标识: ${options.slug}`,
@@ -125,7 +127,7 @@ export async function synthesizeOriginChronicle(
             options.highlights ? `技术亮点:\n${options.highlights.map(h => `- ${h}`).join("\n")}` : "",
         ].filter(Boolean).join("\n\n");
 
-        const aiRes = await executeAIChat(env, serverConfig, [
+        const aiPromise = executeAIChat(env, serverConfig, [
             {
                 role: "system",
                 content: `你是一个充满技术洞见与二次元微光美学的全栈架构师。请为该模块撰写一篇富有极客浪漫与深层架构思考的【开发纪事 / 诞生初衷】Markdown 长文（字数 600~1200 字）。
@@ -143,8 +145,15 @@ export async function synthesizeOriginChronicle(
             }
         ]);
 
+        const timeoutPromise = new Promise<{ success: false; reply: string }>((resolve) => {
+            setTimeout(() => resolve({ success: false, reply: "" }), 12000);
+        });
+
+        const aiRes = await Promise.race([aiPromise, timeoutPromise]);
+
         if (aiRes.success && aiRes.reply && aiRes.reply.length > 200) {
             markdownBody = aiRes.reply.trim();
+            isAi = true;
         }
     } catch {}
 
@@ -202,5 +211,6 @@ export async function synthesizeOriginChronicle(
         created: !existing,
         feed: updated,
         directUrl: `/feed/${alias}`,
+        isAi,
     };
 }

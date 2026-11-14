@@ -3,6 +3,7 @@ import { Modal } from "@rin/ui";
 import { ProfileContext } from "../state/profile";
 import { Markdown } from "./markdown";
 import { Waiting } from "./loading";
+import { getAuthToken } from "../utils/auth";
 
 export interface OriginChronicleLensProps {
     slug: string;
@@ -29,6 +30,8 @@ export function OriginChronicleLens({
         alias?: string;
         id?: number;
     } | null>(null);
+    const [statusMsg, setStatusMsg] = useState("");
+    const [errorMsg, setErrorMsg] = useState("");
 
     const loadChronicle = async () => {
         setIsLoading(true);
@@ -57,14 +60,17 @@ export function OriginChronicleLens({
 
     const handleSynthesize = async () => {
         setIsSynthesizing(true);
+        setStatusMsg("🧠 正在调集架构师能力构思诞生初衷长文（约需 5~12 秒），请稍候...");
+        setErrorMsg("");
         try {
-            const token = localStorage.getItem("rin_auth_token") || "";
+            const token = getAuthToken() || localStorage.getItem("rin_auth_token") || "";
             const res = await fetch("/api/feed/origin-chronicle", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 },
+                credentials: "include",
                 body: JSON.stringify({
                     slug,
                     pageTitle,
@@ -77,10 +83,16 @@ export function OriginChronicleLens({
                 const data = await res.json();
                 if (data.feed) {
                     setChronicle(data.feed);
+                    setStatusMsg(data.isAi ? "✨ 已通过 AI 深度编织完成并入库！" : "✨ 诞生纪事已根据工程规范编织入库！");
+                    setTimeout(() => setStatusMsg(""), 4000);
                 }
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                setErrorMsg(errData?.error || `编织失败 (${res.status})，请确认管理员登录状态`);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error("Synthesize chronicle error:", err);
+            setErrorMsg("请求异常: " + (err?.message || "网络中断"));
         } finally {
             setIsSynthesizing(false);
         }
@@ -125,6 +137,20 @@ export function OriginChronicleLens({
 
                 {/* 正文区域 */}
                 <div className="flex-1 overflow-y-auto pr-1 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed min-h-[220px]">
+                    {/* 状态与报错提示浮条 */}
+                    {statusMsg && (
+                        <div className="mb-3 p-3 rounded-2xl bg-theme/10 border border-theme/20 text-theme flex items-center gap-2 text-xs font-medium animate-pulse">
+                            <i className="ri-loader-4-line animate-spin" />
+                            <span>{statusMsg}</span>
+                        </div>
+                    )}
+                    {errorMsg && (
+                        <div className="mb-3 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center gap-2 text-xs">
+                            <i className="ri-error-warning-line" />
+                            <span>{errorMsg}</span>
+                        </div>
+                    )}
+
                     {isLoading ? (
                         <div className="py-20 flex justify-center">
                             <Waiting />
