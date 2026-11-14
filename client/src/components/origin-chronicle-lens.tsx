@@ -87,11 +87,16 @@ export function OriginChronicleLens({
                     setTimeout(() => setStatusMsg(""), 4000);
                 }
             } else {
+                setStatusMsg("");
                 const errData = await res.json().catch(() => ({}));
-                setErrorMsg(errData?.error || `编织失败 (${res.status})，请确认管理员登录状态`);
+                const errText = typeof errData?.error === "string"
+                    ? errData.error
+                    : (errData?.error?.message || errData?.message || `编织失败 (${res.status})，请确认管理员登录状态`);
+                setErrorMsg(errText);
             }
         } catch (err: any) {
             console.error("Synthesize chronicle error:", err);
+            setStatusMsg("");
             setErrorMsg("请求异常: " + (err?.message || "网络中断"));
         } finally {
             setIsSynthesizing(false);
