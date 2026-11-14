@@ -35,7 +35,6 @@ const AdminTagsPage = lazy(() => import("../page/admin-tags").then((m) => ({ def
 const AdminOpsHubPage = lazy(() => import("../page/admin-ops").then((m) => ({ default: m.AdminOpsHubPage })));
 const AdminAIPage = lazy(() => import("../page/admin-ai").then((m) => ({ default: m.AdminAIPage })));
 const QueueStatusPage = lazy(() => import("../page/queue-status").then((m) => ({ default: m.QueueStatusPage })));
-const CompatTasksPage = lazy(() => import("../page/compat-tasks").then((m) => ({ default: m.CompatTasksPage })));
 const WritingPage = lazy(() => import("../page/writing").then((m) => ({ default: m.WritingPage })));
 const AdminFilesPage = lazy(() => import("../page/admin-files").then((m) => ({ default: m.AdminFilesPage })));
 const AdminDashboardPage = lazy(() => import("../page/admin-dashboard").then((m) => ({ default: m.AdminDashboardPage })));
@@ -140,10 +139,6 @@ export function AppRoutes() {
 
       <AdminRoute path="/admin/queue-status" requirePermission title="队列" description="Cloudflare 边缘分布式队列总线 · 实时探针指标 · 异步任务调度与错误自愈治理">
         <QueueStatusPage />
-      </AdminRoute>
-
-      <AdminRoute path="/admin/compat-tasks" requirePermission title="回填" description={t("admin.compat_tasks_description")}>
-        <CompatTasksPage />
       </AdminRoute>
 
       <AdminRoute path="/admin/writing" requirePermission title="撰写" description={t("admin.writing_description")}>

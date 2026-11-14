@@ -1,11 +1,10 @@
-import { Modal, SearchableSelect, SettingsBadge, SettingsCard, SettingsCardBody, SettingsCardHeader, SettingsCardRow } from "@rin/ui";
+import { Modal, SearchableSelect, SettingsCard, SettingsCardBody, SettingsCardHeader, SettingsCardRow } from "@rin/ui";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useSearch } from "wouter";
 import ReactLoading from "react-loading";
 import { client } from "../app/runtime";
-import { Button } from "../components/button";
 import { useAlert } from "../components/dialog.tsx";
 import { HeaderLayoutPreview } from "../components/site-header/layout-preview";
 import {
@@ -341,7 +340,7 @@ export function Settings() {
       <Helmet>
         <title>{`${t("settings.title")} - ${siteConfig.name}`}</title>
       </Helmet>
-      <main className="w-full rounded-2xl bg-w pb-32" aria-label={t("main_content")}>
+      <main className="w-full max-w-5xl mx-auto rounded-3xl bg-w pb-36 px-2 sm:px-4" aria-label={t("main_content")}>
         <div className="flex flex-col items-start space-y-4 w-full">
           {(loading || saving) && <ReactLoading width="1em" height="1em" type="spin" color="#FC466B" />}
 
@@ -2634,24 +2633,37 @@ export function Settings() {
       )}
 
           {hasUnsavedChanges && (
-            <div className="sticky bottom-4 z-20 mt-6 w-full pb-2">
-              <SettingsCard tone="warning">
-              <SettingsCardRow
-                header={
-                  <SettingsCardHeader
-                    title={t("settings.ai_summary.save.title")}
-                    description={t("settings.ai_summary.unsaved_changes")}
-                    badge={<SettingsBadge tone="warning">{t("settings.ai_summary.unsaved_changes")}</SettingsBadge>}
-                  />
-                }
-                action={
-                  <>
-                    <Button secondary title={t("reset")} onClick={handleReset} disabled={saving} />
-                    <Button title={t("save")} onClick={handleSave} disabled={saving || loading} />
-                  </>
-                }
-              />
-              </SettingsCard>
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 ani-show select-none pointer-events-auto">
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-theme/30 shadow-2xl flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-theme/10 text-theme text-sm animate-pulse">
+                    <i className="ri-save-line" />
+                  </span>
+                  <div className="min-w-0 truncate">
+                    <span className="font-bold text-xs t-primary block truncate">配置有未保存改动</span>
+                    <span className="text-[10px] text-neutral-400 block truncate">点击右侧按钮立即写入边缘存储</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    disabled={saving}
+                    className="px-3 py-1.5 rounded-xl text-neutral-500 hover:bg-black/5 dark:hover:bg-white/5 text-xs font-semibold transition cursor-pointer"
+                  >
+                    {t("reset")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving || loading}
+                    className="px-4 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {saving && <i className="ri-loader-4-line animate-spin text-xs" />}
+                    <span>{saving ? "保存中..." : t("save")}</span>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
