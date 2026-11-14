@@ -83,7 +83,7 @@ export function OriginChronicleLens({
                 const data = await res.json();
                 if (data.feed) {
                     setChronicle(data.feed);
-                    setStatusMsg(data.isAi ? "✨ 已通过 AI 深度编织完成并入库！" : "✨ 诞生纪事已根据工程规范编织入库！");
+                    setStatusMsg(data.isAi ? "已通过 AI 深度编织完成并入库！" : "诞生纪事已根据工程规范编织入库！");
                     setTimeout(() => setStatusMsg(""), 4000);
                 }
             } else {
@@ -127,8 +127,9 @@ export function OriginChronicleLens({
                 <div className="flex items-center justify-between pb-3 mb-3 border-b border-black/5 dark:border-white/5 shrink-0">
                     <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-theme animate-ping" />
-                        <h3 className="text-base font-bold t-primary">
-                            {`🪐 诞生初衷 · ${pageTitle}`}
+                        <h3 className="text-base font-bold t-primary flex items-center gap-1.5">
+                            <i className="ri-compass-3-line text-theme" />
+                            <span>诞生初衷 · {pageTitle}</span>
                         </h3>
                     </div>
                     <button
@@ -199,8 +200,8 @@ export function OriginChronicleLens({
                                     disabled={isSynthesizing}
                                     className="px-4 py-2 rounded-xl bg-theme text-white font-bold text-xs shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-95 transition disabled:opacity-50 cursor-pointer inline-flex items-center gap-1.5"
                                 >
-                                    <i className={`ri-magic-line ${isSynthesizing ? "animate-spin" : ""}`} />
-                                    <span>{isSynthesizing ? "正在编织开发纪事..." : "✨ 自动编织本页诞生纪事"}</span>
+                                    <i className={`ri-quill-pen-line ${isSynthesizing ? "animate-spin" : ""}`} />
+                                    <span>{isSynthesizing ? "正在编织开发纪事..." : "编织诞生初衷"}</span>
                                 </button>
                             ) : (
                                 <span className="text-xs text-neutral-400 italic">

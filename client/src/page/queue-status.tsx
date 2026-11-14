@@ -9,6 +9,7 @@ import { ImageWithFallback } from "../components/image-with-fallback";
 import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
 import { useApiResource } from "../hooks/use-api-resource";
 import { useSiteConfig } from "../hooks/useSiteConfig";
+import { getAuthToken } from "../utils/auth";
 
 // 探针微波动 SVG 折线组件
 function ProbeSparkline({
@@ -420,23 +421,62 @@ export function QueueStatusPage() {
     }
   };
 
-  // 保存访问控制权限
-  const handleSavePermission = () => {
-    if (!permissionTarget) return;
-    const next = {
-      ...articlePermissions,
-      [permissionTarget.id]: {
-        mode: currentPermMode,
-        password: currentPassword.trim(),
-        tip: currentTip.trim(),
-      },
-    };
-    setArticlePermissions(next);
+  const openPermissionModal = async (item: QueueStatusItem) => {
+    setPermissionTarget(item);
+    setCurrentPermMode("public");
+    setCurrentPassword("");
+    setCurrentTip("");
     try {
-      localStorage.setItem("rin_article_permissions", JSON.stringify(next));
+      const token = getAuthToken() || "";
+      const res = await fetch(`/api/feed/permission/${item.id}`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentPermMode(data.mode || "public");
+        setCurrentPassword(data.password || "");
+        setCurrentTip(data.tip || "");
+      }
     } catch {}
-    showAlert(`🎉 文章 #${permissionTarget.id}「${permissionTarget.title}」访问权限策略已更新！`);
-    setPermissionTarget(null);
+  };
+
+  // 保存访问控制权限至服务端 D1
+  const handleSavePermission = async () => {
+    if (!permissionTarget) return;
+    try {
+      const token = getAuthToken() || "";
+      const res = await fetch(`/api/feed/permission/${permissionTarget.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          mode: currentPermMode,
+          password: currentPassword.trim(),
+          tip: currentTip.trim(),
+        }),
+      });
+      if (res.ok) {
+        const next = {
+          ...articlePermissions,
+          [permissionTarget.id]: {
+            mode: currentPermMode,
+            password: currentPassword.trim(),
+            tip: currentTip.trim(),
+          },
+        };
+        setArticlePermissions(next);
+        showAlert(`文章 #${permissionTarget.id}「${permissionTarget.title}」访问权限策略已更新并保存至云端！`);
+        setPermissionTarget(null);
+      } else {
+        showAlert("保存权限失败，请检查登录凭证");
+      }
+    } catch (err: any) {
+      showAlert(err.message || "更新权限异常");
+    }
   };
 
   // 详情弹窗中的任务列表
@@ -986,14 +1026,8 @@ export function QueueStatusPage() {
                           {/* 5. 访问控制 */}
                           <button
                             type="button"
-                            onClick={() => {
-                              setPermissionTarget(item);
-                              const cfg = articlePermissions[item.id] || { mode: "public", password: "", tip: "" };
-                              setCurrentPermMode(cfg.mode);
-                              setCurrentPassword(cfg.password || "");
-                              setCurrentTip(cfg.tip || "");
-                            }}
-                            className={`inline-flex items-center gap-0.5 px-2 py-1 rounded-lg font-semibold transition text-[11px] ${
+                            onClick={() => openPermissionModal(item)}
+                            className={`inline-flex items-center gap-0.5 px-2 py-1 rounded-lg font-semibold transition text-[11px] cursor-pointer ${
                               articlePermissions[item.id]?.mode && articlePermissions[item.id].mode !== "public"
                                 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold"
                                 : "bg-black/5 hover:bg-black/10 dark:bg-white/5 text-neutral-600 dark:text-neutral-300"

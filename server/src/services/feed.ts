@@ -9,7 +9,7 @@ import { Hono } from "hono";
 import type { Variables } from "../core/hono-types";
 import { adminOnly, userOnly, withJsonBody } from "../core/route-boundaries";
 import { profileAsync } from "../core/server-timing";
-import { feeds, visits, visitStats } from "../db/schema";
+import { cache as cacheTable, feeds, visits, visitStats } from "../db/schema";
 import {
     deleteFeedById,
     findDuplicateFeed,
@@ -352,6 +352,130 @@ export function FeedService(): Hono<{
         }
     }, { message: 'Permission denied', status: 403 }));
 
+    // GET /feed/permission/:id - 获取文章权限配置 (admin only, 必须在 /:id 之前注册)
+    app.get('/permission/:id', adminOnly(async (c) => {
+        const db = c.get('db');
+        const id = c.req.param('id');
+        const id_num = parseFeedId(id);
+        if (id_num === null) return c.json({ error: "Invalid ID" }, 400);
+
+        const lockRow = await db.query.cache.findFirst({
+            where: and(eq(cacheTable.type, 'article_lock'), eq(cacheTable.key, String(id_num))),
+        });
+
+        if (!lockRow || !lockRow.value) {
+            return c.json({ mode: "public", password: "", tip: "" });
+        }
+
+        try {
+            const parsed = JSON.parse(lockRow.value);
+            return c.json({
+                mode: parsed.mode || "public",
+                password: parsed.password || "",
+                tip: parsed.tip || "",
+            });
+        } catch {
+            return c.json({ mode: "public", password: "", tip: "" });
+        }
+    }, { message: 'Permission denied', status: 403 }));
+
+    // POST /feed/permission/:id - 保存文章访问权限锁定策略 (admin only, 必须在 /:id 之前注册)
+    app.post('/permission/:id', adminOnly(async (c) => {
+        const db = c.get('db');
+        const cache = c.get('cache');
+        const id = c.req.param('id');
+        const id_num = parseFeedId(id);
+        if (id_num === null) return c.json({ error: "Invalid ID" }, 400);
+
+        const feed = await findFeedById(db, id_num);
+        if (!feed) return c.json({ error: "Feed not found" }, 404);
+
+        const body: any = await c.req.json().catch(() => ({}));
+        const mode = body?.mode || "public";
+        const password = (body?.password || "").trim();
+        const tip = (body?.tip || "").trim();
+
+        // 公开访问直接物理清理锁记录
+        if (mode === "public" || !mode) {
+            await db.delete(cacheTable).where(
+                and(eq(cacheTable.type, 'article_lock'), eq(cacheTable.key, String(id_num)))
+            );
+        } else {
+            const lockPayload = JSON.stringify({ mode, password, tip });
+            const existing = await db.query.cache.findFirst({
+                where: and(eq(cacheTable.type, 'article_lock'), eq(cacheTable.key, String(id_num))),
+            });
+            if (existing) {
+                await db.update(cacheTable).set({
+                    value: lockPayload,
+                    updatedAt: new Date(),
+                }).where(eq(cacheTable.id, existing.id));
+            } else {
+                await db.insert(cacheTable).values({
+                    key: String(id_num),
+                    value: lockPayload,
+                    type: "article_lock",
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                });
+            }
+        }
+
+        // 清理文章缓存以保证权限策略即时生效
+        await clearFeedCache(cache, id_num, feed.alias, feed.alias);
+
+        return c.json({
+            success: true,
+            mode,
+            tip,
+            hasPassword: Boolean(password),
+        });
+    }, { message: 'Permission denied', status: 403 }));
+
+    // POST /feed/unlock/:id - 验证密码并解锁文章内容 (公共可访问, 必须在 /:id 之前注册)
+    app.post('/unlock/:id', async (c) => {
+        const db = c.get('db');
+        const id = c.req.param('id');
+        const id_num = parseFeedId(id);
+        if (id_num === null) return c.json({ error: "Invalid ID" }, 400);
+
+        const feed = await findFeedById(db, id_num);
+        if (!feed) return c.json({ error: "Feed not found" }, 404);
+
+        const lockRow = await db.query.cache.findFirst({
+            where: and(eq(cacheTable.type, 'article_lock'), eq(cacheTable.key, String(id_num))),
+        });
+
+        // 若文章未加锁直接放行
+        if (!lockRow || !lockRow.value) {
+            return c.json({ success: true, content: feed.content });
+        }
+
+        try {
+            const parsed = JSON.parse(lockRow.value);
+            if (parsed.mode === "public" || !parsed.mode) {
+                return c.json({ success: true, content: feed.content });
+            }
+
+            const body: any = await c.req.json().catch(() => ({}));
+            const inputPassword = (body?.password || "").trim();
+
+            if (inputPassword && inputPassword === parsed.password) {
+                return c.json({
+                    success: true,
+                    content: feed.content,
+                });
+            } else {
+                return c.json({
+                    success: false,
+                    error: "密码错误，请核对后重试",
+                }, 401);
+            }
+        } catch {
+            return c.json({ success: true, content: feed.content });
+        }
+    });
+
     // GET /feed/:id
     app.get('/:id', async (c) => {
         const db = c.get('db');
@@ -387,6 +511,31 @@ export function FeedService(): Hono<{
 
         const { hashtags, ...other } = feed;
         const hashtags_flatten = hashtags.map((f: any) => f.hashtag);
+
+        // 严格检查文章访问控制锁 (独立密码锁 / 口令通行证，非管理员时严格脱敏正文)
+        let isLocked = false;
+        let lockMode = "public";
+        let lockTip = "";
+
+        const lockRow = await db.query.cache.findFirst({
+            where: and(eq(cacheTable.type, 'article_lock'), eq(cacheTable.key, String(feed.id))),
+        });
+
+        if (lockRow && lockRow.value) {
+            try {
+                const parsedLock = JSON.parse(lockRow.value);
+                if (parsedLock.mode && parsedLock.mode !== "public") {
+                    lockMode = parsedLock.mode;
+                    lockTip = parsedLock.tip || "";
+                    if (!admin) {
+                        const reqPassword = c.req.header('x-article-password') || c.req.query('password') || "";
+                        if (!reqPassword || reqPassword !== parsedLock.password) {
+                            isLocked = true;
+                        }
+                    }
+                }
+            } catch {}
+        }
 
         // update visits using HyperLogLog for efficient UV estimation
         const enableVisit = await profileAsync(c, 'feed_detail_counter_flag', () => clientConfig.getOrDefault('counter.enabled', true));
@@ -456,7 +605,28 @@ export function FeedService(): Hono<{
             }
         }
 
-        return c.json({ ...other, hashtags: hashtags_flatten, pv, uv });
+        if (isLocked) {
+            return c.json({
+                ...other,
+                hashtags: hashtags_flatten,
+                pv,
+                uv,
+                content: "", // 严格脱敏正文，杜绝无痕与爬虫获取！
+                summary: other.summary || "本文受访问密码保护，请输入密码查阅完整随想。",
+                isLocked: true,
+                lockMode,
+                lockTip: lockTip || "本文已设置访问密码，请输入查看密码解锁阅读。",
+            });
+        }
+
+        return c.json({
+            ...other,
+            hashtags: hashtags_flatten,
+            pv,
+            uv,
+            isLocked: false,
+            lockConfig: admin && lockMode !== "public" ? { mode: lockMode, tip: lockTip } : undefined,
+        });
     });
 
     // GET /feed/adjacent/:id

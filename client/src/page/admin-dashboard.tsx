@@ -7,6 +7,7 @@ import { useAlert, useConfirm } from "../components/dialog";
 import { Modal } from "@rin/ui";
 import { normalizeBlobUrl } from "../utils/url";
 import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
+import { getAuthToken } from "../utils/auth";
 import { fetchR2StorageStats, type R2StorageStats } from "../services/music-api";
 
 function formatFileSize(bytes: number): string {
@@ -328,21 +329,51 @@ export function AdminDashboardPage() {
     }
   };
 
-  // 保存权限设置
+  // 打开权限配置并从服务端拉取真实锁定状态
+  const openPermissionForFeed = async (feed: any) => {
+    setPermissionTarget(feed);
+    setCurrentPermMode("public");
+    setCurrentPassword("");
+    setCurrentTip("");
+    try {
+      const token = getAuthToken() || "";
+      const res = await fetch(`/api/feed/permission/${feed.id}`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentPermMode(data.mode || "public");
+        setCurrentPassword(data.password || "");
+        setCurrentTip(data.tip || "");
+      }
+    } catch {}
+  };
+
+  // 保存权限设置至 D1 数据库
   const handleSavePermission = async () => {
     if (!permissionTarget) return;
     try {
-      const payload: any = {
-        lockType: currentPermMode,
-      };
-      if (currentPermMode === "password") {
-        payload.password = currentPassword;
+      const token = getAuthToken() || "";
+      const res = await fetch(`/api/feed/permission/${permissionTarget.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          mode: currentPermMode,
+          password: currentPassword.trim(),
+          tip: currentTip.trim(),
+        }),
+      });
+      if (res.ok) {
+        showAlert(`文章 #${permissionTarget.id} 权限配置已保存并即时生效：${currentPermMode === "public" ? "公开访问" : currentPermMode === "password" ? "独立密码锁" : "口令通行证"}`);
+        setPermissionTarget(null);
+      } else {
+        showAlert("保存权限策略失败，请检查登录凭证");
       }
-      if (currentPermMode !== "public") {
-        payload.tip = currentTip;
-      }
-      showAlert(`文章 #${permissionTarget.id} 权限配置已保存为：${currentPermMode === "public" ? "公开访问" : currentPermMode === "password" ? "独立密码锁" : "口令通行证"}`);
-      setPermissionTarget(null);
     } catch (e: any) {
       showAlert(e.message || "权限设置异常");
     }
@@ -779,11 +810,8 @@ export function AdminDashboardPage() {
                           {/* 权限锁定管理 */}
                           <button
                             type="button"
-                            onClick={() => {
-                              setPermissionTarget(feed);
-                              setCurrentPermMode("public");
-                            }}
-                            className="px-2 py-1 rounded-lg text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-semibold transition"
+                            onClick={() => openPermissionForFeed(feed)}
+                            className="px-2 py-1 rounded-lg text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-semibold transition cursor-pointer"
                             title="权限与密码锁设置"
                           >
                             <span>权限</span>

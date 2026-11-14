@@ -25,108 +25,108 @@ interface RouteContextPreset {
 
 const ROUTE_PRESETS: RouteContextPreset[] = [
     {
-        name: "🌸 星标画廊",
+        name: "星标画廊",
         pattern: /^\/friends/,
         defaultComponent: "FriendsGallery (星标画廊)",
         defaultFile: "client/src/page/friends.tsx",
         chips: [
-            { label: "🌸 拍立得拟物卡片", component: "拍立得卡片 (PolaroidFriendCard)", file: "client/src/page/friends.tsx" },
-            { label: "🔖 高密单行书签", component: "高密单行书签 (CompactFriendRow)", file: "client/src/page/friends.tsx" },
-            { label: "➕ 推荐/申请友链弹窗", component: "申请弹窗 (AddFriendModal)", file: "client/src/page/friends.tsx" },
-            { label: "✏️ 编辑友链弹窗", component: "编辑弹窗 (EditFriendModal)", file: "client/src/page/friends.tsx" },
-            { label: "🪐 诞生初衷透镜", component: "初衷透镜 (OriginChronicleLens)", file: "client/src/components/origin-chronicle-lens.tsx" },
+            { label: "拍立得卡片", component: "拍立得卡片 (PolaroidFriendCard)", file: "client/src/page/friends.tsx" },
+            { label: "高密单行书签", component: "高密单行书签 (CompactFriendRow)", file: "client/src/page/friends.tsx" },
+            { label: "推荐/申请弹窗", component: "申请弹窗 (AddFriendModal)", file: "client/src/page/friends.tsx" },
+            { label: "编辑友链弹窗", component: "编辑弹窗 (EditFriendModal)", file: "client/src/page/friends.tsx" },
+            { label: "诞生初衷透镜", component: "初衷透镜 (OriginChronicleLens)", file: "client/src/components/origin-chronicle-lens.tsx" },
         ],
     },
     {
-        name: "📖 文章阅读",
+        name: "文章阅读",
         pattern: /^\/feed\//,
         defaultComponent: "FeedArticle (文章正文/漫游)",
         defaultFile: "client/src/page/feed.tsx",
         chips: [
-            { label: "🏷️ 文章标签组合栏", component: "文章标签栏 (ArticleTagBar)", file: "client/src/components/hashtag.tsx" },
-            { label: "🔖 灵感漫游侧栏", component: "灵感漫游卡片 (RecommendedTags)", file: "client/src/page/feed.tsx" },
-            { label: "📖 文章正文排版", component: "文章正文排版 (MarkdownBody)", file: "client/src/components/markdown.tsx" },
-            { label: "📑 前后章节导航", component: "章节导航 (AdjacentSection)", file: "client/src/components/adjacent_feed.tsx" },
-            { label: "💬 读者留言评论区", component: "读者留言区 (GalleryComments)", file: "client/src/components/gallery-comments.tsx" },
-            { label: "🧭 目录大纲", component: "目录大纲 (TOC)", file: "client/src/components/toc-header.tsx" },
-            { label: "🖼️ 封面全屏灯箱", component: "封面画廊灯箱 (Lightbox)", file: "client/src/page/feed.tsx" },
+            { label: "文章标签组合栏", component: "文章标签栏 (ArticleTagBar)", file: "client/src/components/hashtag.tsx" },
+            { label: "灵感漫游侧栏", component: "灵感漫游卡片 (RecommendedTags)", file: "client/src/page/feed.tsx" },
+            { label: "文章正文排版", component: "文章正文排版 (MarkdownBody)", file: "client/src/components/markdown.tsx" },
+            { label: "前后章节导航", component: "章节导航 (AdjacentSection)", file: "client/src/components/adjacent_feed.tsx" },
+            { label: "读者留言区", component: "读者留言区 (GalleryComments)", file: "client/src/components/gallery-comments.tsx" },
+            { label: "目录大纲", component: "目录大纲 (TOC)", file: "client/src/components/toc-header.tsx" },
+            { label: "封面全屏灯箱", component: "封面画廊灯箱 (Lightbox)", file: "client/src/page/feed.tsx" },
         ],
     },
     {
-        name: "🎵 云端音廊",
+        name: "云端音廊",
         pattern: /^\/admin\/music/,
         defaultComponent: "AdminMusic (云端音廊资产)",
         defaultFile: "client/src/page/admin-music.tsx",
         chips: [
-            { label: "🎨 画册全宽网格", component: "画册网格 (GalleryView)", file: "client/src/page/admin-music/gallery-view.tsx" },
-            { label: "📋 播放列表数据表格", component: "播放列表 (PlaylistDataGrid)", file: "client/src/page/admin-music/playlist-datagrid.tsx" },
-            { label: "📤 音频上传中枢", component: "音频上传中心 (AudioUploadCenter)", file: "client/src/page/admin-music/audio-upload-center.tsx" },
-            { label: "🎵 浮空双音符播放器", component: "悬浮音符播放器 (GlobalMusicPlayer)", file: "client/src/components/music-player/global-music-player.tsx" },
+            { label: "画册全宽网格", component: "画册网格 (GalleryView)", file: "client/src/page/admin-music/gallery-view.tsx" },
+            { label: "播放列表表格", component: "播放列表 (PlaylistDataGrid)", file: "client/src/page/admin-music/playlist-datagrid.tsx" },
+            { label: "音频上传中枢", component: "音频上传中心 (AudioUploadCenter)", file: "client/src/page/admin-music/audio-upload-center.tsx" },
+            { label: "浮空双音符播放器", component: "悬浮音符播放器 (GlobalMusicPlayer)", file: "client/src/components/music-player/global-music-player.tsx" },
         ],
     },
     {
-        name: "📷 R2图床",
+        name: "R2图床",
         pattern: /^\/admin\/files/,
         defaultComponent: "AdminFiles (R2图床画廊)",
         defaultFile: "client/src/page/admin-files.tsx",
         chips: [
-            { label: "🖼️ 沉浸大图画廊灯箱", component: "画廊灯箱 (Lightbox)", file: "client/src/page/admin-files.tsx" },
-            { label: "📁 拖拽上传与粘贴区", component: "文件上传区 (UploadDropZone)", file: "client/src/page/admin-files.tsx" },
-            { label: "🌐 OpenList边缘挂载条", component: "网盘挂载条 (OpenListMountBar)", file: "client/src/page/admin-files.tsx" },
+            { label: "画廊大图灯箱", component: "画廊灯箱 (Lightbox)", file: "client/src/page/admin-files.tsx" },
+            { label: "拖拽上传粘贴区", component: "文件上传区 (UploadDropZone)", file: "client/src/page/admin-files.tsx" },
+            { label: "OpenList网盘挂载", component: "网盘挂载条 (OpenListMountBar)", file: "client/src/page/admin-files.tsx" },
         ],
     },
     {
-        name: "🏷️ 标签星云",
+        name: "标签星云",
         pattern: /^\/hashtags/,
         defaultComponent: "HashtagsPage (标签星云页)",
         defaultFile: "client/src/page/hashtags.tsx",
         chips: [
-            { label: "🏷️ 散落彩色标签墙", component: "便签标签墙 (HashtagWall)", file: "client/src/page/hashtags.tsx" },
-            { label: "🧹 站长空标签清理栏", component: "站长管理栏 (AdminBar)", file: "client/src/page/hashtags.tsx" },
-            { label: "🎲 全站漫游动作按钮", component: "漫游按钮 (RandomActionCapsule)", file: "client/src/page/hashtags.tsx" },
+            { label: "散落彩色标签墙", component: "便签标签墙 (HashtagWall)", file: "client/src/page/hashtags.tsx" },
+            { label: "站长空标签清理栏", component: "站长管理栏 (AdminBar)", file: "client/src/page/hashtags.tsx" },
+            { label: "全站漫游动作按钮", component: "漫游按钮 (RandomActionCapsule)", file: "client/src/page/hashtags.tsx" },
         ],
     },
     {
-        name: "🏠 漫游首页",
+        name: "漫游首页",
         pattern: /^\/($|feeds)/,
         defaultComponent: "FeedListPage (画廊漫游首页)",
         defaultFile: "client/src/page/feeds.tsx",
         chips: [
-            { label: "🎴 文章卡片瀑布流", component: "文章卡片 (FeedCard)", file: "client/src/components/feed_card.tsx" },
-            { label: "🧭 艺术字族顶栏导航", component: "站点顶栏 (Header)", file: "client/src/components/header.tsx" },
-            { label: "🏷️ 首页标签常驻管理", component: "标签超级表格 (TagsModal)", file: "client/src/page/feeds.tsx" },
-            { label: "📝 首页便签微模块", component: "首页便签 (AtelierNotes)", file: "client/src/page/feeds.tsx" },
+            { label: "文章卡片瀑布流", component: "文章卡片 (FeedCard)", file: "client/src/components/feed_card.tsx" },
+            { label: "顶栏导航", component: "站点顶栏 (Header)", file: "client/src/components/header.tsx" },
+            { label: "首页标签管理", component: "标签超级表格 (TagsModal)", file: "client/src/page/feeds.tsx" },
+            { label: "首页便签模块", component: "首页便签 (AtelierNotes)", file: "client/src/page/feeds.tsx" },
         ],
     },
     {
-        name: "📊 管理大盘",
+        name: "管理大盘",
         pattern: /^\/admin\/dashboard/,
         defaultComponent: "AdminDashboard (管理概览中枢)",
         defaultFile: "client/src/page/admin-dashboard.tsx",
         chips: [
-            { label: "📊 概览超级数据表格", component: "文章管理表格 (DenseDataGrid)", file: "client/src/page/admin-dashboard.tsx" },
-            { label: "🎛️ 15大中枢快捷导航", component: "中枢矩阵 (HubGrid)", file: "client/src/page/admin-dashboard.tsx" },
+            { label: "文章管理表格", component: "文章管理表格 (DenseDataGrid)", file: "client/src/page/admin-dashboard.tsx" },
+            { label: "中枢快捷导航", component: "中枢矩阵 (HubGrid)", file: "client/src/page/admin-dashboard.tsx" },
         ],
     },
     {
-        name: "⚙️ 全局设置",
+        name: "全局设置",
         pattern: /^\/admin\/settings/,
         defaultComponent: "SettingsPage (全局系统设置)",
         defaultFile: "client/src/page/settings.tsx",
         chips: [
-            { label: "🎨 18款色彩预设方案", component: "主题色盘 (ThemeColorPresets)", file: "client/src/page/settings.tsx" },
-            { label: "✍️ 12款艺术字族切换", component: "字族控制 (FontFamilySetting)", file: "client/src/page/settings.tsx" },
-            { label: "🔒 权限与密码中枢", component: "安全控制台 (SecurityPanel)", file: "client/src/page/settings.tsx" },
+            { label: "色彩方案预设", component: "主题色盘 (ThemeColorPresets)", file: "client/src/page/settings.tsx" },
+            { label: "艺术字族切换", component: "字族控制 (FontFamilySetting)", file: "client/src/page/settings.tsx" },
+            { label: "权限与密码中枢", component: "安全控制台 (SecurityPanel)", file: "client/src/page/settings.tsx" },
         ],
     },
     {
-        name: "🧭 站点SEO",
+        name: "站点SEO",
         pattern: /^\/admin\/seo/,
         defaultComponent: "AdminSeo (SEO全景控制中心)",
         defaultFile: "client/src/page/admin-seo.tsx",
         chips: [
-            { label: "📑 站长直达与Sitemap", component: "SEO大盘 (SeoDashboard)", file: "client/src/page/admin-seo.tsx" },
-            { label: "🐾 页脚版权与Favicon", component: "页脚定制 (FooterBranding)", file: "client/src/page/admin-seo.tsx" },
+            { label: "站长直达与Sitemap", component: "SEO大盘 (SeoDashboard)", file: "client/src/page/admin-seo.tsx" },
+            { label: "页脚定制与Favicon", component: "页脚定制 (FooterBranding)", file: "client/src/page/admin-seo.tsx" },
         ],
     },
 ];
@@ -496,17 +496,19 @@ export function JeikCodeCopilot() {
                                             activeTab === "inspect" ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs font-bold" : "text-neutral-500 hover:text-neutral-700"
                                         }`}
                                     >
-                                        <span>🎯 定位</span>
+                                        <i className="ri-focus-2-line text-xs" />
+                                        <span>现场定位</span>
                                         {inspectComponent && <span className="w-1.5 h-1.5 rounded-full bg-theme animate-ping" />}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setActiveTab("chat")}
-                                        className={`px-2 py-1 rounded-md transition cursor-pointer ${
+                                        className={`px-2 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
                                             activeTab === "chat" ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs font-bold" : "text-neutral-500 hover:text-neutral-700"
                                         }`}
                                     >
-                                        💬 对话
+                                        <i className="ri-chat-3-line text-xs" />
+                                        <span>现场对话</span>
                                     </button>
                                     <button
                                         type="button"
@@ -580,7 +582,7 @@ export function JeikCodeCopilot() {
                                                 title="在页面上点击任意元素自动抓取"
                                             >
                                                 <i className="ri-focus-2-line" />
-                                                <span>🎯 探针选取元素</span>
+                                                <span>探针选取元素</span>
                                             </button>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2 text-[11px] text-neutral-600 dark:text-neutral-400 font-mono">
@@ -709,7 +711,7 @@ export function JeikCodeCopilot() {
                                             className="px-5 py-2.5 rounded-xl bg-theme text-white font-bold text-xs shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-95 transition cursor-pointer flex items-center gap-1.5 ml-auto"
                                         >
                                             <i className="ri-send-plane-fill" />
-                                            <span>🚀 一键打包并切至现场会话发送</span>
+                                            <span>一键打包并切至会话发送</span>
                                         </button>
                                     </div>
                                 </div>

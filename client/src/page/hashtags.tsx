@@ -280,7 +280,7 @@ export function HashtagsPage() {
                                             title="一键彻底清理未关联任何文章的孤儿标签"
                                         >
                                             <i className={`ri-delete-bin-line ${isCleaning ? "animate-spin" : ""}`} />
-                                            <span>{isCleaning ? "正在清理..." : `🧹 清理空标签 (${unlinkedCount})`}</span>
+                                            <span>{isCleaning ? "正在清理..." : `清理空标签 (${unlinkedCount})`}</span>
                                         </button>
                                     )}
 
@@ -306,7 +306,7 @@ export function HashtagsPage() {
                                             onChange={() => toggleTagAction("prev")}
                                             className="accent-theme cursor-pointer"
                                         />
-                                        <span>上一篇 (⏮)</span>
+                                        <span>上一篇</span>
                                     </label>
                                     <label className="flex items-center gap-1.5 cursor-pointer select-none hover:text-theme transition">
                                         <input
@@ -315,7 +315,7 @@ export function HashtagsPage() {
                                             onChange={() => toggleTagAction("next")}
                                             className="accent-theme cursor-pointer"
                                         />
-                                        <span>下一篇 (⏭)</span>
+                                        <span>下一篇</span>
                                     </label>
                                     <label className="flex items-center gap-1.5 cursor-pointer select-none hover:text-theme transition">
                                         <input
@@ -324,7 +324,7 @@ export function HashtagsPage() {
                                             onChange={() => toggleTagAction("random")}
                                             className="accent-theme cursor-pointer"
                                         />
-                                        <span>随机换篇 (🎲)</span>
+                                        <span>随机换篇</span>
                                     </label>
                                 </div>
                             </div>
@@ -341,10 +341,11 @@ export function HashtagsPage() {
                             title="全站随机漫游换一篇随想阅读"
                         >
                             <i className={`ri-shuffle-line ${isWandering ? "animate-spin" : ""}`} />
-                            <span>{isWandering ? "漫游中..." : "🎲 全站随机换一篇"}</span>
+                            <span>{isWandering ? "漫游中..." : "全站随机漫游"}</span>
                         </button>
-                        <span className="text-[11px] text-neutral-400 font-sans">
-                            💡 单篇独家标签点击将<strong>直接送入正文</strong>，多篇标签点击进入聚合星云
+                        <span className="text-[11px] text-neutral-400 font-sans flex items-center gap-1">
+                            <i className="ri-information-line text-theme" />
+                            <span>单篇独家标签点击将<strong>直接送入正文</strong>，多篇标签点击进入聚合星云</span>
                         </span>
                     </div>
 
@@ -380,8 +381,14 @@ export function HashtagsPage() {
                                         className="inline-flex items-center gap-1.5 cursor-pointer"
                                         title={tooltip}
                                     >
-                                        <span className="opacity-70 text-xs">
-                                            {isSingleArticle ? "📖" : isEmptyTag ? "⚪" : "🏷️"}
+                                        <span className="opacity-70 text-xs flex items-center">
+                                            {isSingleArticle ? (
+                                                <i className="ri-file-text-line text-theme" />
+                                            ) : isEmptyTag ? (
+                                                <i className="ri-checkbox-blank-circle-line" />
+                                            ) : (
+                                                <i className="ri-price-tag-3-line" />
+                                            )}
                                         </span>
                                         <span className="font-bold">#{hashtag.name}</span>
 

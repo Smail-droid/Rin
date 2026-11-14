@@ -173,6 +173,9 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
   const [readingProgress, setReadingProgress] = useState<number>(0);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [adjacentData, setAdjacentData] = useState<any>(null);
+  const [unlockPassword, setUnlockPassword] = useState("");
+  const [isUnlocking, setIsUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState("");
 
   useEffect(() => {
     if (id && id !== "about") {
@@ -736,7 +739,69 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                     ) : null}
                   </div>
                 )}
-                <Markdown content={feed.content} />
+                {(feed as any).isLocked ? (
+                  <div className="my-10 p-6 sm:p-10 rounded-3xl border border-theme/20 bg-gradient-to-b from-theme/[0.03] to-theme/[0.08] dark:from-white/[0.02] dark:to-white/[0.05] backdrop-blur-md shadow-sm text-center flex flex-col items-center justify-center max-w-md mx-auto ani-show">
+                    <div className="w-14 h-14 rounded-2xl bg-theme/10 text-theme flex items-center justify-center text-2xl mb-3 shadow-inner">
+                      <i className="ri-shield-keyhole-line" />
+                    </div>
+                    <h3 className="text-base font-bold t-primary mb-1">本文受访问密码保护</h3>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-5 max-w-xs leading-relaxed">
+                      {(feed as any).lockTip || "请输入密码解锁阅读完整随想内容"}
+                    </p>
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!unlockPassword.trim() || isUnlocking) return;
+                        setIsUnlocking(true);
+                        setUnlockError("");
+                        try {
+                          const res = await fetch(`/api/feed/unlock/${feed.id}`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ password: unlockPassword.trim() }),
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            if (data.content) {
+                              setFeed((prev: any) => ({ ...prev, content: data.content, isLocked: false }));
+                            }
+                          } else {
+                            const data = await res.json().catch(() => ({}));
+                            setUnlockError(data?.error || "密码错误，请核对后重试");
+                          }
+                        } catch {
+                          setUnlockError("网络验证异常，请重试");
+                        } finally {
+                          setIsUnlocking(false);
+                        }
+                      }}
+                      className="w-full space-y-3"
+                    >
+                      <input
+                        type="password"
+                        required
+                        value={unlockPassword}
+                        onChange={(e) => setUnlockPassword(e.target.value)}
+                        placeholder="输入查看密码..."
+                        className="w-full px-4 py-2.5 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-neutral-800 text-xs text-center font-mono outline-none focus:border-theme shadow-inner"
+                        autoFocus
+                      />
+                      {unlockError && (
+                        <p className="text-xs text-rose-500 font-medium">{unlockError}</p>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={isUnlocking || !unlockPassword}
+                        className="w-full py-2.5 rounded-xl bg-theme text-white text-xs font-bold shadow-md hover:shadow-lg transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                      >
+                        <i className={`ri-key-2-line ${isUnlocking ? "animate-spin" : ""}`} />
+                        <span>{isUnlocking ? "正在验证..." : "解锁阅读完整内容"}</span>
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  <Markdown content={feed.content} />
+                )}
                 <div className="mt-6 flex flex-col gap-2">
                   <div className="flex min-w-0 flex-row items-center">
                     <ImageWithFallback

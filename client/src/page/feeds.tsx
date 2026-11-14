@@ -376,16 +376,22 @@ function StickyNoteItem({
                 <div
                     {...dragHandlers}
                     onClick={() => setLocation(aboutUrl)}
-                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-amber-300/80 bg-gradient-to-tr from-amber-100 to-amber-50 dark:from-amber-950/60 dark:to-neutral-900 text-center ${dragStyleClasses}`}
+                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-amber-300/80 ${
+                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-gradient-to-tr from-amber-100 to-amber-50 dark:from-amber-950/60 dark:to-neutral-900"
+                    } text-center ${dragStyleClasses}`}
                 >
-                    {renderAdminControls("about")}
-                    <span className="text-3xl mb-1">{siteConfig.atelierAboutIcon || "🐾"}</span>
-                    <p className="font-bold text-sm text-amber-900 dark:text-amber-200 truncate w-32">
-                        {siteConfig.name || "80hou"}
-                    </p>
-                    <span className="text-[11px] text-amber-700/80 dark:text-amber-300/80 mt-1 font-semibold group-hover:underline">
-                        关于我 &rarr;
-                    </span>
+                    {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
+                    <div className="relative z-10 flex flex-col items-center">
+                        {renderAdminControls("about")}
+                        <span className="text-3xl mb-1">{siteConfig.atelierAboutIcon || "🐾"}</span>
+                        <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-amber-900 dark:text-amber-200"}`}>
+                            {siteConfig.name || "80hou"}
+                        </p>
+                        <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-amber-300" : "text-amber-700/80 dark:text-amber-300/80"}`}>
+                            关于我 &rarr;
+                        </span>
+                    </div>
                 </div>
             );
         }
@@ -396,18 +402,22 @@ function StickyNoteItem({
                 <div
                     {...dragHandlers}
                     onClick={() => setLocation(aboutUrl)}
-                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-amber-300/80 bg-amber-50 dark:bg-amber-950/40 ${dragStyleClasses}`}
+                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-amber-300/80 ${
+                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-amber-50 dark:bg-amber-950/40"
+                    } ${dragStyleClasses}`}
                 >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
+                    <div className="relative z-10 flex items-center gap-2.5 min-w-0">
                         <span className="text-xl">{siteConfig.atelierAboutIcon || "🐾"}</span>
                         <div className="min-w-0 truncate">
-                            <p className="font-bold text-xs text-amber-900 dark:text-amber-200 truncate">关于我</p>
-                            <p className="text-[10px] text-neutral-400 truncate">{siteConfig.name || "80hou's Home"}</p>
+                            <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-amber-900 dark:text-amber-200"}`}>关于我</p>
+                            <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>{siteConfig.name || "80hou's Home"}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="relative z-10 flex items-center gap-2 shrink-0">
                         {renderAdminControls("about")}
-                        <span className="text-xs text-amber-800 dark:text-amber-300 group-hover:translate-x-1 transition-transform font-bold">&rarr;</span>
+                        <span className={`text-xs group-hover:translate-x-1 transition-transform font-bold ${bgImage ? "text-amber-300" : "text-amber-800 dark:text-amber-300"}`}>&rarr;</span>
                     </div>
                 </div>
             );
@@ -425,7 +435,7 @@ function StickyNoteItem({
                         : "bg-amber-100 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/40"
                 } ${dragStyleClasses}`}
             >
-                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
+                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />}
                 <div className="absolute -top-2 left-6 w-8 h-3.5 bg-amber-200/80 dark:bg-amber-800/50 rounded-xs rotate-[-5deg] z-20" />
                 {renderAdminControls("about")}
 
@@ -455,14 +465,20 @@ function StickyNoteItem({
                 <div
                     {...dragHandlers}
                     onClick={() => setLocation(targetUrl)}
-                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-orange-300/80 bg-gradient-to-tr from-orange-100 to-orange-50 dark:from-orange-950/60 dark:to-neutral-900 text-center ${dragStyleClasses}`}
+                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-orange-300/80 ${
+                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-gradient-to-tr from-orange-100 to-orange-50 dark:from-orange-950/60 dark:to-neutral-900"
+                    } text-center ${dragStyleClasses}`}
                 >
-                    {renderAdminControls("timeline")}
-                    <span className="text-3xl mb-1">{siteConfig.atelierTimelineIcon || "⏳"}</span>
-                    <p className="font-bold text-sm text-orange-900 dark:text-orange-200 truncate w-32">岁月轨迹</p>
-                    <span className="text-[11px] text-orange-700/80 dark:text-orange-300/80 mt-1 font-semibold group-hover:underline">
-                        时光足迹 &rarr;
-                    </span>
+                    {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
+                    <div className="relative z-10 flex flex-col items-center">
+                        {renderAdminControls("timeline")}
+                        <span className="text-3xl mb-1">{siteConfig.atelierTimelineIcon || "⏳"}</span>
+                        <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-orange-900 dark:text-orange-200"}`}>岁月轨迹</p>
+                        <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-orange-300" : "text-orange-700/80 dark:text-orange-300/80"}`}>
+                            时光足迹 &rarr;
+                        </span>
+                    </div>
                 </div>
             );
         }
@@ -472,18 +488,22 @@ function StickyNoteItem({
                 <div
                     {...dragHandlers}
                     onClick={() => setLocation(targetUrl)}
-                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-orange-300/80 bg-orange-50 dark:bg-orange-950/40 ${dragStyleClasses}`}
+                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-orange-300/80 ${
+                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-orange-50 dark:bg-orange-950/40"
+                    } ${dragStyleClasses}`}
                 >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
+                    <div className="relative z-10 flex items-center gap-2.5 min-w-0">
                         <span className="text-xl">{siteConfig.atelierTimelineIcon || "⏳"}</span>
                         <div className="min-w-0 truncate">
-                            <p className="font-bold text-xs text-orange-900 dark:text-orange-200 truncate">岁月轨迹</p>
-                            <p className="text-[10px] text-neutral-400 truncate">时光长河刻度</p>
+                            <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-orange-900 dark:text-orange-200"}`}>岁月轨迹</p>
+                            <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>时光长河刻度</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="relative z-10 flex items-center gap-2 shrink-0">
                         {renderAdminControls("timeline")}
-                        <span className="text-xs text-orange-800 dark:text-orange-300 group-hover:translate-x-1 transition-transform font-bold">&rarr;</span>
+                        <span className={`text-xs group-hover:translate-x-1 transition-transform font-bold ${bgImage ? "text-orange-300" : "text-orange-800 dark:text-orange-300"}`}>&rarr;</span>
                     </div>
                 </div>
             );
@@ -500,7 +520,7 @@ function StickyNoteItem({
                         : "bg-orange-50 dark:bg-orange-950/40 border border-orange-200/80 dark:border-orange-800/40"
                 } ${dragStyleClasses}`}
             >
-                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
+                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />}
                 <div className="absolute -top-2.5 right-6 w-10 h-3.5 bg-orange-200/70 dark:bg-orange-800/50 rounded-xs rotate-[3deg] z-20" />
                 {renderAdminControls("timeline")}
 
@@ -528,14 +548,20 @@ function StickyNoteItem({
                 <div
                     {...dragHandlers}
                     onClick={() => setLocation(targetUrl)}
-                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-emerald-300/80 bg-gradient-to-tr from-emerald-100 to-emerald-50 dark:from-emerald-950/60 dark:to-neutral-900 text-center ${dragStyleClasses}`}
+                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-emerald-300/80 ${
+                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-gradient-to-tr from-emerald-100 to-emerald-50 dark:from-emerald-950/60 dark:to-neutral-900"
+                    } text-center ${dragStyleClasses}`}
                 >
-                    {renderAdminControls("moments")}
-                    <span className="text-3xl mb-1">{siteConfig.atelierMomentsIcon || "💭"}</span>
-                    <p className="font-bold text-sm text-emerald-900 dark:text-emerald-200 truncate w-32">日常随想</p>
-                    <span className="text-[11px] text-emerald-700/80 dark:text-emerald-300/80 mt-1 font-semibold group-hover:underline">
-                        动态碎碎念 &rarr;
-                    </span>
+                    {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
+                    <div className="relative z-10 flex flex-col items-center">
+                        {renderAdminControls("moments")}
+                        <span className="text-3xl mb-1">{siteConfig.atelierMomentsIcon || "💭"}</span>
+                        <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-emerald-900 dark:text-emerald-200"}`}>日常随想</p>
+                        <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-emerald-300" : "text-emerald-700/80 dark:text-emerald-300/80"}`}>
+                            动态碎碎念 &rarr;
+                        </span>
+                    </div>
                 </div>
             );
         }
@@ -545,18 +571,22 @@ function StickyNoteItem({
                 <div
                     {...dragHandlers}
                     onClick={() => setLocation(targetUrl)}
-                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-emerald-300/80 bg-emerald-50 dark:bg-emerald-950/40 ${dragStyleClasses}`}
+                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-emerald-300/80 ${
+                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-emerald-50 dark:bg-emerald-950/40"
+                    } ${dragStyleClasses}`}
                 >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
+                    <div className="relative z-10 flex items-center gap-2.5 min-w-0">
                         <span className="text-xl">{siteConfig.atelierMomentsIcon || "💭"}</span>
                         <div className="min-w-0 truncate">
-                            <p className="font-bold text-xs text-emerald-900 dark:text-emerald-200 truncate">日常随想</p>
-                            <p className="text-[10px] text-neutral-400 truncate">朋友圈动态</p>
+                            <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-emerald-900 dark:text-emerald-200"}`}>日常随想</p>
+                            <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>朋友圈动态</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="relative z-10 flex items-center gap-2 shrink-0">
                         {renderAdminControls("moments")}
-                        <span className="text-xs text-emerald-800 dark:text-emerald-300 group-hover:translate-x-1 transition-transform font-bold">&rarr;</span>
+                        <span className={`text-xs group-hover:translate-x-1 transition-transform font-bold ${bgImage ? "text-emerald-300" : "text-emerald-800 dark:text-emerald-300"}`}>&rarr;</span>
                     </div>
                 </div>
             );
@@ -573,7 +603,7 @@ function StickyNoteItem({
                         : "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/40"
                 } ${dragStyleClasses}`}
             >
-                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
+                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />}
                 <div className="absolute -top-2 left-8 w-10 h-3.5 bg-emerald-200/70 dark:bg-emerald-800/50 rounded-xs rotate-[-3deg] z-20" />
                 {renderAdminControls("moments")}
 
@@ -601,14 +631,20 @@ function StickyNoteItem({
                 <div
                     {...dragHandlers}
                     onClick={() => setLocation(targetUrl)}
-                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-rose-300/80 bg-gradient-to-tr from-rose-100 to-rose-50 dark:from-rose-950/60 dark:to-neutral-900 text-center ${dragStyleClasses}`}
+                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-rose-300/80 ${
+                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-gradient-to-tr from-rose-100 to-rose-50 dark:from-rose-950/60 dark:to-neutral-900"
+                    } text-center ${dragStyleClasses}`}
                 >
-                    {renderAdminControls("friends")}
-                    <span className="text-3xl mb-1">{siteConfig.atelierFriendsIcon || "🌸"}</span>
-                    <p className="font-bold text-sm text-rose-900 dark:text-rose-200 truncate w-32">星廊</p>
-                    <span className="text-[11px] text-rose-700/80 dark:text-rose-300/80 mt-1 font-semibold group-hover:underline">
-                        拜访朋友们 &rarr;
-                    </span>
+                    {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
+                    <div className="relative z-10 flex flex-col items-center">
+                        {renderAdminControls("friends")}
+                        <span className="text-3xl mb-1">{siteConfig.atelierFriendsIcon || "🌸"}</span>
+                        <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-rose-900 dark:text-rose-200"}`}>星廊</p>
+                        <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-rose-300" : "text-rose-700/80 dark:text-rose-300/80"}`}>
+                            拜访朋友们 &rarr;
+                        </span>
+                    </div>
                 </div>
             );
         }
@@ -618,18 +654,22 @@ function StickyNoteItem({
                 <div
                     {...dragHandlers}
                     onClick={() => setLocation(targetUrl)}
-                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-rose-300/80 bg-rose-50 dark:bg-rose-950/40 ${dragStyleClasses}`}
+                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-rose-300/80 ${
+                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-rose-50 dark:bg-rose-950/40"
+                    } ${dragStyleClasses}`}
                 >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
+                    <div className="relative z-10 flex items-center gap-2.5 min-w-0">
                         <span className="text-xl">{siteConfig.atelierFriendsIcon || "🌸"}</span>
                         <div className="min-w-0 truncate">
-                            <p className="font-bold text-xs text-rose-900 dark:text-rose-200 truncate">星廊</p>
-                            <p className="text-[10px] text-neutral-400 truncate">博主数字花园</p>
+                            <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-rose-900 dark:text-rose-200"}`}>星廊</p>
+                            <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>博主数字花园</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="relative z-10 flex items-center gap-2 shrink-0">
                         {renderAdminControls("friends")}
-                        <span className="text-xs text-rose-800 dark:text-rose-300 group-hover:translate-x-1 transition-transform font-bold">&rarr;</span>
+                        <span className={`text-xs group-hover:translate-x-1 transition-transform font-bold ${bgImage ? "text-rose-300" : "text-rose-800 dark:text-rose-300"}`}>&rarr;</span>
                     </div>
                 </div>
             );
@@ -646,7 +686,7 @@ function StickyNoteItem({
                         : "bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/40"
                 } ${dragStyleClasses}`}
             >
-                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
+                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />}
                 <div className="absolute -top-2 right-8 w-10 h-3.5 bg-rose-200/70 dark:bg-rose-800/50 rounded-xs rotate-[4deg] z-20" />
                 {renderAdminControls("friends")}
 
@@ -673,14 +713,20 @@ function StickyNoteItem({
             <div
                 {...dragHandlers}
                 onClick={() => setLocation("/search")}
-                className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-sky-300/80 bg-gradient-to-tr from-sky-100 to-sky-50 dark:from-sky-950/60 dark:to-neutral-900 text-center ${dragStyleClasses}`}
+                style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-sky-300/80 ${
+                    bgImage ? "bg-cover bg-center overflow-hidden" : "bg-gradient-to-tr from-sky-100 to-sky-50 dark:from-sky-950/60 dark:to-neutral-900"
+                } text-center ${dragStyleClasses}`}
             >
-                {renderAdminControls("search")}
-                <span className="text-3xl mb-1">{siteConfig.atelierSearchIcon || "🔍"}</span>
-                <p className="font-bold text-sm text-sky-900 dark:text-sky-200 truncate w-32">随心探索</p>
-                <span className="text-[11px] text-sky-700/80 dark:text-sky-300/80 mt-1 font-semibold group-hover:underline">
-                    检索全站 &rarr;
-                </span>
+                {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
+                <div className="relative z-10 flex flex-col items-center">
+                    {renderAdminControls("search")}
+                    <span className="text-3xl mb-1">{siteConfig.atelierSearchIcon || "🔍"}</span>
+                    <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-sky-900 dark:text-sky-200"}`}>随心探索</p>
+                    <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-sky-300" : "text-sky-700/80 dark:text-sky-300/80"}`}>
+                        检索全站 &rarr;
+                    </span>
+                </div>
             </div>
         );
     }
@@ -690,18 +736,22 @@ function StickyNoteItem({
             <div
                 {...dragHandlers}
                 onClick={() => setLocation("/search")}
-                className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-sky-300/80 bg-sky-50 dark:bg-sky-950/40 ${dragStyleClasses}`}
+                style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+                className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-sky-300/80 ${
+                    bgImage ? "bg-cover bg-center overflow-hidden" : "bg-sky-50 dark:bg-sky-950/40"
+                } ${dragStyleClasses}`}
             >
-                <div className="flex items-center gap-2.5 min-w-0">
+                {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
+                <div className="relative z-10 flex items-center gap-2.5 min-w-0">
                     <span className="text-xl">{siteConfig.atelierSearchIcon || "🔍"}</span>
                     <div className="min-w-0 truncate">
-                        <p className="font-bold text-xs text-sky-900 dark:text-sky-200 truncate">随心探索</p>
-                        <p className="text-[10px] text-neutral-400 truncate">检索文章与标签</p>
+                        <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-sky-900 dark:text-sky-200"}`}>随心探索</p>
+                        <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>检索文章与标签</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="relative z-10 flex items-center gap-2 shrink-0">
                     {renderAdminControls("search")}
-                    <span className="text-xs text-sky-800 dark:text-sky-300 group-hover:translate-x-1 transition-transform font-bold">&rarr;</span>
+                    <span className={`text-xs group-hover:translate-x-1 transition-transform font-bold ${bgImage ? "text-sky-300" : "text-sky-800 dark:text-sky-300"}`}>&rarr;</span>
                 </div>
             </div>
         );
@@ -717,7 +767,7 @@ function StickyNoteItem({
                     : "bg-sky-50 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/40"
             } ${dragStyleClasses}`}
         >
-            {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
+            {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />}
             <div className="absolute -top-2.5 left-10 w-10 h-3.5 bg-sky-200/70 dark:bg-sky-800/50 rounded-xs rotate-[-4deg] z-20" />
             {renderAdminControls("search")}
 
