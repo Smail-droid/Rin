@@ -5,41 +5,91 @@ import { client } from "../app/runtime";
 interface HashTagProps {
   name: string;
   currentFeedId?: number | string;
-  enableFlow?: boolean;
   className?: string;
   colorClass?: string;
 }
 
 /**
- * 🌸 灵感流转标签 (Topic Flow Capsule)
- * 严格保留经典日系圆润极简胶囊美学（rounded-full、柔和边框与微光悬浮）
- * 属性升级：
- *  - 点击文字 -> 跳转至标签星云聚合汇总
- *  - 点击洗牌图标 🔀 -> 顺着同类灵感脉络无缝随机切入下一篇随想（严格排除当前篇，智能全站换篇兜底，杜绝原地打转）
+ * 🌸 纯净文章灵感标签 (Pure Topic Tag Capsule)
+ * 纯粹圆润极简胶囊美学（rounded-full、柔和边框与微光悬浮）
+ * 彻底消除每个标签后面突兀的重复洗牌图标，保持视觉干净统一
+ * 属性：
+ *  - 单篇独家标签 -> 点击直接直达文章正文
+ *  - 多篇标签 -> 点击进入标签星云聚合列表
  */
 export function HashTag({
   name,
   currentFeedId,
-  enableFlow = true,
   className = "",
   colorClass = "",
 }: HashTagProps) {
   const [, setLocation] = useLocation();
-  const [isHopping, setIsHopping] = useState(false);
 
-  const handleHop = async (e: React.MouseEvent) => {
+  const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isHopping) return;
-    setIsHopping(true);
-
     try {
-      // 1. 优先调用服务端 /feed/random，支持同标签过滤与排除当前文章
-      const queryParams = new URLSearchParams();
-      if (currentFeedId) queryParams.set("exclude", String(currentFeedId));
-      if (name) queryParams.set("tag", name);
+      const res = await client.tag.get(name);
+      if (res.data?.feeds && res.data.feeds.length === 1) {
+        const targetFeed = res.data.feeds[0];
+        if (String(targetFeed.id) !== String(currentFeedId)) {
+          setLocation(`/feed/${targetFeed.id}`);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+      }
+    } catch {}
+    setLocation(`/hashtag/${encodeURIComponent(name)}`);
+  };
 
-      const res = await fetch(`/api/feed/random?${queryParams.toString()}`);
+  const defaultStyle = "border border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03]";
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold group/tag hover:border-theme/40 hover:bg-theme/5 transition select-none ${
+        colorClass || defaultStyle
+      } ${className}`}
+    >
+      <button
+        type="button"
+        onClick={handleClick}
+        className="text-neutral-600 dark:text-neutral-300 hover:text-theme group-hover/tag:text-theme transition cursor-pointer"
+        title={`查看 #${name} 标签 (单篇独家标签点击将直达正文)`}
+      >
+        #{name}
+      </button>
+    </span>
+  );
+}
+
+/**
+ * 🏷️ 功能性按钮标签 (Functional Action Tag Capsule)
+ * 与常规文章标签共享相同规格与圆润质感，但作为功能性导航菜单运作
+ */
+export function ActionTag({
+  type,
+  targetFeedId,
+  currentFeedId,
+  title,
+  className = "",
+}: {
+  type: "prev" | "next" | "random";
+  targetFeedId?: number | string;
+  currentFeedId?: number | string;
+  title?: string;
+  className?: string;
+}) {
+  const [, setLocation] = useLocation();
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 随机换一篇
+  const handleRandom = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/feed/random?exclude=${currentFeedId || ""}`);
       if (res.ok) {
         const data = await res.json();
         if (data.feed?.url || data.feed?.id) {
@@ -48,87 +98,117 @@ export function HashTag({
           return;
         }
       }
-
-      // 2. 客户端接口降级兜底
-      const tagRes = await client.tag.get(name);
-      if (tagRes.data?.feeds && Array.isArray(tagRes.data.feeds)) {
-        const pool = tagRes.data.feeds.filter(
-          (f: any) => String(f.id) !== String(currentFeedId)
-        );
-        const candidates = pool.length > 0 ? pool : tagRes.data.feeds;
-        const target = candidates[Math.floor(Math.random() * candidates.length)];
-        if (target && String(target.id) !== String(currentFeedId)) {
-          setLocation(`/feed/${target.id}`);
-          window.scrollTo({ top: 0, behavior: "smooth" });
-          return;
-        }
-      }
-
-      // 3. 同标签下仅此一篇，全站随机挑一篇
-      const fallbackRes = await fetch(`/api/feed/random?exclude=${currentFeedId || ""}`);
-      if (fallbackRes.ok) {
-        const fbData = await fallbackRes.json();
-        if (fbData.feed) {
-          setLocation(fbData.feed.url || `/feed/${fbData.feed.id}`);
-          window.scrollTo({ top: 0, behavior: "smooth" });
-          return;
-        }
-      }
-
-      setLocation(`/hashtag/${encodeURIComponent(name)}`);
-    } catch {
-      setLocation(`/hashtag/${encodeURIComponent(name)}`);
-    } finally {
-      setIsHopping(false);
+    } catch {} finally {
+      setIsLoading(false);
     }
   };
 
-  const defaultStyle = "border border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03]";
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold group/tag hover:border-theme/40 hover:bg-theme/5 transition select-none ${
-        colorClass || defaultStyle
-      } ${className}`}
-    >
+  if (type === "prev" && targetFeedId) {
+    return (
       <button
         type="button"
-        onClick={async (e) => {
-          e.preventDefault();
-          try {
-            const res = await client.tag.get(name);
-            if (res.data?.feeds && res.data.feeds.length === 1) {
-              const targetFeed = res.data.feeds[0];
-              if (String(targetFeed.id) !== String(currentFeedId)) {
-                setLocation(`/feed/${targetFeed.id}`);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-                return;
-              }
-            }
-          } catch {}
-          setLocation(`/hashtag/${encodeURIComponent(name)}`);
+        onClick={() => {
+          setLocation(`/feed/${targetFeedId}`);
+          window.scrollTo({ top: 0, behavior: "smooth" });
         }}
-        className="text-neutral-600 dark:text-neutral-300 hover:text-theme group-hover/tag:text-theme transition cursor-pointer"
-        title={`查看 #${name} 标签星云 (单篇独家标签将直接直达正文)`}
+        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border border-black/10 dark:border-white/10 hover:border-theme/40 bg-black/[0.02] dark:bg-white/[0.03] text-neutral-600 dark:text-neutral-300 hover:text-theme transition select-none cursor-pointer ${className}`}
+        title={`上一篇: ${title || ""}`}
       >
-        #{name}
+        <i className="ri-arrow-left-s-line text-xs" />
+        <span>上一篇</span>
       </button>
+    );
+  }
 
-      {enableFlow && (
-        <button
-          type="button"
-          onClick={handleHop}
-          disabled={isHopping}
-          className="text-neutral-400 dark:text-neutral-500 hover:text-theme p-0.5 transition cursor-pointer disabled:opacity-50 flex items-center border-l border-black/10 dark:border-white/10 pl-1.5"
-          title={`顺着 #${name} 随机换一篇随想`}
-        >
-          <i
-            className={`ri-shuffle-line text-[11px] ${
-              isHopping ? "animate-spin text-theme" : "hover:rotate-180 transition-transform"
-            }`}
-          />
-        </button>
+  if (type === "next" && targetFeedId) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setLocation(`/feed/${targetFeedId}`);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border border-black/10 dark:border-white/10 hover:border-theme/40 bg-black/[0.02] dark:bg-white/[0.03] text-neutral-600 dark:text-neutral-300 hover:text-theme transition select-none cursor-pointer ${className}`}
+        title={`下一篇: ${title || ""}`}
+      >
+        <span>下一篇</span>
+        <i className="ri-arrow-right-s-line text-xs" />
+      </button>
+    );
+  }
+
+  if (type === "random") {
+    return (
+      <button
+        type="button"
+        onClick={handleRandom}
+        disabled={isLoading}
+        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border border-theme/20 bg-theme/5 hover:bg-theme/15 text-theme transition select-none cursor-pointer disabled:opacity-50 ${className}`}
+        title="全站随机换一篇随想漫游"
+      >
+        <i className={`ri-shuffle-line text-xs ${isLoading ? "animate-spin" : ""}`} />
+        <span>{isLoading ? "漫游中..." : "换一篇"}</span>
+      </button>
+    );
+  }
+
+  return null;
+}
+
+/**
+ * 🏷️ 文章标签与功能动作组合栏 (Article Tag & Action Bar)
+ * 优雅融合常规标签与可配置的附加功能按钮标签（上一篇、下一篇、换一篇）
+ */
+export function ArticleTagBar({
+  tags,
+  currentFeedId,
+  previousFeed,
+  nextFeed,
+  className = "",
+}: {
+  tags: Array<{ name: string }>;
+  currentFeedId?: number | string;
+  previousFeed?: { id: number | string; title?: string } | null;
+  nextFeed?: { id: number | string; title?: string } | null;
+  className?: string;
+}) {
+  // 从本地配置获取允许附加的功能动作标签 (默认全开: prev, next, random)
+  const enabledActions = (() => {
+    try {
+      const saved = localStorage.getItem("rin_feed_tag_actions");
+      if (saved) return JSON.parse(saved) as string[];
+    } catch {}
+    return ["prev", "next", "random"];
+  })();
+
+  return (
+    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
+      {/* 1. 常规文章主题标签（极简纯粹，无突兀洗牌按钮） */}
+      {tags.map(({ name }, index) => (
+        <HashTag key={index} name={name} currentFeedId={currentFeedId} />
+      ))}
+
+      {/* 2. 可配置附加的功能性按钮标签（与标签同规格微光圆润胶囊） */}
+      {enabledActions.includes("prev") && previousFeed && (
+        <ActionTag
+          type="prev"
+          targetFeedId={previousFeed.id}
+          title={previousFeed.title}
+        />
       )}
-    </span>
+      {enabledActions.includes("next") && nextFeed && (
+        <ActionTag
+          type="next"
+          targetFeedId={nextFeed.id}
+          title={nextFeed.title}
+        />
+      )}
+      {enabledActions.includes("random") && (
+        <ActionTag
+          type="random"
+          currentFeedId={currentFeedId}
+        />
+      )}
+    </div>
   );
 }

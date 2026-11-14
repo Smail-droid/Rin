@@ -47,6 +47,25 @@ export function HashtagsPage() {
     const [isWandering, setIsWandering] = useState(false);
     const [toastMessage, setToastMessage] = useState("");
 
+    const [feedTagActions, setFeedTagActions] = useState<string[]>(() => {
+        try {
+            const saved = localStorage.getItem("rin_feed_tag_actions");
+            if (saved) return JSON.parse(saved);
+        } catch {}
+        return ["prev", "next", "random"];
+    });
+
+    const toggleTagAction = (action: string) => {
+        const next = feedTagActions.includes(action)
+            ? feedTagActions.filter((a) => a !== action)
+            : [...feedTagActions, action];
+        setFeedTagActions(next);
+        try {
+            localStorage.setItem("rin_feed_tag_actions", JSON.stringify(next));
+        } catch {}
+        showToast("✓ 文章页附加按钮标签配置已保存！");
+    };
+
     const loadTags = async () => {
         try {
             const { data } = await client.tag.list();
@@ -232,44 +251,82 @@ export function HashtagsPage() {
 
                     {/* 管理员专属：前台快捷管理控制台 */}
                     {profile?.permission && (
-                        <div className="wauto mt-4 p-3 rounded-2xl bg-theme/5 border border-theme/15 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
-                            <div className="flex items-center gap-2 text-theme font-medium">
-                                <i className="ri-shield-user-line text-sm" />
-                                <span>站长管理视角：共 {hashtags?.length || 0} 个标签 (其中 {unlinkedCount} 个空标签)</span>
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowEmptyTags((prev) => !prev)}
-                                    className={`px-2.5 py-1 rounded-xl font-medium border transition cursor-pointer select-none ${
-                                        showEmptyTags
-                                            ? "bg-theme text-white border-theme shadow-2xs font-bold"
-                                            : "bg-white dark:bg-neutral-800 border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:border-theme"
-                                    }`}
-                                >
-                                    <i className="ri-eye-line mr-1" />
-                                    <span>{showEmptyTags ? "已显示空标签" : "透出0篇空标签"}</span>
-                                </button>
-
-                                {unlinkedCount > 0 && (
+                        <div className="wauto mt-4 p-3.5 rounded-2xl bg-theme/5 border border-theme/15 flex flex-col gap-3 text-xs">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                <div className="flex items-center gap-2 text-theme font-medium">
+                                    <i className="ri-shield-user-line text-sm" />
+                                    <span>站长管理视角：共 {hashtags?.length || 0} 个标签 (其中 {unlinkedCount} 个空标签)</span>
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <button
                                         type="button"
-                                        onClick={handleCleanUnlinkedTags}
-                                        disabled={isCleaning}
-                                        className="px-3 py-1 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold transition shadow-2xs hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-1"
-                                        title="一键彻底清理未关联任何文章的孤儿标签"
+                                        onClick={() => setShowEmptyTags((prev) => !prev)}
+                                        className={`px-2.5 py-1 rounded-xl font-medium border transition cursor-pointer select-none ${
+                                            showEmptyTags
+                                                ? "bg-theme text-white border-theme shadow-2xs font-bold"
+                                                : "bg-white dark:bg-neutral-800 border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:border-theme"
+                                        }`}
                                     >
-                                        <i className={`ri-delete-bin-line ${isCleaning ? "animate-spin" : ""}`} />
-                                        <span>{isCleaning ? "正在清理..." : `🧹 清理空标签 (${unlinkedCount})`}</span>
+                                        <i className="ri-eye-line mr-1" />
+                                        <span>{showEmptyTags ? "已显示空标签" : "透出0篇空标签"}</span>
                                     </button>
-                                )}
 
-                                <Link
-                                    href="/admin/tags"
-                                    className="px-2.5 py-1 rounded-xl bg-white dark:bg-neutral-800 border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:text-theme hover:border-theme font-medium transition"
-                                >
-                                    <span>⚙️ 标签深度管理 ➔</span>
-                                </Link>
+                                    {unlinkedCount > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={handleCleanUnlinkedTags}
+                                            disabled={isCleaning}
+                                            className="px-3 py-1 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold transition shadow-2xs hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                                            title="一键彻底清理未关联任何文章的孤儿标签"
+                                        >
+                                            <i className={`ri-delete-bin-line ${isCleaning ? "animate-spin" : ""}`} />
+                                            <span>{isCleaning ? "正在清理..." : `🧹 清理空标签 (${unlinkedCount})`}</span>
+                                        </button>
+                                    )}
+
+                                    <Link
+                                        href="/admin/tags"
+                                        className="px-2.5 py-1 rounded-xl bg-white dark:bg-neutral-800 border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:text-theme hover:border-theme font-medium transition"
+                                    >
+                                        <span>⚙️ 标签深度管理 ➔</span>
+                                    </Link>
+                                </div>
+                            </div>
+
+                            {/* 附加功能性按钮标签管理 */}
+                            <div className="pt-2.5 border-t border-theme/15 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <span className="text-neutral-500 dark:text-neutral-400 font-medium">
+                                    文章正文标签栏附加功能按钮：
+                                </span>
+                                <div className="flex items-center gap-3.5 flex-wrap">
+                                    <label className="flex items-center gap-1.5 cursor-pointer select-none hover:text-theme transition">
+                                        <input
+                                            type="checkbox"
+                                            checked={feedTagActions.includes("prev")}
+                                            onChange={() => toggleTagAction("prev")}
+                                            className="accent-theme cursor-pointer"
+                                        />
+                                        <span>上一篇 (⏮)</span>
+                                    </label>
+                                    <label className="flex items-center gap-1.5 cursor-pointer select-none hover:text-theme transition">
+                                        <input
+                                            type="checkbox"
+                                            checked={feedTagActions.includes("next")}
+                                            onChange={() => toggleTagAction("next")}
+                                            className="accent-theme cursor-pointer"
+                                        />
+                                        <span>下一篇 (⏭)</span>
+                                    </label>
+                                    <label className="flex items-center gap-1.5 cursor-pointer select-none hover:text-theme transition">
+                                        <input
+                                            type="checkbox"
+                                            checked={feedTagActions.includes("random")}
+                                            onChange={() => toggleTagAction("random")}
+                                            className="accent-theme cursor-pointer"
+                                        />
+                                        <span>随机换篇 (🎲)</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     )}

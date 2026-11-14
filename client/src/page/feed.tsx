@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
 import { useAlert, useConfirm } from "../components/dialog";
-import { HashTag } from "../components/hashtag";
+import { HashTag, ActionTag, ArticleTagBar } from "../components/hashtag";
 import { ImageWithFallback } from "../components/image-with-fallback";
 import { Waiting } from "../components/loading";
 import { Markdown } from "../components/markdown";
@@ -172,28 +172,15 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
   const [top, setTop] = useState<number>(0);
   const [readingProgress, setReadingProgress] = useState<number>(0);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
-  const [isWandering, setIsWandering] = useState(false);
+  const [adjacentData, setAdjacentData] = useState<any>(null);
 
-  const handleRandomWander = async () => {
-    if (isWandering) return;
-    setIsWandering(true);
-    try {
-      const res = await fetch(`/api/feed/random?exclude=${feed?.id || id || ""}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.feed?.url || data.feed?.id) {
-          setLocation(data.feed.url || `/feed/${data.feed.id}`);
-          window.scrollTo({ top: 0, behavior: "smooth" });
-          return;
-        }
-      }
-      setLocation("/feeds");
-    } catch {
-      setLocation("/feeds");
-    } finally {
-      setIsWandering(false);
+  useEffect(() => {
+    if (id && id !== "about") {
+      client.feed.adjacent(id).then(({ data }) => {
+        if (data && typeof data !== "string") setAdjacentData(data);
+      }).catch(() => {});
     }
-  };
+  }, [id]);
   const config = useContext(ClientConfigContext);
   const counterEnabled = config.getBoolean('counter.enabled');
   const hasAISummary = Boolean(feed?.ai_summary?.trim());
@@ -707,16 +694,19 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                       </div>
                     </div>
 
-                    {/* 文章页顶部：灵感流转标签胶囊栏 */}
+                    {/* 文章页顶部：灵感标签与功能动作组合栏 */}
                     {hashtags.length > 0 && (
                       <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-black/5 dark:border-white/5 ani-show">
                         <span className="text-xs text-neutral-400 flex items-center gap-1 shrink-0 font-medium">
                           <i className="ri-price-tag-3-line text-theme text-xs" />
-                          <span>灵感流转：</span>
+                          <span>标签：</span>
                         </span>
-                        {hashtags.map(({ name }, index) => (
-                          <HashTag key={index} name={name} currentFeedId={feed.id} />
-                        ))}
+                        <ArticleTagBar
+                          tags={hashtags}
+                          currentFeedId={feed.id}
+                          previousFeed={adjacentData?.previousFeed}
+                          nextFeed={adjacentData?.nextFeed}
+                        />
                       </div>
                     )}
                   </div>
@@ -762,7 +752,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                   </div>
                 </div>
 
-                {/* 底部：灵感流转 · 同题漫步 */}
+                {/* 底部：灵感标签与漫游动作栏 */}
                 {hashtags.length > 0 && (
                   <div className="mt-8 p-3.5 sm:p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ani-show">
                     <div className="flex items-center gap-2 shrink-0">
@@ -770,15 +760,16 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         <i className="ri-compass-3-line" />
                       </span>
                       <div>
-                        <span className="font-bold t-primary block">同题灵感漫步</span>
-                        <span className="text-[10px] text-neutral-400 block">点击标签右侧「换一篇」直接切入同类随想</span>
+                        <span className="font-bold t-primary block">灵感漫步与跳转</span>
+                        <span className="text-[10px] text-neutral-400 block">点击标签可查看或直达，点击按钮可快速切入</span>
                       </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {hashtags.map(({ name }, index) => (
-                        <HashTag key={index} name={name} currentFeedId={feed.id} />
-                      ))}
-                    </div>
+                    <ArticleTagBar
+                      tags={hashtags}
+                      currentFeedId={feed.id}
+                      previousFeed={adjacentData?.previousFeed}
+                      nextFeed={adjacentData?.nextFeed}
+                    />
                   </div>
                 )}
 
@@ -829,20 +820,8 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                       </Link>
                     </div>
 
-                    {/* 顶部一键随机漫游操作栏 */}
-                    <button
-                      type="button"
-                      onClick={handleRandomWander}
-                      disabled={isWandering}
-                      className="w-full py-1.5 px-3 rounded-full bg-theme/10 hover:bg-theme/20 text-theme text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 hover:scale-[1.01] active:scale-95"
-                      title="全站随机漫游换一篇随想"
-                    >
-                      <i className={`ri-shuffle-line ${isWandering ? "animate-spin" : ""}`} />
-                      <span>{isWandering ? "正在漫游中..." : "🎲 随机换一篇"}</span>
-                    </button>
-
-                    {/* 原生圆润极简彩胶囊流 */}
-                    <div className="flex flex-wrap gap-1.5 text-xs pt-0.5">
+                    {/* 原生圆润极简彩胶囊流 + 附加漫游功能标签 */}
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs pt-0.5">
                       {recommendedTags.map((tag, idx) => {
                         const pastel = [
                           "bg-amber-100/80 text-amber-900 border-amber-300/50 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800/40",
@@ -861,6 +840,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                           />
                         );
                       })}
+                      <ActionTag type="random" currentFeedId={feed?.id} />
                     </div>
                   </div>
                 )}
