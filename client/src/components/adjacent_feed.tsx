@@ -200,15 +200,12 @@ export function ArticleRoamSidebar({
   if (feedsPool.length === 0) return null;
 
   return (
-    <div className="p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white/75 dark:bg-neutral-900/75 backdrop-blur-md shadow-2xs space-y-2.5 ani-show font-sans">
-      {/* 顶部标题与播放器风格操作栏 */}
+    <div className="p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white/75 dark:bg-neutral-900/75 backdrop-blur-md shadow-2xs space-y-2 ani-show font-sans">
+      {/* 顶部标题与操作栏 */}
       <div className="flex items-center justify-between pb-1.5 border-b border-black/5 dark:border-white/5">
         <div className="flex items-center gap-1.5 text-xs font-bold t-primary">
           <span className="w-1.5 h-1.5 rounded-full bg-theme shrink-0" />
           <span>文章漫游</span>
-          <span className="text-[10px] font-normal text-neutral-400">
-            {isShuffled ? "· 随机发现" : "· 上下文"}
-          </span>
         </div>
 
         <div className="flex items-center gap-1">
@@ -216,37 +213,33 @@ export function ArticleRoamSidebar({
             <button
               type="button"
               onClick={handleResetSequential}
-              className="px-1.5 py-0.5 rounded text-[10px] text-neutral-400 hover:text-theme transition"
-              title="恢复按文章时间上下文顺序排列"
+              className="px-1.5 py-0.5 rounded text-[11px] text-neutral-400 hover:text-theme transition cursor-pointer"
             >
               顺序
             </button>
           )}
 
-          {/* 类似播放器切歌随机打乱按钮 */}
+          {/* 打乱/换一批按钮 */}
           <button
             type="button"
             onClick={handleShuffleToggle}
-            className={`p-1 rounded-lg text-xs transition flex items-center gap-1 cursor-pointer select-none ${
+            className={`p-1.5 rounded-lg text-xs transition flex items-center justify-center cursor-pointer select-none ${
               isShuffled
                 ? "bg-theme/10 text-theme font-bold"
                 : "text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/5"
             }`}
-            title="像播放器切歌一样随机刷新排序"
           >
             <i
               className="ri-shuffle-line transition-transform duration-500"
               style={{ transform: `rotate(${spinDegree}deg)` }}
             />
-            <span className="text-[11px] font-bold">{isShuffled ? "换一批" : "打乱"}</span>
           </button>
 
-          {/* 随机切跃一篇 */}
+          {/* 随机切跃 */}
           <button
             type="button"
             onClick={handleRandomJump}
-            className="p-1 rounded-lg text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/5 text-xs transition cursor-pointer select-none"
-            title="随机跳跃到全站任意一篇文章"
+            className="p-1.5 rounded-lg text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/5 text-xs transition cursor-pointer select-none"
           >
             <i className="ri-dice-line text-sm" />
           </button>
@@ -275,7 +268,7 @@ export function ArticleRoamSidebar({
                   {isCurrent && (
                     <span className="w-1.5 h-1.5 rounded-full bg-theme shrink-0 animate-pulse" />
                   )}
-                  <span className="truncate leading-snug group-hover:text-theme transition" title={article.title}>
+                  <span className="truncate leading-snug group-hover:text-theme transition">
                     {article.title || "无标题随想"}
                   </span>
                 </div>
@@ -283,11 +276,6 @@ export function ArticleRoamSidebar({
                   <span className="font-mono">{timeago(article.createdAt)}</span>
                   {firstTag && (
                     <span className="text-theme opacity-80">#{firstTag}</span>
-                  )}
-                  {isCurrent && (
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-theme/15 text-theme font-bold">
-                      正在阅读
-                    </span>
                   )}
                 </div>
               </div>
