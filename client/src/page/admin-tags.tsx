@@ -118,10 +118,10 @@ export function AdminTagsPage() {
           } catch {}
           setTags(data);
         } else if (error) {
-          showAlert(String(error.value || "加载标签列表失败"));
+          console.error("加载标签列表失败:", error);
         }
       })
-      .catch((err) => showAlert(err.message))
+      .catch((err) => console.error("加载标签列表异常:", err))
       .finally(() => setLoading(false));
   }, [showAlert]);
 

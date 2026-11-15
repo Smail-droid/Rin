@@ -406,13 +406,10 @@ export function AdminDashboardPage() {
           </span>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold t-primary">全站运行与核心资产总览</h2>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-bold">
-                Cloudflare Serverless 实时协同
-              </span>
+              <h2 className="text-base font-bold t-primary">画廊概览中枢</h2>
             </div>
             <p className="text-xs text-neutral-400 mt-0.5">
-              数据直接汇总自 Cloudflare D1 关系库与 R2 对象存储桶实时水位
+              全站文章、随笔、留言与云端资产实时统计
             </p>
           </div>
         </div>
@@ -473,67 +470,7 @@ export function AdminDashboardPage() {
       </div>
 
       {/* ====================================================================
-          第 2 层：快捷功能调度 (15 导航全景舒展排列，协调美观无空隙)
-          ==================================================================== */}
-      <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
-          <div className="flex items-center gap-2">
-            <i className="ri-compass-3-line text-theme" />
-            <h3 className="font-bold text-xs t-primary">快捷功能调度 (15 大中枢直达)</h3>
-          </div>
-          <span className="text-xs font-mono text-neutral-400">点击卡片跨模块直达</span>
-        </div>
-
-        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-8 xl:grid-cols-8 gap-2.5 text-xs">
-          {[
-            { href: "/admin/writing", icon: "ri-quill-pen-line", title: "撰写", tag: "WRITE", color: "text-rose-500 bg-rose-500/10" },
-            { href: "/admin/tags", icon: "ri-price-tag-3-line", title: "标签", tag: "TAGS", color: "text-amber-500 bg-amber-500/10" },
-            { href: "/friends", icon: "ri-compass-3-line", title: "星廊", tag: "FRIENDS", color: "text-pink-500 bg-pink-500/10" },
-            { href: "/admin/files", icon: "ri-folder-image-line", title: "媒体", tag: "MEDIA", color: "text-sky-500 bg-sky-500/10" },
-            { href: "/admin/music", icon: "ri-disc-line", title: "音廊", tag: "MUSIC", color: "text-purple-500 bg-purple-500/10" },
-            { href: "/admin/openlist", icon: "ri-hard-drive-2-line", title: "网盘", tag: "DISK", color: "text-cyan-500 bg-cyan-500/10" },
-            { href: "/admin/queue-status", icon: "ri-todo-line", title: "调度", tag: "QUEUE", color: "text-emerald-500 bg-emerald-500/10" },
-            { href: "/admin/settings", icon: "ri-equalizer-line", title: "设置", tag: "CONFIG", color: "text-blue-500 bg-blue-500/10" },
-            { href: "/admin/ops", icon: "ri-heart-pulse-line", title: "运维", tag: "OPS", color: "text-rose-600 bg-rose-600/10" },
-            { href: "/admin/access", icon: "ri-shield-keyhole-line", title: "锁定", tag: "LOCK", color: "text-indigo-500 bg-indigo-500/10" },
-            { href: "/admin/tokens", icon: "ri-key-2-line", title: "口令", tag: "TOKEN", color: "text-teal-500 bg-teal-500/10" },
-            { href: "/admin/settings?tab=atelier", icon: "ri-palette-line", title: "便签", tag: "ATELIER", color: "text-violet-500 bg-violet-500/10" },
-            { href: "/admin/ai", icon: "ri-sparkling-fill", title: "AI助手", tag: "AI", color: "text-orange-500 bg-orange-500/10" },
-            { href: "/sitemap.xml", icon: "ri-map-2-line", title: "地图", tag: "SEO", color: "text-lime-600 bg-lime-500/10", external: true },
-            { href: "/timeline", icon: "ri-time-line", title: "长河", tag: "TIMELINE", color: "text-fuchsia-500 bg-fuchsia-500/10", external: true },
-            { href: "/moments", icon: "ri-chat-smile-2-line", title: "动态", tag: "MOMENTS", color: "text-yellow-600 bg-yellow-500/10", external: true },
-          ].map((item, i) => (
-            item.external ? (
-              <a
-                key={i}
-                href={item.href}
-                target="_blank"
-                rel="noreferrer"
-                className="p-2.5 rounded-xl border border-black/5 hover:border-theme/40 bg-black/[0.015] hover:bg-theme/5 dark:border-white/5 dark:bg-white/[0.02] flex flex-col items-center text-center gap-1.5 transition-all group"
-              >
-                <span className={`p-2 rounded-xl ${item.color} group-hover:scale-110 transition-transform`}>
-                  <i className={`${item.icon} text-base`} />
-                </span>
-                <span className="font-bold text-xs t-primary group-hover:text-theme truncate w-full">{item.title}</span>
-              </a>
-            ) : (
-              <Link
-                key={i}
-                href={item.href}
-                className="p-2.5 rounded-xl border border-black/5 hover:border-theme/40 bg-black/[0.015] hover:bg-theme/5 dark:border-white/5 dark:bg-white/[0.02] flex flex-col items-center text-center gap-1.5 transition-all group"
-              >
-                <span className={`p-2 rounded-xl ${item.color} group-hover:scale-110 transition-transform`}>
-                  <i className={`${item.icon} text-base`} />
-                </span>
-                <span className="font-bold text-xs t-primary group-hover:text-theme truncate w-full">{item.title}</span>
-              </Link>
-            )
-          ))}
-        </div>
-      </div>
-
-      {/* ====================================================================
-          第 3 层：文章内容巡检超级表格 (全功能对齐图 3 调度超级表单，字体清晰舒适)
+          第 2 层：文章内容巡检超级表格 (全功能对齐调度超级表单，字体清晰舒适)
           ==================================================================== */}
       <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
         {/* 工具栏：状态筛选、搜索框、写文章 */}

@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Consistent Tag Badges**: Restored uniform `🏷️` icon across all homepage tag pills, removing arbitrary book emoji replacements.
 
 ### Removed
+- **Removed Redundant 15-Item Shortcut Card Grid in Dashboard**: Completely removed the clumsy 15-card shortcut matrix (`快捷功能调度`) in `/admin/dashboard`, eliminating redundant URL links and promoting the Article Management Dense DataGrid to the top of the viewport.
 - **Physical Removal of JeikCode Copilot**: Completely deleted `client/src/components/jeikcode-copilot.tsx` (834 lines) and unmounted from `App.tsx`, eliminating hardcoded LAN IP, token leak risk, and floating widget, instantly cutting 24.5 kB from the entry chunk.
 - **Severed External Proxy Scrapers in Friends**: Removed brittle 3rd-party CORS proxy chains (`corsproxy.io`, `microlink.io`, FileReader base64) from `friends.tsx`, standardizing on native URL fields and Cloudflare Worker edge inspection.
 

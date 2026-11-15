@@ -45,24 +45,24 @@ export function useAppBootstrap() {
     };
 
     client.user.profile().then(({ data, error }) => {
-      if (data) {
-        const nextProfile: Profile = {
-          id: data.id,
-          avatar: data.avatar || "",
-          permission: data.permission,
-          name: data.username,
-        };
-        try {
-          sessionStorage.setItem("cached_profile", JSON.stringify(nextProfile));
-        } catch {}
-        setProfile(nextProfile);
-      } else if (error) {
-        try {
-          sessionStorage.removeItem("cached_profile");
-        } catch {}
-        setProfile(null);
-      }
-    });
+        if (data) {
+          const nextProfile: Profile = {
+            id: data.id,
+            avatar: data.avatar || "",
+            permission: data.permission,
+            name: data.username,
+          };
+          try {
+            sessionStorage.setItem("cached_profile", JSON.stringify(nextProfile));
+          } catch {}
+          setProfile(nextProfile);
+        } else if (error) {
+          try {
+            sessionStorage.removeItem("cached_profile");
+          } catch {}
+          setProfile(null);
+        }
+      });
 
     const cachedConfig = sessionStorage.getItem("config");
     const bootstrappedConfig = readBootstrappedClientConfig();
