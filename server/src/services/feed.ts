@@ -293,6 +293,28 @@ export function FeedService(): Hono<{
         });
     });
 
+    // GET /feed/permissions - 批量获取全站已加锁文章的真实配置 (admin only, 必须在 /:id 之前注册)
+    app.get('/permissions', adminOnly(async (c) => {
+        const db = c.get('db');
+        const lockRows = await db.query.cache.findMany({
+            where: eq(cacheTable.type, 'article_lock'),
+        });
+        const permissions: Record<string, { mode: string; tip: string; hasPassword: boolean }> = {};
+        for (const r of lockRows) {
+            try {
+                const parsed = JSON.parse(r.value);
+                if (parsed.mode && parsed.mode !== "public") {
+                    permissions[r.key] = {
+                        mode: parsed.mode,
+                        tip: parsed.tip || "",
+                        hasPassword: Boolean(parsed.password),
+                    };
+                }
+            } catch {}
+        }
+        return c.json(permissions);
+    }, { message: 'Permission denied', status: 403 }));
+
     // GET /feed/permission/:id - 获取文章权限配置 (admin only, 必须在 /:id 之前注册)
     app.get('/permission/:id', adminOnly(async (c) => {
         const db = c.get('db');
