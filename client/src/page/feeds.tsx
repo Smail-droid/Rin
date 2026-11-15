@@ -1440,15 +1440,14 @@ export function FeedsPage() {
         updateTagsConfig({ customOrder: nextOrder });
     };
 
-    // 首页展示数量上限切换：纯净设置上限额度，绝不强行篡改用户在下方表格自定义的勾选状态
+    // 首页展示数量预设：一步到位，点击 4个/6个/8个/12个/全部 时，直接将前 N 个标签置为开启，其余置为隐藏
     const handleSelectTagLimit = (val: number | "all") => {
-        updateTagsConfig({ limit: val });
-    };
-
-    // 快捷按当前上限仅勾选排名前 N 项
-    const handleQuickEnableTopN = (count: number) => {
-        const nextHidden = tagOrderList.slice(count);
-        updateTagsConfig({ hiddenIds: nextHidden });
+        if (val === "all") {
+            updateTagsConfig({ limit: "all", hiddenIds: [] });
+        } else {
+            const nextHidden = tagOrderList.slice(val);
+            updateTagsConfig({ limit: val, hiddenIds: nextHidden });
+        }
     };
 
     // 全选：所有标签开启展示
@@ -2317,9 +2316,6 @@ export function FeedsPage() {
                                 <span className="px-2.5 py-0.5 rounded-full bg-theme/10 text-theme font-mono font-bold text-xs">
                                     已开启 {orderedTagObjects.filter((t) => !homepageTagsConfig.hiddenIds.includes(t.id)).length} / {orderedTagObjects.length} 个
                                 </span>
-                                <span className="text-[11px] text-neutral-400 font-mono font-medium">
-                                    (前台呈现: {displayTags.length} 个 {homepageTagsConfig.limit !== "all" ? `· 上限 ${homepageTagsConfig.limit} 个` : "· 不设上限"})
-                                </span>
                             </div>
 
                             <div className="flex items-center gap-1.5 flex-wrap self-end sm:self-auto">
@@ -2331,16 +2327,6 @@ export function FeedsPage() {
                                 >
                                     全选 (全部启用)
                                 </button>
-                                {homepageTagsConfig.limit !== "all" && typeof homepageTagsConfig.limit === "number" && (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleQuickEnableTopN(homepageTagsConfig.limit as number)}
-                                        className="px-2.5 py-1 rounded-lg border border-theme/30 text-theme hover:bg-theme/10 text-xs font-semibold transition shadow-2xs active:scale-95 cursor-pointer"
-                                        title={`一键仅开启排名前 ${homepageTagsConfig.limit} 的标签，隐藏其余标签`}
-                                    >
-                                        仅开启前 {homepageTagsConfig.limit} 个
-                                    </button>
-                                )}
                                 <button
                                     type="button"
                                     onClick={handleInvertTagsVisibility}
