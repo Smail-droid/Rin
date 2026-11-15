@@ -16,7 +16,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/dashboard", icon: "ri-dashboard-3-line", label: "概览" },
   { href: "/admin/writing", icon: "ri-quill-pen-line", label: "撰写" },
   { href: "/admin/tags", icon: "ri-price-tag-3-line", label: "标签" },
-  { href: "/friends", icon: "ri-compass-3-line", label: "星廊" },
   { href: "/admin/music", icon: "ri-disc-line", label: "音廊" },
   { href: "/admin/files", icon: "ri-folder-image-line", label: "图床" },
   { href: "/admin/settings", icon: "ri-equalizer-line", label: "设置" },

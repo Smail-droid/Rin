@@ -121,14 +121,40 @@ export function normalizeThemeOpacity(value: unknown): number {
   return DEFAULT_THEME_OPACITY;
 }
 
+let currentThemeColorHex = DEFAULT_THEME_COLOR;
+
+function getPerceivedLuminance(rgb: { r: number; g: number; b: number }): number {
+  return 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("colorSchemeChange", () => {
+    applyThemeColor(currentThemeColorHex);
+  });
+}
+
 export function applyThemeColor(value: string | undefined | null) {
   const color = normalizeHex(value);
+  currentThemeColorHex = color;
   if (typeof document === "undefined") return;
   const root = document.documentElement;
 
-  root.style.setProperty("--theme-rgb", toCssRgb(hexToRgb(color)));
-  root.style.setProperty("--theme-hover-rgb", toCssRgb(shade(color, -0.3)));
-  root.style.setProperty("--theme-active-rgb", toCssRgb(shade(color, -0.4)));
+  const isDark = root.getAttribute("data-color-mode") === "dark" || root.classList.contains("dark");
+  const rgb = hexToRgb(color);
+  const luminance = getPerceivedLuminance(rgb);
+
+  // 暗色模式下的低明度对比度自适应保护：防止选“极简纸墨”（#27272a）等深色在黑夜模式下造成“一片黑”
+  const effectiveRgb = isDark && luminance < 60 ? { r: 228, g: 228, b: 231 } : rgb;
+
+  root.style.setProperty("--theme-rgb", toCssRgb(effectiveRgb));
+  root.style.setProperty(
+    "--theme-hover-rgb",
+    toCssRgb(isDark && luminance < 60 ? { r: 244, g: 244, b: 245 } : shade(color, -0.3))
+  );
+  root.style.setProperty(
+    "--theme-active-rgb",
+    toCssRgb(isDark && luminance < 60 ? { r: 212, g: 212, b: 216 } : shade(color, -0.4))
+  );
 }
 
 export function applyThemeOpacity(value: unknown) {

@@ -23,6 +23,8 @@ export function InSituAestheticStudio() {
   const activeVariant = (siteConfig.feedCardVariant || "default") as FeedCardVariant;
   const activeColor = siteConfig.themeColor || "#fc466b";
   const activeOpacity = siteConfig.themeOpacity ?? 100;
+  const activeColumns = String(siteConfig.galleryColumns ?? "auto");
+  const activeGap = siteConfig.galleryCardGap ?? 24;
 
   const persistConfig = async (updates: Record<string, unknown>) => {
     setSaving(true);
@@ -53,6 +55,14 @@ export function InSituAestheticStudio() {
   const handleSelectOpacity = (opacity: number) => {
     applyThemeOpacity(opacity);
     void persistConfig({ "theme.opacity": opacity });
+  };
+
+  const handleSelectColumns = (cols: string) => {
+    void persistConfig({ "gallery.columns": cols });
+  };
+
+  const handleSelectGap = (gap: number) => {
+    void persistConfig({ "gallery.card_gap": gap });
   };
 
   const handleToggleThemeMode = () => {
@@ -182,7 +192,68 @@ export function InSituAestheticStudio() {
             </div>
           </div>
 
-          {/* 3. 卡片透光度 */}
+          {/* 3. 瀑布流排布列数 */}
+          <div className="space-y-2.5">
+            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              瀑布流排布列数
+            </label>
+            <div className="flex items-center gap-2">
+              {[
+                { id: "auto", label: "自适应" },
+                { id: "2", label: "2 列" },
+                { id: "3", label: "3 列" },
+                { id: "4", label: "4 列" },
+              ].map((col) => {
+                const isSelected = activeColumns === col.id;
+                return (
+                  <button
+                    key={col.id}
+                    type="button"
+                    onClick={() => handleSelectColumns(col.id)}
+                    className={`flex-1 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all ${
+                      isSelected
+                        ? "border-theme bg-theme text-white"
+                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
+                    }`}
+                  >
+                    {col.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4. 页面留白间距 */}
+          <div className="space-y-2.5">
+            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              页面留白间距
+            </label>
+            <div className="flex items-center gap-2">
+              {[
+                { val: 16, label: "紧凑 16px" },
+                { val: 24, label: "标准 24px" },
+                { val: 32, label: "宽松 32px" },
+              ].map((g) => {
+                const isSelected = Number(activeGap) === g.val;
+                return (
+                  <button
+                    key={g.val}
+                    type="button"
+                    onClick={() => handleSelectGap(g.val)}
+                    className={`flex-1 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all ${
+                      isSelected
+                        ? "border-theme bg-theme text-white"
+                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
+                    }`}
+                  >
+                    {g.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 5. 卡片透光度 */}
           <div className="space-y-2.5">
             <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
               卡片透光度
@@ -208,7 +279,7 @@ export function InSituAestheticStudio() {
             </div>
           </div>
 
-          {/* 4. 日夜光照模式 */}
+          {/* 6. 日夜光照模式 */}
           <div className="space-y-2.5">
             <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
               光照模式

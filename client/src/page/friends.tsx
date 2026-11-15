@@ -878,11 +878,10 @@ export function FriendsPage() {
                             type="button"
                             onClick={handleBatchRefreshAll}
                             disabled={isBatchRefreshing}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 text-xs font-semibold transition cursor-pointer disabled:opacity-50"
-                            title="一键自动更正全部 NodeSeek 坛友最新头像与等级鸡腿数据"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300 hover:text-theme transition cursor-pointer disabled:opacity-50"
+                            title={isBatchRefreshing ? `刷新中 (${batchProgress?.current}/${batchProgress?.total})` : "刷新友链数据"}
                         >
-                            <i className={`ri-refresh-line ${isBatchRefreshing ? "animate-spin" : ""}`} />
-                            <span>{isBatchRefreshing ? `更正中 (${batchProgress?.current}/${batchProgress?.total})` : "一键更正全部"}</span>
+                            <i className={`ri-refresh-line text-sm ${isBatchRefreshing ? "animate-spin text-theme" : ""}`} />
                         </button>
                     )}
                     <button

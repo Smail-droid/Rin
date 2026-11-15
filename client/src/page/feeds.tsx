@@ -142,7 +142,225 @@ function AtelierPhotoCard({
     const readingTime = feed.readingTime || Math.max(1, Math.ceil((feed.summary?.length || 100) / 100));
 
     const hasImage = Boolean(feed.avatar) && !imageError;
+    const variant = siteConfig.feedCardVariant || "default";
 
+    // 1. 极客高密单行 (Compact)
+    if (variant === "compact") {
+        return (
+            <div className="relative group/card break-inside-avoid w-full mb-2.5">
+                <Link
+                    href={`/feed/${feed.id}`}
+                    draggable={draggable && canManage}
+                    onDragStart={onDragStart}
+                    onDragOver={onDragOver}
+                    onDrop={onDrop}
+                    onDragEnd={onDragEnd}
+                    className={`group flex items-center justify-between gap-3 rounded-2xl border border-black/5 bg-white px-4 py-3 transition-all hover:border-theme/40 hover:bg-neutral-50/80 dark:border-white/5 dark:bg-neutral-900 dark:hover:border-theme/40 dark:hover:bg-neutral-800/40 shadow-xs ${
+                        isDragging ? "opacity-35 scale-95 border-theme border-dashed" : ""
+                    } ${isDragOver ? "ring-2 ring-theme/40 scale-[1.01]" : ""}`}
+                >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className="text-xs font-mono text-neutral-400 shrink-0">
+                            {new Date(feed.createdAt).toLocaleDateString()}
+                        </span>
+                        {feed.top === 1 ? (
+                            <span className="shrink-0 rounded-md bg-theme/10 px-1.5 py-0.5 text-[11px] font-bold text-theme">
+                                {t('article.top.title')}
+                            </span>
+                        ) : null}
+                        {feed.draft === 1 ? (
+                            <span className="shrink-0 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-bold text-amber-500">
+                                {t("draft")}
+                            </span>
+                        ) : null}
+                        <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate group-hover:text-theme transition-colors">
+                            {feed.title}
+                        </h2>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 text-xs text-neutral-400">
+                        <span className="text-[11px] font-mono opacity-70">
+                            {readingTime} 分钟
+                        </span>
+                        {canManage ? (
+                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onToggleTop?.(feed.id, feed.top === 1 ? 0 : 1);
+                                    }}
+                                    title={feed.top === 1 ? "取消置顶" : "置顶"}
+                                    className={`h-6 w-6 rounded-md flex items-center justify-center text-xs transition ${
+                                        feed.top === 1 ? "bg-theme text-white" : "bg-black/5 dark:bg-white/5 hover:text-theme"
+                                    }`}
+                                >
+                                    <i className={feed.top === 1 ? "ri-pushpin-fill" : "ri-pushpin-line"} />
+                                </button>
+                                <Link
+                                    href={`/admin/writing/${feed.id}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="编辑文章"
+                                    className="h-6 w-6 rounded-md flex items-center justify-center text-xs bg-black/5 dark:bg-white/5 hover:text-theme transition"
+                                >
+                                    <i className="ri-edit-line" />
+                                </Link>
+                            </div>
+                        ) : null}
+                    </div>
+                </Link>
+            </div>
+        );
+    }
+
+    // 2. 巨幅画册海报 (Poster)
+    if (variant === "poster") {
+        return (
+            <div className="relative group/card break-inside-avoid w-full mb-5 sm:mb-6">
+                <Link
+                    href={`/feed/${feed.id}`}
+                    draggable={draggable && canManage}
+                    onDragStart={onDragStart}
+                    onDragOver={onDragOver}
+                    onDrop={onDrop}
+                    onDragEnd={onDragEnd}
+                    className={`group relative block w-full overflow-hidden rounded-3xl border border-black/10 dark:border-white/10 shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 ${
+                        isDragging ? "opacity-35 scale-95 border-theme border-dashed" : ""
+                    } ${isDragOver ? "ring-4 ring-theme/40" : ""}`}
+                >
+                    {canManage ? (
+                        <div className="absolute right-4 top-4 z-20 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onEditCover?.(feed);
+                                }}
+                                title="更换封面"
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme"
+                            >
+                                <i className="ri-image-edit-line text-xs" />
+                            </button>
+                            <Link
+                                href={`/admin/writing/${feed.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                title="编辑文章"
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme"
+                            >
+                                <i className="ri-edit-line text-xs" />
+                            </Link>
+                        </div>
+                    ) : null}
+
+                    <div className="relative aspect-[3/4] w-full overflow-hidden bg-neutral-900">
+                        {hasImage ? (
+                            <img
+                                src={feed.avatar}
+                                alt=""
+                                className="absolute inset-0 h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                            />
+                        ) : (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-tr from-neutral-800 to-neutral-950 p-6 text-center text-white">
+                                <h2 className="text-xl font-bold line-clamp-3 leading-snug">{feed.title}</h2>
+                            </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-5 text-white">
+                            <h2 className="text-xl font-bold leading-snug drop-shadow-sm group-hover:text-theme transition-colors">
+                                {feed.title}
+                            </h2>
+                            {feed.summary ? (
+                                <p className="mt-2 line-clamp-2 text-xs text-white/80 leading-relaxed font-normal">
+                                    {feed.summary}
+                                </p>
+                            ) : null}
+                            <div className="flex items-center justify-between text-[11px] text-white/60 mt-3 pt-2.5 border-t border-white/15">
+                                <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
+                                <span className="flex items-center gap-1">
+                                    <i className="ri-time-line" />
+                                    {readingTime} 分钟
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </Link>
+            </div>
+        );
+    }
+
+    // 3. 极简杂志社论 (Editorial)
+    if (variant === "editorial") {
+        return (
+            <div className="relative group/card break-inside-avoid w-full mb-5 sm:mb-6">
+                <Link
+                    href={`/feed/${feed.id}`}
+                    draggable={draggable && canManage}
+                    onDragStart={onDragStart}
+                    onDragOver={onDragOver}
+                    onDrop={onDrop}
+                    onDragEnd={onDragEnd}
+                    className={`group block w-full rounded-[24px] border border-black/10 bg-white dark:bg-neutral-900 p-5 sm:p-6 shadow-xs hover:shadow-xl transition-all duration-300 hover:-translate-y-1 dark:border-white/10 ${
+                        isDragging ? "opacity-35 scale-95 border-theme border-dashed" : ""
+                    } ${isDragOver ? "ring-4 ring-theme/40" : ""}`}
+                >
+                    {canManage ? (
+                        <div className="flex justify-end gap-1.5 mb-2" onClick={(e) => e.stopPropagation()}>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onEditCover?.(feed);
+                                }}
+                                title="更换封面"
+                                className="flex h-6 w-6 items-center justify-center rounded-md bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:text-theme"
+                            >
+                                <i className="ri-image-edit-line text-xs" />
+                            </button>
+                            <Link
+                                href={`/admin/writing/${feed.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                title="编辑文章"
+                                className="flex h-6 w-6 items-center justify-center rounded-md bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:text-theme"
+                            >
+                                <i className="ri-edit-line text-xs" />
+                            </Link>
+                        </div>
+                    ) : null}
+
+                    <div className="flex flex-col sm:flex-row gap-4 items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5 text-xs font-mono text-neutral-400">
+                                <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
+                                {feed.top === 1 ? <span className="text-theme font-bold">· 置顶</span> : null}
+                            </div>
+                            <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors leading-snug">
+                                {feed.title}
+                            </h2>
+                            {feed.summary ? (
+                                <p className="mt-2.5 line-clamp-3 text-xs sm:text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
+                                    {feed.summary}
+                                </p>
+                            ) : null}
+                        </div>
+                        {hasImage ? (
+                            <div className="w-full sm:w-32 h-24 shrink-0 overflow-hidden rounded-xl border border-black/5 dark:border-white/10">
+                                <img src={feed.avatar} alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            </div>
+                        ) : null}
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-neutral-400 mt-4 pt-2.5 border-t border-black/5 dark:border-white/5 font-mono">
+                        <span>{readingTime} 分钟阅读</span>
+                        <span className="text-theme opacity-80 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                            阅读全文 <i className="ri-arrow-right-line" />
+                        </span>
+                    </div>
+                </Link>
+            </div>
+        );
+    }
+
+    // 4. 拟物拍立得手账 (Default Polaroid)
     return (
         <Link
             href={`/feed/${feed.id}`}
@@ -157,12 +375,10 @@ function AtelierPhotoCard({
                 isDragOver ? "ring-4 ring-theme/40 border-theme scale-[1.02] shadow-xl" : "border-black/10 dark:border-white/10"
             }`}
         >
-            {/* Washi tape pin on top */}
             <div
                 className={`absolute -top-2.5 left-1/2 -translate-x-1/2 w-14 h-4 ${tapeColor} rounded-xs shadow-2xs rotate-[-2deg] pointer-events-none z-10 opacity-90`}
             />
 
-            {/* Quick Admin Drag Handle on top-left (仅桌面端大屏呈现) */}
             {canManage && draggable && (
                 <div
                     onClick={(e) => e.stopPropagation()}
@@ -173,7 +389,6 @@ function AtelierPhotoCard({
                 </div>
             )}
 
-            {/* Quick Admin Action Controls on top-right (更换封面 + 编辑正文) */}
             {canManage && (
                 <div className="absolute right-4 top-4 z-20 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                     <button
@@ -183,7 +398,7 @@ function AtelierPhotoCard({
                             e.stopPropagation();
                             onEditCover?.(feed);
                         }}
-                        title="快捷更换此文章封面（支持R2相册/本地上传/URL）"
+                        title="快捷更换此文章封面"
                         className="flex h-7 w-7 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme active:scale-95"
                     >
                         <i className="ri-image-edit-line text-xs" />
@@ -199,7 +414,6 @@ function AtelierPhotoCard({
                 </div>
             )}
 
-            {/* Poster area: high-res, crisp, large image (图片自适应充满，移除多余硬编码min-h以杜绝留黑) */}
             <div className="relative w-full overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-800/60 shadow-inner">
                 {hasImage ? (
                     <img
@@ -220,7 +434,6 @@ function AtelierPhotoCard({
                     </div>
                 )}
 
-                {/* Subtle hover overlay badge */}
                 <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-between text-white text-xs">
                     <span className="font-medium truncate max-w-[70%] drop-shadow-xs">
                         {feed.title}
@@ -232,7 +445,6 @@ function AtelierPhotoCard({
                 </div>
             </div>
 
-            {/* Subtle bottom accent line */}
             <div className="mt-2.5 flex items-center justify-between px-1 text-[11px] text-neutral-400 dark:text-neutral-500 font-medium">
                 <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
                 {canManage ? (
@@ -1767,7 +1979,7 @@ export function FeedsPage() {
                                     className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border shadow-2xs text-xs font-semibold transform ${rot} hover:rotate-0 hover:scale-110 hover:shadow-md transition-all duration-300 ${bg}`}
                                     title={isSingleArticle ? `独家文章，点击直达正文！` : `浏览 #${tag.name} 标签聚合`}
                                 >
-                                    <span className="opacity-60 text-[10px]">{isSingleArticle ? "📖" : "🏷️"}</span>
+                                    <span className="opacity-60 text-[10px]">🏷️</span>
                                     <span>#{tagDisplayName}</span>
                                     {isSingleArticle && (
                                         <i className="ri-arrow-right-up-line text-[10px] text-theme opacity-80" />
@@ -1824,7 +2036,7 @@ export function FeedsPage() {
                 ) : (
                     <div
                         style={{ columnGap: `${gapSize}px` }}
-                        className={`${getColumnsClass(siteConfig.galleryColumns)} space-y-6 ani-show`}
+                        className={`${siteConfig.feedCardVariant === "compact" ? "max-w-4xl mx-auto space-y-2.5" : `${getColumnsClass(siteConfig.galleryColumns)} space-y-6`} ani-show`}
                     >
                         {interleavedItems.map((item, idx) => {
                             const currentFirstPageKeys = interleavedItems.map(getItemKey);

@@ -10,7 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.7] - 2026-11-15
 
 ### Added
-- **In-Situ Aesthetic Studio (`InSituAestheticStudio`)**: Added on-the-fly front-of-house styling drawer mounted via `React.lazy` and `profile` gate (0 visitor bundle overhead). Enables instant live switching between 4 card layout variants, 8 curated atmospheric theme presets, card opacity steps, and day/night mode.
+- **In-Situ Aesthetic Studio (`InSituAestheticStudio`)**: Added on-the-fly front-of-house styling drawer mounted via `React.lazy` and `profile` gate (0 visitor bundle overhead). Enables instant live switching between 4 card layout variants, 8 curated atmospheric theme presets, waterfall columns (auto/2/3/4), spacing gaps (16/24/32px), card opacity steps, and day/night mode.
+- **Dark-Mode Contrast Guard (`applyThemeColor`)**: Added luminance detection to prevent black-on-black UI when selecting dark accents (e.g. Paper Ink `#27272a`) in dark mode, dynamically compensating to high-contrast silver white (`#e4e4e7`).
+- **Wired 4 Layout Variants to Homepage Feed Waterfall (`feeds.tsx`)**: Connected `siteConfig.feedCardVariant` directly into `feeds.tsx`, enabling real-time live morphing between Compact, Poster, Editorial, and Polaroid variants on the home stream.
 - **Reactive Configuration Synchronization**: Added `rin:config-updated` window event pipeline across `useAppBootstrap` and client components to ensure multi-device config reactivity without full page reload.
 
 ### Changed
@@ -21,7 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `default`: Polaroid photo card with classic white border, top-pinned photo, and organic hover warmth.
 - **Refined Typography System**: Replaced 12 tacky WordArt `.art-title-*` styles (gradients and text-shadows) with clean, high-contrast modern typography adhering to font family and kerning rules.
 - **Pure Micro-Blogging for Moments**: Removed mandatory blockquote status prefix (`> **状态：...**\n\n`) from `moments.tsx`, replacing it with optional mood tags and free-form Markdown.
-- **Purified Settings Header & Navigation**: Removed fake status capsules (`Worker 边缘就绪`, `R2 存储桶已连接`) and verbose corporate blurbs from `settings.tsx`; removed `/admin/ops` from primary sidebar navigation.
+- **Purified Settings Header & Navigation**: Removed fake status capsules (`Worker 边缘就绪`, `R2 存储桶已连接`) and verbose corporate blurbs from `settings.tsx`; removed `/admin/ops` and ghost `/friends` jump entry from primary sidebar navigation (`admin-layout.tsx`).
+- **Streamlined Friends Refresh Button**: Replaced long verbose text button in `friends.tsx` with a clean 36×36 square icon button.
+- **Consistent Tag Badges**: Restored uniform `🏷️` icon across all homepage tag pills, removing arbitrary book emoji replacements.
 
 ### Removed
 - **Physical Removal of JeikCode Copilot**: Completely deleted `client/src/components/jeikcode-copilot.tsx` (834 lines) and unmounted from `App.tsx`, eliminating hardcoded LAN IP, token leak risk, and floating widget, instantly cutting 24.5 kB from the entry chunk.
