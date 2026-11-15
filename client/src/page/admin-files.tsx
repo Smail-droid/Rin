@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
+import { Modal } from "@rin/ui";
+import Lightbox from "yet-another-react-lightbox";
+import Zoom from "yet-another-react-lightbox/plugins/zoom";
+import Download from "yet-another-react-lightbox/plugins/download";
+import Counter from "yet-another-react-lightbox/plugins/counter";
+import "yet-another-react-lightbox/styles.css";
 import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import type { StorageFileItem } from "../api/client";
@@ -68,6 +73,7 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
 
     // Toast state
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [isApiModalOpen, setIsApiModalOpen] = useState(false);
 
     const showToast = useCallback((msg: string) => {
         setToastMessage(msg);
@@ -252,6 +258,15 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
         return files.reduce((acc, f) => acc + (f.size || 0), 0);
     }, [files]);
 
+    // 构建全功能画廊交互幻灯片
+    const imageSlides = useMemo(() => {
+        return filteredFiles.map((f) => ({
+            src: f.url,
+            title: f.key,
+            download: f.url,
+        }));
+    }, [filteredFiles]);
+
     // Selection handlers
     const toggleSelectAll = () => {
         if (selectedKeys.size === filteredFiles.length && filteredFiles.length > 0) {
@@ -355,71 +370,34 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                 </div>
             )}
 
-            {/* 沉浸式画廊全屏翻图灯箱 (Lightbox - 挂载至 document.body 杜绝父级容器样式裁切) */}
-            {previewIndex !== null && filteredFiles[previewIndex] && typeof document !== "undefined" && createPortal(
-                <div
-                    onClick={() => setPreviewIndex(null)}
-                    className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/92 p-4 backdrop-blur-md select-none ani-show"
-                >
-                    <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
-                        <span className="text-xs font-mono text-white/80 bg-white/10 px-3.5 py-1 rounded-full border border-white/10">
-                            {previewIndex + 1} / {filteredFiles.length}
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => setPreviewIndex(null)}
-                            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/40 transition"
-                        >
-                            <i className="ri-close-line text-xl" />
-                        </button>
-                    </div>
-
-                    {previewIndex > 0 && (
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setPreviewIndex((prev) => (prev !== null ? prev - 1 : null));
-                            }}
-                            className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/30 backdrop-blur-sm transition"
-                            title="上一张 (Left Arrow)"
-                        >
-                            <i className="ri-arrow-left-s-line text-2xl" />
-                        </button>
-                    )}
-
-                    {previewIndex < filteredFiles.length - 1 && (
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setPreviewIndex((prev) => (prev !== null ? prev + 1 : null));
-                            }}
-                            className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/30 backdrop-blur-sm transition"
-                            title="下一张 (Right Arrow)"
-                        >
-                            <i className="ri-arrow-right-s-line text-2xl" />
-                        </button>
-                    )}
-
-                    <div onClick={(e) => e.stopPropagation()} className="relative max-h-[88vh] max-w-[90vw] flex items-center justify-center">
-                        <img
-                            src={filteredFiles[previewIndex].url}
-                            alt={filteredFiles[previewIndex].key}
-                            className="max-h-[88vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl ring-1 ring-white/10"
-                        />
-                    </div>
-                </div>,
-                document.body
-            )}
+            {/* 全功能交互式画廊缩放灯箱 (支持滚轮无级放大、双击缩放、拖拽平移漫游、原图一键下载、数字计数) */}
+            <Lightbox
+                open={previewIndex !== null}
+                close={() => setPreviewIndex(null)}
+                index={previewIndex ?? 0}
+                slides={imageSlides}
+                plugins={[Zoom, Download, Counter]}
+                zoom={{
+                    maxZoomPixelRatio: 8,
+                    zoomInMultiplier: 2,
+                    doubleTapDelay: 300,
+                    doubleClickDelay: 300,
+                    scrollToZoom: true,
+                }}
+                carousel={{ finite: imageSlides.length <= 1 }}
+                render={{
+                    buttonPrev: imageSlides.length <= 1 ? () => null : undefined,
+                    buttonNext: imageSlides.length <= 1 ? () => null : undefined,
+                }}
+            />
 
             {/* Read-only gallery mode header */}
             {readOnly && (
                 <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-black/10 dark:border-white/10">
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight t-primary flex items-center gap-2">
-                            <span>📷</span>
-                            <span>图床漫游 · 记忆画廊</span>
+                            <i className="ri-folder-image-line text-theme" />
+                            <span>图床漫游 · 媒体资产</span>
                         </h1>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                             浏览全站图库与素材原图，点击图片或输入框即可快速复制多种格式链接
@@ -513,6 +491,17 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                     </div>
 
                     <div className="flex items-center gap-2">
+                        {!readOnly && (
+                            <button
+                                type="button"
+                                onClick={() => setIsApiModalOpen(true)}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w px-2.5 py-1.5 text-xs font-semibold t-primary shadow-2xs hover:border-theme transition cursor-pointer"
+                                title="查看 Typora / PicGo 快捷直传与随机图片 API 接口说明"
+                            >
+                                <i className="ri-key-2-line text-theme" />
+                                <span>直传API & 随机图</span>
+                            </button>
+                        )}
                         {!readOnly && (
                             <button
                                 type="button"
@@ -845,6 +834,97 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                         <span>{t("admin_files.load_more", "加载更多")}</span>
                     </button>
                 </div>
+            )}
+
+            {/* Typora / PicGo / 随机图片 API 快捷指南弹窗 */}
+            {isApiModalOpen && (
+                <Modal
+                    isOpen={isApiModalOpen}
+                    onRequestClose={() => setIsApiModalOpen(false)}
+                    contentLabel="图床 API 与随机图片调用指南"
+                    panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-xl w-full bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl max-h-[85vh] flex flex-col font-sans"
+                >
+                    <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 shrink-0">
+                        <div className="flex items-center gap-2">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-theme/15 text-theme text-sm">
+                                <i className="ri-key-2-line" />
+                            </span>
+                            <h3 className="font-bold text-sm t-primary">第三方写作软件直传 & 随机图 API</h3>
+                        </div>
+                        <button onClick={() => setIsApiModalOpen(false)} className="text-neutral-400 hover:text-neutral-600 cursor-pointer">
+                            <i className="ri-close-line text-lg font-bold" />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-4 py-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
+                        {/* 1. Typora / 本地编辑器一键配置 */}
+                        <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="font-bold text-xs t-primary flex items-center gap-1.5">
+                                    <i className="ri-quill-pen-line text-theme" />
+                                    <span>Typora / 本地 Markdown 编辑器一键上传命令</span>
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const cmd = `curl -F "file=@$filepath" "${typeof window !== "undefined" ? window.location.origin : ""}/api/storage/upload?token=sk-7dd8-18e341d3b1c51710"`;
+                                        navigator.clipboard.writeText(cmd);
+                                        showToast("✓ Typora 上传命令已复制到剪贴板！");
+                                    }}
+                                    className="px-2 py-0.5 rounded-md bg-theme/15 text-theme text-[11px] font-bold hover:bg-theme/25 transition cursor-pointer"
+                                >
+                                    复制命令
+                                </button>
+                            </div>
+                            <p className="text-[11px] text-neutral-400">
+                                打开 Typora 设置 → 图像 → 上传服务选择 <code>Custom Command</code>，填入命令：
+                            </p>
+                            <pre className="p-2.5 rounded-lg bg-black/5 dark:bg-black/40 font-mono text-[11px] text-neutral-800 dark:text-neutral-200 overflow-x-auto whitespace-pre-wrap break-all select-all">
+                                {`curl -F "file=@$filepath" "${typeof window !== "undefined" ? window.location.origin : ""}/api/storage/upload?token=sk-7dd8-18e341d3b1c51710"`}
+                            </pre>
+                        </div>
+
+                        {/* 2. PicGo 自定义 Web 图床配置 */}
+                        <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-2">
+                            <span className="font-bold text-xs t-primary flex items-center gap-1.5">
+                                <i className="ri-image-add-line text-theme" />
+                                <span>PicGo / Web 图床插件配置规范</span>
+                            </span>
+                            <div className="space-y-1 font-mono text-[11px] bg-black/5 dark:bg-black/40 p-2.5 rounded-lg">
+                                <div><strong className="text-neutral-400">API URL:</strong> <span className="text-theme">{typeof window !== "undefined" ? window.location.origin : ""}/api/storage/upload</span></div>
+                                <div><strong className="text-neutral-400">POST 参数名:</strong> file (支持 file, image, smfile)</div>
+                                <div><strong className="text-neutral-400">Header:</strong> Authorization: Bearer sk-7dd8-18e341d3b1c51710</div>
+                                <div><strong className="text-neutral-400">JSON 路径:</strong> url 或 data.url</div>
+                            </div>
+                        </div>
+
+                        {/* 3. 全局随机图片 API */}
+                        <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="font-bold text-xs t-primary flex items-center gap-1.5">
+                                    <i className="ri-shuffle-line text-theme" />
+                                    <span>随机图片 API 接口 (适合全站背景/论坛签名/外部引用)</span>
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const url = `${typeof window !== "undefined" ? window.location.origin : ""}/api/storage/random`;
+                                        navigator.clipboard.writeText(url);
+                                        showToast("✓ 随机图片 API 链接已复制！");
+                                    }}
+                                    className="px-2 py-0.5 rounded-md bg-theme/15 text-theme text-[11px] font-bold hover:bg-theme/25 transition cursor-pointer"
+                                >
+                                    复制链接
+                                </button>
+                            </div>
+                            <div className="space-y-1 font-mono text-[11px] bg-black/5 dark:bg-black/40 p-2.5 rounded-lg">
+                                <div><strong className="text-neutral-400">直接重定向 (302):</strong> <code className="text-theme">{typeof window !== "undefined" ? window.location.origin : ""}/api/storage/random</code></div>
+                                <div><strong className="text-neutral-400">返回纯文本 URL:</strong> <code className="text-neutral-400">{typeof window !== "undefined" ? window.location.origin : ""}/api/storage/random?type=url</code></div>
+                                <div><strong className="text-neutral-400">返回完整 JSON:</strong> <code className="text-neutral-400">{typeof window !== "undefined" ? window.location.origin : ""}/api/storage/random?type=json</code></div>
+                            </div>
+                        </div>
+                    </div>
+                </Modal>
             )}
         </div>
     );
