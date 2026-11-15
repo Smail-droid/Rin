@@ -82,7 +82,21 @@ export function useAppBootstrap() {
       }
     }
 
+    const handleConfigEvent = () => {
+      const cached = sessionStorage.getItem("config");
+      if (cached) {
+        try {
+          const configObject = JSON.parse(cached) as Record<string, unknown>;
+          updateClientConfig(configObject);
+        } catch {}
+      }
+    };
+    window.addEventListener("rin:config-updated", handleConfigEvent);
+
     initializedRef.current = true;
+    return () => {
+      window.removeEventListener("rin:config-updated", handleConfigEvent);
+    };
   }, []);
 
   return { config, profile };

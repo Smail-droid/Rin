@@ -24,12 +24,12 @@ interface Moment {
 }
 
 const MOMENT_STATUSES = [
-  { id: "casual", label: "随言随笔", icon: "ri-chat-1-line", text: "> **状态：随言随笔**\n\n" },
-  { id: "code", label: "灵感代码", icon: "ri-code-line", text: "> **状态：灵感代码**\n\n" },
-  { id: "debug", label: "排查调优", icon: "ri-bug-line", text: "> **状态：正在排查Bug**\n\n" },
-  { id: "daily", label: "今日日常", icon: "ri-sun-line", text: "> **状态：今日份记录**\n\n" },
-  { id: "study", label: "读书深耕", icon: "ri-book-open-line", text: "> **状态：读书研读**\n\n" },
-  { id: "chill", label: "放空休息", icon: "ri-cup-line", text: "> **状态：放空休息**\n\n" },
+  { id: "casual", label: "随笔", icon: "ri-chat-1-line" },
+  { id: "code", label: "代码", icon: "ri-code-line" },
+  { id: "idea", label: "灵感", icon: "ri-lightbulb-line" },
+  { id: "daily", label: "日常", icon: "ri-sun-line" },
+  { id: "study", label: "阅读", icon: "ri-book-open-line" },
+  { id: "chill", label: "放空", icon: "ri-cup-line" },
 ];
 
 export function MomentsPage() {
@@ -120,12 +120,11 @@ export function MomentsPage() {
   };
 
   const handleApplyStatus = (status: (typeof MOMENT_STATUSES)[0]) => {
-    setActiveStatusId(status.id);
-    const statusRegex = /^> [^\n]+\n\n/;
-    if (statusRegex.test(content)) {
-      setContent(content.replace(statusRegex, status.text));
-    } else {
-      setContent(`${status.text}${content}`);
+    const isSame = activeStatusId === status.id;
+    setActiveStatusId(isSame ? "" : status.id);
+    const tag = `#${status.label} `;
+    if (!isSame && !content.includes(tag)) {
+      setContent(`${tag}${content}`);
     }
     textareaRef.current?.focus();
   };

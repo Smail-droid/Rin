@@ -12,7 +12,7 @@
 [![Runtime: Bun](https://img.shields.io/badge/Runtime-Bun-fbf0df.svg?style=flat-square&logo=bun)](https://bun.sh/)
 [![Bundle Size: 131.42 kB](https://img.shields.io/badge/Bundle_Size-131.42_kB_(gzip:_38.37_kB)-brightgreen.svg?style=flat-square&logo=vite)](https://vitejs.dev/)
 [![Size Reduction: 97.7%](https://img.shields.io/badge/Size_Drop-97.7%25-ff4d79.svg?style=flat-square)]()
-[![Tests: 484 Passing](https://img.shields.io/badge/Tests-484_Passing_%7C_54_Suites-success.svg?style=flat-square&logo=bun)](https://bun.sh/)
+[![Tests: 496 Passing](https://img.shields.io/badge/Tests-496_Passing_%7C_55_Suites-success.svg?style=flat-square&logo=bun)](https://bun.sh/)
 [![Security: CSP Zero Eval](https://img.shields.io/badge/Security-CSP_Zero_Eval_Hardened-blue.svg?style=flat-square&logo=shield)](https://developer.mozilla.org/)
 
 [English](README.md) · [简体中文](README_zh_CN.md) · [GitHub 仓库](https://github.com/Smail-droid/Rin) · [🌸 画廊随想架构全景词典](画廊随想.md) · [更新日志 (Changelog)](CHANGELOG.md)
@@ -29,7 +29,7 @@
 - **极致工程性能**：经由 Vite `manualChunks` 代码分割手术，首屏入口核心 JS 从 5.68 MB 锐减至 **131.42 kB (gzip 后 38.37 kB)**，**体积降幅达 97.7%**。Monaco 编辑器 (3.88MB)、Mermaid 引擎 (3.07MB) 及 Prism 代码高亮 (631kB) 实现 100% 动态按需懒加载。
 - **高密单屏超级数据表格 (Dense DataGrid)**：全站管理后台拒绝疲劳拖拽，单屏高密容纳所有业务指标；文章管理集成封面大图预览与快捷图床置换、Pin/Sticky 置顶优先机制、多维表头排序与标准底部分页栏。
 - **边缘 AI 智能流水线**：友链与导航画廊引入 URL 元数据自动嗅探、Worker AI 自动提炼与标签映射、高可用 Favicon 代理兜底及游客免登录申请审核流。
-- **全栈质量保证**：54 个测试套件，484 项自动化测试 100% 绿灯全通；严格 CSP (Zero Eval) 杜绝动态 eval 注入，打造坚不可摧的边缘安全堡垒。
+- **全栈质量保证**：55 个测试套件，496 项自动化测试 100% 绿灯全通；严格 CSP (Zero Eval) 杜绝动态 eval 注入，打造坚不可摧的边缘安全堡垒。
 
 ---
 

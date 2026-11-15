@@ -146,113 +146,15 @@ export function sanitizeAvatarUrl(url: string | null | undefined): string {
     return trimmed;
 }
 
-// 浏览器客户端轻量兜底抓取 NodeSeek 原生头像并转为 Base64
+// 浏览器客户端轻量直取头像链接
 export async function fetchClientAvatarBase64(uid: string): Promise<string | null> {
     if (!uid) return null;
-    const urls = [
-        `https://www.nodeseek.com/avatar/${uid}.png`,
-        `https://corsproxy.io/?url=${encodeURIComponent(`https://www.nodeseek.com/avatar/${uid}.png`)}`,
-    ];
-    for (const u of urls) {
-        try {
-            const res = await fetch(u, { signal: AbortSignal.timeout(2500) });
-            if (res.ok) {
-                const blob = await res.blob();
-                if (blob.size > 100 && (blob.type.startsWith("image/") || blob.type.includes("octet-stream"))) {
-                    return new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve(reader.result as string);
-                        reader.onerror = () => resolve(null);
-                        reader.readAsDataURL(blob);
-                    });
-                }
-            }
-        } catch {}
-    }
-    return null;
+    return `https://www.nodeseek.com/avatar/${uid}.png`;
 }
 
-// 浏览器客户端多级兜底直连获取 NodeSeek 真实坛友数据（利用用户本地 IPv4 网络穿透 IPv6 封锁）
+// 统一友链空间数据解析
 export async function fetchClientSideNsDetail(uid: string): Promise<NodeSeekUserData | null> {
     if (!uid) return null;
-
-    // 解析 NodeSeek API 返回的 JSON 为统一结构
-    const parseNsDetail = (detail: any): NodeSeekUserData | null => {
-        if (!detail) return null;
-        let joinDays = detail.created_at_str ? detail.created_at_str.replace("days ago", "天") : undefined;
-        if (detail.created_at) {
-            const ts = typeof detail.created_at === "number" ? (detail.created_at < 1e11 ? detail.created_at * 1000 : detail.created_at) : new Date(detail.created_at).getTime();
-            if (!isNaN(ts) && ts > 0) {
-                const days = Math.max(1, Math.floor((Date.now() - ts) / (86400 * 1000)));
-                joinDays = `${days}天`;
-            }
-        }
-        return {
-            name: detail.member_name,
-            member_name: detail.member_name,
-            bio: detail.bio ? detail.bio.trim() : undefined,
-            rank: typeof detail.rank === "number" ? detail.rank : undefined,
-            coin: typeof detail.coin === "number" ? detail.coin : undefined,
-            days: joinDays,
-            join_days: joinDays,
-            posts: typeof detail.nPost === "number" ? detail.nPost : undefined,
-            nPost: typeof detail.nPost === "number" ? detail.nPost : undefined,
-            comments: typeof detail.nComment === "number" ? detail.nComment : undefined,
-            nComment: typeof detail.nComment === "number" ? detail.nComment : undefined,
-            created_at_str: detail.created_at_str,
-        };
-    };
-
-    const apiUrl = `https://www.nodeseek.com/api/account/getInfo/${uid}`;
-
-    // 第 1 级：浏览器本地网络直连 NodeSeek API
-    try {
-        const directRes = await fetch(apiUrl, {
-            headers: { "Accept": "application/json" },
-            signal: AbortSignal.timeout(3000),
-        });
-        if (directRes.ok) {
-            const text = await directRes.text();
-            if (!text.includes("<!DOCTYPE") && !text.includes("ipv6") && !text.includes("IPv6")) {
-                const parsed = JSON.parse(text);
-                if (parsed?.detail) return parseNsDetail(parsed.detail);
-            }
-        }
-    } catch {}
-
-    // 第 2 级：通过 corsproxy.io 公共代理
-    try {
-        const proxyRes = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`, {
-            headers: { "Accept": "application/json" },
-            signal: AbortSignal.timeout(3000),
-        });
-        if (proxyRes.ok) {
-            const text = await proxyRes.text();
-            if (!text.includes("<!DOCTYPE")) {
-                const parsed = JSON.parse(text);
-                if (parsed?.detail) return parseNsDetail(parsed.detail);
-            }
-        }
-    } catch {}
-
-    // 第 3 级：通过 microlink.io HTML 嗅探
-    try {
-        const mUrl = `https://api.microlink.io/?url=${encodeURIComponent(apiUrl)}&data.body=%7B%22selector%22%3A%22body%22%7D`;
-        const mRes = await fetch(mUrl, {
-            headers: { "Accept": "application/json" },
-            signal: AbortSignal.timeout(8000),
-        });
-        if (mRes.ok) {
-            const mData = await mRes.json();
-            const rawBody = mData?.data?.body || "";
-            const jsonMatch = rawBody.match(/\{"success":true,"detail":\{[\s\S]*?\}\}/);
-            if (jsonMatch) {
-                const parsed = JSON.parse(jsonMatch[0]);
-                if (parsed?.detail) return parseNsDetail(parsed.detail);
-            }
-        }
-    } catch {}
-
     return null;
 }
 

@@ -7,7 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v1.0.6] - 2026-11-14
+## [v1.0.7] - 2026-11-15
+
+### Added
+- **In-Situ Aesthetic Studio (`InSituAestheticStudio`)**: Added on-the-fly front-of-house styling drawer mounted via `React.lazy` and `profile` gate (0 visitor bundle overhead). Enables instant live switching between 4 card layout variants, 8 curated atmospheric theme presets, card opacity steps, and day/night mode.
+- **Reactive Configuration Synchronization**: Added `rin:config-updated` window event pipeline across `useAppBootstrap` and client components to ensure multi-device config reactivity without full page reload.
+
+### Changed
+- **Replaced 4 Fake Card Variants with Bone-Deep Structural Layouts**: Completely redesigned `client/src/components/feed_card.tsx` so each variant has a distinct DOM structure:
+  - `compact`: Single dense datarow displaying date, title, tags, and reading time for fast scanning.
+  - `poster`: Full-bleed 3:4 aspect-ratio hero photo with title and summary overlaid on frosted glass gradient.
+  - `editorial`: Text-first layout featuring prominent serif headline, generous summary line-height, and right-aligned thumbnail.
+  - `default`: Polaroid photo card with classic white border, top-pinned photo, and organic hover warmth.
+- **Refined Typography System**: Replaced 12 tacky WordArt `.art-title-*` styles (gradients and text-shadows) with clean, high-contrast modern typography adhering to font family and kerning rules.
+- **Pure Micro-Blogging for Moments**: Removed mandatory blockquote status prefix (`> **状态：...**\n\n`) from `moments.tsx`, replacing it with optional mood tags and free-form Markdown.
+- **Purified Settings Header & Navigation**: Removed fake status capsules (`Worker 边缘就绪`, `R2 存储桶已连接`) and verbose corporate blurbs from `settings.tsx`; removed `/admin/ops` from primary sidebar navigation.
+
+### Removed
+- **Physical Removal of JeikCode Copilot**: Completely deleted `client/src/components/jeikcode-copilot.tsx` (834 lines) and unmounted from `App.tsx`, eliminating hardcoded LAN IP, token leak risk, and floating widget, instantly cutting 24.5 kB from the entry chunk.
+- **Severed External Proxy Scrapers in Friends**: Removed brittle 3rd-party CORS proxy chains (`corsproxy.io`, `microlink.io`, FileReader base64) from `friends.tsx`, standardizing on native URL fields and Cloudflare Worker edge inspection.
+
+---
 
 ### Added
 - **AI Description Refinement in Edit Modal**: Added "☆ AI 智能精炼" button to `EditFriendModal`, aligned with the add-link modal for quick one-click synthesis.

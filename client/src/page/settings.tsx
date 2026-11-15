@@ -369,16 +369,7 @@ export function Settings() {
               ))}
             </div>
 
-            {/* 紧凑型系统状态指标胶囊 (高密状态感) */}
-            <div className="hidden md:flex items-center gap-2 text-xs font-mono shrink-0 select-none">
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                <span>Worker 边缘就绪</span>
-              </span>
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 font-semibold border border-sky-500/20">
-                <span>R2 存储桶已连接</span>
-              </span>
-            </div>
+
           </div>
 
           {/* Tab 1: General Settings (画廊概览切片仪表盘风格) */}
@@ -392,14 +383,8 @@ export function Settings() {
                   </span>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-base font-bold t-primary">画廊站点核心配置中枢</h2>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                        边缘实时生效
-                      </span>
+                      <h2 className="text-base font-bold t-primary">站点配置</h2>
                     </div>
-                    <p className="text-xs text-neutral-400 mt-0.5">
-                      集中管控画廊博客身份、全站导航排布、交互功能总闸与访客统计
-                    </p>
                   </div>
                 </div>
 

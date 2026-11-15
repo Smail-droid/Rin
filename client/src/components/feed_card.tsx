@@ -61,46 +61,6 @@ function FeedCardImage({ src, variant }: { src: string; variant: FeedCardVariant
     );
 }
 
-const FEED_CARD_STYLES: Record<
-    FeedCardVariant,
-    {
-        card: string;
-        imageWrap: string;
-        meta: string;
-        summary: string;
-        title: string;
-    }
-> = {
-    default: {
-        card: "my-2 inline-block w-full break-inside-avoid rounded-2xl bg-w p-6 duration-300 bg-button",
-        imageWrap: "",
-        meta: "text-gray-400 text-sm",
-        summary: "line-clamp-4 text-pretty overflow-hidden dark:text-neutral-500",
-        title: "break-words text-xl font-bold text-gray-700 dark:text-white text-pretty overflow-hidden [overflow-wrap:anywhere]",
-    },
-    editorial: {
-        card: "my-3 inline-block w-full break-inside-avoid overflow-hidden rounded-[28px] border border-black/10 bg-w p-3 shadow-[0_24px_60px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-0.5 hover:shadow-[0_28px_70px_rgba(15,23,42,0.12)] dark:border-white/10",
-        imageWrap: "mb-3 overflow-hidden rounded-[22px] border border-black/5 dark:border-white/10",
-        meta: "text-[12px] font-medium uppercase tracking-[0.18em] text-neutral-500 dark:text-neutral-400",
-        summary: "line-clamp-5 text-pretty text-[15px] leading-7 text-neutral-600 dark:text-neutral-300",
-        title: "break-words text-2xl font-semibold tracking-[-0.02em] text-neutral-900 dark:text-white text-pretty overflow-hidden [overflow-wrap:anywhere]",
-    },
-    compact: {
-        card: "my-2 inline-block w-full break-inside-avoid rounded-2xl border border-black/5 bg-w p-4 duration-200 hover:border-black/20 dark:border-white/5 dark:hover:border-white/20",
-        imageWrap: "mb-2 overflow-hidden rounded-xl",
-        meta: "text-xs text-neutral-400",
-        summary: "line-clamp-2 text-xs text-neutral-500 mt-1",
-        title: "text-base font-bold text-neutral-900 dark:text-white line-clamp-1",
-    },
-    poster: {
-        card: "my-3 inline-block w-full break-inside-avoid overflow-hidden rounded-3xl border border-black/10 bg-w p-2.5 shadow-md hover:shadow-2xl transition duration-300 dark:border-white/10",
-        imageWrap: "overflow-hidden rounded-2xl",
-        meta: "text-[11px] text-neutral-400 mt-2",
-        summary: "line-clamp-2 text-xs text-neutral-500 mt-1",
-        title: "text-lg font-extrabold text-neutral-900 dark:text-white line-clamp-1 mt-1.5",
-    },
-};
-
 function estimateReadingMinutes(text: string): number {
     const chars = (text || "").length;
     return Math.max(1, Math.round(chars / 250));
@@ -127,42 +87,173 @@ export function FeedCard({ id, title, avatar, draft, listed, top, summary, readi
     const siteConfig = useSiteConfig();
     const safeHashtags = Array.isArray(hashtags) ? hashtags : [];
     const activeVariant = normalizeFeedCardVariant(variant ?? siteConfig.feedCardVariant);
-    const styles = FEED_CARD_STYLES[activeVariant];
+    const dateTooltip = createdAt === updatedAt ? new Date(createdAt).toLocaleString() : `${new Date(createdAt).toLocaleString()} (更新于 ${new Date(updatedAt).toLocaleString()})`;
     const finalReadingMinutes = readingTime ?? estimateReadingMinutes(summary);
-    const body = (
-        <div className={styles.card}>
+
+    // =========================================================================
+    // 1. 极客高密单行 (Compact Dense Row) - 纯单行排布，适合快速扫读
+    // =========================================================================
+    if (activeVariant === "compact") {
+        const compactBody = (
+            <div className="group my-1.5 flex items-center justify-between gap-3 rounded-xl border border-black/5 bg-w px-4 py-2.5 transition-all hover:border-black/20 hover:bg-neutral-50/80 dark:border-white/5 dark:hover:border-white/20 dark:hover:bg-neutral-800/40">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <span className="text-xs font-mono text-neutral-400 shrink-0" title={dateTooltip}>
+                        {timeago(createdAt)}
+                    </span>
+                    {listed === 0 ? (
+                        <span className="shrink-0 rounded-md bg-neutral-500/10 px-1.5 py-0.5 text-[11px] font-bold text-neutral-400">
+                            {t("unlisted")}
+                        </span>
+                    ) : null}
+                    {top === 1 ? (
+                        <span className="shrink-0 rounded-md bg-theme/10 px-1.5 py-0.5 text-[11px] font-bold text-theme">
+                            {t('article.top.title')}
+                        </span>
+                    ) : null}
+                    {draft === 1 ? (
+                        <span className="shrink-0 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-bold text-amber-500">
+                            {t("draft")}
+                        </span>
+                    ) : null}
+                    <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate group-hover:text-theme transition-colors">
+                        {title}
+                    </h2>
+                </div>
+                <div className="hidden sm:flex items-center gap-3 shrink-0 text-xs text-neutral-400">
+                    {safeHashtags.slice(0, 2).map(({ name }, i) => (
+                        <span key={i} className="text-neutral-400 dark:text-neutral-500">#{name}</span>
+                    ))}
+                    <span className="text-[11px] font-mono opacity-70">
+                        {finalReadingMinutes}m
+                    </span>
+                </div>
+            </div>
+        );
+        return preview ? compactBody : <Link href={`/feed/${id}`} target="_blank" rel="noopener noreferrer" className="block min-w-0 w-full">{compactBody}</Link>;
+    }
+
+    // =========================================================================
+    // 2. 巨幅画册海报 (Poster Visual Hero) - 沉浸式海报背景，文字悬浮微光蒙版
+    // =========================================================================
+    if (activeVariant === "poster" && avatar) {
+        const posterBody = (
+            <div className="group relative my-3 overflow-hidden rounded-3xl border border-black/10 shadow-lg hover:shadow-2xl transition-all duration-300 dark:border-white/10 break-inside-avoid">
+                <div className="relative aspect-[3/4] w-full overflow-hidden bg-neutral-900">
+                    <img
+                        src={avatar}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    />
+                    {/* 微光暗部渐变与磨砂文字浮层 */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent flex flex-col justify-end p-5 text-white">
+                        {safeHashtags.length > 0 ? (
+                            <div className="flex items-center gap-1.5 flex-wrap text-xs text-white/70 mb-2">
+                                {safeHashtags.map(({ name }, i) => (
+                                    <span key={i}>#{name}</span>
+                                ))}
+                            </div>
+                        ) : null}
+                        <h2 className="text-xl font-bold leading-snug drop-shadow-sm group-hover:text-theme-hover transition-colors">
+                            {title}
+                        </h2>
+                        {summary ? (
+                            <p className="mt-2 line-clamp-2 text-xs text-white/80 leading-relaxed font-normal">
+                                {summary}
+                            </p>
+                        ) : null}
+                        <div className="flex items-center justify-between text-[11px] text-white/60 mt-3 pt-2.5 border-t border-white/15">
+                            <div className="flex items-center gap-2">
+                                <span>{timeago(createdAt)}</span>
+                                {top === 1 ? <span className="text-amber-400 font-bold">· {t('article.top.title')}</span> : null}
+                            </div>
+                            <span className="flex items-center gap-1">
+                                <i className="ri-time-line" />
+                                {finalReadingMinutes} 分钟
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+        return preview ? posterBody : <Link href={`/feed/${id}`} target="_blank" rel="noopener noreferrer" className="block min-w-0 w-full">{posterBody}</Link>;
+    }
+
+    // =========================================================================
+    // 3. 极简杂志社论 (Editorial Magazine) - 纯粹阅读、典雅衬线标题与呼吸感摘要
+    // =========================================================================
+    if (activeVariant === "editorial") {
+        const editorialBody = (
+            <article className="group my-4 break-inside-avoid overflow-hidden rounded-[24px] border border-black/10 bg-w p-6 shadow-xs hover:shadow-lg transition-all hover:-translate-y-0.5 dark:border-white/10">
+                <div className="flex flex-col sm:flex-row gap-5 items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                        {safeHashtags.length > 0 ? (
+                            <div className="text-[11px] font-mono uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-2 flex items-center gap-2 flex-wrap">
+                                {safeHashtags.map(({ name }, i) => (
+                                    <span key={i} className="hover:text-theme">#{name}</span>
+                                ))}
+                            </div>
+                        ) : null}
+                        <h2 className="text-2xl font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors leading-snug">
+                            {title}
+                        </h2>
+                        <p className="mt-3 line-clamp-4 text-[14px] leading-relaxed text-neutral-600 dark:text-neutral-300 font-normal">
+                            {summary}
+                        </p>
+                    </div>
+                    {avatar ? (
+                        <div className="w-full sm:w-36 h-28 shrink-0 overflow-hidden rounded-2xl border border-black/5 dark:border-white/10">
+                            <img src={avatar} alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        </div>
+                    ) : null}
+                </div>
+                <div className="flex items-center justify-between text-xs text-neutral-400 mt-5 pt-3 border-t border-black/5 dark:border-white/5 font-mono">
+                    <div className="flex items-center gap-2">
+                        <span>{timeago(createdAt)}</span>
+                        {top === 1 ? <span className="text-theme font-semibold">· {t('article.top.title')}</span> : null}
+                        {draft === 1 ? <span className="text-amber-500">· {t("draft")}</span> : null}
+                    </div>
+                    <span>{finalReadingMinutes} 分钟阅读</span>
+                </div>
+            </article>
+        );
+        return preview ? editorialBody : <Link href={`/feed/${id}`} target="_blank" rel="noopener noreferrer" className="block min-w-0 w-full">{editorialBody}</Link>;
+    }
+
+    // =========================================================================
+    // 4. 拍立得拟物手账 (Polaroid Default) - 真实白边留白、微倾斜暗角与拟物温度
+    // =========================================================================
+    const polaroidBody = (
+        <div className="group my-3 break-inside-avoid rounded-2xl border border-black/10 bg-w p-3.5 shadow-sm hover:shadow-xl transition-all duration-300 dark:border-white/10 hover:-translate-y-1">
             {avatar ? (
-                <div className={styles.imageWrap}>
-                    <FeedCardImage src={avatar} variant={activeVariant} />
+                <div className="overflow-hidden rounded-xl border border-black/5 dark:border-white/5 bg-neutral-100 dark:bg-neutral-800">
+                    <FeedCardImage src={avatar} variant="default" />
                 </div>
             ) : null}
-            <div className={activeVariant === "editorial" ? "px-2 pb-2" : ""}>
-                {safeHashtags.length > 0 && (
-                    <div className="text-xs font-medium text-neutral-400 dark:text-neutral-500 mb-1.5 flex items-center gap-1.5 flex-wrap">
-                        {safeHashtags.map(({ name }, index) => (
-                            <span key={index}>#{name}</span>
+            <div className="px-1 pt-3 pb-1">
+                {safeHashtags.length > 0 ? (
+                    <div className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-1 flex items-center gap-1.5 flex-wrap">
+                        {safeHashtags.map(({ name }, i) => (
+                            <span key={i}>#{name}</span>
                         ))}
                     </div>
-                )}
-                <h1 className={styles.title}>{title}</h1>
-                <p className={`whitespace-pre-line break-words [overflow-wrap:anywhere] ${styles.summary} mt-2 ${activeVariant === "editorial" ? "mt-4 max-w-3xl" : ""}`}>{summary}</p>
-                <div className="flex items-center justify-between text-xs text-neutral-400 mt-3 pt-2.5 border-t border-black/5 dark:border-white/5">
-                    <div className="flex items-center gap-2">
-                        <span title={new Date(createdAt).toLocaleString()}>
-                            {createdAt === updatedAt ? timeago(createdAt) : t('feed_card.published$time', { time: timeago(createdAt) })}
-                        </span>
-                        {top === 1 && <span className="text-theme font-medium">· {t('article.top.title')}</span>}
-                        {draft === 1 && <span className="text-amber-500 font-medium">· {t("draft")}</span>}
-                        {listed === 0 && <span className="text-neutral-400 font-medium">· {t("unlisted")}</span>}
+                ) : null}
+                <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors line-clamp-2">
+                    {title}
+                </h2>
+                <p className="mt-1.5 line-clamp-3 text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                    {summary}
+                </p>
+                <div className="flex items-center justify-between text-[11px] text-neutral-400 mt-3 pt-2 border-t border-black/5 dark:border-white/5">
+                    <div className="flex items-center gap-1.5">
+                        <span>{timeago(createdAt)}</span>
+                        {top === 1 ? <span className="text-theme font-bold">· {t('article.top.title')}</span> : null}
+                        {draft === 1 ? <span className="text-amber-500 font-bold">· {t("draft")}</span> : null}
                     </div>
-                    <span className="inline-flex items-center gap-1 opacity-85">
-                        <i className="ri-time-line text-xs" />
-                        <span>{t('reading_time', { minutes: finalReadingMinutes, defaultValue: `${finalReadingMinutes} 分钟阅读` })}</span>
-                    </span>
+                    <span>{finalReadingMinutes} 分钟</span>
                 </div>
             </div>
         </div>
     );
 
-    return preview ? body : <Link href={`/feed/${id}`} target="_blank" rel="noopener noreferrer" className="block min-w-0 w-full">{body}</Link>;
+    return preview ? polaroidBody : <Link href={`/feed/${id}`} target="_blank" rel="noopener noreferrer" className="block min-w-0 w-full">{polaroidBody}</Link>;
 }

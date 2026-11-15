@@ -20,7 +20,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/music", icon: "ri-disc-line", label: "音廊" },
   { href: "/admin/files", icon: "ri-folder-image-line", label: "图床" },
   { href: "/admin/settings", icon: "ri-equalizer-line", label: "设置" },
-  { href: "/admin/ops", icon: "ri-heart-pulse-line", label: "运维" },
 ];
 
 export function AdminLayout({
