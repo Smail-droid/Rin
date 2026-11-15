@@ -738,6 +738,20 @@ export function AdminDashboardPage() {
                                   📌 置顶
                                 </span>
                               )}
+                              {(feed.password || feed.permission_mode === "password" || feed.permission_mode === "token") && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openPermissionForFeed(feed);
+                                  }}
+                                  className="px-1.5 py-0.2 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold border border-indigo-500/30 shrink-0 select-none flex items-center gap-0.5 hover:bg-indigo-500/20"
+                                  title="点击修改口令/密码权限"
+                                >
+                                  <i className="ri-lock-line text-[10px]" />
+                                  <span>口令锁</span>
+                                </button>
+                              )}
                               <Link
                                 href={`/feed/${feed.id}`}
                                 className="font-bold t-primary hover:text-theme transition truncate text-xs sm:text-sm"
@@ -1080,12 +1094,26 @@ export function AdminDashboardPage() {
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-black/5 dark:border-white/5 text-xs">
-              <Link
-                href={`/admin/writing/${editingTarget.id}`}
-                className="text-neutral-400 hover:text-theme transition"
-              >
-                前往完整写作工坊 ➔
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link
+                  href={`/admin/writing/${editingTarget.id}`}
+                  className="text-neutral-400 hover:text-theme transition"
+                >
+                  前往完整写作工坊 ➔
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = editingTarget;
+                    setEditingTarget(null);
+                    openPermissionForFeed(target);
+                  }}
+                  className="text-indigo-500 hover:underline flex items-center gap-1"
+                >
+                  <i className="ri-lock-line text-xs" />
+                  <span>管理访问口令</span>
+                </button>
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"

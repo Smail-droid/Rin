@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.7] - 2026-11-15
 
 ### Added
+- **Music Preview Decoupling (`playTemporaryTrack`)**: Previews in explore view now only stream audio for temporary listening, strictly prohibiting unwanted R2 uploads or permanent playlist insertion.
+- **Auto-Persist R2 Immediate Memory**: "收录时自动转存音廊" setting now persists immediately to localStorage on toggle without requiring manual config save.
+- **Integrated Admin Music Header**: Merged status card and tab switcher into a single dense row, eliminating large horizontal and vertical whitespace voids.
+- **Relocated Music Refresh Button**: Moved refresh button down into the list/grid toolbar right next to search and filters.
+- **Grid View In-Place Song Rename**: Fixed non-responsive edit button in album grid view by rendering inline edit input upon click.
+- **Smart Missing Cover Autofetch**: Displays missing cover count dynamically and 100% skips tracks that already have covers.
+- **Playlist Up/Down Reordering**: Added micro up/down reorder buttons to playlist rows for easy manual sorting.
+- **Tags Icon Correction (`admin-tags.tsx`)**: Replaced inappropriate green play icon with clean price tag icon.
+- **Dashboard Article Lock Badges & Integration**: Added password/token lock status badges in dashboard table rows and integrated direct password management into the quick-edit modal.
 - **In-Situ Aesthetic Studio (`InSituAestheticStudio`)**: Added on-the-fly front-of-house styling drawer mounted via `React.lazy` and `profile` gate (0 visitor bundle overhead). Enables instant live switching between 4 card layout variants, 8 curated atmospheric theme presets, waterfall columns (auto/2/3/4), spacing gaps (16/24/32px), card opacity steps, and day/night mode.
 - **Dark-Mode Contrast Guard (`applyThemeColor`)**: Added luminance detection to prevent black-on-black UI when selecting dark accents (e.g. Paper Ink `#27272a`) in dark mode, dynamically compensating to high-contrast silver white (`#e4e4e7`).
 - **Wired 4 Layout Variants to Homepage Feed Waterfall (`feeds.tsx`)**: Connected `siteConfig.feedCardVariant` directly into `feeds.tsx`, enabling real-time live morphing between Compact, Poster, Editorial, and Polaroid variants on the home stream.

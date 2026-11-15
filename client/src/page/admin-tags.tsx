@@ -688,8 +688,8 @@ export function AdminTagsPage() {
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 text-xs">
-                              <i className="ri-play-fill text-[10px]" />
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-theme/10 text-theme text-xs">
+                              <i className="ri-price-tag-3-line text-[11px]" />
                             </span>
                             <span
                               onClick={() => handleStartEdit(tag)}

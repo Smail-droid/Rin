@@ -47,6 +47,7 @@ export interface MusicPlayerContextType {
   setShowLyrics: (show: boolean) => void;
   setShowPlaylist: (show: boolean) => void;
   addTrack: (track: MusicTrack, playNow?: boolean) => void;
+  playTemporaryTrack: (track: MusicTrack) => void;
   removeTrack: (id: string | number) => void;
   setPlaylist: (tracks: MusicTrack[]) => void;
   clearPlaylist: () => void;

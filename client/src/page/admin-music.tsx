@@ -44,7 +44,20 @@ export function AdminMusicPage() {
   const [customStatus, setCustomStatus] = useState<"idle" | "done">("idle");
   const [openListSyncStatus, setOpenListSyncStatus] = useState<"idle" | "syncing" | "done">("idle");
   const [syncCount, setSyncCount] = useState<number>(0);
-  const [autoPersistR2, setAutoPersistR2] = useState<boolean>(true);
+  const [autoPersistR2, setAutoPersistR2State] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("rin_music_auto_persist_r2") !== "false";
+    } catch {
+      return true;
+    }
+  });
+
+  const setAutoPersistR2 = (val: boolean) => {
+    setAutoPersistR2State(val);
+    try {
+      localStorage.setItem("rin_music_auto_persist_r2", String(val));
+    } catch {}
+  };
   const [persistR2Status, setPersistR2Status] = useState<"idle" | "saving" | "done">("idle");
 
   // 音廊专属状态
@@ -493,7 +506,7 @@ export function AdminMusicPage() {
     setScanProgress(null);
   };
 
-  // 试听或收录
+  // 试听或收录 (试听模式绝不擅自转存R2、绝不永久篡改播放列表)
   const handleResolveAndPlay = async (item: GdSearchResultItem, playNow = true) => {
     setResolvingId(item.id);
     gdMusicService.setEndpoint(gdApi.trim());
@@ -501,6 +514,13 @@ export function AdminMusicPage() {
       const { track } = await gdMusicService.resolveTrackWithFallback(item, 320);
       if (!track || !track.url) return;
 
+      if (playNow) {
+        // 试听模式：仅载入临时试听音轨，绝对不写入播放列表，更不转存R2
+        player.playTemporaryTrack(track);
+        return;
+      }
+
+      // 显式收录模式：在开启自动转存时写入R2，并正式加入播放列表
       if (autoPersistR2 && track.url && !track.url.includes("/api/blob/")) {
         const res = await persistTrackToR2({
           url: track.url,
@@ -517,7 +537,7 @@ export function AdminMusicPage() {
         }
       }
 
-      player.addTrack(track, playNow);
+      player.addTrack(track, false);
     } catch {
     } finally {
       setResolvingId(null);
@@ -663,8 +683,8 @@ export function AdminMusicPage() {
         className="hidden"
       />
 
-      {/* 1. 顶部 Header & 容量资产胶囊 */}
-      <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* 1. 紧凑型顶部 Header & 视界中枢 (消除大面积空旷留白) */}
+      <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-theme/10 text-theme text-xl shadow-2xs">
             <i className="ri-disc-line" />
@@ -696,7 +716,41 @@ export function AdminMusicPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+        {/* 右侧：三大视界 Tab 切换 + 电台设置 + 保存配置 (紧密排布) */}
+        <div className="flex items-center gap-2.5 self-start xl:self-auto shrink-0 flex-wrap">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/5 dark:border-white/5 select-none text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setActiveTab("gallery")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+                activeTab === "gallery" ? "bg-w text-theme shadow-xs" : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+              }`}
+            >
+              <i className="ri-archive-line text-sm" />
+              <span>音廊资产 ({r2Files.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("playlist")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+                activeTab === "playlist" ? "bg-w text-theme shadow-xs" : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+              }`}
+            >
+              <i className="ri-play-list-line text-sm" />
+              <span>播放列表 ({player.playlist.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("explore")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+                activeTab === "explore" ? "bg-w text-theme shadow-xs" : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+              }`}
+            >
+              <i className="ri-compass-line text-sm" />
+              <span>曲库探索</span>
+            </button>
+          </div>
+
           {uploadQueue.uploadTasks.length > 0 && (
             <button
               type="button"
@@ -710,20 +764,10 @@ export function AdminMusicPage() {
             >
               <i className="ri-upload-2-line text-xs" />
               <span>
-                上传任务 ({uploadQueue.uploadStats.completed}/{uploadQueue.uploadStats.all})
+                上传 ({uploadQueue.uploadStats.completed}/{uploadQueue.uploadStats.all})
               </span>
             </button>
           )}
-
-          <button
-            type="button"
-            onClick={loadR2Files}
-            disabled={loadingR2}
-            className="p-2 rounded-xl border border-black/10 dark:border-white/10 text-neutral-500 hover:text-theme hover:bg-black/5 transition"
-            title="刷新音廊数据"
-          >
-            <i className={`ri-refresh-line text-sm ${loadingR2 ? "animate-spin" : ""}`} />
-          </button>
 
           <button
             type="button"
@@ -771,48 +815,6 @@ export function AdminMusicPage() {
         openListSyncStatus={openListSyncStatus}
         syncCount={syncCount}
       />
-
-      {/* 3. 核心三大视界大标签栏 */}
-      <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/5 dark:border-white/5 select-none w-fit">
-        <button
-          type="button"
-          onClick={() => setActiveTab("gallery")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
-            activeTab === "gallery"
-              ? "bg-w text-theme shadow-xs"
-              : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-          }`}
-        >
-          <i className="ri-archive-line text-sm" />
-          <span>音廊资产 ({r2Files.length})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("playlist")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
-            activeTab === "playlist"
-              ? "bg-w text-theme shadow-xs"
-              : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-          }`}
-        >
-          <i className="ri-play-list-line text-sm" />
-          <span>播放列表 ({player.playlist.length})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("explore")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
-            activeTab === "explore"
-              ? "bg-w text-theme shadow-xs"
-              : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-          }`}
-        >
-          <i className="ri-compass-line text-sm" />
-          <span>曲库探索</span>
-        </button>
-      </div>
 
       {/* 4. 视界 A: 音廊资产 */}
       {activeTab === "gallery" && (
@@ -879,6 +881,8 @@ export function AdminMusicPage() {
               setCoverInputUrl(file.pic || "");
             }}
             onTriggerUploadClick={() => uploadQueue.audioFilesInputRef.current?.click()}
+            onRefreshR2={loadR2Files}
+            loadingR2={loadingR2}
             playlist={player.playlist}
             currentTrack={player.currentTrack}
             isPlaying={player.isPlaying}

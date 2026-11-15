@@ -121,6 +121,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [showLyrics, setShowLyrics] = useState<boolean>(false);
   const [showPlaylist, setShowPlaylist] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [temporaryTrack, setTemporaryTrack] = useState<MusicTrack | null>(null);
 
   // 当后台配置的歌单从服务端或配置中心到达时，自动响应并更新播放列表 (兼容空歌单 [])
   useEffect(() => {
@@ -155,9 +156,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const currentTrack = useMemo(() => {
+    if (temporaryTrack) return temporaryTrack;
     if (!playlist || playlist.length === 0) return null;
     return playlist[currentTrackIndex] || playlist[0] || null;
-  }, [playlist, currentTrackIndex]);
+  }, [playlist, currentTrackIndex, temporaryTrack]);
 
   // 解析歌词
   const parsedLyrics = useMemo(() => {
@@ -178,6 +180,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   // 播放控制
   const play = useCallback((track?: MusicTrack) => {
+    setTemporaryTrack(null);
     if (track) {
       const existingIdx = playlist.findIndex((t) => t.id === track.id || t.url === track.url);
       if (existingIdx !== -1) {
@@ -280,6 +283,15 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("rin_music_playlist", JSON.stringify(tracks));
       void client.config.update("client", { "music.playlist": JSON.stringify(tracks) });
     } catch {}
+  }, []);
+
+  const playTemporaryTrack = useCallback((track: MusicTrack) => {
+    setTemporaryTrack(track);
+    setLoadError(null);
+    if (audioRef.current && track.url) {
+      audioRef.current.src = getPlayableAudioUrl(track.url);
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
   }, []);
 
   const addTrack = useCallback((track: MusicTrack, playNow = false) => {
@@ -449,6 +461,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         setShowLyrics,
         setShowPlaylist,
         addTrack,
+        playTemporaryTrack,
         removeTrack,
         setPlaylist,
         clearPlaylist,

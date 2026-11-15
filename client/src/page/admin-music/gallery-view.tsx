@@ -30,6 +30,8 @@ interface GalleryViewProps {
   onDeleteR2PhysicalFile: (file: R2MusicFileItem) => void;
   onOpenCoverModal: (file: R2MusicFileItem) => void;
   onTriggerUploadClick: () => void;
+  onRefreshR2?: () => void;
+  loadingR2?: boolean;
   playlist: MusicTrack[];
   currentTrack: MusicTrack | null;
   isPlaying: boolean;
@@ -63,17 +65,33 @@ export function GalleryView({
   onDeleteR2PhysicalFile,
   onOpenCoverModal,
   onTriggerUploadClick,
+  onRefreshR2,
+  loadingR2 = false,
   playlist,
   currentTrack,
   isPlaying,
   onPlayTrack,
   onPauseTrack,
 }: GalleryViewProps) {
+  const missingCoversCount = r2Files.filter((f) => !f.pic || f.pic.trim() === "").length;
+
   return (
     <>
       {/* 搜索与工具控制栏 */}
       <div className="p-3.5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 flex-1">
+          {onRefreshR2 && (
+            <button
+              type="button"
+              onClick={onRefreshR2}
+              disabled={loadingR2}
+              className="p-2 rounded-xl border border-black/10 dark:border-white/10 text-neutral-500 hover:text-theme hover:bg-black/5 dark:hover:bg-white/5 transition shrink-0"
+              title="刷新音廊数据"
+            >
+              <i className={`ri-refresh-line text-sm ${loadingR2 ? "animate-spin text-theme" : ""}`} />
+            </button>
+          )}
+
           <div className="relative flex-1 max-w-md">
             <i className="ri-search-line absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 text-sm" />
             <input
@@ -155,16 +173,22 @@ export function GalleryView({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap justify-between md:justify-end">
-          {/* 自动补全封面功能 */}
+          {/* 自动补全封面功能 (智能跳过已有封面) */}
           <button
             type="button"
             onClick={onAutoFetchAllMissingCovers}
-            disabled={autoFetchingAllCovers}
-            className="px-2.5 py-1.5 rounded-xl border border-theme/20 bg-theme/5 hover:bg-theme/10 text-theme text-xs font-semibold transition flex items-center gap-1"
-            title="自动为没有封面的歌曲在网络曲库中查找并保存封面"
+            disabled={autoFetchingAllCovers || missingCoversCount === 0}
+            className="px-2.5 py-1.5 rounded-xl border border-theme/20 bg-theme/5 hover:bg-theme/10 text-theme text-xs font-semibold transition flex items-center gap-1 disabled:opacity-50"
+            title={missingCoversCount === 0 ? "所有曲目均已拥有封面，自动跳过" : `仅为缺失封面的 ${missingCoversCount} 首曲目自动补全，已有封面自动跳过`}
           >
             {autoFetchingAllCovers ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-sparkling-line" />}
-            <span>{autoFetchingAllCovers ? "嗅探封面中..." : "自动补全封面"}</span>
+            <span>
+              {autoFetchingAllCovers
+                ? "嗅探封面中..."
+                : missingCoversCount === 0
+                ? "✓ 封面已全量就绪"
+                : `补全缺失封面 (${missingCoversCount})`}
+            </span>
           </button>
 
           {selectedR2Keys.size > 0 && (
@@ -323,28 +347,62 @@ export function GalleryView({
                   </div>
                 </div>
 
-                {/* 卡片下方文字信息 */}
-                <div className="mt-2.5 truncate select-none">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-bold t-primary block truncate flex-1" title={cleanDisplayTitle(file.displayName)}>
-                      {cleanDisplayTitle(file.displayName)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingR2Key(file.key);
-                        setEditingR2Name(cleanDisplayTitle(file.displayName));
-                      }}
-                      className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-theme transition"
-                      title="重命名歌曲"
-                    >
-                      <i className="ri-edit-line text-xs" />
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-neutral-400 mt-0.5">
-                    <span className="truncate">{cleanDisplayTitle(file.artist || "随心漫游")}</span>
-                    <span className="font-mono">{(file.size / (1024 * 1024)).toFixed(1)} MB</span>
-                  </div>
+                {/* 卡片下方文字信息与行内重命名 */}
+                <div className="mt-2.5 select-none">
+                  {editingR2Key === file.key ? (
+                    <div className="flex items-center gap-1.5 ani-show" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        value={editingR2Name}
+                        onChange={(e) => setEditingR2Name(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") onSaveRenameR2(file.key);
+                          if (e.key === "Escape") setEditingR2Key(null);
+                        }}
+                        autoFocus
+                        className="flex-1 rounded-lg border border-theme bg-w px-2 py-1 text-xs outline-none shadow-xs dark:bg-neutral-800"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onSaveRenameR2(file.key)}
+                        className="p-1 rounded-md bg-theme text-white text-xs hover:bg-theme-hover shrink-0"
+                        title="保存重命名"
+                      >
+                        <i className="ri-check-line" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingR2Key(null)}
+                        className="p-1 rounded-md bg-black/5 dark:bg-white/5 text-neutral-400 hover:text-neutral-600 text-xs shrink-0"
+                        title="取消"
+                      >
+                        <i className="ri-close-line" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-xs font-bold t-primary block truncate flex-1" title={cleanDisplayTitle(file.displayName)}>
+                          {cleanDisplayTitle(file.displayName)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingR2Key(file.key);
+                            setEditingR2Name(cleanDisplayTitle(file.displayName));
+                          }}
+                          className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-theme transition"
+                          title="重命名歌曲"
+                        >
+                          <i className="ri-edit-line text-xs" />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-neutral-400 mt-0.5">
+                        <span className="truncate">{cleanDisplayTitle(file.artist || "随心漫游")}</span>
+                        <span className="font-mono">{(file.size / (1024 * 1024)).toFixed(1)} MB</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             );

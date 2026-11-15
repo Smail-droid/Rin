@@ -301,27 +301,49 @@ export function PlaylistDataGrid({
                       />
                     </td>
 
-                    {/* 序号数字直接输入换位 */}
+                    {/* 序号数字直接输入换位 + 快捷上下移动 */}
                     <td className="py-2 px-2 text-center">
                       <div className="flex items-center justify-center gap-1">
-                        {isCur && isPlaying && <span className="text-theme font-bold">▶</span>}
-                        <input
-                          type="number"
-                          min={1}
-                          max={fullPlaylist.length}
-                          defaultValue={idx + 1}
-                          key={`${track.id}_${idx}`}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
+                        {isCur && isPlaying && <span className="text-theme font-bold text-xs">▶</span>}
+                        <div className="flex items-center gap-0.5">
+                          <input
+                            type="number"
+                            min={1}
+                            max={fullPlaylist.length}
+                            defaultValue={idx + 1}
+                            key={`${track.id}_${idx}`}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                onMoveTrackToIndex(idx, e.currentTarget.value);
+                              }
+                            }}
+                            onBlur={(e) => {
                               onMoveTrackToIndex(idx, e.currentTarget.value);
-                            }
-                          }}
-                          onBlur={(e) => {
-                            onMoveTrackToIndex(idx, e.currentTarget.value);
-                          }}
-                          className="w-10 text-center rounded-md bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme/40 focus:border-theme focus:bg-w text-xs font-mono font-bold outline-none transition py-0.5"
-                          title="输入数字后敲回车，直接调整到该序号并顺延"
-                        />
+                            }}
+                            className="w-10 text-center rounded-md bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme/40 focus:border-theme focus:bg-w text-xs font-mono font-bold outline-none transition py-0.5"
+                            title="输入数字后敲回车，直接调整到该序号并顺延"
+                          />
+                          <div className="flex flex-col">
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => onMoveTrackToIndex(idx, String(idx))}
+                              className="text-neutral-400 hover:text-theme disabled:opacity-20 leading-none"
+                              title="上移一位"
+                            >
+                              <i className="ri-arrow-up-s-fill text-[10px]" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === fullPlaylist.length - 1}
+                              onClick={() => onMoveTrackToIndex(idx, String(idx + 2))}
+                              className="text-neutral-400 hover:text-theme disabled:opacity-20 leading-none"
+                              title="下移一位"
+                            >
+                              <i className="ri-arrow-down-s-fill text-[10px]" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </td>
 
