@@ -34,7 +34,6 @@ const ROUTE_PRESETS: RouteContextPreset[] = [
             { label: "高密单行书签", component: "高密单行书签 (CompactFriendRow)", file: "client/src/page/friends.tsx" },
             { label: "推荐/申请弹窗", component: "申请弹窗 (AddFriendModal)", file: "client/src/page/friends.tsx" },
             { label: "编辑友链弹窗", component: "编辑弹窗 (EditFriendModal)", file: "client/src/page/friends.tsx" },
-            { label: "诞生初衷透镜", component: "初衷透镜 (OriginChronicleLens)", file: "client/src/components/origin-chronicle-lens.tsx" },
         ],
     },
     {

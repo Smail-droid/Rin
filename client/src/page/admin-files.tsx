@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
 import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
-import { OriginChronicleLens } from "../components/origin-chronicle-lens";
 import type { StorageFileItem } from "../api/client";
 
 function formatFileSize(bytes: number): string {
@@ -418,20 +417,9 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
             {readOnly && (
                 <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-black/10 dark:border-white/10">
                     <div>
-                        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight t-primary flex items-center gap-2 flex-wrap">
+                        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight t-primary flex items-center gap-2">
                             <span>📷</span>
                             <span>图床漫游 · 记忆画廊</span>
-                            <OriginChronicleLens
-                                slug="storage"
-                                pageTitle="R2 图床 · 媒体资产"
-                                description="基于 Cloudflare R2 全球对象存储的自托管高可用图床与多格式相册画廊。"
-                                highlights={[
-                                    "边缘原生 R2 对象存储，无冷启动高吞吐低成本",
-                                    "沉浸式大图画廊全屏翻图灯箱 (Lightbox Portal)",
-                                    "Markdown / HTML / BBCode / 原始直链 4 格式一键直拷",
-                                    "拖拽粘贴即传与剪贴板自动抓取",
-                                ]}
-                            />
                         </h1>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                             浏览全站图库与素材原图，点击图片或输入框即可快速复制多种格式链接

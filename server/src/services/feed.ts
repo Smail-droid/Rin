@@ -24,7 +24,6 @@ import { stripMarkdown } from "../utils/markdown";
 import { syncFeedAISummaryQueueState } from "./feed-ai-summary";
 import { bindTagToPost } from "./tag";
 import { clearFeedCache, clearFeedCollectionCaches } from "./clear-feed-cache";
-import { findChronicleBySlug, synthesizeOriginChronicle } from "../features/feed/origin-chronicle";
 export { clearFeedCache } from "./clear-feed-cache";
 
 // Lazy-loaded modules for WordPress import
@@ -293,64 +292,6 @@ export function FeedService(): Hono<{
             },
         });
     });
-
-    // GET /feed/origin-chronicle/:slug - 获取某个独立世界的诞生初衷开发纪事 (必须在 /:id 之前注册)
-    app.get('/origin-chronicle/:slug', async (c) => {
-        const db = c.get('db');
-        const slug = c.req.param('slug');
-        if (!slug) return c.json({ error: "Missing slug" }, 400);
-
-        const chronicle = await findChronicleBySlug(db, slug);
-        if (!chronicle) {
-            return c.json({ exists: false, feed: null });
-        }
-        return c.json({
-            exists: true,
-            feed: chronicle,
-            directUrl: `/feed/${chronicle.alias || chronicle.id}`,
-        });
-    });
-
-    // POST /feed/origin-chronicle - 自动编织并沉淀页面的开发手记与诞生纪事 (必须在 /:id 之前注册)
-    app.post('/origin-chronicle', adminOnly(async (c) => {
-        const db = c.get('db');
-        const serverConfig = c.get('serverConfig');
-        const env = c.get('env');
-        const cache = c.get('cache');
-        const uid = c.get('uid') || 1;
-
-        const body: any = await c.req.json().catch(() => ({}));
-        const slug = (body?.slug || "").trim();
-        const pageTitle = (body?.pageTitle || "").trim();
-        if (!slug || !pageTitle) {
-            return c.json({ error: "slug and pageTitle are required" }, 400);
-        }
-
-        try {
-            const result = await synthesizeOriginChronicle(
-                db,
-                serverConfig,
-                env,
-                cache,
-                {
-                    slug,
-                    pageTitle,
-                    description: body?.description,
-                    highlights: Array.isArray(body?.highlights) ? body.highlights : undefined,
-                    draft: Boolean(body?.draft),
-                    forceRegenerate: Boolean(body?.forceRegenerate),
-                },
-                uid
-            );
-
-            return c.json({
-                success: true,
-                ...result,
-            });
-        } catch (e: any) {
-            return c.json({ error: e.message || "Synthesize failed" }, 500);
-        }
-    }, { message: 'Permission denied', status: 403 }));
 
     // GET /feed/permission/:id - 获取文章权限配置 (admin only, 必须在 /:id 之前注册)
     app.get('/permission/:id', adminOnly(async (c) => {
