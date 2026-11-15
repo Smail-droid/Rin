@@ -1,7 +1,7 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { Helmet } from 'react-helmet';
 import { useTranslation } from "react-i18next";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Waiting } from "../components/loading";
 import { useConfirm } from "../components/dialog";
 import { client } from "../app/runtime";
@@ -37,14 +37,12 @@ export function HashtagsPage() {
     const { t } = useTranslation();
     const siteConfig = useSiteConfig();
     const profile = useContext(ProfileContext);
-    const [, setLocation] = useLocation();
     const { showConfirm, ConfirmUI } = useConfirm();
 
     const [hashtags, setHashtags] = useState<Hashtag[]>();
     const [sortBy, setSortBy] = useState<'latest' | 'popular'>('latest');
     const [showEmptyTags, setShowEmptyTags] = useState(false);
     const [isCleaning, setIsCleaning] = useState(false);
-    const [isWandering, setIsWandering] = useState(false);
     const [toastMessage, setToastMessage] = useState("");
 
     const [feedTagActions, setFeedTagActions] = useState<string[]>(() => {
@@ -127,28 +125,6 @@ export function HashtagsPage() {
                 } catch {}
             }
         );
-    };
-
-    // 全站随机漫游换一篇
-    const handleRandomHop = async () => {
-        if (isWandering) return;
-        setIsWandering(true);
-        try {
-            const res = await fetch("/api/feed/random");
-            if (res.ok) {
-                const data = await res.json();
-                if (data.feed?.url || data.feed?.id) {
-                    setLocation(data.feed.url || `/feed/${data.feed.id}`);
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                    return;
-                }
-            }
-            showToast("暂未找到可漫游的文章");
-        } catch {
-            showToast("漫游请求失败");
-        } finally {
-            setIsWandering(false);
-        }
     };
 
     // 过滤与排序
@@ -288,7 +264,7 @@ export function HashtagsPage() {
                                         href="/admin/tags"
                                         className="px-2.5 py-1 rounded-xl bg-white dark:bg-neutral-800 border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:text-theme hover:border-theme font-medium transition"
                                     >
-                                        <span>⚙️ 标签深度管理 ➔</span>
+                                        <span>标签深度管理 &rarr;</span>
                                     </Link>
                                 </div>
                             </div>
@@ -331,26 +307,8 @@ export function HashtagsPage() {
                         </div>
                     )}
 
-                    {/* 功能性动作标签与便签墙前导菜单 (Functional Action Capsules) */}
-                    <div className="wauto flex items-center gap-2.5 mt-6 mb-2 flex-wrap">
-                        <button
-                            type="button"
-                            onClick={handleRandomHop}
-                            disabled={isWandering}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-theme to-purple-600 text-white font-bold text-xs shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition cursor-pointer disabled:opacity-50"
-                            title="全站随机漫游换一篇随想阅读"
-                        >
-                            <i className={`ri-shuffle-line ${isWandering ? "animate-spin" : ""}`} />
-                            <span>{isWandering ? "漫游中..." : "全站随机漫游"}</span>
-                        </button>
-                        <span className="text-[11px] text-neutral-400 font-sans flex items-center gap-1">
-                            <i className="ri-information-line text-theme" />
-                            <span>单篇独家标签点击将<strong>直接送入正文</strong>，多篇标签点击进入聚合星云</span>
-                        </span>
-                    </div>
-
                     {/* Organic Scattered Gallery Tag Notes Wall (二次元彩色散落便签墙) */}
-                    <div className="wauto flex flex-wrap items-center justify-start gap-3 sm:gap-4 mt-4 pb-12">
+                    <div className="wauto flex flex-wrap items-center justify-start gap-3 sm:gap-4 mt-8 pb-12">
                         {sortedHashtags?.map((hashtag, index) => {
                             const rot = TAG_ROTATIONS[index % TAG_ROTATIONS.length];
                             const isSingleArticle = hashtag.feeds === 1 && Boolean(hashtag.singleFeedId);
@@ -366,10 +324,10 @@ export function HashtagsPage() {
                                 : `/hashtag/${encodeURIComponent(hashtag.name)}`;
 
                             const tooltip = isSingleArticle
-                                ? `包含 1 篇独家随想，点击直接直达正文阅读！`
+                                ? `包含 1 篇文章，点击直达正文`
                                 : isEmptyTag
-                                ? `当前未关联任何文章 (0篇)`
-                                : `包含 ${hashtag.feeds} 篇随想，点击查看星云列表`;
+                                ? `未关联文章 (0篇)`
+                                : `包含 ${hashtag.feeds} 篇文章，点击查看列表`;
 
                             return (
                                 <div
@@ -381,28 +339,11 @@ export function HashtagsPage() {
                                         className="inline-flex items-center gap-1.5 cursor-pointer"
                                         title={tooltip}
                                     >
-                                        <span className="opacity-70 text-xs flex items-center">
-                                            {isSingleArticle ? (
-                                                <i className="ri-file-text-line text-theme" />
-                                            ) : isEmptyTag ? (
-                                                <i className="ri-checkbox-blank-circle-line" />
-                                            ) : (
-                                                <i className="ri-price-tag-3-line" />
-                                            )}
-                                        </span>
+                                        <i className="ri-price-tag-3-line text-xs opacity-60" />
                                         <span className="font-bold">#{hashtag.name}</span>
-
-                                        {/* 单篇直接直达徽章 / 多篇数量徽标 */}
-                                        {isSingleArticle ? (
-                                            <span className="ml-0.5 rounded-full bg-black/10 dark:bg-white/10 px-1.5 py-0.2 text-[10px] font-mono font-bold flex items-center gap-0.5 text-theme">
-                                                <span>直达</span>
-                                                <i className="ri-arrow-right-up-line text-[10px]" />
-                                            </span>
-                                        ) : (
-                                            <span className="ml-0.5 rounded-full bg-black/10 dark:bg-white/10 px-1.5 py-0.2 text-[10px] font-mono">
-                                                {hashtag.feeds}
-                                            </span>
-                                        )}
+                                        <span className="ml-0.5 rounded-full bg-black/10 dark:bg-white/10 px-1.5 py-0.2 text-[10px] font-mono">
+                                            {hashtag.feeds}
+                                        </span>
                                     </Link>
 
                                     {/* 管理员模式下针对空标签的单项删除快捷叉 */}
