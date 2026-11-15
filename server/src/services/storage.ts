@@ -92,6 +92,7 @@ export function StorageService(): Hono {
         const body = await profileAsync(c, 'storage_parse', () => c.req.parseBody());
         const key = (body.key as string) || "";
         const file = (body.file || body.image || body.smfile) as File;
+        const customDir = (c.req.query('dir') || c.req.query('folder') || (body.dir as string) || (body.folder as string) || "").trim();
 
         if (!file || !(file instanceof File) || typeof file.arrayBuffer !== 'function') {
             return c.json({ success: false, error: "缺少有效的文件数据 (参数名支持 file, image, smfile)" }, 400);
@@ -114,7 +115,9 @@ export function StorageService(): Hono {
             fileBuffer
         ));
         const hash = buf2hex(hashArray);
-        const hashkey = cleanSuffix ? `${hash}.${cleanSuffix}` : hash;
+        const fileName = cleanSuffix ? `${hash}.${cleanSuffix}` : hash;
+        const cleanDir = customDir.replace(/[^a-zA-Z0-9_\-\/]/g, "").replace(/^\/+|\/+$/g, "");
+        const hashkey = cleanDir ? `${cleanDir}/${fileName}` : fileName;
 
         try {
             const origin = new URL(c.req.url).origin;
@@ -123,6 +126,7 @@ export function StorageService(): Hono {
                 success: true,
                 url: result.url,
                 key: hashkey,
+                dir: cleanDir || undefined,
                 name: file.name,
                 size: file.size,
                 contentType: file.type,
@@ -135,21 +139,42 @@ export function StorageService(): Hono {
         }
     });
 
-    // GET /storage/random - 随机图片 API (支持 302 重定向、纯文本 URL 或 JSON)
+    // GET /storage/random - 随机图片 API (支持指定目录过滤，如 ?dir=wallpapers 或 ?dir=backgrounds)
     app.get('/random', async (c: AppContext) => {
         const env = c.get('env');
+        const serverConfig = c.get('serverConfig');
         if (!env.R2_BUCKET) {
             return c.text('R2 bucket is not configured', 400);
         }
 
-        const prefix = c.req.query('dir') ?? c.req.query('prefix') ?? env.S3_FOLDER ?? '';
+        // 优先支持外部参数传入的专属目录 (?dir=wallpapers 或 ?folder=backgrounds)
+        let requestedDir = (c.req.query('dir') ?? c.req.query('folder') ?? '').trim();
+        if (!requestedDir) {
+            requestedDir = ((await serverConfig.get('storage.random_dir')) as string || '').trim();
+        }
+
+        const baseFolder: string = env.S3_FOLDER ?? 'images/';
+        let searchPrefix: string = baseFolder;
+        if (requestedDir) {
+            const cleanDir = requestedDir.replace(/[^a-zA-Z0-9_\-\/]/g, '').replace(/^\/+|\/+$/g, '');
+            searchPrefix = cleanDir.startsWith(baseFolder) ? `${cleanDir}/` : `${baseFolder}${cleanDir}/`;
+        }
+
         const format = c.req.query('type') ?? 'redirect';
 
         try {
-            const listing = await env.R2_BUCKET.list({
-                prefix,
+            let listing = await env.R2_BUCKET.list({
+                prefix: searchPrefix,
                 limit: 100,
             });
+
+            // 若专属目录暂无图片且指定了子目录，自动平滑兜底回退至全站媒体桶
+            if (listing.objects.length === 0 && searchPrefix !== baseFolder) {
+                listing = await env.R2_BUCKET.list({
+                    prefix: baseFolder,
+                    limit: 100,
+                });
+            }
 
             const imageObjects = listing.objects.filter(obj => {
                 const ext = obj.key.split('.').pop()?.toLowerCase() || '';
@@ -173,6 +198,7 @@ export function StorageService(): Hono {
                     success: true,
                     url: publicUrl,
                     key: picked.key,
+                    dir: requestedDir || undefined,
                     size: picked.size,
                     uploaded: picked.uploaded.toISOString(),
                 });

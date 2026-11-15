@@ -867,7 +867,7 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        const cmd = `curl -F "file=@$filepath" "${typeof window !== "undefined" ? window.location.origin : ""}/api/storage/upload?token=sk-7dd8-18e341d3b1c51710"`;
+                                        const cmd = `curl -F "file=@$filepath" "${typeof window !== "undefined" ? window.location.origin : ""}/api/storage/upload?token=sk-7dd8-18e341d3b1c51710&dir=posts"`;
                                         navigator.clipboard.writeText(cmd);
                                         showToast("✓ Typora 上传命令已复制到剪贴板！");
                                     }}
@@ -877,10 +877,10 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                 </button>
                             </div>
                             <p className="text-[11px] text-neutral-400">
-                                打开 Typora 设置 → 图像 → 上传服务选择 <code>Custom Command</code>，填入命令：
+                                打开 Typora 设置 → 图像 → 上传服务选择 <code>Custom Command</code>，填入命令 (支持 <code>&dir=目录名</code> 自动归类)：
                             </p>
                             <pre className="p-2.5 rounded-lg bg-black/5 dark:bg-black/40 font-mono text-[11px] text-neutral-800 dark:text-neutral-200 overflow-x-auto whitespace-pre-wrap break-all select-all">
-                                {`curl -F "file=@$filepath" "${typeof window !== "undefined" ? window.location.origin : ""}/api/storage/upload?token=sk-7dd8-18e341d3b1c51710"`}
+                                {`curl -F "file=@$filepath" "${typeof window !== "undefined" ? window.location.origin : ""}/api/storage/upload?token=sk-7dd8-18e341d3b1c51710&dir=posts"`}
                             </pre>
                         </div>
 
@@ -891,36 +891,39 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                 <span>PicGo / Web 图床插件配置规范</span>
                             </span>
                             <div className="space-y-1 font-mono text-[11px] bg-black/5 dark:bg-black/40 p-2.5 rounded-lg">
-                                <div><strong className="text-neutral-400">API URL:</strong> <span className="text-theme">{typeof window !== "undefined" ? window.location.origin : ""}/api/storage/upload</span></div>
+                                <div><strong className="text-neutral-400">API URL:</strong> <span className="text-theme">{typeof window !== "undefined" ? window.location.origin : ""}/api/storage/upload?dir=posts</span></div>
                                 <div><strong className="text-neutral-400">POST 参数名:</strong> file (支持 file, image, smfile)</div>
                                 <div><strong className="text-neutral-400">Header:</strong> Authorization: Bearer sk-7dd8-18e341d3b1c51710</div>
                                 <div><strong className="text-neutral-400">JSON 路径:</strong> url 或 data.url</div>
                             </div>
                         </div>
 
-                        {/* 3. 全局随机图片 API */}
+                        {/* 3. 全局与指定目录随机图片 API */}
                         <div className="p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-2">
                             <div className="flex items-center justify-between">
                                 <span className="font-bold text-xs t-primary flex items-center gap-1.5">
                                     <i className="ri-shuffle-line text-theme" />
-                                    <span>随机图片 API 接口 (适合全站背景/论坛签名/外部引用)</span>
+                                    <span>随机图片 API 接口 (支持指定专属壁纸/封面目录)</span>
                                 </span>
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        const url = `${typeof window !== "undefined" ? window.location.origin : ""}/api/storage/random`;
+                                        const url = `${typeof window !== "undefined" ? window.location.origin : ""}/api/storage/random?dir=wallpapers`;
                                         navigator.clipboard.writeText(url);
-                                        showToast("✓ 随机图片 API 链接已复制！");
+                                        showToast("✓ 壁纸专属随机图链接已复制！");
                                     }}
                                     className="px-2 py-0.5 rounded-md bg-theme/15 text-theme text-[11px] font-bold hover:bg-theme/25 transition cursor-pointer"
                                 >
-                                    复制链接
+                                    复制壁纸接口
                                 </button>
                             </div>
+                            <p className="text-[11px] text-neutral-400">
+                                传入 <code>?dir=目录名</code> 可彻底隔离文章插图，仅从你专门收集的壁纸或背景目录中随机抽取：
+                            </p>
                             <div className="space-y-1 font-mono text-[11px] bg-black/5 dark:bg-black/40 p-2.5 rounded-lg">
-                                <div><strong className="text-neutral-400">直接重定向 (302):</strong> <code className="text-theme">{typeof window !== "undefined" ? window.location.origin : ""}/api/storage/random</code></div>
-                                <div><strong className="text-neutral-400">返回纯文本 URL:</strong> <code className="text-neutral-400">{typeof window !== "undefined" ? window.location.origin : ""}/api/storage/random?type=url</code></div>
-                                <div><strong className="text-neutral-400">返回完整 JSON:</strong> <code className="text-neutral-400">{typeof window !== "undefined" ? window.location.origin : ""}/api/storage/random?type=json</code></div>
+                                <div><strong className="text-neutral-400">精选壁纸专属随机:</strong> <code className="text-theme">{typeof window !== "undefined" ? window.location.origin : ""}/api/storage/random?dir=wallpapers</code></div>
+                                <div><strong className="text-neutral-400">封面背景专属随机:</strong> <code className="text-theme">{typeof window !== "undefined" ? window.location.origin : ""}/api/storage/random?dir=backgrounds</code></div>
+                                <div><strong className="text-neutral-400">纯文本直链模式:</strong> <code className="text-neutral-400">{typeof window !== "undefined" ? window.location.origin : ""}/api/storage/random?dir=wallpapers&type=url</code></div>
                             </div>
                         </div>
                     </div>

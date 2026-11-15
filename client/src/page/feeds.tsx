@@ -1440,15 +1440,31 @@ export function FeedsPage() {
         updateTagsConfig({ customOrder: nextOrder });
     };
 
-    // 首页展示数量预设：一步到位，点击 4个/6个/8个/12个/全部 时，直接将前 N 个标签置为开启，其余置为隐藏
+    // 首页展示数量预设：一步到位，点击 4个/6个/8个/12个/全部 时，严格根据当前表格真实排序，直接将前 N 个置为开启，其余置为隐藏
     const handleSelectTagLimit = (val: number | "all") => {
         if (val === "all") {
             updateTagsConfig({ limit: "all", hiddenIds: [] });
-        } else {
-            const nextHidden = tagOrderList.slice(val);
-            updateTagsConfig({ limit: val, hiddenIds: nextHidden });
+            return;
         }
+        const targetCount = Math.max(1, Math.min(val, orderedTagObjects.length));
+        const keepIds = new Set(orderedTagObjects.slice(0, targetCount).map((t) => t.id));
+        const nextHidden = orderedTagObjects.filter((t) => !keepIds.has(t.id)).map((t) => t.id);
+        updateTagsConfig({ limit: val, hiddenIds: nextHidden });
     };
+
+    // 历史缓存自动纠偏自愈：若本地 localStorage 残留了历史旧版本的 3 个开启脏数据，自动按当前 limit 校准
+    useEffect(() => {
+        if (!orderedTagObjects || orderedTagObjects.length === 0) return;
+        const currentLimit = homepageTagsConfig.limit;
+        if (typeof currentLimit === "number") {
+            const enabledCount = orderedTagObjects.filter((t) => !homepageTagsConfig.hiddenIds.includes(t.id)).length;
+            if (enabledCount === 3 && currentLimit !== 3) {
+                const keepIds = new Set(orderedTagObjects.slice(0, currentLimit).map((t) => t.id));
+                const newHidden = orderedTagObjects.filter((t) => !keepIds.has(t.id)).map((t) => t.id);
+                updateTagsConfig({ hiddenIds: newHidden });
+            }
+        }
+    }, [orderedTagObjects.length]);
 
     // 全选：所有标签开启展示
     const handleSelectAllTags = () => {
