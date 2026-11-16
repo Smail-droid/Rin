@@ -61,7 +61,16 @@ export function AdminDashboardPage() {
   const [pageSize, setPageSize] = useState<number>(10);
   const [jumpPageInput, setJumpPageInput] = useState<string>("");
 
-  // 封面更换状态
+  // 排序字段与方向 (表头点击切换正反序)
+  const [sortField, setSortField] = useState<"createdAt" | "id" | "title" | "pv">("createdAt");
+  const [sortDirection, setSortDirection] = useState<"desc" | "asc">("desc");
+
+  // 行内标题重命名状态
+  const [inlineEditingFeedId, setInlineEditingFeedId] = useState<number | null>(null);
+  const [inlineTitleValue, setInlineTitleValue] = useState("");
+
+  // AI 导读重新生成中状态
+  const [regeneratingAiFeedId, setRegeneratingAiFeedId] = useState<number | null>(null);
   const [coverTarget, setCoverTarget] = useState<any | null>(null);
   const [newCoverUrl, setNewCoverUrl] = useState<string>("");
   const [isUploadingCover, setIsUploadingCover] = useState<boolean>(false);
@@ -169,14 +178,27 @@ export function AdminDashboardPage() {
       );
     }
 
-    // 默认置顶排前，更新时间倒序
     list.sort((a, b) => {
+      // 默认置顶排前
       if ((b.top || 0) !== (a.top || 0)) return (b.top || 0) - (a.top || 0);
-      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+
+      let valA: any = a[sortField];
+      let valB: any = b[sortField];
+
+      if (sortField === "createdAt") {
+        valA = new Date(a.createdAt || 0).getTime();
+        valB = new Date(b.createdAt || 0).getTime();
+      }
+
+      if (typeof valA === "string") {
+        return sortDirection === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+
+      return sortDirection === "asc" ? (valA || 0) - (valB || 0) : (valB || 0) - (valA || 0);
     });
 
     return list;
-  }, [allFeeds, statusFilter, searchQuery]);
+  }, [allFeeds, statusFilter, searchQuery, sortField, sortDirection, permissionsMap]);
 
   // 分页计算
   const totalPages = Math.max(1, Math.ceil(filteredFeeds.length / pageSize));
@@ -220,7 +242,93 @@ export function AdminDashboardPage() {
     }
   };
 
-  // 单篇删除
+  // 表头排序切换
+  const toggleSort = (field: "createdAt" | "id" | "title" | "pv") => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "desc" ? "asc" : "desc"));
+    } else {
+      setSortField(field);
+      setSortDirection(field === "createdAt" || field === "pv" ? "desc" : "asc");
+    }
+  };
+
+  // 原地切换 公开 ↔ 草稿
+  const handleToggleDraft = async (feed: any) => {
+    const nextDraft = feed.draft === 1 ? 0 : 1;
+    try {
+      const { error } = await client.feed.update(feed.id, {
+        draft: nextDraft === 1,
+        listed: feed.listed !== 0,
+      });
+      if (error) {
+        showAlert(typeof error === "string" ? error : (error.value as string) || "状态切换失败");
+      } else {
+        setAllFeeds((prev) =>
+          prev.map((f) => (f.id === feed.id ? { ...f, draft: nextDraft } : f))
+        );
+        setStats((prev) => ({
+          ...prev,
+          feedsPublished: nextDraft === 0 ? prev.feedsPublished + 1 : Math.max(0, prev.feedsPublished - 1),
+          feedsDraft: nextDraft === 1 ? prev.feedsDraft + 1 : Math.max(0, prev.feedsDraft - 1),
+        }));
+        showAlert(`文章 #${feed.id} 状态已变更为：${nextDraft === 1 ? "草稿箱" : "已公开"}`);
+      }
+    } catch (e: any) {
+      showAlert(e.message || "切换失败");
+    }
+  };
+
+  // 重新触发 AI 智能导读提炼
+  const handleRegenerateAISummary = async (feed: any) => {
+    setRegeneratingAiFeedId(feed.id);
+    try {
+      const { data, error } = await client.config.runAIPipeline({
+        content: feed.content || feed.summary || "",
+      });
+      if (error) {
+        showAlert(String(error.value || "AI导读生成失败"));
+      } else if (data && data.summary) {
+        await client.feed.update(feed.id, {
+          summary: data.summary,
+          listed: feed.listed !== 0,
+        });
+        setAllFeeds((prev) =>
+          prev.map((f) => (f.id === feed.id ? { ...f, ai_summary: data.summary, summary: data.summary, ai_summary_status: "done" } : f))
+        );
+        showAlert(`文章 #${feed.id} AI 智能导读重新生成成功！`);
+      }
+    } catch (e: any) {
+      showAlert(e.message || "生成异常");
+    } finally {
+      setRegeneratingAiFeedId(null);
+    }
+  };
+
+  // 行内标题重命名保存
+  const handleSaveInlineTitle = async (id: number) => {
+    if (!inlineTitleValue.trim()) {
+      setInlineEditingFeedId(null);
+      return;
+    }
+    const targetFeed = allFeeds.find((f) => f.id === id);
+    try {
+      const { error } = await client.feed.update(id, {
+        title: inlineTitleValue.trim(),
+        listed: targetFeed?.listed !== 0,
+      });
+      if (error) {
+        showAlert(String(error.value || "重命名失败"));
+      } else {
+        setAllFeeds((prev) =>
+          prev.map((f) => (f.id === id ? { ...f, title: inlineTitleValue.trim() } : f))
+        );
+        setInlineEditingFeedId(null);
+        showAlert("文章标题已成功更新！");
+      }
+    } catch (e: any) {
+      showAlert(e.message || "重命名异常");
+    }
+  };
   const handleDeleteFeed = (feed: any) => {
     showConfirm(
       "删除文章确认",
@@ -550,6 +658,31 @@ export function AdminDashboardPage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* 顶栏紧凑分页微控制器 */}
+            <div className="flex items-center gap-1 font-mono text-xs select-none">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="h-7 w-7 rounded-lg border border-black/10 dark:border-white/10 flex items-center justify-center text-neutral-500 hover:text-theme disabled:opacity-30 hover:bg-black/5 dark:hover:bg-white/5 transition"
+                title="上一页"
+              >
+                <i className="ri-arrow-left-s-line" />
+              </button>
+              <span className="px-1.5 py-1 rounded-lg bg-black/[0.03] dark:bg-white/[0.03] text-neutral-700 dark:text-neutral-300 font-bold">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="h-7 w-7 rounded-lg border border-black/10 dark:border-white/10 flex items-center justify-center text-neutral-500 hover:text-theme disabled:opacity-30 hover:bg-black/5 dark:hover:bg-white/5 transition"
+                title="下一页"
+              >
+                <i className="ri-arrow-right-s-line" />
+              </button>
+            </div>
+
             <div className="relative flex-1 sm:w-64">
               <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
               <input
@@ -613,12 +746,51 @@ export function AdminDashboardPage() {
                     className="accent-theme cursor-pointer"
                   />
                 </th>
-                <th className="py-3 px-2 w-16 text-center">ID</th>
-                <th className="py-3 px-3">文章标题与摘要</th>
+                <th
+                  onClick={() => toggleSort("id")}
+                  className="py-3 px-2 w-16 text-center cursor-pointer hover:text-theme transition"
+                  title="点击切换 ID 升降序"
+                >
+                  <span className="inline-flex items-center gap-0.5">
+                    ID
+                    {sortField === "id" ? (
+                      <i className={sortDirection === "asc" ? "ri-arrow-up-s-fill text-theme" : "ri-arrow-down-s-fill text-theme"} />
+                    ) : (
+                      <i className="ri-arrow-up-down-line opacity-30 text-[10px]" />
+                    )}
+                  </span>
+                </th>
+                <th
+                  onClick={() => toggleSort("title")}
+                  className="py-3 px-3 cursor-pointer hover:text-theme transition"
+                  title="点击按标题字母排序"
+                >
+                  <span className="inline-flex items-center gap-0.5">
+                    文章标题与摘要
+                    {sortField === "title" ? (
+                      <i className={sortDirection === "asc" ? "ri-arrow-up-s-fill text-theme" : "ri-arrow-down-s-fill text-theme"} />
+                    ) : (
+                      <i className="ri-arrow-up-down-line opacity-30 text-[10px]" />
+                    )}
+                  </span>
+                </th>
                 <th className="py-3 px-3 w-24 text-center">状态</th>
                 <th className="py-3 px-3 w-28 text-center">访问权限</th>
                 <th className="py-3 px-3 w-28 text-center">AI导读</th>
-                <th className="py-3 px-3 w-32">更新时间</th>
+                <th
+                  onClick={() => toggleSort("createdAt")}
+                  className="py-3 px-3 w-32 cursor-pointer hover:text-theme transition"
+                  title="点击切换时间最新/最旧排序"
+                >
+                  <span className="inline-flex items-center gap-0.5">
+                    更新时间
+                    {sortField === "createdAt" ? (
+                      <i className={sortDirection === "asc" ? "ri-arrow-up-s-fill text-theme" : "ri-arrow-down-s-fill text-theme"} />
+                    ) : (
+                      <i className="ri-arrow-up-down-line opacity-30 text-[10px]" />
+                    )}
+                  </span>
+                </th>
                 <th className="py-3 px-3 text-right pr-4 w-52">操作</th>
               </tr>
             </thead>
@@ -705,34 +877,63 @@ export function AdminDashboardPage() {
                           </div>
 
                           <div className="truncate flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 truncate">
-                              {isTop && (
-                                <span className="px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold border border-amber-500/30 shrink-0 select-none">
-                                  📌 置顶
-                                </span>
-                              )}
-                              {(feed.password || feed.permission_mode === "password" || feed.permission_mode === "token") && (
+                            {inlineEditingFeedId === feed.id ? (
+                              <div className="flex items-center gap-1.5 my-1" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="text"
+                                  value={inlineTitleValue}
+                                  onChange={(e) => setInlineTitleValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleSaveInlineTitle(feed.id);
+                                    if (e.key === "Escape") setInlineEditingFeedId(null);
+                                  }}
+                                  autoFocus
+                                  className="flex-1 rounded-lg border border-theme bg-w px-2 py-1 text-xs font-bold outline-none shadow-xs dark:bg-neutral-800"
+                                />
                                 <button
                                   type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openPermissionForFeed(feed);
-                                  }}
-                                  className="px-1.5 py-0.2 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold border border-indigo-500/30 shrink-0 select-none flex items-center gap-0.5 hover:bg-indigo-500/20"
-                                  title="点击修改口令/密码权限"
+                                  onClick={() => handleSaveInlineTitle(feed.id)}
+                                  className="p-1 rounded-md bg-theme text-white text-xs hover:bg-theme-hover shrink-0"
+                                  title="保存标题"
                                 >
-                                  <i className="ri-lock-line text-[10px]" />
-                                  <span>口令锁</span>
+                                  <i className="ri-check-line" />
                                 </button>
-                              )}
-                              <Link
-                                href={`/feed/${feed.id}`}
-                                className="font-bold t-primary hover:text-theme transition truncate text-xs sm:text-sm"
-                                title={feed.title}
-                              >
-                                {feed.title || "无标题文章"}
-                              </Link>
-                            </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setInlineEditingFeedId(null)}
+                                  className="p-1 rounded-md bg-black/5 dark:bg-white/5 text-neutral-400 hover:text-neutral-600 text-xs shrink-0"
+                                  title="取消"
+                                >
+                                  <i className="ri-close-line" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 truncate group/title">
+                                {isTop && (
+                                  <span className="px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold border border-amber-500/30 shrink-0 select-none">
+                                    📌 置顶
+                                  </span>
+                                )}
+                                <Link
+                                  href={`/feed/${feed.id}`}
+                                  className="font-bold t-primary hover:text-theme transition truncate text-xs sm:text-sm"
+                                  title={feed.title}
+                                >
+                                  {feed.title || "无标题文章"}
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setInlineEditingFeedId(feed.id);
+                                    setInlineTitleValue(feed.title || "");
+                                  }}
+                                  className="opacity-0 group-hover/title:opacity-100 text-neutral-400 hover:text-theme transition p-0.5"
+                                  title="点击快速重命名标题"
+                                >
+                                  <i className="ri-edit-line text-xs" />
+                                </button>
+                              </div>
+                            )}
                             <p className="text-xs text-neutral-400 truncate mt-0.5">
                               {feed.summary || "暂无摘要描述"}
                             </p>
@@ -740,15 +941,21 @@ export function AdminDashboardPage() {
                         </div>
                       </td>
 
-                      {/* 状态徽章 */}
+                      {/* 状态徽章 (点击原地一键切换 公开 ↔ 草稿) */}
                       <td className="py-2.5 px-3 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded-full font-bold text-xs ${
-                          isDraft
-                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        }`}>
-                          {isDraft ? "草稿" : "已公开"}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleDraft(feed)}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold text-xs transition cursor-pointer select-none hover:scale-105 active:scale-95 ${
+                            isDraft
+                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/20"
+                              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20"
+                          }`}
+                          title={isDraft ? "当前为草稿，点击立即转为公开" : "当前已公开，点击立即下架为草稿"}
+                        >
+                          <span className={`h-1.5 w-1.5 rounded-full ${isDraft ? "bg-amber-500" : "bg-emerald-500"}`} />
+                          <span>{isDraft ? "草稿" : "已公开"}</span>
+                        </button>
                       </td>
 
                       {/* 访问权限微光状态胶囊 (可直接点击呼出抽屉快速配置) */}
@@ -795,15 +1002,32 @@ export function AdminDashboardPage() {
                         })()}
                       </td>
 
-                      {/* AI 导读 */}
+                      {/* AI 导读 (点击由 AI 智能重新生成摘要) */}
                       <td className="py-2.5 px-3 text-center font-mono">
-                        {feed.ai_summary ? (
-                          <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xs font-bold">
-                            已完成
+                        <button
+                          type="button"
+                          onClick={() => handleRegenerateAISummary(feed)}
+                          disabled={regeneratingAiFeedId === feed.id}
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold transition cursor-pointer select-none hover:scale-105 active:scale-95 ${
+                            feed.ai_summary || feed.ai_summary_status === "done"
+                              ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 border border-purple-500/20"
+                              : "bg-black/5 dark:bg-white/5 text-neutral-400 hover:text-theme"
+                          }`}
+                          title="点击由 AI 智能重新提炼核心导读摘要"
+                        >
+                          {regeneratingAiFeedId === feed.id ? (
+                            <i className="ri-loader-4-line animate-spin text-[10px]" />
+                          ) : (
+                            <i className="ri-sparkling-fill text-[10px]" />
+                          )}
+                          <span>
+                            {regeneratingAiFeedId === feed.id
+                              ? "生成中..."
+                              : feed.ai_summary || feed.ai_summary_status === "done"
+                              ? "已就绪"
+                              : "生成导读"}
                           </span>
-                        ) : (
-                          <span className="text-xs text-neutral-400">待提取</span>
-                        )}
+                        </button>
                       </td>
 
                       {/* 更新时间 */}
