@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 import { useMusicPlayer } from "./music-player-context";
 
@@ -67,6 +68,7 @@ function KawaiiMusicNoteSvg({
 }
 
 export function GlobalMusicPlayer() {
+  const [location] = useLocation();
   const siteConfig = useSiteConfig();
   const {
     currentTrack,
@@ -314,6 +316,11 @@ export function GlobalMusicPlayer() {
       localStorage.setItem("rin_music_expanded", "false");
     } catch {}
   };
+
+  // 在音廊专属工作台中，自动由 MHub/Navidrome 底部常驻底座接管，避免悬浮气泡重叠 (在所有 Hooks 之后返回)
+  if (location.startsWith("/admin/music")) {
+    return null;
+  }
 
   if (!siteConfig.musicEnabled && playlist.length === 0) {
     return null;

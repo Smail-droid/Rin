@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet";
 import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { useMusicPlayer } from "../components/music-player/music-player-context";
+import { BottomPlayerDock } from "../components/music-player/bottom-player-dock";
 import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
 import {
   gdMusicService,
@@ -654,7 +655,7 @@ export function AdminMusicPage() {
   };
 
   return (
-    <div className="flex w-full flex-col gap-4 ani-show">
+    <div className="flex w-full flex-col gap-4 ani-show pb-28">
       <Helmet><title>{`音廊 · 云端音乐资产中枢 - ${siteConfig.name}`}</title></Helmet>
 
       {/* 隐藏的文件输入组件 */}
@@ -994,6 +995,9 @@ export function AdminMusicPage() {
           title="挑选专辑封面图片"
         />
       )}
+
+      {/* 6. MHub & Navidrome 风格：底部常驻一体化播放底座 */}
+      <BottomPlayerDock />
     </div>
   );
 }

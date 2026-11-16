@@ -249,7 +249,11 @@ export function GalleryView({
             return (
               <div
                 key={file.key}
-                className="group relative rounded-2xl bg-w border border-black/10 dark:border-white/10 p-2.5 flex flex-col hover:border-theme/40 hover:shadow-lg transition-all"
+                className={`group relative rounded-2xl bg-w border p-2.5 flex flex-col transition-all ${
+                  isCur
+                    ? "border-theme ring-2 ring-theme/30 shadow-lg"
+                    : "border-black/10 dark:border-white/10 hover:border-theme/40 hover:shadow-lg"
+                }`}
               >
                 {/* 正方形封面区域 */}
                 <div className="aspect-square w-full rounded-xl overflow-hidden bg-neutral-900 relative flex items-center justify-center shadow-inner select-none">
@@ -261,6 +265,15 @@ export function GalleryView({
                     />
                   ) : (
                     <VinylDiscArt isPlaying={isPlayingThis} className="h-full w-full" />
+                  )}
+
+                  {/* 正在播放时的 MHub / Navidrome 风格音频律动跳动条 */}
+                  {isPlayingThis && (
+                    <div className="absolute top-2 right-2 z-20 px-2 py-1 rounded-full bg-black/70 backdrop-blur-md flex items-center gap-0.5 shadow-sm border border-white/20">
+                      <span className="w-0.5 h-2.5 bg-theme rounded-full animate-bounce [animation-delay:0ms]" />
+                      <span className="w-0.5 h-3.5 bg-theme rounded-full animate-bounce [animation-delay:150ms]" />
+                      <span className="w-0.5 h-2 bg-theme rounded-full animate-bounce [animation-delay:300ms]" />
+                    </div>
                   )}
 
                   {/* 悬浮半透明控制层 */}
