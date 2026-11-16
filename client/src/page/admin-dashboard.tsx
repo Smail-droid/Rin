@@ -284,9 +284,15 @@ export function AdminDashboardPage() {
     try {
       const { data, error } = await client.config.runAIPipeline({
         content: feed.content || feed.summary || "",
+        stages: ["summary"],
       });
-      if (error) {
-        showAlert(String(error.value || "AI导读生成失败"));
+      if (error || (data && !data.success && data.error)) {
+        const rawErr = String(error?.value || data?.error || "");
+        if (rawErr.includes("User location is not supported") || rawErr.includes("FAILED_PRECONDITION") || rawErr.includes("Google Gemini 地区限制")) {
+          showAlert("⚠️ Google Gemini 地区限制：当前服务端 IP（如中国香港/大陆或部分边缘节点）不受 Google 官方直接支持。\n\n解决办法：请前往「后台设置 -> 扩展服务 -> AI设置」：\n1. 将 Provider 切换为原生免翻墙的 Cloudflare Workers AI（如 llama-3.1-8b / deepseek-coder）或 DeepSeek；\n2. 或为 Gemini 配置可用的反向代理/中转 API URL。");
+        } else {
+          showAlert(rawErr || "AI导读生成失败");
+        }
       } else if (data && data.summary) {
         await client.feed.update(feed.id, {
           summary: data.summary,

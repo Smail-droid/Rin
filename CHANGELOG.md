@@ -43,6 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Physical Removal of JeikCode Copilot**: Completely deleted `client/src/components/jeikcode-copilot.tsx` (834 lines) and unmounted from `App.tsx`, eliminating hardcoded LAN IP, token leak risk, and floating widget, instantly cutting 24.5 kB from the entry chunk.
 - **Severed External Proxy Scrapers in Friends**: Removed brittle 3rd-party CORS proxy chains (`corsproxy.io`, `microlink.io`, FileReader base64) from `friends.tsx`, standardizing on native URL fields and Cloudflare Worker edge inspection.
 
+### Fixed
+- **AI Summary Pipeline Scoping & Region Error Diagnostics**: Explicitly scoped dashboard AI summary calls to the `summary` stage (preventing unnecessary tech/format pipeline passes), caught pipeline exceptions with `processAIError`, and provided actionable resolution instructions when Google Gemini returns 400 region restrictions (`User location is not supported`).
+
 ---
 
 ### Added

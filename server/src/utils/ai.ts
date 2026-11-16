@@ -370,35 +370,44 @@ export async function runAIPipelineProcess(
     let processedContent = content;
     let summaryText = "";
 
-    // 阶段 1: 技术教程与命令提炼
-    if (stages.includes("tech")) {
-        const prompt = (config.prompt_tech && config.prompt_tech.trim().length > 0)
-            ? config.prompt_tech.trim()
-            : (DEFAULT_PROMPT_TECH as string);
-        const res = await callAIOnce(env, config, prompt, processedContent);
-        if (res) processedContent = res;
-    }
-
-    // 阶段 2: 文章内容直接排版整理
-    if (stages.includes("format")) {
-        const prompt = (config.prompt_format && config.prompt_format.trim().length > 0)
-            ? config.prompt_format.trim()
-            : (DEFAULT_PROMPT_FORMAT as string);
-        const res = await callAIOnce(env, config, prompt, processedContent);
-        if (res) processedContent = res;
-    }
-
-    // 阶段 3: 精炼置顶摘要生成（生成纯净摘要文本，供系统 AI Summary 卡片展示，正文保持纯净，绝不强插重复内容）
-    if (stages.includes("summary")) {
-        const prompt = (config.prompt_summary && config.prompt_summary.trim().length > 0)
-            ? config.prompt_summary.trim()
-            : (config.system_prompt && config.system_prompt.trim().length > 0)
-                ? config.system_prompt.trim()
-                : (DEFAULT_PROMPT_SUMMARY as string);
-        const res = await callAIOnce(env, config, prompt, processedContent);
-        if (res) {
-            summaryText = res.trim();
+    try {
+        // 阶段 1: 技术教程与命令提炼
+        if (stages.includes("tech")) {
+            const prompt = (config.prompt_tech && config.prompt_tech.trim().length > 0)
+                ? config.prompt_tech.trim()
+                : (DEFAULT_PROMPT_TECH as string);
+            const res = await callAIOnce(env, config, prompt, processedContent);
+            if (res) processedContent = res;
         }
+
+        // 阶段 2: 文章内容直接排版整理
+        if (stages.includes("format")) {
+            const prompt = (config.prompt_format && config.prompt_format.trim().length > 0)
+                ? config.prompt_format.trim()
+                : (DEFAULT_PROMPT_FORMAT as string);
+            const res = await callAIOnce(env, config, prompt, processedContent);
+            if (res) processedContent = res;
+        }
+
+        // 阶段 3: 精炼置顶摘要生成（生成纯净摘要文本，供系统 AI Summary 卡片展示，正文保持纯净，绝不强插重复内容）
+        if (stages.includes("summary")) {
+            const prompt = (config.prompt_summary && config.prompt_summary.trim().length > 0)
+                ? config.prompt_summary.trim()
+                : (config.system_prompt && config.system_prompt.trim().length > 0)
+                    ? config.system_prompt.trim()
+                    : (DEFAULT_PROMPT_SUMMARY as string);
+            const res = await callAIOnce(env, config, prompt, processedContent);
+            if (res) {
+                summaryText = res.trim();
+            }
+        }
+    } catch (err: any) {
+        const processed = processAIError(err, config.model, config.provider);
+        return {
+            success: false,
+            result: content,
+            error: `${processed.error}: ${processed.details || err.message || String(err)}`,
+        };
     }
 
     // 清理掉之前可能残留在正文顶部的任何硬插标记，确保正文纯净不与系统卡片冲突
