@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useLocation } from "wouter";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 import { client } from "../../app/runtime";
 import { THEME_PRESETS, applyThemeColor, applyThemeOpacity, applyThemeFontFamily } from "../../utils/theme-color";
@@ -16,9 +17,15 @@ const CARD_VARIANTS: Array<{ id: FeedCardVariant; label: string; icon: string; d
 ];
 
 export function InSituAestheticStudio() {
+  const [location] = useLocation();
   const siteConfig = useSiteConfig();
   const [isOpen, setIsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // 严格在后台管理路由下彻底隐身，仅在前台页面展示
+  if (location.startsWith("/admin")) {
+    return null;
+  }
 
   const activeVariant = (siteConfig.feedCardVariant || "default") as FeedCardVariant;
   const activeColor = siteConfig.themeColor || "#fc466b";
@@ -121,19 +128,16 @@ export function InSituAestheticStudio() {
 
   return createPortal(
     <>
-      {/* 浮动唤起胶囊（仅博主已登录时可见） */}
+      {/* 浮动唤起圆纽（仅前台展示，精致极简 40x40 矢量图标，杜绝文字突兀） */}
       <div className="fixed bottom-6 left-6 z-40 select-none">
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className="group flex items-center gap-2 rounded-full border border-black/10 bg-white/80 px-3.5 py-2 text-xs font-semibold text-neutral-700 shadow-lg backdrop-blur-xl hover:border-theme hover:text-theme dark:border-white/10 dark:bg-neutral-900/80 dark:text-neutral-300 dark:hover:border-theme dark:hover:text-theme transition-all"
-          title="展开前台美学工坊"
+          className="group relative flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white/85 dark:border-white/10 dark:bg-neutral-900/85 shadow-lg backdrop-blur-xl hover:border-theme hover:scale-110 active:scale-95 transition-all text-neutral-600 dark:text-neutral-300 hover:text-theme cursor-pointer"
+          title="前台美学工坊 (排版、色彩、留白与字族微调)"
         >
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-theme/10 text-theme group-hover:scale-110 transition-transform">
-            <i className="ri-palette-line text-xs" />
-          </span>
-          <span className="font-mono">美学工坊</span>
-          {saving ? <span className="h-1.5 w-1.5 rounded-full bg-theme animate-ping" /> : null}
+          <i className="ri-palette-line text-lg text-theme group-hover:rotate-12 transition-transform" />
+          {saving ? <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-theme animate-ping" /> : null}
         </button>
       </div>
 

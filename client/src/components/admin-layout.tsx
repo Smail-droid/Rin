@@ -161,21 +161,8 @@ export function AdminLayout({
           </nav>
         </div>
 
-        {/* Bottom Area: AI Drawer, Logout */}
+        {/* Bottom Area: Logout */}
         <div className="flex flex-col items-center border-t border-black/5 p-1.5 dark:border-white/5 gap-1">
-          {/* 画廊文字侍从快捷触发 */}
-          <button
-            type="button"
-            onClick={() => {
-              window.dispatchEvent(new Event("toggle-ai-copilot"));
-            }}
-            className="flex flex-col items-center justify-center rounded-xl bg-theme/5 hover:bg-theme/15 border border-theme/20 text-theme h-11 w-full transition-all"
-            title="呼出 / 收回画廊文字侍从"
-          >
-            <i className="ri-sparkling-fill text-sm animate-pulse text-theme" />
-            <span className="text-[9px] font-bold mt-0.5 scale-90">侍从</span>
-          </button>
-
           {/* 退出登录按钮 */}
           <button
             type="button"

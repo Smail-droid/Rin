@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Reactive Configuration Synchronization**: Added `rin:config-updated` window event pipeline across `useAppBootstrap` and client components to ensure multi-device config reactivity without full page reload.
 
 ### Changed
+- **Repositioned Writing Assistant & Admin Studio Hiding**: Moved the Writing AI Copilot button directly onto the article writing toolbar (`/admin/writing`) while removing the unresponsive trigger from the global admin sidebar; hid the In-Situ Aesthetic Studio completely when browsing `/admin/*` backend pages, and refined the front-of-house toggle into a sleek 40×40 circular frosted glass icon button.
 - **Tri-Mode Header Architecture Overhaul**: Rebuilt `header.tsx` and `nav-bar.tsx` with three bespoke, uncompromised layouts:
   - `bottom`: MHub / macOS-inspired floating frosted glass dock anchored at bottom center with upward popovers (`popoverUp`).
   - `float`: Dynamic Island floating top pill with delicate dividers, compact avatar, and smooth pill hover effects.

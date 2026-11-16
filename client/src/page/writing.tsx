@@ -372,6 +372,19 @@ export function WritingPage({ id: propId }: { id?: number }) {
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
+                onClick={() => setCopilotOpen((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition select-none ${
+                  copilotOpen
+                    ? "border-theme bg-theme text-white shadow-2xs font-bold"
+                    : "border-theme/30 bg-theme/5 text-theme hover:bg-theme/10"
+                }`}
+                title="呼出 / 收起画廊文字侍从"
+              >
+                <i className="ri-sparkling-fill text-xs" />
+                <span>文字侍从</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setIsMetaExpanded((prev) => !prev)}
                 className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition select-none ${
                   isMetaExpanded
