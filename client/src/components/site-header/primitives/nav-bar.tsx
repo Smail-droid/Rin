@@ -59,9 +59,9 @@ function NavItem({
   return when ? (
     <Link
       href={href}
-      className={`${menu ? "" : "hidden"} md:block cursor-pointer hover:text-theme duration-300 px-2 py-4 md:p-4 text-sm ${
-        selected ? "text-theme" : "dark:text-white"
-      } ${itemClassName}`}
+      className={`${menu ? "" : "hidden"} md:inline-flex items-center cursor-pointer hover:text-theme transition text-xs font-semibold ${
+        selected ? "text-theme font-bold bg-theme/10" : "text-neutral-700 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5"
+      } ${itemClassName || "px-3 py-1.5 rounded-full"}`}
       state={{ animate: true }}
       onClick={onClick}
     >

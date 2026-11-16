@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Reactive Configuration Synchronization**: Added `rin:config-updated` window event pipeline across `useAppBootstrap` and client components to ensure multi-device config reactivity without full page reload.
 
 ### Changed
+- **Tri-Mode Header Architecture Overhaul**: Rebuilt `header.tsx` and `nav-bar.tsx` with three bespoke, uncompromised layouts:
+  - `bottom`: MHub / macOS-inspired floating frosted glass dock anchored at bottom center with upward popovers (`popoverUp`).
+  - `float`: Dynamic Island floating top pill with delicate dividers, compact avatar, and smooth pill hover effects.
+  - `top`: Edge-to-edge classic top navigation bar with full-width backdrop blur.
+  - Eliminated the broken `w-screen` nesting that previously caused horizontal distortion and ugly stretching.
 - **Replaced 4 Fake Card Variants with Bone-Deep Structural Layouts**: Completely redesigned `client/src/components/feed_card.tsx` so each variant has a distinct DOM structure:
   - `compact`: Single dense datarow displaying date, title, tags, and reading time for fast scanning.
   - `poster`: Full-bleed 3:4 aspect-ratio hero photo with title and summary overlaid on frosted glass gradient.

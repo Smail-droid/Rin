@@ -1,24 +1,19 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { ProfileContext } from "../state/profile";
-import { Padding } from "./padding";
 import { useSiteConfig } from "../hooks/useSiteConfig";
-import { getHeaderLayoutDefinition } from "./site-header/layout-registry";
-import { normalizeHeaderBehavior, normalizeHeaderLayout } from "./site-header/layout-options";
-import { LanguageSwitch, ThemeToggle } from "./site-header";
+import { normalizeHeaderBehavior } from "./site-header/layout-options";
+import { BrandLink, HeaderActions, LanguageSwitch, NavBar, ThemeToggle } from "./site-header";
 
 export function Header({ children }: { children?: React.ReactNode }) {
   const [location] = useLocation();
   const profile = useContext(ProfileContext);
   const siteConfig = useSiteConfig();
 
-  const headerLayout = normalizeHeaderLayout(siteConfig.headerLayout);
   const headerBehavior = siteConfig.headerStickyEnabled === false
     ? "static"
     : normalizeHeaderBehavior(siteConfig.headerBehavior);
-  const layoutDefinition = getHeaderLayoutDefinition(headerLayout);
   const [isRevealed, setIsRevealed] = useState(true);
-  const [isAtTop, setIsAtTop] = useState(true);
   const headerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -27,7 +22,6 @@ export function Header({ children }: { children?: React.ReactNode }) {
       const currentScrollY = window.scrollY;
       const nearTop = currentScrollY <= 24;
       const scrollingUp = currentScrollY < lastScrollY;
-      setIsAtTop(nearTop);
       setIsRevealed(headerBehavior !== "reveal" || nearTop || scrollingUp);
       lastScrollY = currentScrollY;
     };
@@ -63,7 +57,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
       resizeObserver.disconnect();
       window.removeEventListener("resize", setHeaderScrollOffset);
     };
-  }, [headerBehavior, headerLayout]);
+  }, [headerBehavior, siteConfig.headerLayout, siteConfig.headerPosition]);
 
   // ALL HOOKS ARE CALLED UNCONDITIONALLY ABOVE (prevents React Error #310)
   // 当配置隐藏导航栏时，前台页面统一保持隐藏，彻底杜绝进入子页面重新浮出的问题
@@ -81,51 +75,109 @@ export function Header({ children }: { children?: React.ReactNode }) {
     );
   }
 
-  const useTopHeader = layoutDefinition.kind === "top";
   const headerPosition = siteConfig.headerPosition || "top";
-  const headerPaddingClassName = headerLayout === "compact" ? "mx-0 mt-0" : "mx-4 mt-4";
 
-  // 灵活的导航条排布位置 (顶部常规 / 居中浮动药丸 / 底部便携挂件)
-  let containerClassName = "fixed z-40 transition-all duration-300 ";
+  // =========================================================================
+  // 1. 居中浮动药丸模式 (Floating Dynamic Island Header)
+  // =========================================================================
   if (headerPosition === "float") {
-    containerClassName += "top-4 left-1/2 -translate-x-1/2 w-auto max-w-[92vw] rounded-full shadow-2xl backdrop-blur-xl bg-w/85 border border-black/10 dark:border-white/10 px-4 py-1.5";
-  } else if (headerPosition === "bottom") {
-    containerClassName += "bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-[92vw] rounded-full shadow-2xl backdrop-blur-xl bg-w/85 border border-black/10 dark:border-white/10 px-4 py-1.5";
-  } else {
-    // 默认 "top" 常规模式
-    containerClassName =
-      !useTopHeader || headerBehavior === "static"
-        ? "relative z-40"
-        : `fixed inset-x-0 top-0 z-40 transition-transform duration-300 ${
-            headerBehavior === "reveal" && !isRevealed ? "-translate-y-full" : "translate-y-0"
-          }`;
+    return (
+      <>
+        <div
+          ref={headerRef}
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-40 w-fit max-w-[95vw] rounded-full px-4 py-2 border border-black/10 dark:border-white/10 bg-white/85 dark:bg-[#12161f]/85 backdrop-blur-2xl shadow-xl transition-all duration-300 select-none ani-show"
+        >
+          <div className="flex items-center gap-3">
+            <BrandLink
+              siteConfig={siteConfig}
+              compact
+              className="flex items-center gap-2"
+              avatarClassName="h-7 w-7 rounded-full shadow-xs shrink-0"
+              titleClassName="text-xs sm:text-sm font-bold tracking-tight text-neutral-900 dark:text-neutral-100"
+              showDescription={false}
+            />
+            <div className="h-3.5 w-px bg-black/10 dark:bg-white/10 hidden sm:block shrink-0" />
+            <nav className="flex items-center gap-1">
+              <NavBar
+                menu={false}
+                itemClassName="px-3 py-1 rounded-full text-xs"
+              />
+            </nav>
+            <div className="h-3.5 w-px bg-black/10 dark:bg-white/10 hidden sm:block shrink-0" />
+            <HeaderActions profile={profile} plain className="flex items-center gap-1 text-xs shrink-0" />
+          </div>
+        </div>
+      </>
+    );
   }
 
-  const spacerClassName = headerPosition !== "top" || !useTopHeader || headerBehavior === "static" ? "h-0" : "h-20";
+  // =========================================================================
+  // 2. 底部便携挂件底座模式 (MHub / macOS Floating Bottom Dock)
+  // =========================================================================
+  if (headerPosition === "bottom") {
+    return (
+      <>
+        <div
+          ref={headerRef}
+          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-fit max-w-[95vw] rounded-full px-4 py-2 border border-black/10 dark:border-white/10 bg-white/90 dark:bg-[#12161f]/90 backdrop-blur-2xl shadow-2xl transition-all duration-300 select-none ani-show"
+        >
+          <div className="flex items-center gap-3">
+            <BrandLink
+              siteConfig={siteConfig}
+              compact
+              className="flex items-center gap-2"
+              avatarClassName="h-7 w-7 rounded-full shadow-xs shrink-0"
+              titleClassName="text-xs sm:text-sm font-bold tracking-tight text-neutral-900 dark:text-neutral-100"
+              showDescription={false}
+            />
+            <div className="h-3.5 w-px bg-black/10 dark:bg-white/10 hidden sm:block shrink-0" />
+            <nav className="flex items-center gap-1">
+              <NavBar
+                menu={false}
+                itemClassName="px-3 py-1 rounded-full text-xs"
+              />
+            </nav>
+            <div className="h-3.5 w-px bg-black/10 dark:bg-white/10 hidden sm:block shrink-0" />
+            <HeaderActions profile={profile} plain popoverUp className="flex items-center gap-1 text-xs shrink-0" />
+          </div>
+        </div>
+      </>
+    );
+  }
 
+  // =========================================================================
+  // 3. 顶部常规固定导航栏模式 (Classic Edge-to-Edge Header)
+  // =========================================================================
   return (
     <>
-      {headerLayout === "compact" ? (
-        <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-64 bg-gradient-to-b from-theme/15 to-white/0 dark:from-theme/20 dark:to-transparent" />
-      ) : null}
-      <div ref={headerRef} className={containerClassName}>
-        <div className="w-screen">
-          {headerLayout === "compact" ? (
-            <div className="w-full">
-              {layoutDefinition.renderMobile({ children, profile, siteConfig, behavior: headerBehavior, isAtTop })}
-              {layoutDefinition.renderDesktop({ children, profile, siteConfig, behavior: headerBehavior, isAtTop })}
-            </div>
-          ) : (
-            <Padding className={headerPaddingClassName}>
-              <div className="w-full">
-                {layoutDefinition.renderMobile({ children, profile, siteConfig, behavior: headerBehavior, isAtTop })}
-                {layoutDefinition.renderDesktop({ children, profile, siteConfig, behavior: headerBehavior, isAtTop })}
-              </div>
-            </Padding>
-          )}
+      <header
+        ref={headerRef}
+        className={`fixed inset-x-0 top-0 z-40 transition-transform duration-300 border-b border-black/5 dark:border-white/5 bg-white/80 dark:bg-[#12161f]/80 backdrop-blur-xl ${
+          headerBehavior === "reveal" && !isRevealed ? "-translate-y-full" : "translate-y-0"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4 select-none">
+          <BrandLink
+            siteConfig={siteConfig}
+            compact
+            className="flex items-center gap-2.5"
+            avatarClassName="h-8 w-8 rounded-xl shadow-xs shrink-0"
+            titleClassName="text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100"
+            showDescription={false}
+          />
+          <nav className="hidden md:flex items-center gap-1.5">
+            <NavBar
+              menu={false}
+              itemClassName="px-3.5 py-1.5 rounded-xl text-sm"
+            />
+          </nav>
+          <div className="flex items-center gap-2 shrink-0">
+            {children}
+            <HeaderActions profile={profile} plain className="flex items-center gap-2" />
+          </div>
         </div>
-      </div>
-      <div className={spacerClassName} />
+      </header>
+      <div className="h-16" />
     </>
   );
 }
