@@ -157,10 +157,8 @@ export function Settings() {
   const ref = useRef(false);
   const initialDraftRef = useRef<SettingsDraft>({ clientConfig: {}, serverConfig: {} });
   const { showAlert, AlertUI } = useAlert();
-  const [activeCategory, setActiveCategory] = useState<"general" | "theme" | "atelier" | "services">(
-    initialCategoryParam && ["general", "theme", "atelier", "services"].includes(initialCategoryParam)
-      ? initialCategoryParam
-      : "general"
+  const [activeCategory, setActiveCategory] = useState<"general" | "services">(
+    initialCategoryParam === "services" ? "services" : "general"
   );
   const [activeThemeMode, setActiveThemeMode] = useState<ThemeMode>(getStoredThemeMode());
 
@@ -186,8 +184,8 @@ export function Settings() {
 
   // URL tab change synchronizer
   useEffect(() => {
-    const tabParam = searchParams.get("tab") as "general" | "theme" | "atelier" | "services" | null;
-    if (tabParam && ["general", "theme", "atelier", "services"].includes(tabParam)) {
+    const tabParam = searchParams.get("tab") as "general" | "services" | null;
+    if (tabParam === "services" || tabParam === "general") {
       setActiveCategory(tabParam);
     }
   }, [searchString]);
@@ -348,10 +346,8 @@ export function Settings() {
           <div className="flex w-full items-center justify-between gap-3 pb-3 border-b border-black/10 dark:border-white/10">
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
               {[
-                { id: "general", label: "基础设置", icon: "ri-settings-4-line" },
-                { id: "theme", label: "主题与布局", icon: "ri-palette-line" },
-                { id: "atelier", label: "进阶设置", icon: "ri-magic-line" },
-                { id: "services", label: "扩展服务", icon: "ri-apps-2-line" },
+                { id: "general", label: "基础与安全", icon: "ri-settings-4-line" },
+                { id: "services", label: "扩展与物理集成", icon: "ri-apps-2-line" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -743,19 +739,18 @@ export function Settings() {
                     </button>
                   </div>
 
-                  {/* 切片快捷导航: 快速直达进阶便签表格 */}
+                  {/* 切片快捷导航: 快速直达首页就地编辑 */}
                   <div className="p-3.5 rounded-xl border border-theme/20 bg-theme/[0.04] flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <span className="font-bold text-xs text-theme block truncate">便签超级表格</span>
-                      <span className="text-[11px] text-neutral-400 block truncate">管理首屏 6 大互动便签</span>
+                      <span className="font-bold text-xs text-theme block truncate">首页便签就地编辑</span>
+                      <span className="text-[11px] text-neutral-400 block truncate">关于我、岁月轨迹、动态在首页悬浮直接编辑</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveCategory("atelier")}
+                    <Link
+                      href="/"
                       className="px-2.5 py-1 rounded-lg bg-theme text-white font-bold text-xs shadow-2xs hover:bg-theme-hover transition"
                     >
-                      立即前往 &rarr;
-                    </button>
+                      前往首页 &rarr;
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -792,8 +787,8 @@ export function Settings() {
             </div>
           )}
 
-          {/* Tab 2: Theme & Layout Settings */}
-          {activeCategory === "theme" && (
+          {/* Tab 2: Theme & Layout Settings (已全面迁徙至前台美学工坊) */}
+          {(activeCategory as string) === "theme" && (
             <div className="w-full flex flex-col space-y-3 ani-show">
               <div className="p-4 rounded-2xl bg-theme/5 border border-theme/20 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-theme select-none">
                 <div className="flex items-center gap-2">
@@ -1755,8 +1750,8 @@ export function Settings() {
         </div>
       )}
 
-      {/* Tab 3: Atelier & Sticky Notes Settings */}
-      {activeCategory === "atelier" && (
+      {/* Tab 3: Atelier & Sticky Notes Settings (已全面迁徙至首页就地编辑) */}
+      {(activeCategory as string) === "atelier" && (
         <div className="w-full flex flex-col space-y-3 ani-show">
           <div className="p-4 rounded-2xl bg-theme/5 border border-theme/20 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-theme select-none">
             <div className="flex items-center gap-2">

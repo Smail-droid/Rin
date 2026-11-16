@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 import { client } from "../../app/runtime";
@@ -25,6 +25,9 @@ export function InSituAestheticStudio() {
   const activeOpacity = siteConfig.themeOpacity ?? 100;
   const activeColumns = String(siteConfig.galleryColumns ?? "auto");
   const activeGap = siteConfig.galleryCardGap ?? 24;
+  const activePadding = siteConfig.galleryPadding ?? 24;
+  const activeAlign = siteConfig.galleryAlign || "center";
+  const activeHeaderLayout = siteConfig.headerLayout || "classic";
   const activeFontFamily = (() => {
     try {
       const cfg = JSON.parse(sessionStorage.getItem("config") || "{}");
@@ -37,6 +40,11 @@ export function InSituAestheticStudio() {
 
   const [siteNameVal, setSiteNameVal] = useState(siteConfig.name || "Rin");
   const [siteDescVal, setSiteDescVal] = useState(siteConfig.description || "");
+
+  useEffect(() => {
+    if (siteConfig.name) setSiteNameVal(siteConfig.name);
+    if (siteConfig.description) setSiteDescVal(siteConfig.description);
+  }, [siteConfig.name, siteConfig.description]);
 
   const handleSaveBrand = () => {
     void persistConfig({
@@ -82,6 +90,18 @@ export function InSituAestheticStudio() {
 
   const handleSelectGap = (gap: number) => {
     void persistConfig({ "gallery.card_gap": gap });
+  };
+
+  const handleSelectPadding = (pad: number) => {
+    void persistConfig({ "gallery.padding": pad });
+  };
+
+  const handleSelectAlign = (align: string) => {
+    void persistConfig({ "gallery.align": align });
+  };
+
+  const handleSelectHeaderLayout = (layout: string) => {
+    void persistConfig({ "header.layout": layout });
   };
 
   const handleSelectFontFamily = (family: string) => {
@@ -255,12 +275,13 @@ export function InSituAestheticStudio() {
             <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
               瀑布流排布列数
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
               {[
-                { id: "auto", label: "自适应" },
+                { id: "auto", label: "自适应 Auto" },
                 { id: "2", label: "2 列" },
                 { id: "3", label: "3 列" },
                 { id: "4", label: "4 列" },
+                { id: "5", label: "5 列" },
               ].map((col) => {
                 const isSelected = activeColumns === col.id;
                 return (
@@ -268,9 +289,9 @@ export function InSituAestheticStudio() {
                     key={col.id}
                     type="button"
                     onClick={() => handleSelectColumns(col.id)}
-                    className={`flex-1 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all ${
+                    className={`flex-1 min-w-[54px] py-1.5 rounded-xl border text-xs font-mono font-bold transition-all ${
                       isSelected
-                        ? "border-theme bg-theme text-white"
+                        ? "border-theme bg-theme text-white shadow-2xs"
                         : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
                     }`}
                   >
@@ -281,13 +302,75 @@ export function InSituAestheticStudio() {
             </div>
           </div>
 
-          {/* 4. 页面留白间距 */}
+          {/* 3.1 画廊两侧留白边距 */}
           <div className="space-y-2.5">
             <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              页面留白间距
+              首页两侧留白边距
+            </label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[
+                { val: 0, label: "无边距 0px" },
+                { val: 12, label: "12px" },
+                { val: 24, label: "24px" },
+                { val: 48, label: "48px" },
+                { val: 80, label: "80px" },
+              ].map((p) => {
+                const isSelected = Number(activePadding) === p.val;
+                return (
+                  <button
+                    key={p.val}
+                    type="button"
+                    onClick={() => handleSelectPadding(p.val)}
+                    className={`flex-1 min-w-[54px] py-1.5 rounded-xl border text-xs font-mono font-bold transition-all ${
+                      isSelected
+                        ? "border-theme bg-theme text-white shadow-2xs"
+                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3.2 画廊排版对齐方式 */}
+          <div className="space-y-2.5">
+            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              画廊排版对齐方式
             </label>
             <div className="flex items-center gap-2">
               {[
+                { id: "center", label: "居中聚拢 (Center)" },
+                { id: "fluid", label: "撑满两端 (Fluid)" },
+              ].map((a) => {
+                const isSelected = activeAlign === a.id;
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => handleSelectAlign(a.id)}
+                    className={`flex-1 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                      isSelected
+                        ? "border-theme bg-theme text-white shadow-2xs"
+                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
+                    }`}
+                  >
+                    {a.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4. 卡片间距与间隙 */}
+          <div className="space-y-2.5">
+            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              卡片列间距与间隙
+            </label>
+            <div className="flex items-center gap-2">
+              {[
+                { val: 12, label: "极密 12px" },
                 { val: 16, label: "紧凑 16px" },
                 { val: 24, label: "标准 24px" },
                 { val: 32, label: "宽松 32px" },
@@ -300,7 +383,7 @@ export function InSituAestheticStudio() {
                     onClick={() => handleSelectGap(g.val)}
                     className={`flex-1 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all ${
                       isSelected
-                        ? "border-theme bg-theme text-white"
+                        ? "border-theme bg-theme text-white shadow-2xs"
                         : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
                     }`}
                   >
@@ -341,10 +424,10 @@ export function InSituAestheticStudio() {
             </div>
           </div>
 
-          {/* 6. 顶栏导航形态 */}
+          {/* 6. 顶栏导航形态与风格 */}
           <div className="space-y-2.5">
             <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              顶栏导航形态
+              顶栏导航形态与风格
             </label>
             <div className="flex items-center gap-2">
               {[
@@ -365,6 +448,28 @@ export function InSituAestheticStudio() {
                     }`}
                   >
                     {h.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              {[
+                { id: "classic", label: "经典居中导航" },
+                { id: "compact", label: "极简纯文本导航" },
+              ].map((hl) => {
+                const isSelected = activeHeaderLayout === hl.id;
+                return (
+                  <button
+                    key={hl.id}
+                    type="button"
+                    onClick={() => handleSelectHeaderLayout(hl.id)}
+                    className={`flex-1 py-1.5 px-1.5 rounded-xl border text-[11px] font-bold transition-all text-center ${
+                      isSelected
+                        ? "border-theme bg-theme text-white shadow-2xs"
+                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
+                    }`}
+                  >
+                    {hl.label}
                   </button>
                 );
               })}

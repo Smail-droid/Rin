@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.7] - 2026-11-15
 
 ### Added
+- **Live Database Sync & Complete Layout Controls in Aesthetic Studio**: Synced site title and bio reactively with Cloudflare D1 database values (eliminating fallback defaults), and integrated full gallery padding (0px to 80px), layout alignment (Center/Fluid), and header layout styles (Classic/Compact).
 - **In-Situ AI Configuration Inside Assistant Drawer (`WritingAICopilotDrawer`)**: Embedded an on-the-fly AI provider, model, API key, and reverse-proxy URL settings panel right inside the assistant drawer with one-click connectivity testing and direct persistence, completely removing the need to visit `/admin/settings` to configure AI.
 - **Full In-Situ Aesthetic Studio Repatriation**: Expanded `InSituAestheticStudio` with live site name & description editing, font family selector (Sans, Serif, Mono), and header layout styles (Float, Top, Bottom).
 - **Deep DataGrid In-Place Actions & Dual Pagination**: Overhauled `/admin/dashboard` into a true interactive DataGrid: clickable header column sorting (Time Newest/Oldest, ID, Title A-Z), in-place one-click status flipping between Public and Draft, interactive AI summary badge with one-click re-generation, in-place title quick rename, and dual top & bottom pagination controls.
@@ -41,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Consistent Tag Badges**: Restored uniform `🏷️` icon across all homepage tag pills, removing arbitrary book emoji replacements.
 
 ### Removed
+- **Excised Redundant Theme and Atelier Tabs in Backend Settings**: Completely excised the duplicate "主题与布局" (Tab 2) and "进阶设置" (Tab 3) from `/admin/settings`, reducing the settings console to purely General & Services, ensuring visual presentation is exclusively governed in-situ by the front-of-house Aesthetic Studio.
 - **Removed Redundant 15-Item Shortcut Card Grid in Dashboard**: Completely removed the clumsy 15-card shortcut matrix (`快捷功能调度`) in `/admin/dashboard`, eliminating redundant URL links and promoting the Article Management Dense DataGrid to the top of the viewport.
 - **Physical Removal of JeikCode Copilot**: Completely deleted `client/src/components/jeikcode-copilot.tsx` (834 lines) and unmounted from `App.tsx`, eliminating hardcoded LAN IP, token leak risk, and floating widget, instantly cutting 24.5 kB from the entry chunk.
 - **Severed External Proxy Scrapers in Friends**: Removed brittle 3rd-party CORS proxy chains (`corsproxy.io`, `microlink.io`, FileReader base64) from `friends.tsx`, standardizing on native URL fields and Cloudflare Worker edge inspection.
