@@ -684,119 +684,181 @@ export function AdminMusicPage() {
         className="hidden"
       />
 
-      {/* 1. 紧凑型顶部 Header & 视界中枢 (消除大面积空旷留白) */}
-      <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-theme/10 text-theme text-xl shadow-2xs">
-            <i className="ri-disc-line" />
-          </span>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold t-primary">音廊 · 云端音乐资产中枢</h2>
-              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
-                musicEnabled ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-neutral-500/10 text-neutral-400"
-              }`}>
-                {musicEnabled ? "已启用" : "未开启"}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-neutral-400 mt-1 flex-wrap">
-              <span className="rounded-full bg-neutral-100 dark:bg-white/10 px-2 py-0.5 font-semibold text-neutral-600 dark:text-neutral-300 text-[11px]">
-                {r2Files.length} 首曲目
-              </span>
-              {r2Stats && (
-                <>
-                  <span className="rounded-full bg-neutral-100 dark:bg-white/10 px-2 py-0.5 font-semibold text-neutral-600 dark:text-neutral-300 text-[11px]">
-                    {(r2Stats.musicBytes / (1024 * 1024)).toFixed(1)} MB 已用
-                  </span>
-                  <span className="rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 font-semibold text-[11px]">
-                    剩余 {(r2Stats.remainingBytes / (1024 * 1024 * 1024)).toFixed(2)} GB / 10 GB
-                  </span>
-                </>
-              )}
+      {/* =========================================================================
+          MHub & Navidrome 专业音乐电台工作台 (双栏画廊架构)
+          ========================================================================= */}
+      <div className="flex flex-col lg:flex-row gap-5 w-full items-start">
+        {/* 左侧：专业音乐导航侧边栏 (MHub / Navidrome Sub-Sidebar) */}
+        <aside className="w-full lg:w-60 shrink-0 rounded-3xl border border-black/10 dark:border-white/10 bg-w p-4 space-y-4 shadow-xs select-none">
+          {/* 资产与中枢概览 */}
+          <div className="flex items-center gap-3 p-1 pb-3.5 border-b border-black/5 dark:border-white/5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-theme/10 text-theme text-xl shadow-2xs">
+              <i className="ri-disc-line" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-xs t-primary truncate">云端音廊</span>
+                <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full ${
+                  musicEnabled ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-neutral-500/10 text-neutral-400"
+                }`}>
+                  {musicEnabled ? "已就绪" : "未开启"}
+                </span>
+              </div>
+              <p className="text-[10px] text-neutral-400 font-mono mt-0.5">
+                {r2Files.length} 首 · {(r2Stats ? (r2Stats.musicBytes / (1024 * 1024)).toFixed(1) : "0")} MB
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* 右侧：三大视界 Tab 切换 + 电台设置 + 保存配置 (紧密排布) */}
-        <div className="flex items-center gap-2.5 self-start xl:self-auto shrink-0 flex-wrap">
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/5 dark:border-white/5 select-none text-xs font-bold">
-            <button
-              type="button"
-              onClick={() => setActiveTab("gallery")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
-                activeTab === "gallery" ? "bg-w text-theme shadow-xs" : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-              }`}
-            >
-              <i className="ri-archive-line text-sm" />
-              <span>音廊资产 ({r2Files.length})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("playlist")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
-                activeTab === "playlist" ? "bg-w text-theme shadow-xs" : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-              }`}
-            >
-              <i className="ri-play-list-line text-sm" />
-              <span>播放列表 ({player.playlist.length})</span>
-            </button>
+          {/* 分组 1: 发现与探索 (Discovery) */}
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider px-2">发现与探索</span>
             <button
               type="button"
               onClick={() => setActiveTab("explore")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
-                activeTab === "explore" ? "bg-w text-theme shadow-xs" : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                activeTab === "explore"
+                  ? "bg-theme text-white shadow-2xs font-bold"
+                  : "text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5"
               }`}
             >
-              <i className="ri-compass-line text-sm" />
-              <span>曲库探索</span>
+              <div className="flex items-center gap-2">
+                <i className="ri-compass-3-line text-sm" />
+                <span>全网曲库探索</span>
+              </div>
+              <i className="ri-arrow-right-s-line text-xs opacity-60" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (r2Files.length > 0) {
+                  const randomFile = r2Files[Math.floor(Math.random() * r2Files.length)];
+                  const found = player.playlist.find((t) => t.url === randomFile.url);
+                  if (found) player.play(found);
+                  else {
+                    handleImportR2ToQueue(randomFile);
+                    setTimeout(() => {
+                      const f = player.playlist.find((t) => t.url === randomFile.url);
+                      if (f) player.play(f);
+                    }, 80);
+                  }
+                }
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5 transition cursor-pointer"
+            >
+              <i className="ri-shuffle-line text-sm text-theme" />
+              <span>随心漫游试听</span>
             </button>
           </div>
 
-          {uploadQueue.uploadTasks.length > 0 && (
+          {/* 分组 2: 音乐资料库 (Library) */}
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider px-2">我的资料库</span>
             <button
               type="button"
-              onClick={() => uploadQueue.setShowUploadPanel(!uploadQueue.showUploadPanel)}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                uploadQueue.uploadTasks.some((t: any) => t.status === "uploading")
-                  ? "bg-theme text-white shadow-2xs animate-pulse"
-                  : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              onClick={() => setActiveTab("gallery")}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                activeTab === "gallery"
+                  ? "bg-theme text-white shadow-2xs font-bold"
+                  : "text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5"
               }`}
-              title="查看上传任务详情"
             >
-              <i className="ri-upload-2-line text-xs" />
-              <span>
-                上传 ({uploadQueue.uploadStats.completed}/{uploadQueue.uploadStats.all})
+              <div className="flex items-center gap-2">
+                <i className="ri-archive-line text-sm" />
+                <span>音廊资产 (R2)</span>
+              </div>
+              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                activeTab === "gallery" ? "bg-white/20 text-white" : "bg-black/5 dark:bg-white/5 text-neutral-400"
+              }`}>
+                {r2Files.length}
               </span>
             </button>
-          )}
 
-          <button
-            type="button"
-            onClick={() => setSettingsExpanded(!settingsExpanded)}
-            className="px-2.5 py-1.5 rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] text-neutral-600 dark:text-neutral-300 text-xs font-semibold hover:border-theme transition flex items-center gap-1"
-          >
-            <i className="ri-settings-4-line text-xs" />
-            <span>电台设置</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("playlist")}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                activeTab === "playlist"
+                  ? "bg-theme text-white shadow-2xs font-bold"
+                  : "text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <i className="ri-play-list-line text-sm" />
+                <span>播放列表</span>
+              </div>
+              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                activeTab === "playlist" ? "bg-white/20 text-white" : "bg-black/5 dark:bg-white/5 text-neutral-400"
+              }`}>
+                {player.playlist.length}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saveStatus === "saving"}
-            className={`px-4 py-1.5 rounded-xl text-xs font-bold text-white shadow-2xs transition flex items-center gap-1 ${
-              saveStatus === "saved"
-                ? "bg-emerald-500"
-                : saveStatus === "error"
-                ? "bg-rose-500"
-                : "bg-theme hover:bg-theme-hover active:scale-95"
-            }`}
-          >
-            {saveStatus === "saving" && <i className="ri-loader-4-line animate-spin text-xs" />}
-            {saveStatus === "saved" && <i className="ri-check-line text-xs" />}
-            <span>{saveStatus === "saving" ? "保存中" : saveStatus === "saved" ? "已保存" : "保存配置"}</span>
-          </button>
-        </div>
-      </div>
+            {Boolean(openlistMusicUrl) && (
+              <button
+                type="button"
+                onClick={handleSyncOpenList}
+                disabled={openListSyncStatus === "syncing"}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <i className={`ri-refresh-line text-sm ${openListSyncStatus === "syncing" ? "animate-spin text-theme" : ""}`} />
+                  <span>5T 网盘同步</span>
+                </div>
+                {syncCount > 0 && <span className="text-[10px] text-emerald-500 font-mono">+{syncCount}</span>}
+              </button>
+            )}
+          </div>
+
+          {/* 分组 3: 资产与管理 (Operations) */}
+          <div className="space-y-1.5 pt-2.5 border-t border-black/5 dark:border-white/5">
+            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider px-2">资产管理</span>
+            <button
+              type="button"
+              onClick={() => uploadQueue.audioFilesInputRef.current?.click()}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-200 transition cursor-pointer"
+            >
+              <i className="ri-upload-cloud-line text-theme text-sm" />
+              <span>上传本地音频</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => uploadQueue.audioFolderInputRef.current?.click()}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-200 transition cursor-pointer"
+            >
+              <i className="ri-folder-upload-line text-sm text-amber-500" />
+              <span>导入文件夹</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSettingsExpanded(!settingsExpanded)}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold border border-black/5 dark:border-white/5 hover:border-theme/40 text-neutral-600 dark:text-neutral-300 transition cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <i className="ri-settings-4-line text-xs" />
+                <span>电台参数设置</span>
+              </div>
+              <i className={`ri-arrow-${settingsExpanded ? "up" : "down"}-s-line text-xs`} />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saveStatus === "saving"}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-theme hover:bg-theme-hover shadow-xs active:scale-95 transition cursor-pointer"
+            >
+              {saveStatus === "saving" && <i className="ri-loader-4-line animate-spin text-xs" />}
+              {saveStatus === "saved" && <i className="ri-check-line text-xs" />}
+              <span>{saveStatus === "saving" ? "保存中..." : saveStatus === "saved" ? "已保存" : "保存电台配置"}</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* 右侧：主体音乐画布 (Cover Art Grid / Queue Table / Explore Stream) */}
+        <main className="flex-1 min-w-0 w-full space-y-4">
 
       {/* 2. 电台参数折叠设置抽屉 */}
       <MusicSettingsDrawer
@@ -947,30 +1009,32 @@ export function AdminMusicPage() {
         </div>
       )}
 
-      {/* 6. 视界 C: 曲库探索 */}
-      {activeTab === "explore" && (
-        <ExploreView
-          autoPersistR2={autoPersistR2}
-          setAutoPersistR2={setAutoPersistR2}
-          searchMode={searchMode}
-          setSearchMode={setSearchMode}
-          searchKeyword={searchKeyword}
-          setSearchKeyword={setSearchKeyword}
-          onSearch={handleSearch}
-          isSearching={isSearching}
-          deepScanning={deepScanning}
-          onDeepScanAndVerify={handleDeepScanAndVerify}
-          scanProgress={scanProgress}
-          deepVerifiedTracks={deepVerifiedTracks}
-          onImportAllVerified={handleImportAllVerified}
-          searchResults={searchResults}
-          onBatchCollect={handleBatchCollect}
-          batchStatus={batchStatus}
-          resolvingId={resolvingId}
-          onResolveAndPlay={handleResolveAndPlay}
-          playlist={player.playlist}
-        />
-      )}
+        {/* 6. 视界 C: 曲库探索 */}
+        {activeTab === "explore" && (
+          <ExploreView
+            autoPersistR2={autoPersistR2}
+            setAutoPersistR2={setAutoPersistR2}
+            searchMode={searchMode}
+            setSearchMode={setSearchMode}
+            searchKeyword={searchKeyword}
+            setSearchKeyword={setSearchKeyword}
+            onSearch={handleSearch}
+            isSearching={isSearching}
+            deepScanning={deepScanning}
+            onDeepScanAndVerify={handleDeepScanAndVerify}
+            scanProgress={scanProgress}
+            deepVerifiedTracks={deepVerifiedTracks}
+            onImportAllVerified={handleImportAllVerified}
+            searchResults={searchResults}
+            onBatchCollect={handleBatchCollect}
+            batchStatus={batchStatus}
+            resolvingId={resolvingId}
+            onResolveAndPlay={handleResolveAndPlay}
+            playlist={player.playlist}
+          />
+        )}
+      </main>
+    </div>
 
       {/* 封面修改 Portal 弹窗 */}
       <CoverEditModal
