@@ -497,3 +497,64 @@ export function getAvailableModels(provider: string): string[] {
 export function requiresApiKey(provider: string): boolean {
     return provider !== 'worker-ai';
 }
+
+/**
+ * Fetch remote model list from OpenAI-compatible /models endpoint
+ */
+export async function fetchExternalAIModels(
+    provider: string,
+    apiUrl?: string,
+    apiKey?: string
+): Promise<string[]> {
+    if (provider === "worker-ai") {
+        return Object.keys(WORKER_AI_MODELS);
+    }
+
+    if (!apiKey) {
+        throw new Error("请先填写 API Key");
+    }
+
+    const defaultUrls: Record<string, string> = {
+        openai: "https://api.openai.com/v1",
+        deepseek: "https://api.deepseek.com/v1",
+        gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
+    };
+
+    const baseUrl = (apiUrl || defaultUrls[provider] || "https://api.openai.com/v1").trim().replace(/\/+$/, "");
+    let endpoint = "";
+    if (baseUrl.endsWith("/chat/completions")) {
+        endpoint = baseUrl.replace(/\/chat\/completions$/, "/models");
+    } else if (baseUrl.endsWith("/models")) {
+        endpoint = baseUrl;
+    } else if (baseUrl.endsWith("/v1")) {
+        endpoint = `${baseUrl}/models`;
+    } else {
+        endpoint = `${baseUrl}/v1/models`;
+    }
+
+    const res = await fetch(endpoint, {
+        headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(15000),
+    });
+
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text.slice(0, 150)}`);
+    }
+
+    const json = (await res.json()) as any;
+    const rawList = Array.isArray(json.data) ? json.data : Array.isArray(json.models) ? json.models : [];
+    const models = rawList
+        .map((item: any) => (typeof item === "string" ? item : item.id || item.name))
+        .filter(Boolean)
+        .sort((a: string, b: string) => a.localeCompare(b));
+
+    if (models.length === 0) {
+        throw new Error("接口未返回任何可用模型");
+    }
+
+    return models;
+}

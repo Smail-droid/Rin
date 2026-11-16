@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.7] - 2026-11-15
 
 ### Added
+- **Dynamic Remote AI Models Fetching (`/api/config/ai/models`)**: Added one-click `🔄 拉取模型` capability across the AI Copilot drawer and backend AI settings, querying the provider's standard OpenAI-compatible `/models` endpoint to dynamically populate all available model IDs into an instant dropdown, eliminating preset model limitations and manual typing.
 - **MHub & Navidrome Persistent Bottom Player Dock (`BottomPlayerDock`)**: Built a persistent bottom music player dock inspired by MHub (`jizizr/mhub`) and Navidrome, featuring left-aligned artwork with live animated audio waves, center transport controls with precision time scrubber (`00:00 / 03:48`), volume slider, and instant lyrics/queue popovers.
 - **Navidrome Live Audio Visualizer Waves**: Added a jumping 3-bar audio visualizer animation on playing album cards in the gallery view.
 - **Live Database Sync & Complete Layout Controls in Aesthetic Studio**: Synced site title and bio reactively with Cloudflare D1 database values (eliminating fallback defaults), and integrated full gallery padding (0px to 80px), layout alignment (Center/Fluid), and header layout styles (Classic/Compact).

@@ -5,7 +5,7 @@ import { adminOnly } from "../core/route-boundaries";
 import { count, eq } from "drizzle-orm";
 import { comments, feeds, moments } from "../db/schema";
 import { setAIConfig, getAIConfig } from "../utils/db-config";
-import { executeAIChat, runAIPipelineProcess, testAIModel } from "../utils/ai";
+import { executeAIChat, runAIPipelineProcess, testAIModel, fetchExternalAIModels } from "../utils/ai";
 import { notify } from "../utils/webhook";
 import {
     buildCombinedConfigResponse,
@@ -124,6 +124,23 @@ export function ConfigService(): Hono {
         const result = await wrapTime(c, 'ai_test', testAIModel(env, testConfig, testPrompt));
         return c.json(result);
     }, { format: 'json' }));
+
+    // Fetch remote model list from OpenAI-compatible /models endpoint (admin only)
+    app.post('/ai/models', adminOnly(async (c: AppContext) => {
+        const body: any = await c.req.json().catch(() => ({}));
+        const serverConfig = c.get('serverConfig');
+        const dbConfig = await getAIConfig(serverConfig);
+        const provider = body.provider || dbConfig.provider;
+        const apiUrl = body.api_url !== undefined ? body.api_url : dbConfig.api_url;
+        const apiKey = body.api_key !== undefined ? body.api_key : dbConfig.api_key;
+
+        try {
+            const models = await fetchExternalAIModels(provider, apiUrl, apiKey);
+            return c.json({ success: true, models });
+        } catch (err: any) {
+            return c.json({ success: false, error: err.message || String(err) }, 400);
+        }
+    }));
 
     // Run AI multi-stage pipeline on article content (admin only)
     app.post('/ai/pipeline', adminOnly(async (c: AppContext) => {

@@ -100,6 +100,35 @@ export function WritingAICopilotDrawer({
   });
   const [testingAi, setTestingAi] = useState(false);
   const [aiTestResult, setAiTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+
+  const handleFetchModels = async () => {
+    setFetchingModels(true);
+    setAiTestResult(null);
+    try {
+      const { data, error } = await client.config.fetchAIModels({
+        provider: aiConfig.provider,
+        api_url: aiConfig.apiUrl,
+        api_key: aiConfig.apiKey,
+      });
+      if (data?.success && Array.isArray(data.models)) {
+        setFetchedModels(data.models);
+        if (data.models.length > 0 && !data.models.includes(aiConfig.model)) {
+          setAiConfig((prev) => ({ ...prev, model: data.models![0] }));
+        }
+      } else {
+        setAiTestResult({
+          success: false,
+          message: `⚠️ 拉取模型失败: ${data?.error || error?.value || "请检查接口地址与密钥"}`,
+        });
+      }
+    } catch (e: any) {
+      setAiTestResult({ success: false, message: `⚠️ 拉取模型异常: ${e.message}` });
+    } finally {
+      setFetchingModels(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -504,14 +533,41 @@ export function WritingAICopilotDrawer({
                 </div>
               </div>
 
-              {/* Model Input */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-neutral-500">模型名称 (Model)</label>
+              {/* Model Input with Dynamic Fetch */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-semibold text-neutral-500">模型选择 (Model)</label>
+                  <button
+                    type="button"
+                    onClick={handleFetchModels}
+                    disabled={fetchingModels || (aiConfig.provider !== "worker-ai" && !aiConfig.apiKey)}
+                    className="text-[10px] font-bold text-theme hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    {fetchingModels ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-refresh-line" />}
+                    <span>{fetchingModels ? "正在拉取..." : fetchedModels.length > 0 ? `已拉取 (${fetchedModels.length})` : "🔄 从端点拉取模型"}</span>
+                  </button>
+                </div>
+
+                {fetchedModels.length > 0 && (
+                  <select
+                    value={aiConfig.model}
+                    onChange={(e) => setAiConfig((prev) => ({ ...prev, model: e.target.value }))}
+                    className="w-full px-3 py-1.5 rounded-xl border border-theme/40 bg-theme/5 dark:bg-neutral-800 text-xs font-mono font-bold outline-none cursor-pointer"
+                  >
+                    <option value="">-- 点击选择已拉取的官方模型 ({fetchedModels.length} 个) --</option>
+                    {fetchedModels.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
                 <input
                   type="text"
                   value={aiConfig.model}
                   onChange={(e) => setAiConfig((prev) => ({ ...prev, model: e.target.value.trim() }))}
-                  placeholder="如: deepseek-chat 或 @cf/meta/llama-3.1-8b-instruct"
+                  placeholder="当前使用的模型 ID，如 gpt-4o-mini 或 deepseek-chat"
                   className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-mono outline-none focus:border-theme"
                 />
               </div>

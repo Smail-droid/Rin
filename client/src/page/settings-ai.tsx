@@ -7,7 +7,7 @@ import {
   SearchableSelect,
 } from "@rin/ui";
 import * as Switch from "@radix-ui/react-switch";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import ReactLoading from "react-loading";
 import { client } from "../app/runtime";
@@ -219,7 +219,34 @@ export function AISummarySettings({
     }
   };
 
-  const modelOptions = AI_MODEL_PRESETS[value.provider] || [];
+  const [fetchedModelList, setFetchedModelList] = useState<string[]>([]);
+  const [fetchingModels, setFetchingModels] = useState(false);
+
+  const handleFetchRemoteModels = async () => {
+    setFetchingModels(true);
+    try {
+      const { data, error } = await client.config.fetchAIModels({
+        provider: value.provider,
+        api_url: value.apiUrl,
+        api_key: value.apiKey,
+      });
+      if (data?.success && Array.isArray(data.models)) {
+        setFetchedModelList(data.models);
+        showAlert(`🎉 成功从端点拉取 ${data.models.length} 个可用模型！请在下方下拉选择。`);
+      } else {
+        showAlert(`拉取失败：${data?.error || error?.value || "请检查接口地址与密钥"}`);
+      }
+    } catch (e: any) {
+      showAlert(`拉取异常：${e.message}`);
+    } finally {
+      setFetchingModels(false);
+    }
+  };
+
+  const modelOptions = useMemo(() => {
+    const base = AI_MODEL_PRESETS[value.provider] || [];
+    return Array.from(new Set([...fetchedModelList, ...base]));
+  }, [value.provider, fetchedModelList]);
 
   return (
     <div className="space-y-3.5 ani-show select-none">
@@ -282,13 +309,24 @@ export function AISummarySettings({
 
               {/* 模型 */}
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">模型名称 (Model)</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">模型名称 (Model)</label>
+                  <button
+                    type="button"
+                    onClick={handleFetchRemoteModels}
+                    disabled={fetchingModels || (value.provider !== "worker-ai" && !value.apiKey && !value.apiKeySet)}
+                    className="text-[10px] font-bold text-theme hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    {fetchingModels ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-refresh-line" />}
+                    <span>{fetchingModels ? "拉取中..." : fetchedModelList.length > 0 ? `已拉取 (${fetchedModelList.length})` : "🔄 从端点拉取模型"}</span>
+                  </button>
+                </div>
                 <SearchableSelect
                   value={value.model}
                   onChange={(nextValue) => {
                     onChange({ model: nextValue });
                   }}
-                  options={modelOptions.map((option) => ({
+                  options={modelOptions.map((option: string) => ({
                     label: option,
                     value: option,
                   }))}

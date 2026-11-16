@@ -591,6 +591,15 @@ class ConfigAPI {
     return this.http.post<any>("/api/config/test-ai", body);
   }
 
+  // POST /api/config/ai/models - Fetch available models from provider /models endpoint
+  async fetchAIModels(body: {
+    provider?: string;
+    api_url?: string;
+    api_key?: string;
+  }): Promise<ApiResponse<{ success: boolean; models?: string[]; error?: string }>> {
+    return this.http.post<any>("/api/config/ai/models", body);
+  }
+
   // POST /api/config/ai/pipeline - Run multi-stage AI pipeline on article
   async runAIPipeline(body: {
     content: string;
