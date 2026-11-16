@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 import { client } from "../../app/runtime";
-import { THEME_PRESETS, applyThemeColor, applyThemeOpacity } from "../../utils/theme-color";
+import { THEME_PRESETS, applyThemeColor, applyThemeOpacity, applyThemeFontFamily } from "../../utils/theme-color";
 import { getStoredThemeMode, setThemeMode, type ThemeMode } from "../../utils/darkModeUtils";
 import { type FeedCardVariant } from "../feed-card-options";
 
@@ -25,6 +25,25 @@ export function InSituAestheticStudio() {
   const activeOpacity = siteConfig.themeOpacity ?? 100;
   const activeColumns = String(siteConfig.galleryColumns ?? "auto");
   const activeGap = siteConfig.galleryCardGap ?? 24;
+  const activeFontFamily = (() => {
+    try {
+      const cfg = JSON.parse(sessionStorage.getItem("config") || "{}");
+      return String(cfg["theme.font_family"] || "sans");
+    } catch {
+      return "sans";
+    }
+  })();
+  const activeHeaderPosition = String(siteConfig.headerPosition ?? "top");
+
+  const [siteNameVal, setSiteNameVal] = useState(siteConfig.name || "Rin");
+  const [siteDescVal, setSiteDescVal] = useState(siteConfig.description || "");
+
+  const handleSaveBrand = () => {
+    void persistConfig({
+      "site.name": siteNameVal.trim(),
+      "site.description": siteDescVal.trim(),
+    });
+  };
 
   const persistConfig = async (updates: Record<string, unknown>) => {
     setSaving(true);
@@ -63,6 +82,15 @@ export function InSituAestheticStudio() {
 
   const handleSelectGap = (gap: number) => {
     void persistConfig({ "gallery.card_gap": gap });
+  };
+
+  const handleSelectFontFamily = (family: string) => {
+    applyThemeFontFamily(family);
+    void persistConfig({ "theme.font_family": family });
+  };
+
+  const handleSelectHeaderPosition = (pos: string) => {
+    void persistConfig({ "header.position": pos });
   };
 
   const handleToggleThemeMode = () => {
@@ -125,6 +153,36 @@ export function InSituAestheticStudio() {
 
         {/* 核心配置流 */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          {/* 0. 站点基本身份与标语 */}
+          <div className="space-y-2 p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                站点名称与描述
+              </label>
+              <button
+                type="button"
+                onClick={handleSaveBrand}
+                className="text-[11px] text-theme font-bold hover:underline cursor-pointer"
+              >
+                保存身份
+              </button>
+            </div>
+            <input
+              type="text"
+              value={siteNameVal}
+              onChange={(e) => setSiteNameVal(e.target.value)}
+              placeholder="站点名称 (如: 画廊随想)"
+              className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-bold outline-none focus:border-theme"
+            />
+            <input
+              type="text"
+              value={siteDescVal}
+              onChange={(e) => setSiteDescVal(e.target.value)}
+              placeholder="站点副标题/描述..."
+              className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs outline-none focus:border-theme"
+            />
+          </div>
+
           {/* 1. 卡片版式骨架 (4 种结构级差异变体) */}
           <div className="space-y-2.5">
             <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
@@ -253,7 +311,67 @@ export function InSituAestheticStudio() {
             </div>
           </div>
 
-          {/* 5. 卡片透光度 */}
+          {/* 5. 全站排印字族 */}
+          <div className="space-y-2.5">
+            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              全站排印字族
+            </label>
+            <div className="flex items-center gap-2">
+              {[
+                { id: "sans", label: "现代无衬线", desc: "极简现代" },
+                { id: "serif", label: "典雅衬线", desc: "书卷杂志" },
+                { id: "mono", label: "极客等宽", desc: "终端代码" },
+              ].map((f) => {
+                const isSelected = activeFontFamily === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => handleSelectFontFamily(f.id)}
+                    className={`flex-1 py-1.5 px-2 rounded-xl border text-xs font-bold transition-all text-center ${
+                      isSelected
+                        ? "border-theme bg-theme text-white shadow-2xs"
+                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
+                    }`}
+                  >
+                    <div>{f.label}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 6. 顶栏导航形态 */}
+          <div className="space-y-2.5">
+            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              顶栏导航形态
+            </label>
+            <div className="flex items-center gap-2">
+              {[
+                { id: "float", label: "居中浮动药丸" },
+                { id: "top", label: "顶部常规固定" },
+                { id: "bottom", label: "底部便携挂件" },
+              ].map((h) => {
+                const isSelected = activeHeaderPosition === h.id;
+                return (
+                  <button
+                    key={h.id}
+                    type="button"
+                    onClick={() => handleSelectHeaderPosition(h.id)}
+                    className={`flex-1 py-1.5 px-1.5 rounded-xl border text-[11px] font-bold transition-all text-center ${
+                      isSelected
+                        ? "border-theme bg-theme text-white shadow-2xs"
+                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
+                    }`}
+                  >
+                    {h.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 7. 卡片透光度 */}
           <div className="space-y-2.5">
             <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
               卡片透光度

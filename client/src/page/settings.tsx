@@ -795,6 +795,21 @@ export function Settings() {
           {/* Tab 2: Theme & Layout Settings */}
           {activeCategory === "theme" && (
             <div className="w-full flex flex-col space-y-3 ani-show">
+              <div className="p-4 rounded-2xl bg-theme/5 border border-theme/20 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-theme select-none">
+                <div className="flex items-center gap-2">
+                  <i className="ri-magic-line text-base shrink-0" />
+                  <span>
+                    💡 <strong>前台就地管理已就绪</strong>：您已无需在后台盲调参数，返回博客前台点击左下角「美学工坊」即可即时调色换版并实时查看重绘效果。
+                  </span>
+                </div>
+                <Link
+                  href="/"
+                  className="px-3 py-1.5 rounded-xl bg-theme text-white font-bold text-xs shadow-2xs hover:bg-theme-hover shrink-0 self-start sm:self-auto"
+                >
+                  去前台美学工坊 ➔
+                </Link>
+              </div>
+
               <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-theme/10 text-theme text-xl shadow-2xs">
@@ -1743,6 +1758,21 @@ export function Settings() {
       {/* Tab 3: Atelier & Sticky Notes Settings */}
       {activeCategory === "atelier" && (
         <div className="w-full flex flex-col space-y-3 ani-show">
+          <div className="p-4 rounded-2xl bg-theme/5 border border-theme/20 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-theme select-none">
+            <div className="flex items-center gap-2">
+              <i className="ri-chat-smile-2-line text-base shrink-0" />
+              <span>
+                💡 <strong>便签前台就地编辑已就绪</strong>：首页关于我、岁月轨迹、动态、星廊便签在已登录状态下，鼠标悬停直接点击齿轮即可就地修改文案与背景。
+              </span>
+            </div>
+            <Link
+              href="/"
+              className="px-3 py-1.5 rounded-xl bg-theme text-white font-bold text-xs shadow-2xs hover:bg-theme-hover shrink-0 self-start sm:self-auto"
+            >
+              去前台就地编辑 ➔
+            </Link>
+          </div>
+
           {/* 画廊主标题控制切片 */}
           <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="min-w-0 flex-1">

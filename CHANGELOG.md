@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.7] - 2026-11-15
 
 ### Added
+- **In-Situ AI Configuration Inside Assistant Drawer (`WritingAICopilotDrawer`)**: Embedded an on-the-fly AI provider, model, API key, and reverse-proxy URL settings panel right inside the assistant drawer with one-click connectivity testing and direct persistence, completely removing the need to visit `/admin/settings` to configure AI.
+- **Full In-Situ Aesthetic Studio Repatriation**: Expanded `InSituAestheticStudio` with live site name & description editing, font family selector (Sans, Serif, Mono), and header layout styles (Float, Top, Bottom).
 - **Deep DataGrid In-Place Actions & Dual Pagination**: Overhauled `/admin/dashboard` into a true interactive DataGrid: clickable header column sorting (Time Newest/Oldest, ID, Title A-Z), in-place one-click status flipping between Public and Draft, interactive AI summary badge with one-click re-generation, in-place title quick rename, and dual top & bottom pagination controls.
 - **Slide-Over Permission Drawer & Lock Filter Tab**: Upgraded dashboard article permissions from a center dialog to an elegant right-side slide-over drawer; added a dedicated `🔒 已加锁` filter tab and interactive `访问权限` column badge in the data table.
 - **Music Preview Decoupling (`playTemporaryTrack`)**: Previews in explore view now only stream audio for temporary listening, strictly prohibiting unwanted R2 uploads or permanent playlist insertion.

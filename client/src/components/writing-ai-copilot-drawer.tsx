@@ -85,6 +85,72 @@ export function WritingAICopilotDrawer({
     ];
   });
 
+  // AI In-Situ Configuration State
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [aiConfig, setAiConfig] = useState<{
+    provider: string;
+    model: string;
+    apiKey: string;
+    apiUrl: string;
+  }>({
+    provider: "worker-ai",
+    model: "@cf/meta/llama-3.1-8b-instruct",
+    apiKey: "",
+    apiUrl: "",
+  });
+  const [testingAi, setTestingAi] = useState(false);
+  const [aiTestResult, setAiTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      client.config.get("server").then(({ data }) => {
+        if (data) {
+          const s = data as any;
+          setAiConfig({
+            provider: String(s["ai_provider"] || "worker-ai"),
+            model: String(s["ai_model"] || "@cf/meta/llama-3.1-8b-instruct"),
+            apiKey: String(s["ai_api_key"] || ""),
+            apiUrl: String(s["ai_api_url"] || ""),
+          });
+        }
+      });
+    }
+  }, [isOpen]);
+
+  const handleSaveAndTestAI = async () => {
+    setTestingAi(true);
+    setAiTestResult(null);
+    try {
+      await client.config.update("server", {
+        ai_provider: aiConfig.provider,
+        ai_model: aiConfig.model,
+        ai_api_key: aiConfig.apiKey,
+        ai_api_url: aiConfig.apiUrl,
+        ai_enabled: "true",
+      });
+
+      const testRes = await client.config.testAI({
+        provider: aiConfig.provider,
+        model: aiConfig.model,
+        api_key: aiConfig.apiKey,
+        api_url: aiConfig.apiUrl,
+      });
+
+      if (testRes.data?.success) {
+        setAiTestResult({ success: true, message: "✓ 连通成功！模型已就绪。" });
+      } else {
+        setAiTestResult({
+          success: false,
+          message: `⚠️ 连通失败: ${testRes.data?.error || testRes.error?.value || "请检查网络或密钥"}`,
+        });
+      }
+    } catch (e: any) {
+      setAiTestResult({ success: false, message: `⚠️ 发生异常: ${e.message}` });
+    } finally {
+      setTestingAi(false);
+    }
+  };
+
   // Chat State
   const [messages, setMessages] = useState<AICopilotMessage[]>([
     {
@@ -347,8 +413,20 @@ export function WritingAICopilotDrawer({
               </div>
             </div>
 
-            {/* 包含收起 (-) 与关闭 (X) 按钮 */}
+            {/* 包含设置 (⚙️)、收起 (-) 与关闭 (X) 按钮 */}
             <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setAiSettingsOpen((prev) => !prev)}
+                className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${
+                  aiSettingsOpen
+                    ? "bg-theme text-white shadow-2xs"
+                    : "text-neutral-400 hover:bg-neutral-100 hover:text-theme dark:hover:bg-white/5"
+                }`}
+                title="AI 模型与服务商就地配置"
+              >
+                <i className="ri-settings-4-line text-sm" />
+              </button>
               <button
                 type="button"
                 onClick={onClose}
@@ -369,6 +447,133 @@ export function WritingAICopilotDrawer({
           </div>
 
           {/* Mode Switcher Tabs */}
+          {/* In-Situ AI Service Configuration Panel */}
+          {aiSettingsOpen && (
+            <div className="p-4 border-b border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.03] text-xs space-y-3 ani-show">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs t-primary flex items-center gap-1.5">
+                  <i className="ri-cpu-line text-theme" />
+                  <span>AI 服务商与模型就地配置</span>
+                </span>
+                <span className="text-[10px] text-neutral-400 font-mono">In-Situ AI Settings</span>
+              </div>
+
+              {/* Provider Selection */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-neutral-500">服务商 (Provider)</label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { id: "worker-ai", name: "Cloudflare Workers AI", desc: "免翻墙·原生免费" },
+                    { id: "deepseek", name: "DeepSeek", desc: "国内极速·高智商" },
+                    { id: "openai", name: "OpenAI", desc: "GPT-4o 系列" },
+                    { id: "gemini", name: "Google Gemini", desc: "需中转或海外 IP" },
+                  ].map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        const defaultModels: Record<string, string> = {
+                          "worker-ai": "@cf/meta/llama-3.1-8b-instruct",
+                          deepseek: "deepseek-chat",
+                          openai: "gpt-4o-mini",
+                          gemini: "gemini-1.5-flash",
+                        };
+                        const defaultUrls: Record<string, string> = {
+                          "worker-ai": "",
+                          deepseek: "https://api.deepseek.com/v1",
+                          openai: "https://api.openai.com/v1",
+                          gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
+                        };
+                        setAiConfig((prev) => ({
+                          ...prev,
+                          provider: p.id,
+                          model: defaultModels[p.id] || prev.model,
+                          apiUrl: defaultUrls[p.id] !== undefined ? defaultUrls[p.id] : prev.apiUrl,
+                        }));
+                      }}
+                      className={`p-2 rounded-xl border text-left transition ${
+                        aiConfig.provider === p.id
+                          ? "border-theme bg-theme/10 text-theme font-bold ring-1 ring-theme/30"
+                          : "border-black/5 dark:border-white/5 bg-w dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"
+                      }`}
+                    >
+                      <div className="font-semibold text-xs leading-none">{p.name}</div>
+                      <div className="text-[10px] text-neutral-400 mt-1">{p.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Model Input */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-neutral-500">模型名称 (Model)</label>
+                <input
+                  type="text"
+                  value={aiConfig.model}
+                  onChange={(e) => setAiConfig((prev) => ({ ...prev, model: e.target.value.trim() }))}
+                  placeholder="如: deepseek-chat 或 @cf/meta/llama-3.1-8b-instruct"
+                  className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-mono outline-none focus:border-theme"
+                />
+              </div>
+
+              {/* API Key (if not worker-ai) */}
+              {aiConfig.provider !== "worker-ai" && (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-neutral-500">API Key</label>
+                  <input
+                    type="password"
+                    value={aiConfig.apiKey}
+                    onChange={(e) => setAiConfig((prev) => ({ ...prev, apiKey: e.target.value.trim() }))}
+                    placeholder="输入大模型 API Key..."
+                    className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-mono outline-none focus:border-theme"
+                  />
+                </div>
+              )}
+
+              {/* API URL (if not worker-ai) */}
+              {aiConfig.provider !== "worker-ai" && (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-neutral-500">
+                    API 端点 URL (如需中转/反向代理请在此填写)
+                  </label>
+                  <input
+                    type="text"
+                    value={aiConfig.apiUrl}
+                    onChange={(e) => setAiConfig((prev) => ({ ...prev, apiUrl: e.target.value.trim() }))}
+                    placeholder="官方直连或反向代理 URL..."
+                    className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-mono outline-none focus:border-theme"
+                  />
+                </div>
+              )}
+
+              {/* Feedback status */}
+              {aiTestResult && (
+                <div
+                  className={`p-2 rounded-xl text-xs leading-relaxed ${
+                    aiTestResult.success
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold"
+                      : "bg-rose-500/10 text-rose-600 dark:text-rose-400 font-medium"
+                  }`}
+                >
+                  {aiTestResult.message}
+                </div>
+              )}
+
+              {/* Action */}
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleSaveAndTestAI}
+                  disabled={testingAi}
+                  className="px-4 py-2 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover active:scale-95 transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  {testingAi ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-shield-check-line" />}
+                  <span>{testingAi ? "测试中..." : "保存并测试连通性"}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center border-b border-black/5 p-1.5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] gap-1">
             <button
               type="button"

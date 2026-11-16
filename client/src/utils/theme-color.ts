@@ -182,6 +182,27 @@ export function applyArtTitleColor(value: string | undefined | null) {
   root.style.setProperty("--art-title-rgb", toCssRgb(hexToRgb(color)));
 }
 
+export function applyThemeFontFamily(family: string | undefined | null) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (family === "serif") {
+    root.style.setProperty(
+      "--rin-font-family",
+      '"Noto Serif SC", "Source Han Serif CN VF", "Songti SC", "STSong", serif'
+    );
+  } else if (family === "mono") {
+    root.style.setProperty(
+      "--rin-font-family",
+      'ui-monospace, SFMono-Regular, "Fira Code", Menlo, Monaco, Consolas, monospace'
+    );
+  } else {
+    root.style.setProperty(
+      "--rin-font-family",
+      'Cantarell, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif'
+    );
+  }
+}
+
 export function applyThemeFontSize(value: unknown) {
   if (typeof document === "undefined") return;
   const parsed = Number.parseInt(String(value ?? 16), 10);

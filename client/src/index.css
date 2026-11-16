@@ -24,7 +24,7 @@ body {
     radial-gradient(circle 600px at 0% 20%, rgb(var(--theme-rgb) / 0.06), transparent 50%);
   background-attachment: fixed;
   color: rgb(var(--rin-text-rgb));
-  font-family: Cantarell, "Source Han Serif CN VF", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif !important;
+  font-family: var(--rin-font-family, Cantarell, "Source Han Serif CN VF", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif) !important;
   font-size: var(--rin-font-size, 16px);
   min-height: 100vh;
 }
@@ -35,7 +35,7 @@ textarea:focus {
 
 .wmde-markdown {
   background-color: rgb(var(--rin-surface-rgb));
-  font-family: Cantarell, "Source Han Serif CN VF", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif !important;
+  font-family: var(--rin-font-family, Cantarell, "Source Han Serif CN VF", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif) !important;
 }
 
 .w-md-editor {
