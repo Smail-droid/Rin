@@ -15,7 +15,7 @@ export function useAppBootstrap() {
   const initializedRef = useRef(false);
   const [profile, setProfile] = useState<Profile | undefined | null>(() => {
     try {
-      const cached = sessionStorage.getItem("cached_profile");
+      const cached = sessionStorage.getItem("cached_profile") || localStorage.getItem("cached_profile");
       if (cached) {
         return JSON.parse(cached);
       }
@@ -58,6 +58,11 @@ export function useAppBootstrap() {
           setProfile(nextProfile);
         } else if (error) {
           try {
+            const cached = sessionStorage.getItem("cached_profile") || localStorage.getItem("cached_profile");
+            if (cached) {
+              setProfile(JSON.parse(cached));
+              return;
+            }
             sessionStorage.removeItem("cached_profile");
           } catch {}
           setProfile(null);

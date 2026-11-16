@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.7] - 2026-11-15
 
 ### Added
+- **Slide-Over Permission Drawer & Lock Filter Tab**: Upgraded dashboard article permissions from a center dialog to an elegant right-side slide-over drawer; added a dedicated `🔒 已加锁` filter tab and interactive `访问权限` column badge in the data table.
 - **Music Preview Decoupling (`playTemporaryTrack`)**: Previews in explore view now only stream audio for temporary listening, strictly prohibiting unwanted R2 uploads or permanent playlist insertion.
 - **Auto-Persist R2 Immediate Memory**: "收录时自动转存音廊" setting now persists immediately to localStorage on toggle without requiring manual config save.
 - **Integrated Admin Music Header**: Merged status card and tab switcher into a single dense row, eliminating large horizontal and vertical whitespace voids.

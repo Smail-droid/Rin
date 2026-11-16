@@ -52,8 +52,9 @@ export function AdminDashboardPage() {
   const [allFeeds, setAllFeeds] = useState<any[]>([]);
   const [loadingFeeds, setLoadingFeeds] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft" | "top">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft" | "top" | "locked">("all");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [permissionsMap, setPermissionsMap] = useState<Record<string, { mode: string; tip: string; hasPassword: boolean }>>({});
 
   // 分页状态
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -81,10 +82,15 @@ export function AdminDashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      const [statsRes, feedsRes, r2Res] = await Promise.allSettled([
+      const token = getAuthToken() || "";
+      const [statsRes, feedsRes, r2Res, permsRes] = await Promise.allSettled([
         client.config.getDashboardStats(),
         client.feed.list({ limit: 500, page: 1 }),
         fetchR2StorageStats(),
+        fetch("/api/feed/permissions", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: "include",
+        }).then((r) => (r.ok ? r.json() : {})),
       ]);
 
       let total = 0, pub = 0, drt = 0, mom = 0, comTot = 0, comPend = 0;
@@ -104,6 +110,10 @@ export function AdminDashboardPage() {
 
       if (r2Res.status === "fulfilled" && r2Res.value) {
         setR2Stats(r2Res.value);
+      }
+
+      if (permsRes.status === "fulfilled" && permsRes.value) {
+        setPermissionsMap(permsRes.value);
       }
 
       let feedsList: any[] = [];
@@ -145,6 +155,8 @@ export function AdminDashboardPage() {
       list = list.filter((f) => f.draft === 1);
     } else if (statusFilter === "top") {
       list = list.filter((f) => f.top > 0);
+    } else if (statusFilter === "locked") {
+      list = list.filter((f) => Boolean(permissionsMap[f.id]?.mode && permissionsMap[f.id].mode !== "public"));
     }
 
     if (searchQuery.trim()) {
@@ -369,7 +381,20 @@ export function AdminDashboardPage() {
         }),
       });
       if (res.ok) {
-        showAlert(`文章 #${permissionTarget.id} 权限配置已保存并即时生效：${currentPermMode === "public" ? "公开访问" : currentPermMode === "password" ? "独立密码锁" : "口令通行证"}`);
+        setPermissionsMap((prev) => {
+          const next = { ...prev };
+          if (currentPermMode === "public" || !currentPermMode) {
+            delete next[permissionTarget.id];
+          } else {
+            next[permissionTarget.id] = {
+              mode: currentPermMode,
+              tip: currentTip.trim(),
+              hasPassword: Boolean(currentPassword.trim()),
+            };
+          }
+          return next;
+        });
+        showAlert(`文章 #${permissionTarget.id} 权限配置已保存并即时生效！`);
         setPermissionTarget(null);
       } else {
         showAlert("保存权限策略失败，请检查登录凭证");
@@ -512,6 +537,16 @@ export function AdminDashboardPage() {
             >
               📌 已置顶
             </button>
+            <button
+              type="button"
+              onClick={() => { setStatusFilter("locked"); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                statusFilter === "locked" ? "bg-theme text-white shadow-2xs" : "bg-black/5 dark:bg-white/5 text-neutral-500"
+              }`}
+            >
+              <i className="ri-lock-line" />
+              <span>已加锁 ({Object.keys(permissionsMap).length})</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -581,6 +616,7 @@ export function AdminDashboardPage() {
                 <th className="py-3 px-2 w-16 text-center">ID</th>
                 <th className="py-3 px-3">文章标题与摘要</th>
                 <th className="py-3 px-3 w-24 text-center">状态</th>
+                <th className="py-3 px-3 w-28 text-center">访问权限</th>
                 <th className="py-3 px-3 w-28 text-center">AI导读</th>
                 <th className="py-3 px-3 w-32">更新时间</th>
                 <th className="py-3 px-3 text-right pr-4 w-52">操作</th>
@@ -713,6 +749,50 @@ export function AdminDashboardPage() {
                         }`}>
                           {isDraft ? "草稿" : "已公开"}
                         </span>
+                      </td>
+
+                      {/* 访问权限微光状态胶囊 (可直接点击呼出抽屉快速配置) */}
+                      <td className="py-2.5 px-3 text-center">
+                        {(() => {
+                          const perm = permissionsMap[feed.id];
+                          if (perm?.mode === "password") {
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => openPermissionForFeed(feed)}
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-theme/10 text-theme font-bold text-xs border border-theme/20 hover:bg-theme/20 hover:scale-105 active:scale-95 transition cursor-pointer select-none"
+                                title={`独立密码锁 · 提示: ${perm.tip || "无"}`}
+                              >
+                                <i className="ri-lock-line text-[11px]" />
+                                <span>密码锁</span>
+                              </button>
+                            );
+                          }
+                          if (perm?.mode === "token") {
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => openPermissionForFeed(feed)}
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-xs border border-purple-500/20 hover:bg-purple-500/20 hover:scale-105 active:scale-95 transition cursor-pointer select-none"
+                                title={`口令通行证 · 提示: ${perm.tip || "无"}`}
+                              >
+                                <i className="ri-key-2-line text-[11px]" />
+                                <span>口令证</span>
+                              </button>
+                            );
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => openPermissionForFeed(feed)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/5 font-medium text-xs transition cursor-pointer select-none"
+                              title="点击为此文章配置密码锁或口令"
+                            >
+                              <i className="ri-global-line text-[11px]" />
+                              <span>公开</span>
+                            </button>
+                          );
+                        })()}
                       </td>
 
                       {/* AI 导读 */}
@@ -1075,91 +1155,111 @@ export function AdminDashboardPage() {
         </Modal>
       )}
 
-      {/* 权限与密码锁配置弹窗 (Modal) */}
+      {/* 权限与密码锁配置抽屉 (Slide-over Drawer) */}
       {permissionTarget && (
-        <Modal
-          isOpen={Boolean(permissionTarget)}
-          onRequestClose={() => setPermissionTarget(null)}
-          contentLabel="权限与密码锁配置"
-          panelClassName="p-5 max-w-md w-full bg-w dark:bg-neutral-900 border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl space-y-4"
-        >
-          <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
-            <h4 className="font-bold text-sm t-primary flex items-center gap-2">
-              <i className="ri-shield-keyhole-line text-indigo-500" />
-              <span>文章访问权限锁定 · #{permissionTarget.id}</span>
-            </h4>
-            <button onClick={() => setPermissionTarget(null)} className="text-neutral-400 hover:text-neutral-600">
-              <i className="ri-close-line text-lg" />
-            </button>
-          </div>
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs transition-opacity ani-show"
+            onClick={() => setPermissionTarget(null)}
+          />
+          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-w dark:bg-[#12161f] border-l border-black/10 dark:border-white/10 shadow-2xl p-6 flex flex-col justify-between select-none">
+            <div className="space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-theme/10 text-theme text-lg">
+                    <i className="ri-shield-keyhole-line" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold t-primary">文章访问控制 · #{permissionTarget.id}</h3>
+                    <p className="text-xs text-neutral-400 truncate max-w-[240px]">{permissionTarget.title}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPermissionTarget(null)}
+                  className="flex h-8 w-8 items-center justify-center rounded-xl text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5 transition"
+                >
+                  <i className="ri-close-line text-lg" />
+                </button>
+              </div>
 
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            {[
-              { id: "public", label: "公开访问", desc: "所有人均可阅读" },
-              { id: "password", label: "独立密码锁", desc: "指定密码解锁" },
-              { id: "token", label: "口令通行证", desc: "特约口令查阅" },
-            ].map((m) => (
+              {/* 三态模式卡片 */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-neutral-500">访问控制模式</label>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  {[
+                    { id: "public", label: "公开访问", icon: "ri-global-line", desc: "所有人可读" },
+                    { id: "password", label: "独立密码锁", icon: "ri-lock-line", desc: "专属密码解锁" },
+                    { id: "token", label: "口令通行证", icon: "ri-key-2-line", desc: "特约口令查阅" },
+                  ].map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setCurrentPermMode(m.id as any)}
+                      className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all ${
+                        currentPermMode === m.id
+                          ? "border-theme bg-theme/10 ring-2 ring-theme/30 text-theme shadow-xs"
+                          : "border-black/10 dark:border-white/10 hover:border-black/20 text-neutral-700 dark:text-neutral-300"
+                      }`}
+                    >
+                      <i className={`${m.icon} text-base mb-2`} />
+                      <span className="font-bold text-xs">{m.label}</span>
+                      <span className="text-[10px] text-neutral-400 mt-0.5">{m.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {currentPermMode !== "public" && (
+                <div className="space-y-3.5 pt-2 ani-show">
+                  <div className="space-y-1 text-xs">
+                    <label className="text-xs font-bold text-neutral-500">
+                      {currentPermMode === "password" ? "访问查看密码" : "通行证口令"}
+                    </label>
+                    <input
+                      type="text"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder={currentPermMode === "password" ? "设置独立解锁密码..." : "设置特约口令..."}
+                      className="w-full rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] px-3.5 py-2.5 text-xs outline-none focus:border-theme font-mono font-bold"
+                    />
+                  </div>
+
+                  <div className="space-y-1 text-xs">
+                    <label className="text-xs font-bold text-neutral-500">读者端解锁提示词 (选填)</label>
+                    <input
+                      type="text"
+                      value={currentTip}
+                      onChange={(e) => setCurrentTip(e.target.value)}
+                      placeholder="如：密码为博主生日，或加微信获取..."
+                      className="w-full rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] px-3.5 py-2.5 text-xs outline-none focus:border-theme"
+                    />
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 text-[11px] text-neutral-500 leading-relaxed">
+                    💡 <strong>真实物理脱敏保护</strong>：当设置为密码锁或口令时，Cloudflare Worker 在边缘端将对未授权访客<strong>物理置空正文（0 字节传输）</strong>，无论通过 DevTools 还是网络抓包均无法获取原文。
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-black/5 dark:border-white/5 flex items-center justify-end gap-2 text-xs">
               <button
-                key={m.id}
                 type="button"
-                onClick={() => setCurrentPermMode(m.id as any)}
-                className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition ${
-                  currentPermMode === m.id
-                    ? "border-theme bg-theme/10 ring-1 ring-theme/30"
-                    : "border-black/10 dark:border-white/10 hover:bg-black/5"
-                }`}
+                onClick={() => setPermissionTarget(null)}
+                className="px-4 py-2 rounded-xl text-neutral-500 hover:bg-black/5 font-semibold"
               >
-                <span className={`font-bold text-xs ${currentPermMode === m.id ? "text-theme" : "t-primary"}`}>
-                  {m.label}
-                </span>
-                <span className="text-[10px] text-neutral-400 mt-1">{m.desc}</span>
+                取消
               </button>
-            ))}
-          </div>
-
-          {currentPermMode === "password" && (
-            <div className="space-y-1 text-xs">
-              <label className="text-[11px] font-bold text-neutral-500">查看密码</label>
-              <input
-                type="text"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="设置该文章的查看密码..."
-                className="w-full rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] px-3 py-2 text-xs outline-none focus:border-theme"
-              />
+              <button
+                type="button"
+                onClick={handleSavePermission}
+                className="px-5 py-2 rounded-xl bg-theme text-white font-bold shadow-xs hover:bg-theme-hover active:scale-95 transition"
+              >
+                保存权限并即时生效
+              </button>
             </div>
-          )}
-
-          {currentPermMode !== "public" && (
-            <div className="space-y-1 text-xs">
-              <label className="text-[11px] font-bold text-neutral-500">未解锁时的提示说明</label>
-              <input
-                type="text"
-                value={currentTip}
-                onChange={(e) => setCurrentTip(e.target.value)}
-                placeholder="如：本文为特约架构文档，需凭口令查阅。"
-                className="w-full rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] px-3 py-2 text-xs outline-none focus:border-theme"
-              />
-            </div>
-          )}
-
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/5 text-xs">
-            <button
-              type="button"
-              onClick={() => setPermissionTarget(null)}
-              className="px-4 py-1.5 rounded-xl text-neutral-500 hover:bg-black/5 font-semibold"
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              onClick={handleSavePermission}
-              className="px-4 py-1.5 rounded-xl bg-theme text-white font-bold shadow-xs hover:bg-theme-hover"
-            >
-              保存权限
-            </button>
           </div>
-        </Modal>
+        </>
       )}
 
       {/* R2 媒体库相册挑选器 */}
