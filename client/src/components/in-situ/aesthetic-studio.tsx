@@ -9,6 +9,75 @@ import { type FeedCardVariant } from "../feed-card-options";
 
 const CURATED_PRESETS = THEME_PRESETS.slice(0, 8);
 
+interface MasterPreset {
+  id: "scrapbook" | "editorial" | "terminal";
+  name: string;
+  badge: string;
+  icon: string;
+  desc: string;
+  config: Record<string, unknown>;
+}
+
+const MASTER_PRESETS: MasterPreset[] = [
+  {
+    id: "scrapbook",
+    name: "🌸 和风手账",
+    badge: "Indie Scrapbook",
+    icon: "ri-camera-lens-line",
+    desc: "16:9 拍立得拟物卡片、温润微光、自然手账微倾、居中浮动灵动岛",
+    config: {
+      "feed.card_variant": "default",
+      "header.position": "float",
+      "header.layout": "classic",
+      "theme.font_family": "sans",
+      "theme.color": "#fc466b",
+      "gallery.tilt_mode": "subtle",
+      "gallery.columns": "auto",
+      "gallery.card_gap": 24,
+      "gallery.padding": 24,
+      "gallery.align": "center",
+    },
+  },
+  {
+    id: "editorial",
+    name: "📝 京都社论",
+    badge: "Editorial Journal",
+    icon: "ri-book-open-line",
+    desc: "宽幅画报横屏、纯粹典雅衬线排印、极简纯文本透气顶栏",
+    config: {
+      "feed.card_variant": "editorial",
+      "header.position": "top",
+      "header.layout": "compact",
+      "theme.font_family": "serif",
+      "theme.color": "#27272a",
+      "gallery.tilt_mode": "flat",
+      "gallery.columns": "2",
+      "gallery.card_gap": 32,
+      "gallery.padding": 24,
+      "gallery.align": "center",
+    },
+  },
+  {
+    id: "terminal",
+    name: "💻 极客墨影",
+    badge: "Dark Terminal",
+    icon: "ri-terminal-box-line",
+    desc: "44px 高密单行、便签自适应单行终端条、底部便携 Dock",
+    config: {
+      "feed.card_variant": "compact",
+      "header.position": "bottom",
+      "header.layout": "compact",
+      "theme.font_family": "mono",
+      "theme.color": "#00f2fe",
+      "gallery.tilt_mode": "flat",
+      "gallery.columns": "auto",
+      "gallery.card_gap": 16,
+      "gallery.padding": 24,
+      "gallery.align": "fluid",
+    },
+  },
+];
+
 const CARD_VARIANTS: Array<{ id: FeedCardVariant; label: string; icon: string; desc: string }> = [
   { id: "default", label: "拍立得手账", icon: "ri-camera-line", desc: "拟物白边留白与胶片暗角" },
   { id: "editorial", label: "极简社论", icon: "ri-book-open-line", desc: "大号衬线标题与呼吸感摘要" },
@@ -74,6 +143,12 @@ export function InSituAestheticStudio() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleApplyMasterPreset = (preset: MasterPreset) => {
+    applyThemeColor(String(preset.config["theme.color"]));
+    applyThemeFontFamily(String(preset.config["theme.font_family"]));
+    void persistConfig(preset.config);
   };
 
   const handleSelectVariant = (variant: FeedCardVariant) => {
@@ -204,6 +279,52 @@ export function InSituAestheticStudio() {
               placeholder="站点副标题/描述..."
               className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs outline-none focus:border-theme"
             />
+          </div>
+
+          {/* 大师级画廊意境一键预设 (Master Gallery Aesthetics) */}
+          <div className="space-y-2.5 p-3.5 rounded-2xl bg-gradient-to-br from-theme/5 to-transparent border border-theme/20 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-theme uppercase tracking-wider flex items-center gap-1.5">
+                <i className="ri-magic-line" />
+                <span>三大画廊意境一键变奏</span>
+              </span>
+              <span className="text-[10px] font-mono text-neutral-400">1-Click</span>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {MASTER_PRESETS.map((preset) => {
+                const isCurrent =
+                  activeVariant === preset.config["feed.card_variant"] &&
+                  activeHeaderPosition === preset.config["header.position"] &&
+                  activeFontFamily === preset.config["theme.font_family"];
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handleApplyMasterPreset(preset)}
+                    className={`group relative flex items-start gap-3 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      isCurrent
+                        ? "border-theme bg-theme/10 ring-2 ring-theme/30 shadow-xs"
+                        : "border-black/5 dark:border-white/5 bg-white/60 dark:bg-white/[0.02] hover:border-theme/40 hover:bg-white/90"
+                    }`}
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-base shrink-0 group-hover:scale-110 transition-transform">
+                      <i className={preset.icon} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs t-primary">{preset.name}</span>
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-md bg-black/5 dark:bg-white/10 text-neutral-500">
+                          {preset.badge}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-neutral-400 mt-0.5 leading-relaxed">
+                        {preset.desc}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* 1. 卡片版式骨架 (4 种结构级差异变体) */}

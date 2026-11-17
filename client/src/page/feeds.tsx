@@ -253,7 +253,7 @@ function AtelierPhotoCard({
                         </div>
                     ) : null}
 
-                    <div className="relative aspect-[3/4] w-full overflow-hidden bg-neutral-900">
+                    <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-900">
                         {hasImage ? (
                             <img
                                 src={feed.avatar}
@@ -328,25 +328,24 @@ function AtelierPhotoCard({
                         </div>
                     ) : null}
 
-                    <div className="flex flex-col sm:flex-row gap-4 items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1.5 text-xs font-mono text-neutral-400">
-                                <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
-                                {feed.top === 1 ? <span className="text-theme font-bold">· 置顶</span> : null}
-                            </div>
-                            <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors leading-snug">
-                                {feed.title}
-                            </h2>
-                            {feed.summary ? (
-                                <p className="mt-2.5 line-clamp-3 text-xs sm:text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
-                                    {feed.summary}
-                                </p>
-                            ) : null}
+                    {hasImage ? (
+                        <div className="w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden rounded-2xl mb-4 border border-black/5 dark:border-white/10 bg-neutral-100 dark:bg-neutral-800">
+                            <img src={feed.avatar} alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         </div>
-                        {hasImage ? (
-                            <div className="w-full sm:w-32 h-24 shrink-0 overflow-hidden rounded-xl border border-black/5 dark:border-white/10">
-                                <img src={feed.avatar} alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                            </div>
+                    ) : null}
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2 mb-1 text-xs font-mono text-neutral-400">
+                            <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
+                            {feed.top === 1 ? <span className="text-theme font-bold">· 置顶</span> : null}
+                            {feed.draft === 1 ? <span className="text-amber-500 font-bold">· 草稿</span> : null}
+                        </div>
+                        <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors leading-snug">
+                            {feed.title}
+                        </h2>
+                        {feed.summary ? (
+                            <p className="mt-1 line-clamp-3 text-xs sm:text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
+                                {feed.summary}
+                            </p>
                         ) : null}
                     </div>
                     <div className="flex items-center justify-between text-xs text-neutral-400 mt-4 pt-2.5 border-t border-black/5 dark:border-white/5 font-mono">
@@ -576,6 +575,37 @@ function StickyNoteItem({
             </div>
         );
     };
+
+    // 极客高密单行适配 (Terminal Compact Adapter: 便签整齐融入单行数据流，彻底消灭违和感)
+    if (siteConfig?.feedCardVariant === "compact") {
+        const meta = {
+            about: { icon: "ri-user-smile-line", title: "关于我", url: siteConfig.atelierAboutUrl || "/about", desc: siteConfig.atelierAboutDesc || "记忆工坊与随笔空间" },
+            timeline: { icon: "ri-time-line", title: "岁月轨迹", url: siteConfig.atelierTimelineUrl || "/timeline", desc: siteConfig.atelierTimelineDesc || "时间轴历程与脚印" },
+            moments: { icon: "ri-chat-smile-2-line", title: "生活随笔", url: siteConfig.atelierMomentsUrl || "/moments", desc: siteConfig.atelierMomentsDesc || "日常随笔与微言动态" },
+            friends: { icon: "ri-links-line", title: "星标友链", url: siteConfig.atelierFriendsUrl || "/friends", desc: siteConfig.atelierFriendsDesc || "友情链接与同行空间" },
+            search: { icon: "ri-search-line", title: "站内检索", url: siteConfig.atelierSearchUrl || "/search", desc: siteConfig.atelierSearchDesc || "输入关键词快速检索" },
+        }[type];
+
+        return (
+            <div className={`group my-1.5 flex items-center justify-between gap-3 rounded-2xl border border-dashed border-theme/40 bg-theme/[0.04] hover:bg-theme/[0.08] px-4 py-3 transition-all text-xs ${dragStyleClasses}`} {...dragHandlers}>
+                <Link href={meta.url} className="flex items-center gap-3 min-w-0 flex-1">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-theme/10 text-theme shrink-0">
+                        <i className={meta.icon} />
+                    </span>
+                    <span className="font-mono font-bold text-theme shrink-0">[{meta.title}]</span>
+                    <span className="truncate text-neutral-500 dark:text-neutral-400 font-mono text-xs">{meta.desc}</span>
+                </Link>
+                <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] font-mono text-theme/70 font-bold">ENTRY ➔</span>
+                    {canManage && (
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEditNote?.(type); }} className="text-neutral-400 hover:text-theme p-1">
+                            <i className="ri-settings-4-line text-xs" />
+                        </button>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     if (type === "about") {
         const aboutUrl = siteConfig.atelierAboutUrl || "/about";
@@ -1062,6 +1092,29 @@ function NextDeckFlipCard({
             setUploading(false);
         }
     };
+
+    // 极客高密单行适配 (Terminal Compact Flip Card)
+    if (siteConfig?.feedCardVariant === "compact") {
+        return (
+            <div className="group my-1.5 flex items-center justify-between gap-3 rounded-2xl border border-dashed border-theme/40 bg-theme/[0.04] hover:bg-theme/[0.08] px-4 py-3 transition-all text-xs">
+                <Link href={deckUrl} className="flex items-center gap-3 min-w-0 flex-1">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-theme/10 text-theme shrink-0">
+                        <i className="ri-gallery-line" />
+                    </span>
+                    <span className="font-mono font-bold text-theme shrink-0">[记忆翻动]</span>
+                    <span className="truncate text-neutral-500 dark:text-neutral-400 font-mono text-xs">{deckDesc}</span>
+                </Link>
+                <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] font-mono text-theme/70 font-bold">GALLERY ➔</span>
+                    {canManage && (
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEditDeck?.(); }} className="text-neutral-400 hover:text-theme p-1">
+                            <i className="ri-settings-4-line text-xs" />
+                        </button>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div

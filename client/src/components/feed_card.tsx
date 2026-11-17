@@ -133,12 +133,12 @@ export function FeedCard({ id, title, avatar, draft, listed, top, summary, readi
     }
 
     // =========================================================================
-    // 2. 巨幅画册海报 (Poster Visual Hero) - 沉浸式海报背景，文字悬浮微光蒙版
+    // 2. 巨幅画册海报 (Poster Visual Hero) - 沉浸式海报背景，横幅宽屏画幅，文字悬浮微光蒙版
     // =========================================================================
     if (activeVariant === "poster" && avatar) {
         const posterBody = (
             <div className="group relative my-3 overflow-hidden rounded-3xl border border-black/10 shadow-lg hover:shadow-2xl transition-all duration-300 dark:border-white/10 break-inside-avoid">
-                <div className="relative aspect-[3/4] w-full overflow-hidden bg-neutral-900">
+                <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-900">
                     <img
                         src={avatar}
                         alt=""
@@ -179,32 +179,30 @@ export function FeedCard({ id, title, avatar, draft, listed, top, summary, readi
     }
 
     // =========================================================================
-    // 3. 极简杂志社论 (Editorial Magazine) - 纯粹阅读、典雅衬线标题与呼吸感摘要
+    // 3. 极简杂志社论 (Editorial Magazine) - 宽幅艺术画报、典雅衬线标题与呼吸感摘要
     // =========================================================================
     if (activeVariant === "editorial") {
         const editorialBody = (
-            <article className="group my-4 break-inside-avoid overflow-hidden rounded-[24px] border border-black/10 bg-w p-6 shadow-xs hover:shadow-lg transition-all hover:-translate-y-0.5 dark:border-white/10">
-                <div className="flex flex-col sm:flex-row gap-5 items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                        {safeHashtags.length > 0 ? (
-                            <div className="text-[11px] font-mono uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-2 flex items-center gap-2 flex-wrap">
-                                {safeHashtags.map(({ name }, i) => (
-                                    <span key={i} className="hover:text-theme">#{name}</span>
-                                ))}
-                            </div>
-                        ) : null}
-                        <h2 className="text-2xl font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors leading-snug">
-                            {title}
-                        </h2>
-                        <p className="mt-3 line-clamp-4 text-[14px] leading-relaxed text-neutral-600 dark:text-neutral-300 font-normal">
-                            {summary}
-                        </p>
+            <article className="group my-4 break-inside-avoid overflow-hidden rounded-[24px] border border-black/10 bg-w p-5 sm:p-6 shadow-xs hover:shadow-lg transition-all hover:-translate-y-0.5 dark:border-white/10">
+                {avatar ? (
+                    <div className="w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden rounded-2xl mb-4 border border-black/5 dark:border-white/10 bg-neutral-100 dark:bg-neutral-800">
+                        <img src={avatar} alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     </div>
-                    {avatar ? (
-                        <div className="w-full sm:w-36 h-28 shrink-0 overflow-hidden rounded-2xl border border-black/5 dark:border-white/10">
-                            <img src={avatar} alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                ) : null}
+                <div className="flex flex-col gap-2">
+                    {safeHashtags.length > 0 ? (
+                        <div className="text-[11px] font-mono uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-1 flex items-center gap-2 flex-wrap">
+                            {safeHashtags.map(({ name }, i) => (
+                                <span key={i} className="hover:text-theme">#{name}</span>
+                            ))}
                         </div>
                     ) : null}
+                    <h2 className="text-2xl font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors leading-snug">
+                        {title}
+                    </h2>
+                    <p className="mt-2 line-clamp-3 text-[14px] leading-relaxed text-neutral-600 dark:text-neutral-300 font-normal">
+                        {summary}
+                    </p>
                 </div>
                 <div className="flex items-center justify-between text-xs text-neutral-400 mt-5 pt-3 border-t border-black/5 dark:border-white/5 font-mono">
                     <div className="flex items-center gap-2">

@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.7] - 2026-11-15
 
 ### Added
+- **Three Master Gallery Design Presets**: Integrated 1-click curated design systems (🌸 和风手账, 📝 京都社论, 💻 极客墨影) in `InSituAestheticStudio`, unifying card variant, typography, palette, columns, and header mode in one click.
+- **Landscape Photography Restoration (`aspect-[16/10]`)**: Replaced cramped 3:4 portrait ratios in `poster` and `editorial` card variants with widescreen 16:10 / 16:9 landscape ratios, ensuring blog banner images are completely uncropped and enjoyable.
+- **Terminal Single-Row Sticky Notes in Compact Mode**: Adapted sticky notes and deck flip card in `feeds.tsx` into dense single-row terminal commands when `compact` variant is active, eliminating aesthetic clashes between notes and single-line articles.
+- **Pure Editorial Minimalist Navbar (`headerLayout: "compact"`)**: Wired real differential rendering for `headerLayout: "compact"`, providing a tranquil, borderless, text-first Japanese editorial header with clean typography.
 - **Navidrome & MHub Dual-Column Music Studio (`admin-music.tsx`)**: Rebuilt the music gallery into a dual-column music app with a dedicated vertical music sidebar (Discovery: Explore & Shuffle, Library: R2 Assets, Queue, 5T Sync, Operations: Upload, Folder Import, Radio Settings), completely replacing primitive stacked CMS cards with an authentic music station.
 - **Dynamic Remote AI Models Fetching (`/api/config/ai/models`)**: Added one-click `🔄 拉取模型` capability across the AI Copilot drawer and backend AI settings, querying the provider's standard OpenAI-compatible `/models` endpoint to dynamically populate all available model IDs into an instant dropdown, eliminating preset model limitations and manual typing.
 - **MHub & Navidrome Persistent Bottom Player Dock (`BottomPlayerDock`)**: Built a persistent bottom music player dock inspired by MHub (`jizizr/mhub`) and Navidrome, featuring left-aligned artwork with live animated audio waves, center transport controls with precision time scrubber (`00:00 / 03:48`), volume slider, and instant lyrics/queue popovers.
