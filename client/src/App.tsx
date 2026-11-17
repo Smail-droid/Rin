@@ -20,12 +20,10 @@ function App() {
       <MusicPlayerProvider>
         <AppRoutes />
         <GlobalMusicPlayer />
-        {profile ? (
-          <Suspense fallback={null}>
-            <InSituAestheticStudio />
-            <InSituDeskDock />
-          </Suspense>
-        ) : null}
+        <Suspense fallback={null}>
+          <InSituAestheticStudio />
+          {profile?.permission ? <InSituDeskDock /> : null}
+        </Suspense>
       </MusicPlayerProvider>
     </AppProviders>
   );
