@@ -180,7 +180,7 @@ function AtelierPhotoCard({
         );
     }
 
-    // 2. 巨幅画册海报 (Poster)
+    // 2. 巨幅画册海报 (Poster - 封面立绘100%纯净展现，文字下移分离，绝不遮挡角色原画)
     if (variant === "poster") {
         return (
             <div className="relative group/card break-inside-avoid w-full mb-5 sm:mb-6">
@@ -191,12 +191,12 @@ function AtelierPhotoCard({
                     onDragOver={onDragOver}
                     onDrop={onDrop}
                     onDragEnd={onDragEnd}
-                    className={`group relative block w-full overflow-hidden rounded-3xl border border-black/10 dark:border-white/10 shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 ${
+                    className={`group relative block w-full overflow-hidden rounded-3xl border border-black/10 dark:border-white/10 bg-white/85 dark:bg-[#18181b]/85 backdrop-blur-md shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 ${
                         isDragging ? "opacity-35 scale-95 border-theme border-dashed" : ""
                     } ${isDragOver ? "ring-4 ring-theme/40" : ""}`}
                 >
                     {canManage ? (
-                        <div className="absolute right-4 top-4 z-20 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="absolute right-3.5 top-3.5 z-20 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                             <button
                                 type="button"
                                 onClick={(e) => {
@@ -209,45 +209,60 @@ function AtelierPhotoCard({
                             >
                                 <i className="ri-image-edit-line text-xs" />
                             </button>
-                            <Link
-                                href={`/admin/writing/${feed.id}`}
-                                onClick={(e) => e.stopPropagation()}
-                                title="编辑文章"
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.dispatchEvent(new CustomEvent("rin:open-writing-drawer", { detail: { id: feed.id } }));
+                                }}
+                                title="在场就地编辑文章"
                                 className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme"
                             >
                                 <i className="ri-edit-line text-xs" />
-                            </Link>
+                            </button>
                         </div>
                     ) : null}
 
-                    <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-900">
+                    {/* 1. 顶部 100% 完整原画插图展示区 (无任何文字遮挡遮挡) */}
+                    <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                         {hasImage ? (
                             <img
                                 src={feed.avatar}
                                 alt=""
-                                className="absolute inset-0 h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                                className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                             />
                         ) : (
-                            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-tr from-neutral-800 to-neutral-950 p-6 text-center text-white">
-                                <h2 className="text-xl font-bold line-clamp-3 leading-snug">{feed.title}</h2>
+                            <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-tr from-theme/10 to-transparent">
+                                <i className="ri-image-line text-4xl text-theme/60 mb-2" />
+                                <span className="text-xs text-neutral-400">暂无插图封面</span>
                             </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-5 text-white">
-                            <h2 className="text-xl font-bold leading-snug drop-shadow-sm group-hover:text-theme transition-colors">
-                                {feed.title}
-                            </h2>
-                            {feed.summary ? (
-                                <p className="mt-2 line-clamp-2 text-xs text-white/80 leading-relaxed font-normal">
-                                    {feed.summary}
-                                </p>
-                            ) : null}
-                            <div className="flex items-center justify-between text-[11px] text-white/60 mt-3 pt-2.5 border-t border-white/15">
-                                <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
-                                <span className="flex items-center gap-1">
-                                    <i className="ri-time-line" />
-                                    {readingTime} 分钟
-                                </span>
-                            </div>
+                    </div>
+
+                    {/* 2. 底部文字与信息区 (下移分离，保留完整画质) */}
+                    <div className="p-4 sm:p-5 flex flex-col justify-between">
+                        <div className="flex items-center gap-2 mb-1.5 text-[11px] font-mono text-neutral-400">
+                            <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
+                            {feed.top === 1 ? <span className="text-theme font-bold">· 置顶</span> : null}
+                            {feed.draft === 1 ? <span className="text-amber-500 font-bold">· 草稿</span> : null}
+                        </div>
+                        <h2 className="text-base sm:text-lg font-bold leading-snug t-primary group-hover:text-theme transition-colors line-clamp-2">
+                            {feed.title}
+                        </h2>
+                        {feed.summary ? (
+                            <p className="mt-1.5 line-clamp-2 text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed font-normal">
+                                {feed.summary}
+                            </p>
+                        ) : null}
+                        <div className="flex items-center justify-between text-[11px] text-neutral-400 mt-3 pt-2.5 border-t border-black/5 dark:border-white/5 font-mono">
+                            <span className="flex items-center gap-1">
+                                <i className="ri-time-line text-xs" />
+                                <span>{readingTime} 分钟阅读</span>
+                            </span>
+                            <span className="text-theme opacity-80 group-hover:translate-x-1 transition-transform inline-flex items-center gap-0.5 font-bold">
+                                阅读全文 <i className="ri-arrow-right-line" />
+                            </span>
                         </div>
                     </div>
                 </Link>

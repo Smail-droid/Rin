@@ -214,11 +214,17 @@ export function applyThemeFontSize(value: unknown) {
 export function applyThemeWallpaper(url: string | undefined | null, opacity?: number) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  if (url && url.trim().length > 0) {
-    root.style.setProperty("--rin-wallpaper-url", `url('${url.trim()}')`);
-  } else {
-    root.style.setProperty("--rin-wallpaper-url", "url('https://cdn.nodeimage.com/i/qAdktUUKq1wrLwlSuYIbhHDiZtf3lXCp.png')");
+  const cleanUrl = (url || "").trim();
+
+  if (!cleanUrl || cleanUrl === "none" || cleanUrl === "empty") {
+    root.style.setProperty("--rin-wallpaper-url", "none");
+    root.style.setProperty("--rin-wallpaper-opacity", "0");
+    document.body.classList.add("no-wallpaper");
+    return;
   }
+
+  document.body.classList.remove("no-wallpaper");
+  root.style.setProperty("--rin-wallpaper-url", `url('${cleanUrl}')`);
   if (opacity !== undefined) {
     const alpha = Math.min(100, Math.max(0, opacity)) / 100;
     root.style.setProperty("--rin-wallpaper-opacity", alpha.toFixed(2));

@@ -17,6 +17,14 @@ import { type FeedCardVariant } from "../feed-card-options";
 
 const CURATED_PRESETS = THEME_PRESETS.slice(0, 8);
 
+const WALLPAPER_PRESETS = [
+  { id: "none", name: "留空无壁纸", url: "none", icon: "ri-forbid-line" },
+  { id: "sakura", name: "和风浅樱", url: "https://cdn.nodeimage.com/i/qAdktUUKq1wrLwlSuYIbhHDiZtf3lXCp.png", icon: "ri-sparkling-2-line" },
+  { id: "starry", name: "静谧星空", url: "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=2070&auto=format&fit=crop", icon: "ri-planet-line" },
+  { id: "watercolor", name: "水彩森屿", url: "https://images.unsplash.com/photo-1518495973542-4542c06a5843?q=80&w=2070&auto=format&fit=crop", icon: "ri-landscape-line" },
+  { id: "paper", name: "暖调手账", url: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=2070&auto=format&fit=crop", icon: "ri-file-paper-2-line" },
+];
+
 interface MasterPreset {
   id: "sakura" | "editorial" | "galaxy" | "amber";
   name: string;
@@ -72,11 +80,11 @@ const MASTER_PRESETS: MasterPreset[] = [
     name: "星穹幽夜",
     badge: "Celestial Galaxy",
     icon: "ri-planet-line",
-    desc: "幽蓝星光、通透毛玻璃卡片、手账微托盘顶栏",
+    desc: "幽蓝星光、通透毛玻璃卡片、浮墨微光自然顶栏 (插图立绘纯净展现)",
     config: {
-      "feed.card_variant": "poster",
+      "feed.card_variant": "default",
       "header.position": "top",
-      "header.layout": "dock",
+      "header.layout": "classic",
       "theme.font_family": "sans",
       "theme.color": "#38bdf8",
       "gallery.tilt_degree": 1.2,
@@ -84,7 +92,9 @@ const MASTER_PRESETS: MasterPreset[] = [
       "gallery.card_gap": 20,
       "gallery.padding": 24,
       "gallery.align": "center",
-      "theme.opacity": 70,
+      "theme.opacity": 75,
+      "theme.wallpaper": "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=2070&auto=format&fit=crop",
+      "theme.wallpaper_opacity": 40,
     },
   },
   {
@@ -248,6 +258,15 @@ export function InSituAestheticStudio() {
     applyThemeWallpaper(wallpaperUrlVal, wallpaperOpacityVal);
     void persistConfig({
       "theme.wallpaper": wallpaperUrlVal.trim(),
+      "theme.wallpaper_opacity": wallpaperOpacityVal,
+    });
+  };
+
+  const handleSelectWallpaperPreset = (url: string) => {
+    setWallpaperUrlVal(url);
+    applyThemeWallpaper(url, wallpaperOpacityVal);
+    void persistConfig({
+      "theme.wallpaper": url,
       "theme.wallpaper_opacity": wallpaperOpacityVal,
     });
   };
@@ -457,21 +476,59 @@ export function InSituAestheticStudio() {
                 <i className="ri-image-line text-theme" />
                 <span>全屏通透背景壁纸</span>
               </span>
-              <button
-                type="button"
-                onClick={handleSaveWallpaper}
-                className="px-2 py-0.5 rounded-md bg-theme text-white text-[10px] font-bold transition hover:bg-theme-hover cursor-pointer"
-              >
-                应用壁纸
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleSelectWallpaperPreset("none")}
+                  className="px-2 py-0.5 rounded-md border border-black/10 dark:border-white/10 hover:border-rose-400 text-neutral-500 hover:text-rose-500 text-[10px] font-medium transition cursor-pointer"
+                  title="清空当前壁纸，使用纯净留白"
+                >
+                  留空清空
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveWallpaper}
+                  className="px-2 py-0.5 rounded-md bg-theme text-white text-[10px] font-bold transition hover:bg-theme-hover cursor-pointer"
+                >
+                  应用直链
+                </button>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-[11px] text-neutral-500">壁纸图片 URL (支持外部图床直链)</label>
+
+            {/* 5 款精选预设壁纸库 */}
+            <div className="space-y-1">
+              <label className="text-[11px] text-neutral-400">精选壁纸库 (一键切换或留空)</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                {WALLPAPER_PRESETS.map((wp) => {
+                  const isSelected =
+                    (wp.url === "none" && (!wallpaperUrlVal || wallpaperUrlVal === "none")) ||
+                    wallpaperUrlVal === wp.url;
+                  return (
+                    <button
+                      key={wp.id}
+                      type="button"
+                      onClick={() => handleSelectWallpaperPreset(wp.url)}
+                      className={`px-2 py-1.5 rounded-xl border text-[11px] font-medium flex items-center justify-center gap-1 transition cursor-pointer ${
+                        isSelected
+                          ? "border-theme bg-theme text-white shadow-2xs font-bold"
+                          : "border-black/5 bg-white/70 dark:bg-white/5 hover:border-theme/40 text-neutral-600 dark:text-neutral-300"
+                      }`}
+                    >
+                      <i className={wp.icon} />
+                      <span>{wp.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              <label className="text-[11px] text-neutral-500">自定义壁纸图片 URL (支持外部图床直链)</label>
               <input
                 type="text"
                 value={wallpaperUrlVal}
                 onChange={(e) => setWallpaperUrlVal(e.target.value)}
-                placeholder="https://... 或点击右侧应用"
+                placeholder="https://... 或点击上方预设"
                 className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-mono outline-none focus:border-theme"
               />
             </div>

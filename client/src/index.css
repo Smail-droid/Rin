@@ -50,6 +50,41 @@ body::before {
   transition: opacity 0.3s ease, background-image 0.5s ease;
 }
 
+body.no-wallpaper::before {
+  display: none !important;
+}
+
+/* ============================================================
+   图2跃动星芒动效：悬浮与激活时两侧跳跃音符/星芒 (✦ 导航 ✦)
+   ============================================================ */
+@keyframes navHopLeft {
+  0%, 100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.18) rotate(-14deg);
+  }
+}
+
+@keyframes navHopRight {
+  0%, 100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.18) rotate(14deg);
+  }
+}
+
+.nav-hop-left {
+  display: inline-block;
+  animation: navHopLeft 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+
+.nav-hop-right {
+  display: inline-block;
+  animation: navHopRight 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+
 /* ============================================================
    二次元自定义鼠标指针 (支持在美学工坊一键开启/关闭)
    ============================================================ */
