@@ -58,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Severed External Proxy Scrapers in Friends**: Removed brittle 3rd-party CORS proxy chains (`corsproxy.io`, `microlink.io`, FileReader base64) from `friends.tsx`, standardizing on native URL fields and Cloudflare Worker edge inspection.
 
 ### Fixed
+- **Friend Link Creation & Silent Failures Resolved**:
+  - Removed obsolete 20-character limitation (`name.length > 20`) in `POST /friend`, expanding site name allowance to 100 characters, avatar allowance to 2000 characters, and description allowance to 5000 characters.
+  - Allowed optional empty descriptions in friend creation, preventing 400 rejection when a site has no description.
+  - Permitted safe `data:image/` base64 URIs in `isValidSafeMediaUrl` and auto-prefixed protocol-relative `//` URLs to `https:`.
+  - Added strict error-response checks across `client.friend.create`, `client.friend.update`, `client.friend.delete`, `client.config.updateAll`, and `client.config.update`, ensuring server-side errors are caught and surfaced instead of silently closing modals and giving a false impression of success.
 - **AI Summary Pipeline Scoping & Region Error Diagnostics**: Explicitly scoped dashboard AI summary calls to the `summary` stage (preventing unnecessary tech/format pipeline passes), caught pipeline exceptions with `processAIError`, and provided actionable resolution instructions when Google Gemini returns 400 region restrictions (`User location is not supported`).
 
 ---

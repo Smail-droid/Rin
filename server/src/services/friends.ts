@@ -55,11 +55,12 @@ export function FriendService(): Hono {
             return c.text('Friend Link Apply Disabled', 403);
         }
 
-        if (!name || !desc || !avatar || !url) {
+        const finalDesc = typeof desc === 'string' ? desc : "";
+        if (!name || !avatar || !url) {
             return c.text('Invalid input', 400);
         }
 
-        if (name.length > 100 || desc.length > 3000 || avatar.length > 1000 || url.length > 1000) {
+        if (name.length > 100 || finalDesc.length > 5000 || avatar.length > 2000 || url.length > 1000) {
             return c.text('Invalid input', 400);
         }
 
@@ -76,7 +77,7 @@ export function FriendService(): Hono {
         const targetUid = firstUser ? firstUser.id : 1;
 
         await profileAsync(c, 'friend_guest_apply_insert', () => db.insert(friends).values({
-            name, desc, avatar, url, uid: targetUid, accepted: 0
+            name, desc: finalDesc, avatar, url, uid: targetUid, accepted: 0
         }));
 
         const {
@@ -623,11 +624,12 @@ export function FriendService(): Hono {
             return c.text('Unauthorized', 401);
         }
 
-        if (!name || !desc || !avatar || !url) {
+        const finalDesc = typeof desc === 'string' ? desc : "";
+        if (!name || !avatar || !url) {
             return c.text('Invalid input', 400);
         }
 
-        if (name.length > 20 || desc.length > 3000 || avatar.length > 500 || url.length > 500) {
+        if (name.length > 100 || finalDesc.length > 5000 || avatar.length > 2000 || url.length > 1000) {
             return c.text('Invalid input', 400);
         }
 
@@ -648,7 +650,7 @@ export function FriendService(): Hono {
 
         const accepted = admin ? 1 : 0;
         await profileAsync(c, 'friend_create_insert', () => db.insert(friends).values({
-            name, desc, avatar, url, uid: uid, accepted
+            name, desc: finalDesc, avatar, url, uid: uid, accepted
         }));
 
         if (!admin) {

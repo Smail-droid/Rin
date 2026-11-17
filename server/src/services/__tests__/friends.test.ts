@@ -114,6 +114,24 @@ describe('FriendService', () => {
             expect(res.status).toBe(200);
         });
 
+        it('should allow creating friend with longer name (>20 chars) and empty desc', async () => {
+            const res = await app.request('/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer mock_token_1',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: "80hou 的个人技术生活随想艺术画廊博客",
+                    desc: "",
+                    avatar: "https://example.com/avatar.png",
+                    url: "https://example.com"
+                }),
+            }, env);
+
+            expect(res.status).toBe(200);
+        });
+
         it('should reject javascript pseudo-protocol in url or avatar', async () => {
             const resBadUrl = await app.request('/', {
                 method: 'POST',
@@ -154,7 +172,7 @@ describe('FriendService', () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    name: 'a'.repeat(21),
+                    name: 'a'.repeat(101),
                     desc: 'Description',
                     avatar: 'avatar.png',
                     url: 'https://example.com'

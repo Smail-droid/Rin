@@ -94,12 +94,17 @@ export function isValidSafeMediaUrl(urlStr: string | null | undefined): boolean 
     return true;
   }
 
-  // 2. 禁止任何 scheme (例如 javascript:, data:, vbscript:)
+  // 2. 允许安全图片 data:image/ (png, jpeg, webp, gif, svg+xml)
+  if (/^data:image\/(?:png|jpe?g|webp|gif|svg\+xml);base64,[a-zA-Z0-9+/=]+$/i.test(trimmed)) {
+    return true;
+  }
+
+  // 3. 禁止任何其他 scheme (例如 javascript:, vbscript:)
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
     return false;
   }
 
-  // 3. 禁止协议相对路径 //
+  // 4. 禁止协议相对路径 //
   if (trimmed.startsWith("//")) {
     return false;
   }

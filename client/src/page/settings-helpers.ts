@@ -47,6 +47,9 @@ export async function loadSettingsConfigState() {
 
 export async function saveSettingsConfigState(draft: SettingsDraft) {
   const response = await client.config.updateAll(draft);
+  if (response.error) {
+    throw new Error(typeof response.error.value === "string" ? response.error.value : "保存配置失败，请检查网络或权限");
+  }
   return normalizeSettingsState(response.data);
 }
 

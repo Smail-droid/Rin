@@ -658,18 +658,30 @@ export function FriendsPage() {
     };
 
     const handleApprove = async (id: number) => {
-        await client.friend.update(id, { accepted: 1 });
+        const { error } = await client.friend.update(id, { accepted: 1 });
+        if (error) {
+            alert(typeof error.value === "string" ? error.value : "审核通过失败");
+            return;
+        }
         reloadFriends();
     };
 
     const handleReject = async (id: number) => {
-        await client.friend.update(id, { accepted: -1 });
+        const { error } = await client.friend.update(id, { accepted: -1 });
+        if (error) {
+            alert(typeof error.value === "string" ? error.value : "拒绝失败");
+            return;
+        }
         reloadFriends();
     };
 
-    const handleDelete = (id: number, name: string) => {
-        showConfirm("删除友链", `确定要删除「${name}」吗？此操作无法撤销。`, async () => {
-            await client.friend.delete(id);
+    const handleDelete = (id: number, name?: string) => {
+        showConfirm("删除友链确认", `确定要删除友链${name ? ` “${name}” ` : ""}吗？此操作无法撤销。`, async () => {
+            const { error } = await client.friend.delete(id);
+            if (error) {
+                alert(typeof error.value === "string" ? error.value : "删除失败");
+                return;
+            }
             reloadFriends();
         });
     };
@@ -686,11 +698,15 @@ export function FriendsPage() {
 
         setIsSubmitting(true);
         try {
-            const finalAvatar = iconChoice === "ns"
-                ? (nsAvatarUrl || formAvatar)
-                : iconChoice === "site"
-                ? (siteFaviconUrl || formAvatar)
-                : (siteFaviconUrl || formAvatar || nsAvatarUrl || "https://dummyimage.com/128x128/ff4d79/ffffff&text=Rin");
+            const chosenAvatar = sanitizeAvatarUrl(
+                iconChoice === "ns"
+                    ? (nsAvatarUrl || formAvatar)
+                    : iconChoice === "site"
+                    ? (siteFaviconUrl || formAvatar)
+                    : (siteFaviconUrl || formAvatar || nsAvatarUrl || "https://dummyimage.com/128x128/ff4d79/ffffff&text=Rin")
+            );
+
+            const finalAvatar = chosenAvatar.startsWith("//") ? `https:${chosenAvatar}` : chosenAvatar;
 
             const formattedDesc = formatFriendDesc(formCategory, formDesc, {
                 spaceUrl: formSpaceUrl,
@@ -701,12 +717,15 @@ export function FriendsPage() {
             });
 
             if (profile?.permission) {
-                await client.friend.create({
+                const res = await client.friend.create({
                     name: formName.trim(),
                     desc: formattedDesc,
                     avatar: finalAvatar.trim(),
                     url: formUrl.trim(),
                 });
+                if (res.error) {
+                    throw new Error(typeof res.error.value === "string" ? res.error.value : "收录失败，请检查填写内容或登录状态");
+                }
             } else {
                 const res = await fetch("/api/friend/apply", {
                     method: "POST",
@@ -2017,7 +2036,7 @@ function EditFriendModal({
                 siteAvatar: parsed.siteAvatar,
             });
 
-            await client.friend.update(friend.id, {
+            const res = await client.friend.update(friend.id, {
                 name: name.trim(),
                 desc: formattedDesc,
                 avatar: sanitizeAvatarUrl(avatar.trim()),
@@ -2025,6 +2044,9 @@ function EditFriendModal({
                 accepted,
                 sort_order: sortOrder,
             });
+            if (res.error) {
+                throw new Error(typeof res.error.value === "string" ? res.error.value : "保存失败，请检查输入或稍后重试");
+            }
             onSuccess();
         } catch (err) {
             console.error("Save friend failed:", err);

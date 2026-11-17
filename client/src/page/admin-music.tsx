@@ -188,7 +188,7 @@ export function AdminMusicPage() {
   const handleSave = async () => {
     setSaveStatus("saving");
     try {
-      await client.config.update("client", {
+      const { error } = await client.config.update("client", {
         "music.enabled": musicEnabled ? "true" : "false",
         "music.auto_play": musicAutoPlay ? "true" : "false",
         "music.position": musicPosition,
@@ -198,6 +198,9 @@ export function AdminMusicPage() {
         "music.openlist_url": openlistMusicUrl.trim(),
         "music.playlist": JSON.stringify(player.playlist),
       });
+      if (error) {
+        throw new Error(typeof error.value === "string" ? error.value : "保存电台配置失败");
+      }
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2500);
     } catch {

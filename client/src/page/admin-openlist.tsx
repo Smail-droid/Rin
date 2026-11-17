@@ -28,11 +28,14 @@ export function AdminOpenListPage() {
     setSaveStatus("saving");
     setErrorMessage("");
     try {
-      await client.config.update("client", {
+      const { error } = await client.config.update("client", {
         "openlist.worker_url": workerUrl.trim(),
         "openlist.show_in_nav": showInNav ? "true" : "false",
         "openlist.nav_title": navTitle.trim() || "资源列表",
       });
+      if (error) {
+        throw new Error(typeof error.value === "string" ? error.value : "更新配置失败");
+      }
       setSaveStatus("saved");
       setTimeout(() => {
         setSaveStatus("idle");

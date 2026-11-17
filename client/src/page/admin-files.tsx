@@ -296,7 +296,7 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
         }
 
         try {
-            const { data } = await client.storage.deleteFile(file.key);
+            const { data, error } = await client.storage.deleteFile(file.key);
             if (data?.success) {
                 setFiles((prev) => prev.filter((f) => f.key !== file.key));
                 setSelectedKeys((prev) => {
@@ -305,6 +305,8 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                     return next;
                 });
                 showToast(t("admin_files.deleted", "文件已删除"));
+            } else if (error) {
+                alert(`删除失败: ${typeof error.value === "string" ? error.value : "未知错误"}`);
             }
         } catch (err: any) {
             alert(`Delete failed: ${err?.message || "Unknown error"}`);
@@ -322,11 +324,13 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
 
         try {
             const keysArray = Array.from(selectedKeys);
-            const { data } = await client.storage.deleteFiles(keysArray);
+            const { data, error } = await client.storage.deleteFiles(keysArray);
             if (data?.success) {
                 setFiles((prev) => prev.filter((f) => !selectedKeys.has(f.key)));
                 setSelectedKeys(new Set());
                 showToast(t("admin_files.batch_deleted", `已成功删除 ${data.deleted} 个文件`));
+            } else if (error) {
+                alert(`批量删除失败: ${typeof error.value === "string" ? error.value : "未知错误"}`);
             }
         } catch (err: any) {
             alert(`Batch delete failed: ${err?.message || "Unknown error"}`);
