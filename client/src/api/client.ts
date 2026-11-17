@@ -499,6 +499,38 @@ class MomentsAPI {
   async delete(id: number): Promise<ApiResponse<void>> {
     return this.http.delete<void>(`/api/moments/${id}`);
   }
+
+  // POST /api/moments/:id/comments
+  async createComment(
+    momentId: number,
+    body: { content: string; guestName?: string; guestEmail?: string }
+  ): Promise<ApiResponse<{ id: number; approved: number; message: string }>> {
+    return this.http.post<{ id: number; approved: number; message: string }>(
+      `/api/moments/${momentId}/comments`,
+      body
+    );
+  }
+
+  // POST /api/moments/:id/comments/:commentId/approve
+  async approveComment(
+    momentId: number,
+    commentId: number
+  ): Promise<ApiResponse<{ success: boolean; message: string }>> {
+    return this.http.post<{ success: boolean; message: string }>(
+      `/api/moments/${momentId}/comments/${commentId}/approve`,
+      {}
+    );
+  }
+
+  // DELETE /api/moments/:id/comments/:commentId
+  async deleteComment(
+    momentId: number,
+    commentId: number
+  ): Promise<ApiResponse<{ success: boolean; message: string }>> {
+    return this.http.delete<{ success: boolean; message: string }>(
+      `/api/moments/${momentId}/comments/${commentId}`
+    );
+  }
 }
 
 /**

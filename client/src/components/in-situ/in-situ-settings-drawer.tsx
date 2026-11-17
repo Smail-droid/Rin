@@ -11,7 +11,7 @@ export function InSituSettingsDrawer({
   onClose: () => void;
 }) {
   const { showAlert, AlertUI } = useAlert();
-  const [activeTab, setActiveTab] = useState<"site" | "media" | "security" | "feature">("site");
+  const [activeTab, setActiveTab] = useState<"site" | "ai" | "media" | "security" | "feature">("site");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -103,6 +103,7 @@ export function InSituSettingsDrawer({
         <div className="px-5 py-2.5 border-b border-black/5 dark:border-white/5 flex items-center gap-1.5 shrink-0 bg-white/80 dark:bg-[#12161f]/80 overflow-x-auto">
           {[
             { id: "site", label: "站点身份", icon: "ri-user-smile-line" },
+            { id: "ai", label: "AI 智能调优", icon: "ri-brain-line" },
             { id: "feature", label: "功能特性", icon: "ri-toggle-line" },
             { id: "media", label: "存储与API", icon: "ri-hard-drive-2-line" },
             { id: "security", label: "系统安全", icon: "ri-shield-keyhole-line" },
@@ -176,6 +177,101 @@ export function InSituSettingsDrawer({
                     max="50"
                     defaultValue={clientConfig["site.page_size"] || 5}
                     onBlur={(e) => handleSaveClientField("site.page_size", Number.parseInt(e.target.value, 10))}
+                    className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-mono outline-none focus:border-theme"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : activeTab === "ai" ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3.5 rounded-2xl border border-theme/20 bg-theme/5">
+                <div>
+                  <span className="font-bold text-xs t-primary flex items-center gap-1.5">
+                    <i className="ri-brain-line text-theme" />
+                    <span>AI 智能流水线与导读开关</span>
+                  </span>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">
+                    开启后支持自动提炼教程、排版整理、生成导读摘要
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={serverConfig["ai_summary.enabled"] === true || serverConfig["ai_summary.enabled"] === "true"}
+                  onClick={() => {
+                    const cur = serverConfig["ai_summary.enabled"] === true || serverConfig["ai_summary.enabled"] === "true";
+                    handleSaveServerField("ai_summary.enabled", !cur);
+                  }}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                    (serverConfig["ai_summary.enabled"] === true || serverConfig["ai_summary.enabled"] === "true") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 rounded-full bg-white shadow-xs transition transform mt-1 ${
+                      (serverConfig["ai_summary.enabled"] === true || serverConfig["ai_summary.enabled"] === "true") ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-neutral-50/60 dark:bg-white/[0.02] space-y-3">
+                <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-2">
+                  <span className="font-bold text-xs t-primary">AI 服务商与模型选择</span>
+                  <a
+                    href="/admin/ai"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] text-theme font-bold hover:underline flex items-center gap-0.5"
+                  >
+                    <span>打开高级微调工作台</span>
+                    <i className="ri-external-link-line" />
+                  </a>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-neutral-500 font-medium">模型提供商 (Provider)</label>
+                  <select
+                    value={serverConfig["ai_summary.provider"] || "cloudflare"}
+                    onChange={(e) => handleSaveServerField("ai_summary.provider", e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-semibold outline-none focus:border-theme cursor-pointer"
+                  >
+                    <option value="cloudflare">Cloudflare Worker AI (免费边缘模型)</option>
+                    <option value="openai">OpenAI (ChatGPT / GPT-4o)</option>
+                    <option value="claude">Anthropic Claude</option>
+                    <option value="gemini">Google Gemini</option>
+                    <option value="deepseek">DeepSeek (深度求索)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-neutral-500 font-medium">模型名称 (Model ID)</label>
+                  <input
+                    type="text"
+                    defaultValue={serverConfig["ai_summary.model"] || "gpt-4o-mini"}
+                    onBlur={(e) => handleSaveServerField("ai_summary.model", e.target.value.trim())}
+                    placeholder="如: gpt-4o-mini, deepseek-chat, @cf/meta/llama-3.1-8b-instruct"
+                    className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-mono outline-none focus:border-theme"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-neutral-500 font-medium">API Key 授权密钥 (安全存储于边缘端)</label>
+                  <input
+                    type="password"
+                    defaultValue={serverConfig["ai_summary.api_key"] || ""}
+                    onBlur={(e) => handleSaveServerField("ai_summary.api_key", e.target.value.trim())}
+                    placeholder="sk-..."
+                    className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-mono outline-none focus:border-theme"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-neutral-500 font-medium">自定义 API Base URL (反代/中转端点)</label>
+                  <input
+                    type="text"
+                    defaultValue={serverConfig["ai_summary.api_url"] || ""}
+                    onBlur={(e) => handleSaveServerField("ai_summary.api_url", e.target.value.trim())}
+                    placeholder="留空使用官方默认地址..."
                     className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-mono outline-none focus:border-theme"
                   />
                 </div>

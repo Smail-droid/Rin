@@ -25,6 +25,8 @@ export function InSituWritingDrawer({
   const [tags, setTags] = useState("");
   const [draft, setDraft] = useState(false);
   const [listed, setListed] = useState(true);
+  const [isTop, setIsTop] = useState(false);
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [isMetaExpanded, setIsMetaExpanded] = useState(false);
@@ -61,12 +63,20 @@ export function InSituWritingDrawer({
             setAlias((data as any).alias || "");
             setDraft((data as any).draft === 1);
             setListed((data as any).listed === 1);
+            setIsTop((data as any).top === 1);
             if (Array.isArray(data.hashtags)) {
               setTags(data.hashtags.map((h: any) => `#${h.name}`).join(" "));
             }
           }
         })
         .finally(() => setLoading(false));
+
+      fetch(`/api/feed/permission/${editId}`)
+        .then((r) => r.json())
+        .then((perm) => {
+          if (perm?.password) setPassword(perm.password);
+        })
+        .catch(() => {});
     } else {
       // 创作新文章
       setTitle("");
@@ -76,6 +86,8 @@ export function InSituWritingDrawer({
       setTags("");
       setDraft(false);
       setListed(true);
+      setIsTop(false);
+      setPassword("");
       setIsMetaExpanded(false);
     }
   }, [isOpen, editId]);
@@ -134,11 +146,24 @@ export function InSituWritingDrawer({
           tags: tagArray,
           draft,
           listed,
-        });
+          top: isTop ? 1 : 0,
+        } as any);
+
+        // 同步文章密码锁策略
+        await fetch(`/api/feed/permission/${editId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: password.trim() ? "password" : "public",
+            password: password.trim(),
+            tip: "本文受专属访问密码保护，请输入密码查阅完整随想。",
+          }),
+        }).catch(() => {});
+
         if (error) {
           showAlert(String(error.value || "更新失败"));
         } else {
-          showAlert("文章已成功在场更新！", () => {
+          showAlert("文章与权限策略已成功在场更新！", () => {
             Cache.with().clear();
             onClose();
             window.location.reload();
@@ -153,7 +178,20 @@ export function InSituWritingDrawer({
           tags: tagArray,
           draft,
           listed,
-        });
+          top: isTop ? 1 : 0,
+        } as any);
+
+        if (data?.insertedId && password.trim()) {
+          await fetch(`/api/feed/permission/${data.insertedId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mode: "password",
+              password: password.trim(),
+              tip: "本文受专属访问密码保护，请输入密码查阅完整随想。",
+            }),
+          }).catch(() => {});
+        }
         if (error) {
           showAlert(String(error.value || "发布失败"));
         } else if (data) {
@@ -285,12 +323,39 @@ export function InSituWritingDrawer({
                   setValue={setTags}
                   placeholder="文章标签 (空格分隔，如 #React #Vite)..."
                   variant="flat"
-                  className="sm:col-span-2 text-xs"
+                  className="w-full text-xs"
                 />
+                <div className="relative flex items-center">
+                  <i className="ri-lock-line absolute left-3 text-neutral-400 text-xs" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="文章专属密码锁 (留空为公开，设置后访客需密码解锁)..."
+                    className="w-full pl-8 pr-3 py-2 rounded-2xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-neutral-800 text-xs outline-none focus:border-theme"
+                  />
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-6 pt-2 border-t border-black/5 dark:border-white/5 text-xs">
-                {/* 1. 草稿状态开关 */}
+                {/* 1. 置顶推荐开关 */}
+                <label
+                  htmlFor="drawer-top"
+                  className="flex items-center gap-2 cursor-pointer select-none group"
+                >
+                  <Checkbox
+                    id="drawer-top"
+                    placeholder="置顶推荐"
+                    value={isTop}
+                    setValue={setIsTop}
+                  />
+                  <span className="font-semibold text-xs t-primary flex items-center gap-1 group-hover:text-theme transition-colors">
+                    <i className={`text-xs ${isTop ? "ri-pushpin-2-fill text-theme" : "ri-pushpin-line text-neutral-400"}`} />
+                    <span>{isTop ? "已置顶推荐到首页前列" : "常规时间序排列"}</span>
+                  </span>
+                </label>
+
+                {/* 2. 草稿状态开关 */}
                 <label
                   htmlFor="drawer-draft"
                   className="flex items-center gap-2 cursor-pointer select-none group"
@@ -307,7 +372,7 @@ export function InSituWritingDrawer({
                   </span>
                 </label>
 
-                {/* 2. 列表可见性开关 */}
+                {/* 3. 列表可见性开关 */}
                 <label
                   htmlFor="drawer-listed"
                   className="flex items-center gap-2 cursor-pointer select-none group"

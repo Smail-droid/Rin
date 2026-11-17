@@ -61,7 +61,16 @@ export function InSituDeskDock() {
             <i className="ri-quill-pen-line text-lg group-hover:rotate-[-8deg] transition-transform" />
           </button>
 
-          {/* 2. 暗房胶卷盒 (Media Darkroom) */}
+          {/* 2. 黑胶音廊工作台 (Vinyl Music Studio) */}
+          <a
+            href="/admin/music"
+            className="group relative flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10 hover:bg-emerald-600 text-emerald-600 dark:text-emerald-400 hover:text-white shadow-2xs hover:scale-110 active:scale-95 transition-all cursor-pointer"
+            title="黑胶音廊 · 曲库搜歌/封面/播放列表工作台"
+          >
+            <i className="ri-music-2-line text-lg group-hover:scale-110 transition-transform" />
+          </a>
+
+          {/* 3. 暗房胶卷盒 (Media Darkroom) */}
           <button
             type="button"
             onClick={() => setMediaOpen(true)}
@@ -71,7 +80,7 @@ export function InSituDeskDock() {
             <i className="ri-folder-image-line text-lg group-hover:scale-110 transition-transform" />
           </button>
 
-          {/* 3. 系统百宝箱 (Cabinet) */}
+          {/* 4. 系统百宝箱 (Cabinet) */}
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
@@ -80,6 +89,15 @@ export function InSituDeskDock() {
           >
             <i className="ri-settings-4-line text-lg group-hover:rotate-45 transition-transform" />
           </button>
+
+          {/* 5. 底层总控大盘 (Dashboard) */}
+          <a
+            href="/admin/dashboard"
+            className="group relative flex h-10 w-10 items-center justify-center rounded-full bg-black/5 hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:text-white dark:hover:bg-white/20 shadow-2xs hover:scale-110 active:scale-95 transition-all cursor-pointer"
+            title="底层总控大盘 · 文章管理/PV/UV/系统备份"
+          >
+            <i className="ri-dashboard-3-line text-lg group-hover:scale-110 transition-transform" />
+          </a>
         </div>
       </aside>
 

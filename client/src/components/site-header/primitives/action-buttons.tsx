@@ -486,20 +486,60 @@ export function UserAvatar({
                     setIsOpen(false);
                     setLocation("/admin/writing");
                   }}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
-                  <i className="ri-dashboard-line" />
-                  <span>{t("admin.title")}</span>
+                  <i className="ri-quill-pen-line text-theme" />
+                  <span>创作撰写文章</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setLocation("/admin/music");
+                  }}
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  <i className="ri-music-2-line text-emerald-500" />
+                  <span>黑胶音廊工作台</span>
                 </button>
                 <button
                   onClick={() => {
                     setIsOpen(false);
                     setLocation("/admin/files");
                   }}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
-                  <i className="ri-folder-image-line" />
-                  <span>{t("admin_files.title") || "R2 图床"}</span>
+                  <i className="ri-folder-image-line text-sky-500" />
+                  <span>R2 图床全屏画廊</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setLocation("/admin/ai");
+                  }}
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  <i className="ri-brain-line text-purple-500" />
+                  <span>AI 智能模型调优</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setLocation("/admin/dashboard");
+                  }}
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  <i className="ri-dashboard-3-line text-neutral-500" />
+                  <span>底层总控大盘</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setLocation("/admin/settings");
+                  }}
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10 border-b border-black/5 dark:border-white/5 pb-2 mb-1"
+                >
+                  <i className="ri-settings-4-line text-neutral-500" />
+                  <span>全站完整系统设置</span>
                 </button>
               </>
             ) : null}

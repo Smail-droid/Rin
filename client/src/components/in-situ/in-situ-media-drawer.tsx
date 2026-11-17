@@ -188,6 +188,26 @@ export function InSituMediaDrawer({
           </div>
 
           <div className="flex items-center gap-2">
+            <a
+              href="/admin/files"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border border-black/10 dark:border-white/10 hover:border-theme text-xs font-semibold t-primary transition"
+              title="进入独立大屏全功能图床相册"
+            >
+              <i className="ri-external-link-line text-theme" />
+              <span>全屏图床</span>
+            </a>
+            <a
+              href="/admin/music"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs"
+              title="进入全功能黑胶音廊工作台 (搜索/封面/播放列表/源配置)"
+            >
+              <i className="ri-music-2-line" />
+              <span>全屏音廊</span>
+            </a>
             <button
               type="button"
               onClick={fetchFiles}
@@ -392,37 +412,82 @@ export function InSituMediaDrawer({
                         </div>
                       </div>
 
-                      {/* Code copy bar */}
-                      <div
-                        onClick={() => handleCopy(file)}
-                        className={`mt-2 py-1 px-2 rounded-lg text-[10px] font-mono cursor-pointer truncate text-center transition ${
-                          isCopied
-                            ? "bg-emerald-500 text-white font-bold"
-                            : "bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300"
-                        }`}
-                        title="点击一键复制"
-                      >
-                        {isCopied ? "✓ 已复制到剪贴板！" : "点击复制直链"}
+                      {/* Link code box: Displays the formatted code, click to copy */}
+                      <div className="mt-2 mb-1.5">
+                        <div
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleCopy(file);
+                          }}
+                          title="点击一键复制当前格式代码"
+                          className={`w-full select-none rounded-xl px-2 py-1 text-[10px] font-mono cursor-pointer transition-all duration-300 truncate ${
+                            isCopied
+                              ? "border-2 border-emerald-500 bg-emerald-100 text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-200 font-semibold shadow-xs scale-[1.01]"
+                              : "border border-black/10 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 hover:border-black/20"
+                          }`}
+                        >
+                          {getCodeForFormat(file, currentFormat)}
+                        </div>
                       </div>
 
-                      {/* Format buttons */}
-                      <div className="grid grid-cols-4 gap-1 mt-1.5 pt-1.5 border-t border-black/5 dark:border-white/5 text-[9px] font-mono text-center">
-                        {(["url", "html", "markdown", "bbcode"] as CopyFormat[]).map((fmt) => (
-                          <button
-                            key={fmt}
-                            type="button"
-                            onClick={() =>
-                              setCardFormats((prev) => ({ ...prev, [file.key]: fmt }))
-                            }
-                            className={`py-0.5 rounded ${
-                              currentFormat === fmt
-                                ? "bg-theme text-white font-bold"
-                                : "text-neutral-400 hover:text-neutral-700"
-                            }`}
-                          >
-                            {fmt.toUpperCase().slice(0, 3)}
-                          </button>
-                        ))}
+                      {/* 4-Color Format Switcher Buttons (四色格式直观切换，经典鲜明配色) */}
+                      <div className="grid grid-cols-4 gap-1 pt-1 border-t border-black/5 dark:border-white/5 text-[10px] font-mono">
+                        {/* 1. Raw URL (Lime Green) */}
+                        <button
+                          type="button"
+                          onClick={() => setCardFormats((prev) => ({ ...prev, [file.key]: "url" }))}
+                          title="切换为 URL 格式"
+                          className={`flex items-center justify-center rounded-lg py-1 transition text-[10px] font-semibold cursor-pointer ${
+                            currentFormat === "url"
+                              ? "bg-lime-500 text-white font-bold shadow-xs scale-[1.02]"
+                              : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-lime-500 hover:text-lime-600"
+                          }`}
+                        >
+                          <i className="ri-link text-xs" />
+                        </button>
+
+                        {/* 2. HTML (Amber Yellow) */}
+                        <button
+                          type="button"
+                          onClick={() => setCardFormats((prev) => ({ ...prev, [file.key]: "html" }))}
+                          title="切换为 HTML 格式"
+                          className={`flex items-center justify-center rounded-lg py-1 transition text-[10px] font-bold cursor-pointer ${
+                            currentFormat === "html"
+                              ? "bg-amber-400 text-neutral-900 font-bold shadow-xs scale-[1.02]"
+                              : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-amber-400 hover:text-amber-500"
+                          }`}
+                        >
+                          &lt;/&gt;
+                        </button>
+
+                        {/* 3. Markdown (Sky Blue) */}
+                        <button
+                          type="button"
+                          onClick={() => setCardFormats((prev) => ({ ...prev, [file.key]: "markdown" }))}
+                          title="切换为 Markdown 格式"
+                          className={`flex items-center justify-center rounded-lg py-1 transition text-[10px] font-bold cursor-pointer ${
+                            currentFormat === "markdown"
+                              ? "bg-sky-400 text-white font-bold shadow-xs scale-[1.02]"
+                              : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-sky-400 hover:text-sky-500"
+                          }`}
+                        >
+                          MD
+                        </button>
+
+                        {/* 4. BBCode (Rose Red) */}
+                        <button
+                          type="button"
+                          onClick={() => setCardFormats((prev) => ({ ...prev, [file.key]: "bbcode" }))}
+                          title="切换为 BBCode 格式"
+                          className={`flex items-center justify-center rounded-lg py-1 transition text-[10px] font-bold cursor-pointer ${
+                            currentFormat === "bbcode"
+                              ? "bg-rose-400 text-white font-bold shadow-xs scale-[1.02]"
+                              : "border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-rose-400 hover:text-rose-500"
+                          }`}
+                        >
+                          BB
+                        </button>
                       </div>
                     </div>
                   );

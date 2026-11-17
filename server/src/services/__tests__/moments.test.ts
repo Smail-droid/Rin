@@ -254,4 +254,37 @@ describe('MomentsService', () => {
             expect(res.status).toBe(404);
         });
     });
+
+    describe('POST /:id/comments - Moment comments & danmaku', () => {
+        beforeEach(() => {
+            sqlite.exec(`
+                INSERT INTO moments (id, content, uid, created_at, updated_at) VALUES 
+                (1, 'Target Moment', 1, unixepoch(), unixepoch())
+            `);
+        });
+
+        it('should allow visitor to post clean comment with approved=1', async () => {
+            const res = await app.request('/1/comments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: '今天天气真好！', guestName: '小可爱' }),
+            }, env);
+
+            expect(res.status).toBe(200);
+            const data = await res.json() as any;
+            expect(data.approved).toBe(1);
+        });
+
+        it('should mark comments with URL as approved=0 for review', async () => {
+            const res = await app.request('/1/comments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: '欢迎访问我的网站 https://spam.com 哦', guestName: '推广员' }),
+            }, env);
+
+            expect(res.status).toBe(200);
+            const data = await res.json() as any;
+            expect(data.approved).toBe(0);
+        });
+    });
 });
