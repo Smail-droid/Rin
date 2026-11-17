@@ -21,8 +21,15 @@ export function InSituAestheticStudio() {
   const siteConfig = useSiteConfig();
   const [isOpen, setIsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [siteNameVal, setSiteNameVal] = useState(siteConfig.name || "Rin");
+  const [siteDescVal, setSiteDescVal] = useState(siteConfig.description || "");
 
-  // 严格在后台管理路由下彻底隐身，仅在前台页面展示
+  useEffect(() => {
+    if (siteConfig.name) setSiteNameVal(siteConfig.name);
+    if (siteConfig.description) setSiteDescVal(siteConfig.description);
+  }, [siteConfig.name, siteConfig.description]);
+
+  // 严格在所有 Hooks 之后返回（杜绝 React Error #310 / #300 钩子数量不匹配）
   if (location.startsWith("/admin")) {
     return null;
   }
@@ -44,14 +51,6 @@ export function InSituAestheticStudio() {
     }
   })();
   const activeHeaderPosition = String(siteConfig.headerPosition ?? "top");
-
-  const [siteNameVal, setSiteNameVal] = useState(siteConfig.name || "Rin");
-  const [siteDescVal, setSiteDescVal] = useState(siteConfig.description || "");
-
-  useEffect(() => {
-    if (siteConfig.name) setSiteNameVal(siteConfig.name);
-    if (siteConfig.description) setSiteDescVal(siteConfig.description);
-  }, [siteConfig.name, siteConfig.description]);
 
   const handleSaveBrand = () => {
     void persistConfig({

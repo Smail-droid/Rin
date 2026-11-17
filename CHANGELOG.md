@@ -58,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Severed External Proxy Scrapers in Friends**: Removed brittle 3rd-party CORS proxy chains (`corsproxy.io`, `microlink.io`, FileReader base64) from `friends.tsx`, standardizing on native URL fields and Cloudflare Worker edge inspection.
 
 ### Fixed
+- **Minified React Error #310 & #300 Elimination**: Moved all React hooks (`useLocation`, `useSiteConfig`, `useState`, `useEffect`) unconditionally to the top of `InSituAestheticStudio` (`aesthetic-studio.tsx`) before the `/admin` route guard early return, completely eliminating hook count mismatches when navigating between frontend pages and backend admin views.
 - **Friend Link Creation & Silent Failures Resolved**:
   - Removed obsolete 20-character limitation (`name.length > 20`) in `POST /friend`, expanding site name allowance to 100 characters, avatar allowance to 2000 characters, and description allowance to 5000 characters.
   - Allowed optional empty descriptions in friend creation, preventing 400 rejection when a site has no description.
