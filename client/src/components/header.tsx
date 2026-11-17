@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { ProfileContext } from "../state/profile";
 import { useSiteConfig } from "../hooks/useSiteConfig";
-import { normalizeHeaderBehavior } from "./site-header/layout-options";
+import { normalizeHeaderBehavior, normalizeHeaderLayout } from "./site-header/layout-options";
 import { BrandLink, HeaderActions, LanguageSwitch, NavBar, ThemeToggle } from "./site-header";
 
 export function Header({ children }: { children?: React.ReactNode }) {
@@ -13,6 +13,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
   const headerBehavior = siteConfig.headerStickyEnabled === false
     ? "static"
     : normalizeHeaderBehavior(siteConfig.headerBehavior);
+  const headerLayout = normalizeHeaderLayout(siteConfig.headerLayout);
   const [isRevealed, setIsRevealed] = useState(true);
   const headerRef = useRef<HTMLDivElement | null>(null);
 
@@ -85,7 +86,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
       <>
         <div
           ref={headerRef}
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-40 w-fit max-w-[95vw] rounded-full px-4 py-2 border border-black/10 dark:border-white/10 bg-white/85 dark:bg-[#12161f]/85 backdrop-blur-2xl shadow-xl transition-all duration-300 select-none ani-show"
+          className={`fixed top-4 left-1/2 -translate-x-1/2 z-40 w-fit max-w-[95vw] rounded-full px-4 py-2 border border-black/10 dark:border-white/10 ${
+            headerLayout === "compact"
+              ? "bg-white/70 dark:bg-[#12161f]/70 backdrop-blur-md shadow-md"
+              : "bg-white/90 dark:bg-[#12161f]/90 backdrop-blur-2xl shadow-xl"
+          } transition-all duration-300 select-none ani-show`}
         >
           <div className="flex items-center gap-3">
             <BrandLink
@@ -100,7 +105,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
             <nav className="flex items-center gap-1">
               <NavBar
                 menu={false}
-                itemClassName="px-3 py-1 rounded-full text-xs"
+                itemClassName={
+                  headerLayout === "compact"
+                    ? "!bg-transparent hover:!bg-transparent px-2.5 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:text-theme"
+                    : "px-3 py-1 rounded-full text-xs"
+                }
               />
             </nav>
             <div className="h-3.5 w-px bg-black/10 dark:bg-white/10 hidden sm:block shrink-0" />
@@ -119,7 +128,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
       <>
         <div
           ref={headerRef}
-          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-fit max-w-[95vw] rounded-full px-4 py-2 border border-black/10 dark:border-white/10 bg-white/90 dark:bg-[#12161f]/90 backdrop-blur-2xl shadow-2xl transition-all duration-300 select-none ani-show"
+          className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-fit max-w-[95vw] rounded-full px-4 py-2 border border-black/10 dark:border-white/10 ${
+            headerLayout === "compact"
+              ? "bg-white/75 dark:bg-[#12161f]/75 backdrop-blur-lg shadow-lg"
+              : "bg-white/90 dark:bg-[#12161f]/90 backdrop-blur-2xl shadow-2xl"
+          } transition-all duration-300 select-none ani-show`}
         >
           <div className="flex items-center gap-3">
             <BrandLink
@@ -134,7 +147,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
             <nav className="flex items-center gap-1">
               <NavBar
                 menu={false}
-                itemClassName="px-3 py-1 rounded-full text-xs"
+                itemClassName={
+                  headerLayout === "compact"
+                    ? "!bg-transparent hover:!bg-transparent px-2.5 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:text-theme"
+                    : "px-3 py-1 rounded-full text-xs"
+                }
               />
             </nav>
             <div className="h-3.5 w-px bg-black/10 dark:bg-white/10 hidden sm:block shrink-0" />
@@ -146,8 +163,47 @@ export function Header({ children }: { children?: React.ReactNode }) {
   }
 
   // =========================================================================
-  // 3. 顶部常规固定导航栏模式 (Classic Edge-to-Edge Header)
+  // 3. 顶部固定导航栏模式 (Edge-to-Edge: 经典居中 vs 极简纯文本社论)
   // =========================================================================
+  if (headerLayout === "compact") {
+    // 极简纯文本社论风（无多余边框容器、雅致排版、文质彬彬）
+    return (
+      <>
+        <header
+          ref={headerRef}
+          className={`fixed inset-x-0 top-0 z-40 transition-all duration-300 ${
+            headerBehavior === "reveal" && !isRevealed ? "-translate-y-full" : "translate-y-0"
+          } bg-white/60 dark:bg-[#0e121a]/60 backdrop-blur-md border-b border-black/[0.04] dark:border-white/[0.04]`}
+        >
+          <div className="max-w-6xl mx-auto px-4 sm:px-8 h-14 flex items-center justify-between gap-6 select-none">
+            <BrandLink
+              siteConfig={siteConfig}
+              compact
+              className="flex items-center gap-2 group"
+              avatarClassName="h-7 w-7 rounded-full shrink-0 group-hover:scale-105 transition-transform"
+              titleClassName="text-sm font-serif font-bold tracking-wider text-neutral-800 dark:text-neutral-100"
+              showDescription={false}
+            />
+            <div className="flex items-center gap-6">
+              <nav className="hidden md:flex items-center gap-1 text-xs font-medium tracking-wide">
+                <NavBar
+                  menu={false}
+                  itemClassName="!bg-transparent hover:!bg-transparent !p-0 px-3 py-1 text-neutral-600 dark:text-neutral-300 hover:text-theme transition-colors font-medium text-xs"
+                />
+              </nav>
+              <div className="flex items-center gap-2 shrink-0">
+                {children}
+                <HeaderActions profile={profile} plain className="flex items-center gap-1.5" />
+              </div>
+            </div>
+          </div>
+        </header>
+        <div className="h-14" />
+      </>
+    );
+  }
+
+  // 经典居中对称布局 (Classic Balanced Header)
   return (
     <>
       <header
@@ -165,12 +221,14 @@ export function Header({ children }: { children?: React.ReactNode }) {
             titleClassName="text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100"
             showDescription={false}
           />
-          <nav className="hidden md:flex items-center gap-1.5">
-            <NavBar
-              menu={false}
-              itemClassName="px-3.5 py-1.5 rounded-xl text-sm"
-            />
-          </nav>
+          <div className="hidden md:flex flex-1 items-center justify-center">
+            <nav className="flex items-center gap-1 bg-black/[0.03] dark:bg-white/[0.04] px-2 py-1 rounded-full border border-black/5 dark:border-white/5">
+              <NavBar
+                menu={false}
+                itemClassName="px-3 py-1 rounded-full text-xs font-semibold"
+              />
+            </nav>
+          </div>
           <div className="flex items-center gap-2 shrink-0">
             {children}
             <HeaderActions profile={profile} plain className="flex items-center gap-2" />
