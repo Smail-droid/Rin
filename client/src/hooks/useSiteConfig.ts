@@ -133,7 +133,7 @@ export function useSiteConfig() {
         themeFontSize: Number.parseInt(String(config.get(SITE_CONFIG_KEYS.themeFontSize) ?? 16), 10) || 16,
         themePreset: config.get<string>(SITE_CONFIG_KEYS.themePreset) || "sakura",
         themeCustomColorEnabled: config.getBoolean(SITE_CONFIG_KEYS.themeCustomColorEnabled),
-        themeWallpaper: config.get<string>(SITE_CONFIG_KEYS.themeWallpaper) || "https://cdn.nodeimage.com/i/qAdktUUKq1wrLwlSuYIbhHDiZtf3lXCp.png",
+        themeWallpaper: config.get<string>(SITE_CONFIG_KEYS.themeWallpaper) || "none",
         themeWallpaperOpacity: (() => {
             const raw = config.get(SITE_CONFIG_KEYS.themeWallpaperOpacity);
             const val = Number.parseInt(String(raw ?? 35), 10);

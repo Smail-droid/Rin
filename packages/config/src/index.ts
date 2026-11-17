@@ -16,7 +16,7 @@ export const CLIENT_CONFIG_DEFAULTS = new Map(
     "theme.font_size": 16,
     "theme.preset": "sakura",
     "theme.custom_color_enabled": false,
-    "theme.wallpaper": "https://cdn.nodeimage.com/i/qAdktUUKq1wrLwlSuYIbhHDiZtf3lXCp.png",
+    "theme.wallpaper": "none",
     "theme.wallpaper_opacity": 35,
     "theme.custom_cursor": true,
     "theme.reading_progress": true,

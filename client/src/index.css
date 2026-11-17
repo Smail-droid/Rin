@@ -41,7 +41,7 @@ body::before {
   width: 100vw;
   height: 100vh;
   z-index: -2;
-  background-image: var(--rin-wallpaper-url, url('https://cdn.nodeimage.com/i/qAdktUUKq1wrLwlSuYIbhHDiZtf3lXCp.png'));
+  background-image: var(--rin-wallpaper-url, none);
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
