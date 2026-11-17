@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.7] - 2026-11-15
 
 ### Added
+- **Integrated Natural Header Flow (`header.position: "top"`)**: Unified all master presets to default to the natural top header layout that directly integrates with page text, eliminating awkward floating pill widgets hovering over the stream title and preventing vertical title collision.
 - **Server-Side Client Config Bootstrapping (`useAppBootstrap`)**: Asynchronously syncs client config from `/api/config/client` on initial load, preventing site name from erroneously falling back to default "Rin" on clean sessions or page reload.
 - **Tighter Editorial Layout & Eliminated Blank Spacers**: Removed intrusive stacked paddings and floated admin action buttons over the image top-right, eliminating empty white gaps across editorial article cards.
 - **Harmonious Multi-Color Swatch Combinations**: Upgraded the color palette in Aesthetic Studio to display rich 3-color designer combinations (primary, soft background tint, accent spark).

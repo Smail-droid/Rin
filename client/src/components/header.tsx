@@ -86,10 +86,10 @@ export function Header({ children }: { children?: React.ReactNode }) {
       <>
         <div
           ref={headerRef}
-          className={`fixed top-4 left-1/2 -translate-x-1/2 z-40 w-fit max-w-[95vw] rounded-full px-4 py-2 border border-black/10 dark:border-white/10 ${
+          className={`fixed top-3 left-1/2 -translate-x-1/2 z-40 w-fit max-w-[95vw] rounded-full px-4 py-1.5 border border-black/10 dark:border-white/10 ${
             headerLayout === "compact"
-              ? "bg-white/70 dark:bg-[#12161f]/70 backdrop-blur-md shadow-md"
-              : "bg-white/90 dark:bg-[#12161f]/90 backdrop-blur-2xl shadow-xl"
+              ? "bg-white/75 dark:bg-[#12161f]/75 backdrop-blur-md shadow-sm"
+              : "bg-white/85 dark:bg-[#12161f]/85 backdrop-blur-xl shadow-md"
           } transition-all duration-300 select-none ani-show`}
         >
           <div className="flex items-center gap-3">
@@ -97,11 +97,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
               siteConfig={siteConfig}
               compact
               className="flex items-center gap-2"
-              avatarClassName="h-7 w-7 rounded-full shadow-xs shrink-0"
+              avatarClassName="h-7 w-7 rounded-full shadow-2xs shrink-0"
               titleClassName="text-xs sm:text-sm font-bold tracking-tight text-neutral-900 dark:text-neutral-100"
               showDescription={false}
             />
-            <div className="h-3.5 w-px bg-black/10 dark:bg-white/10 hidden sm:block shrink-0" />
+            <div className="h-3 w-px bg-black/10 dark:bg-white/10 hidden sm:block shrink-0" />
             <nav className="flex items-center gap-1">
               <NavBar
                 menu={false}
@@ -112,10 +112,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
                 }
               />
             </nav>
-            <div className="h-3.5 w-px bg-black/10 dark:bg-white/10 hidden sm:block shrink-0" />
+            <div className="h-3 w-px bg-black/10 dark:bg-white/10 hidden sm:block shrink-0" />
             <HeaderActions profile={profile} plain className="flex items-center gap-1 text-xs shrink-0" />
           </div>
         </div>
+        <div className="h-14" />
       </>
     );
   }
