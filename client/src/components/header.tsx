@@ -166,29 +166,29 @@ export function Header({ children }: { children?: React.ReactNode }) {
   // 3. 顶部固定导航栏模式 (Edge-to-Edge: 经典居中 vs 极简纯文本社论)
   // =========================================================================
   if (headerLayout === "compact") {
-    // 极简纯文本社论风（无多余边框容器、雅致排版、文质彬彬）
+    // 极简纯文本社论风（透气排版、文质彬彬、暖润毛玻璃、微光指示）
     return (
       <>
         <header
           ref={headerRef}
           className={`fixed inset-x-0 top-0 z-40 transition-all duration-300 ${
             headerBehavior === "reveal" && !isRevealed ? "-translate-y-full" : "translate-y-0"
-          } bg-white/60 dark:bg-[#0e121a]/60 backdrop-blur-md border-b border-black/[0.04] dark:border-white/[0.04]`}
+          } bg-white/80 dark:bg-[#12161f]/85 backdrop-blur-2xl border-b border-black/[0.05] dark:border-white/[0.05] shadow-[0_2px_20px_-4px_rgba(0,0,0,0.04)]`}
         >
-          <div className="max-w-6xl mx-auto px-4 sm:px-8 h-14 flex items-center justify-between gap-6 select-none">
+          <div className="max-w-6xl mx-auto px-4 sm:px-8 h-15 flex items-center justify-between gap-6 select-none">
             <BrandLink
               siteConfig={siteConfig}
               compact
-              className="flex items-center gap-2 group"
-              avatarClassName="h-7 w-7 rounded-full shrink-0 group-hover:scale-105 transition-transform"
-              titleClassName="text-sm font-serif font-bold tracking-wider text-neutral-800 dark:text-neutral-100"
+              className="flex items-center gap-2.5 group"
+              avatarClassName="h-8 w-8 rounded-full shrink-0 shadow-2xs group-hover:scale-105 transition-transform"
+              titleClassName="text-base font-serif font-bold tracking-wider text-neutral-800 dark:text-neutral-100 group-hover:text-theme transition-colors"
               showDescription={false}
             />
             <div className="flex items-center gap-6">
-              <nav className="hidden md:flex items-center gap-1 text-xs font-medium tracking-wide">
+              <nav className="hidden md:flex items-center gap-2 text-xs font-medium tracking-wide">
                 <NavBar
                   menu={false}
-                  itemClassName="!bg-transparent hover:!bg-transparent !p-0 px-3 py-1 text-neutral-600 dark:text-neutral-300 hover:text-theme transition-colors font-medium text-xs"
+                  itemClassName="!bg-transparent hover:!bg-transparent px-2.5 py-1 text-neutral-600 dark:text-neutral-300 hover:text-theme transition-colors font-medium text-xs relative"
                 />
               </nav>
               <div className="flex items-center gap-2 shrink-0">
@@ -198,7 +198,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <div className="h-14" />
+        <div className="h-15" />
       </>
     );
   }
@@ -208,7 +208,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
     <>
       <header
         ref={headerRef}
-        className={`fixed inset-x-0 top-0 z-40 transition-transform duration-300 border-b border-black/5 dark:border-white/5 bg-white/80 dark:bg-[#12161f]/80 backdrop-blur-xl ${
+        className={`fixed inset-x-0 top-0 z-40 transition-transform duration-300 border-b border-black/5 dark:border-white/5 bg-white/85 dark:bg-[#12161f]/85 backdrop-blur-2xl shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)] ${
           headerBehavior === "reveal" && !isRevealed ? "-translate-y-full" : "translate-y-0"
         }`}
       >
@@ -222,10 +222,10 @@ export function Header({ children }: { children?: React.ReactNode }) {
             showDescription={false}
           />
           <div className="hidden md:flex flex-1 items-center justify-center">
-            <nav className="flex items-center gap-1 bg-black/[0.03] dark:bg-white/[0.04] px-2 py-1 rounded-full border border-black/5 dark:border-white/5">
+            <nav className="flex items-center gap-1 bg-black/[0.03] dark:bg-white/[0.04] p-1 rounded-full border border-black/5 dark:border-white/5 shadow-2xs">
               <NavBar
                 menu={false}
-                itemClassName="px-3 py-1 rounded-full text-xs font-semibold"
+                itemClassName="px-3.5 py-1.5 rounded-full text-xs font-semibold"
               />
             </nav>
           </div>

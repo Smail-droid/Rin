@@ -299,12 +299,12 @@ function AtelierPhotoCard({
                     onDragOver={onDragOver}
                     onDrop={onDrop}
                     onDragEnd={onDragEnd}
-                    className={`group block w-full rounded-[24px] border border-black/10 bg-white dark:bg-neutral-900 p-5 sm:p-6 shadow-xs hover:shadow-xl transition-all duration-300 hover:-translate-y-1 dark:border-white/10 ${
+                    className={`group relative block w-full rounded-2xl border border-black/10 bg-white dark:bg-neutral-900 p-3.5 sm:p-4 shadow-xs hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 dark:border-white/10 ${
                         isDragging ? "opacity-35 scale-95 border-theme border-dashed" : ""
                     } ${isDragOver ? "ring-4 ring-theme/40" : ""}`}
                 >
                     {canManage ? (
-                        <div className="flex justify-end gap-1.5 mb-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="absolute right-3 top-3 z-20 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                             <button
                                 type="button"
                                 onClick={(e) => {
@@ -313,7 +313,7 @@ function AtelierPhotoCard({
                                     onEditCover?.(feed);
                                 }}
                                 title="更换封面"
-                                className="flex h-6 w-6 items-center justify-center rounded-md bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:text-theme"
+                                className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-theme shadow-xs backdrop-blur-xs transition hover:scale-110"
                             >
                                 <i className="ri-image-edit-line text-xs" />
                             </button>
@@ -321,7 +321,7 @@ function AtelierPhotoCard({
                                 href={`/admin/writing/${feed.id}`}
                                 onClick={(e) => e.stopPropagation()}
                                 title="编辑文章"
-                                className="flex h-6 w-6 items-center justify-center rounded-md bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:text-theme"
+                                className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-theme shadow-xs backdrop-blur-xs transition hover:scale-110"
                             >
                                 <i className="ri-edit-line text-xs" />
                             </Link>
@@ -329,28 +329,28 @@ function AtelierPhotoCard({
                     ) : null}
 
                     {hasImage ? (
-                        <div className="w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden rounded-2xl mb-4 border border-black/5 dark:border-white/10 bg-neutral-100 dark:bg-neutral-800">
+                        <div className="w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden rounded-xl mb-2.5 border border-black/5 dark:border-white/10 bg-neutral-100 dark:bg-neutral-800">
                             <img src={feed.avatar} alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         </div>
                     ) : null}
-                    <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2 mb-1 text-xs font-mono text-neutral-400">
+                    <div className="flex flex-col gap-1 px-0.5">
+                        <div className="flex items-center gap-2 mb-0.5 text-[11px] font-mono text-neutral-400">
                             <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
                             {feed.top === 1 ? <span className="text-theme font-bold">· 置顶</span> : null}
                             {feed.draft === 1 ? <span className="text-amber-500 font-bold">· 草稿</span> : null}
                         </div>
-                        <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors leading-snug">
+                        <h2 className="text-base sm:text-lg font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors leading-snug">
                             {feed.title}
                         </h2>
                         {feed.summary ? (
-                            <p className="mt-1 line-clamp-3 text-xs sm:text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
+                            <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
                                 {feed.summary}
                             </p>
                         ) : null}
                     </div>
-                    <div className="flex items-center justify-between text-xs text-neutral-400 mt-4 pt-2.5 border-t border-black/5 dark:border-white/5 font-mono">
+                    <div className="flex items-center justify-between text-[11px] text-neutral-400 mt-2.5 pt-2 border-t border-black/5 dark:border-white/5 font-mono px-0.5">
                         <span>{readingTime} 分钟阅读</span>
-                        <span className="text-theme opacity-80 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                        <span className="text-theme opacity-80 group-hover:translate-x-1 transition-transform inline-flex items-center gap-0.5">
                             阅读全文 <i className="ri-arrow-right-line" />
                         </span>
                     </div>

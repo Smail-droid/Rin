@@ -183,28 +183,30 @@ export function FeedCard({ id, title, avatar, draft, listed, top, summary, readi
     // =========================================================================
     if (activeVariant === "editorial") {
         const editorialBody = (
-            <article className="group my-4 break-inside-avoid overflow-hidden rounded-[24px] border border-black/10 bg-w p-5 sm:p-6 shadow-xs hover:shadow-lg transition-all hover:-translate-y-0.5 dark:border-white/10">
+            <article className="group my-2 break-inside-avoid overflow-hidden rounded-2xl border border-black/10 bg-w p-3.5 sm:p-4 shadow-xs hover:shadow-lg transition-all hover:-translate-y-0.5 dark:border-white/10">
                 {avatar ? (
-                    <div className="w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden rounded-2xl mb-4 border border-black/5 dark:border-white/10 bg-neutral-100 dark:bg-neutral-800">
+                    <div className="w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden rounded-xl mb-2.5 border border-black/5 dark:border-white/10 bg-neutral-100 dark:bg-neutral-800">
                         <img src={avatar} alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     </div>
                 ) : null}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1 px-0.5">
                     {safeHashtags.length > 0 ? (
-                        <div className="text-[11px] font-mono uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-1 flex items-center gap-2 flex-wrap">
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-0.5 flex items-center gap-1.5 flex-wrap">
                             {safeHashtags.map(({ name }, i) => (
                                 <span key={i} className="hover:text-theme">#{name}</span>
                             ))}
                         </div>
                     ) : null}
-                    <h2 className="text-2xl font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors leading-snug">
+                    <h2 className="text-base sm:text-lg font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors leading-snug">
                         {title}
                     </h2>
-                    <p className="mt-2 line-clamp-3 text-[14px] leading-relaxed text-neutral-600 dark:text-neutral-300 font-normal">
-                        {summary}
-                    </p>
+                    {summary ? (
+                        <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300 font-normal">
+                            {summary}
+                        </p>
+                    ) : null}
                 </div>
-                <div className="flex items-center justify-between text-xs text-neutral-400 mt-5 pt-3 border-t border-black/5 dark:border-white/5 font-mono">
+                <div className="flex items-center justify-between text-[11px] text-neutral-400 mt-2.5 pt-2 border-t border-black/5 dark:border-white/5 font-mono px-0.5">
                     <div className="flex items-center gap-2">
                         <span>{timeago(createdAt)}</span>
                         {top === 1 ? <span className="text-theme font-semibold">· {t('article.top.title')}</span> : null}

@@ -6,28 +6,29 @@ export interface ThemePreset {
   name: string;
   color: string;
   previewBg: string;
+  accent: string;
   description: string;
 }
 
 export const THEME_PRESETS: ThemePreset[] = [
-  { id: "sakura", name: "春日樱落", color: "#fc466b", previewBg: "#fff1f3", description: "经典蔷薇绯红，生机与浪漫交织" },
-  { id: "paper_ink", name: "极简纸墨", color: "#27272a", previewBg: "#f4f4f5", description: "极简纯粹纸墨，水墨书卷雅致风范" },
-  { id: "cyber_cold", name: "赛博冷萃", color: "#00c4ff", previewBg: "#e0f7ff", description: "冰蓝电光冷萃，通透未来科技质感" },
-  { id: "aoi_sora", name: "和风青空", color: "#0284c7", previewBg: "#e0f2fe", description: "海风拂过澄澈天际，辽阔明亮" },
-  { id: "midnight_deep", name: "午夜深邃", color: "#6366f1", previewBg: "#eef2ff", description: "静谧午夜深蓝星空，专注而内敛" },
-  { id: "violet_twilight", name: "暮光紫霞", color: "#8b5cf6", previewBg: "#f5f3ff", description: "落霞与晚霭交融的梦幻紫韵" },
-  { id: "forest_mist", name: "森屿绿野", color: "#059669", previewBg: "#ecfdf5", description: "苍翠幽深森林，带来源泉般的清新" },
-  { id: "golden_sunset", name: "落日熔金", color: "#d97706", previewBg: "#fffbeb", description: "暖阳晚霞熔金，温馨治愈的暮色" },
-  { id: "rose_cream", name: "玫瑰奶霜", color: "#f43f5e", previewBg: "#fff1f2", description: "丝滑甜润的玫瑰奶霜，柔和典雅" },
-  { id: "mint_soda", name: "薄荷苏打", color: "#0d9488", previewBg: "#f0fdfa", description: "清凉通透薄荷气泡，沁人心脾" },
-  { id: "ocean_abyss", name: "蔚蓝深海", color: "#2563eb", previewBg: "#eff6ff", description: "浩瀚神秘深海，沉静广袤之美" },
-  { id: "lilac_dream", name: "迷雾丁香", color: "#c026d3", previewBg: "#fdf4ff", description: "微风吹拂的丁香花海，轻盈曼妙" },
-  { id: "caramel_amber", name: "焦糖琥珀", color: "#b45309", previewBg: "#fef3c7", description: "温润沉香焦糖，富有复古年代韵味" },
-  { id: "moss_rain", name: "雨后青苔", color: "#65a30d", previewBg: "#f7fee7", description: "初霁雨后青石苔藓，生机盎然" },
-  { id: "obsidian_slate", name: "黑曜石影", color: "#475569", previewBg: "#f1f5f9", description: "理性内敛石板灰调，高级质感" },
-  { id: "peach_coral", name: "珊瑚蜜桃", color: "#fb7185", previewBg: "#fff1f2", description: "清甜初熟珊瑚蜜桃，活泼灵动" },
-  { id: "aurora_teal", name: "极光青翠", color: "#14b8a6", previewBg: "#ccfbf1", description: "北极星空下的青翠极光波纹" },
-  { id: "crimson_flame", name: "赤焰朱砂", color: "#dc2626", previewBg: "#fef2f2", description: "东方传统朱砂赤金，端庄热烈" },
+  { id: "sakura", name: "春日樱落", color: "#fc466b", previewBg: "#fff1f3", accent: "#ffd0da", description: "经典蔷薇绯红，生机与浪漫交织" },
+  { id: "paper_ink", name: "极简纸墨", color: "#27272a", previewBg: "#f4f4f5", accent: "#e4e4e7", description: "极简纯粹纸墨，水墨书卷雅致风范" },
+  { id: "cyber_cold", name: "赛博冷萃", color: "#00c4ff", previewBg: "#e0f7ff", accent: "#70e1ff", description: "冰蓝电光冷萃，通透未来科技质感" },
+  { id: "aoi_sora", name: "和风青空", color: "#0284c7", previewBg: "#e0f2fe", accent: "#7dd3fc", description: "海风拂过澄澈天际，辽阔明亮" },
+  { id: "midnight_deep", name: "午夜深邃", color: "#6366f1", previewBg: "#eef2ff", accent: "#a5b4fc", description: "静谧午夜深蓝星空，专注而内敛" },
+  { id: "violet_twilight", name: "暮光紫霞", color: "#8b5cf6", previewBg: "#f5f3ff", accent: "#c4b5fd", description: "落霞与晚霭交融的梦幻紫韵" },
+  { id: "forest_mist", name: "森屿绿野", color: "#059669", previewBg: "#ecfdf5", accent: "#6ee7b7", description: "苍翠幽深森林，带来源泉般的清新" },
+  { id: "golden_sunset", name: "落日熔金", color: "#d97706", previewBg: "#fffbeb", accent: "#fde68a", description: "暖阳晚霞熔金，温馨治愈的暮色" },
+  { id: "rose_cream", name: "玫瑰奶霜", color: "#f43f5e", previewBg: "#fff1f2", accent: "#fecdd3", description: "丝滑甜润的玫瑰奶霜，柔和典雅" },
+  { id: "mint_soda", name: "薄荷苏打", color: "#0d9488", previewBg: "#f0fdfa", accent: "#99f6e4", description: "清凉通透薄荷气泡，沁人心脾" },
+  { id: "ocean_abyss", name: "蔚蓝深海", color: "#2563eb", previewBg: "#eff6ff", accent: "#93c5fd", description: "浩瀚神秘深海，沉静广袤之美" },
+  { id: "lilac_dream", name: "迷雾丁香", color: "#c026d3", previewBg: "#fdf4ff", accent: "#f0abfc", description: "微风吹拂的丁香花海，轻盈曼妙" },
+  { id: "caramel_amber", name: "焦糖琥珀", color: "#b45309", previewBg: "#fef3c7", accent: "#fde68a", description: "温润沉香焦糖，富有复古年代韵味" },
+  { id: "moss_rain", name: "雨后青苔", color: "#65a30d", previewBg: "#f7fee7", accent: "#bef264", description: "初霁雨后青石苔藓，生机盎然" },
+  { id: "obsidian_slate", name: "黑曜石影", color: "#475569", previewBg: "#f1f5f9", accent: "#cbd5e1", description: "理性内敛石板灰调，高级质感" },
+  { id: "peach_coral", name: "珊瑚蜜桃", color: "#fb7185", previewBg: "#fff1f2", accent: "#fecdd3", description: "清甜初熟珊瑚蜜桃，活泼灵动" },
+  { id: "aurora_teal", name: "极光青翠", color: "#14b8a6", previewBg: "#ccfbf1", accent: "#5eead4", description: "北极星空下的青翠极光波纹" },
+  { id: "crimson_flame", name: "赤焰朱砂", color: "#dc2626", previewBg: "#fef2f2", accent: "#fca5a5", description: "东方传统朱砂赤金，端庄热烈" },
 ];
 
 export const ACCENT_COLOR_PRESETS = [

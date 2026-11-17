@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.7] - 2026-11-15
 
 ### Added
+- **Server-Side Client Config Bootstrapping (`useAppBootstrap`)**: Asynchronously syncs client config from `/api/config/client` on initial load, preventing site name from erroneously falling back to default "Rin" on clean sessions or page reload.
+- **Tighter Editorial Layout & Eliminated Blank Spacers**: Removed intrusive stacked paddings and floated admin action buttons over the image top-right, eliminating empty white gaps across editorial article cards.
+- **Harmonious Multi-Color Swatch Combinations**: Upgraded the color palette in Aesthetic Studio to display rich 3-color designer combinations (primary, soft background tint, accent spark).
+- **Renamed Storage Gallery to Natural "图库相册"**: Replaced cloud jargon "R2 媒体资产相册" with clean, human "图库相册".
 - **Three Master Gallery Design Presets**: Integrated 1-click curated design systems (🌸 和风手账, 📝 京都社论, 💻 极客墨影) in `InSituAestheticStudio`, unifying card variant, typography, palette, columns, and header mode in one click.
 - **Landscape Photography Restoration (`aspect-[16/10]`)**: Replaced cramped 3:4 portrait ratios in `poster` and `editorial` card variants with widescreen 16:10 / 16:9 landscape ratios, ensuring blog banner images are completely uncropped and enjoyable.
 - **Terminal Single-Row Sticky Notes in Compact Mode**: Adapted sticky notes and deck flip card in `feeds.tsx` into dense single-row terminal commands when `compact` variant is active, eliminating aesthetic clashes between notes and single-line articles.

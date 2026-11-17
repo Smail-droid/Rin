@@ -401,7 +401,7 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight t-primary flex items-center gap-2">
                             <i className="ri-folder-image-line text-theme" />
-                            <span>图床漫游 · 媒体资产</span>
+                            <span>云端图库漫游</span>
                         </h1>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                             浏览全站图库与素材原图，点击图片或输入框即可快速复制多种格式链接
@@ -482,7 +482,7 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                     <div className="flex items-center gap-3">
                         <h2 className="flex items-center gap-2 text-base font-bold t-primary">
                             <i className="ri-folder-image-line text-theme" />
-                            <span>R2 媒体资产相册</span>
+                            <span>图库相册</span>
                         </h2>
                         <div className="flex items-center gap-2 text-xs">
                             <span className="rounded-full bg-neutral-100 dark:bg-white/10 px-2 py-0.5 font-semibold text-neutral-600 dark:text-neutral-300 text-[11px]">

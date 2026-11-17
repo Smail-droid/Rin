@@ -51,8 +51,8 @@ const MASTER_PRESETS: MasterPreset[] = [
       "theme.font_family": "serif",
       "theme.color": "#27272a",
       "gallery.tilt_mode": "flat",
-      "gallery.columns": "2",
-      "gallery.card_gap": 32,
+      "gallery.columns": "auto",
+      "gallery.card_gap": 24,
       "gallery.padding": 24,
       "gallery.align": "center",
     },
@@ -359,12 +359,15 @@ export function InSituAestheticStudio() {
             </div>
           </div>
 
-          {/* 2. 温润多层氛围色盘 */}
+          {/* 2. 温润多色组合意境色盘 */}
           <div className="space-y-2.5">
-            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              氛围色盘
-            </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                多色组合氛围色盘
+              </label>
+              <span className="text-[10px] font-mono text-neutral-400">主色 · 底色 · 辉光</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
               {CURATED_PRESETS.map((preset) => {
                 const isSelected = activeColor.toLowerCase() === preset.color.toLowerCase();
                 return (
@@ -372,22 +375,38 @@ export function InSituAestheticStudio() {
                     key={preset.id}
                     type="button"
                     onClick={() => handleSelectColor(preset.color)}
-                    className={`group flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all ${
+                    className={`group flex items-center gap-2.5 p-2 rounded-xl border text-left transition-all cursor-pointer ${
                       isSelected
-                        ? "border-theme shadow-xs ring-2 ring-theme/20"
-                        : "border-black/5 dark:border-white/5 hover:border-black/20 dark:hover:border-white/20"
+                        ? "border-theme bg-theme/5 shadow-xs ring-2 ring-theme/20"
+                        : "border-black/5 dark:border-white/5 bg-white/40 dark:bg-white/[0.02] hover:border-black/20 dark:hover:border-white/20"
                     }`}
-                    title={preset.name}
+                    title={preset.description}
                   >
-                    <span
-                      className="h-6 w-6 rounded-full shadow-xs transition-transform group-hover:scale-110 flex items-center justify-center"
-                      style={{ backgroundColor: preset.color }}
-                    >
-                      {isSelected ? <i className="ri-check-line text-white text-xs" /> : null}
-                    </span>
-                    <span className="text-[10px] font-medium text-neutral-600 dark:text-neutral-400 truncate max-w-full">
-                      {preset.name}
-                    </span>
+                    {/* 三色组合层叠色球 */}
+                    <div className="flex items-center shrink-0">
+                      <span
+                        className="h-5 w-5 rounded-full shadow-2xs z-3 flex items-center justify-center text-white"
+                        style={{ backgroundColor: preset.color }}
+                      >
+                        {isSelected ? <i className="ri-check-line text-[10px]" /> : null}
+                      </span>
+                      <span
+                        className="h-4 w-4 rounded-full -ml-2 border border-white dark:border-neutral-900 shadow-2xs z-2"
+                        style={{ backgroundColor: preset.previewBg }}
+                      />
+                      <span
+                        className="h-3 w-3 rounded-full -ml-1.5 border border-white dark:border-neutral-900 shadow-2xs z-1"
+                        style={{ backgroundColor: preset.accent }}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 block truncate">
+                        {preset.name}
+                      </span>
+                      <span className="text-[9px] text-neutral-400 block truncate mt-0.5">
+                        {preset.description}
+                      </span>
+                    </div>
                   </button>
                 );
               })}

@@ -87,6 +87,16 @@ export function useAppBootstrap() {
       }
     }
 
+    // 无论本地是否有缓存，均异步向边缘服务端同步最新的 D1 真实配置，杜绝重置为默认值
+    client.config
+      .get("client")
+      .then(({ data }) => {
+        if (data && typeof data === "object") {
+          updateClientConfig(data as Record<string, unknown>);
+        }
+      })
+      .catch(() => {});
+
     const handleConfigEvent = () => {
       const cached = sessionStorage.getItem("config");
       if (cached) {
