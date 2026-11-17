@@ -20,6 +20,11 @@ export const SITE_CONFIG_KEYS = {
     themeFontSize: "theme.font_size",
     themePreset: "theme.preset",
     themeCustomColorEnabled: "theme.custom_color_enabled",
+    themeWallpaper: "theme.wallpaper",
+    themeWallpaperOpacity: "theme.wallpaper_opacity",
+    themeCustomCursor: "theme.custom_cursor",
+    themeReadingProgress: "theme.reading_progress",
+    galleryTiltDegree: "gallery.tilt_degree",
     headerShowNav: "header.show_nav",
     headerStickyEnabled: "header.sticky_enabled",
     headerPosition: "header.position", // "top" (顶部固定) | "float" (居中浮动胶囊) | "bottom" (底部挂件)
@@ -128,6 +133,19 @@ export function useSiteConfig() {
         themeFontSize: Number.parseInt(String(config.get(SITE_CONFIG_KEYS.themeFontSize) ?? 16), 10) || 16,
         themePreset: config.get<string>(SITE_CONFIG_KEYS.themePreset) || "sakura",
         themeCustomColorEnabled: config.getBoolean(SITE_CONFIG_KEYS.themeCustomColorEnabled),
+        themeWallpaper: config.get<string>(SITE_CONFIG_KEYS.themeWallpaper) || "https://cdn.nodeimage.com/i/qAdktUUKq1wrLwlSuYIbhHDiZtf3lXCp.png",
+        themeWallpaperOpacity: (() => {
+            const raw = config.get(SITE_CONFIG_KEYS.themeWallpaperOpacity);
+            const val = Number.parseInt(String(raw ?? 35), 10);
+            return Number.isNaN(val) ? 35 : Math.min(100, Math.max(0, val));
+        })(),
+        themeCustomCursor: config.get(SITE_CONFIG_KEYS.themeCustomCursor) !== false && config.get(SITE_CONFIG_KEYS.themeCustomCursor) !== "false",
+        themeReadingProgress: config.get(SITE_CONFIG_KEYS.themeReadingProgress) !== false && config.get(SITE_CONFIG_KEYS.themeReadingProgress) !== "false",
+        galleryTiltDegree: (() => {
+            const raw = config.get(SITE_CONFIG_KEYS.galleryTiltDegree);
+            const val = Number.parseFloat(String(raw ?? 1.8));
+            return Number.isNaN(val) ? 1.8 : Math.min(10, Math.max(0, val));
+        })(),
         headerShowNav,
         headerStickyEnabled: config.get(SITE_CONFIG_KEYS.headerStickyEnabled) !== false && config.get(SITE_CONFIG_KEYS.headerStickyEnabled) !== "false",
         headerPosition: config.get<string>(SITE_CONFIG_KEYS.headerPosition) || "top",

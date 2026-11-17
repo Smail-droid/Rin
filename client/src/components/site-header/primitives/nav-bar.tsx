@@ -68,11 +68,11 @@ function NavItem({
           ? `flex items-center w-full px-4 py-2.5 text-sm font-medium rounded-xl transition-colors ${
               selected ? "text-theme font-bold bg-theme/10" : "text-neutral-700 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5"
             }`
-          : `hidden md:inline-flex items-center cursor-pointer text-sm font-medium tracking-wide whitespace-nowrap shrink-0 transition-colors relative ${
+          : `hidden md:inline-flex items-center cursor-pointer text-sm font-medium tracking-wide whitespace-nowrap shrink-0 transition-all duration-200 ${
               selected
-                ? "text-theme font-bold after:absolute after:bottom-0 after:left-3 after:right-3 after:h-0.5 after:bg-theme after:rounded-full"
-                : "text-neutral-700 dark:text-neutral-300 hover:text-theme dark:hover:text-theme"
-            } px-3.5 py-2`
+                ? "text-theme font-bold bg-theme/10 shadow-2xs rounded-xl"
+                : "text-neutral-700 dark:text-neutral-300 hover:text-theme hover:bg-black/[0.03] dark:hover:bg-white/[0.04] rounded-xl"
+            } px-3.5 py-1.5`
       } ${itemClassName}`}
       state={{ animate: true }}
       onClick={onClick}

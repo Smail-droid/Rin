@@ -7,6 +7,7 @@ import Footer from "../components/footer";
 import { Header } from "../components/header";
 import { Padding } from "../components/padding";
 import { getHeaderLayoutDefinition } from "../components/site-header/layout-registry";
+import { GlobalReadingProgress } from "../components/global-reading-progress";
 import { Tips, TipsPage } from "../components/tips";
 import { TOCHeader } from "../components/toc-header";
 import useTableOfContents from "../hooks/useTableOfContents";
@@ -237,18 +238,23 @@ function AppRoute({
         const resolvedContent = typeof children === "function" ? children(params) : children;
         const layoutDefinition = getHeaderLayoutDefinition(siteConfig.headerLayout);
 
-        return layoutDefinition.renderRouteShell({
-          header: <Header>{headerComponent}</Header>,
-          content: (
-            <Padding className={paddingClassName}>
-              <Suspense fallback={<RouteLoadingFallback />}>
-                {resolvedContent}
-              </Suspense>
-            </Padding>
-          ),
-          footer: <Footer />,
-          paddingClassName,
-        });
+        return (
+          <>
+            <GlobalReadingProgress />
+            {layoutDefinition.renderRouteShell({
+              header: <Header>{headerComponent}</Header>,
+              content: (
+                <Padding className={paddingClassName}>
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    {resolvedContent}
+                  </Suspense>
+                </Padding>
+              ),
+              footer: <Footer />,
+              paddingClassName,
+            })}
+          </>
+        );
       }}
     </Route>
   );

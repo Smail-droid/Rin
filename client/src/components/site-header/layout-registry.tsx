@@ -6,6 +6,7 @@ import type { HeaderLayoutRegistry } from "./layout-types";
 const layoutRegistry: HeaderLayoutRegistry = {
   classic: classicLayoutDefinition,
   compact: compactLayoutDefinition,
+  dock: classicLayoutDefinition,
 };
 
 export function getHeaderLayoutDefinition(layout: HeaderLayoutOption | string | null | undefined) {

@@ -3,14 +3,22 @@ import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 import { client } from "../../app/runtime";
-import { THEME_PRESETS, applyThemeColor, applyThemeOpacity, applyThemeFontFamily } from "../../utils/theme-color";
+import {
+  THEME_PRESETS,
+  applyThemeColor,
+  applyThemeOpacity,
+  applyThemeFontFamily,
+  applyThemeWallpaper,
+  applyThemeCustomCursor,
+  applyGalleryTiltDegree,
+} from "../../utils/theme-color";
 import { getStoredThemeMode, setThemeMode, type ThemeMode } from "../../utils/darkModeUtils";
 import { type FeedCardVariant } from "../feed-card-options";
 
 const CURATED_PRESETS = THEME_PRESETS.slice(0, 8);
 
 interface MasterPreset {
-  id: "scrapbook" | "editorial" | "terminal";
+  id: "sakura" | "editorial" | "galaxy" | "amber";
   name: string;
   badge: string;
   icon: string;
@@ -20,60 +28,83 @@ interface MasterPreset {
 
 const MASTER_PRESETS: MasterPreset[] = [
   {
-    id: "scrapbook",
-    name: "🌸 和风手账",
-    badge: "Indie Scrapbook",
-    icon: "ri-camera-lens-line",
-    desc: "16:9 拍立得拟物卡片、温润微光、自然手账微倾、融入式经典顶栏",
+    id: "sakura",
+    name: "樱落微光",
+    badge: "Sakura Radiance",
+    icon: "ri-sparkling-2-line",
+    desc: "16:9 拍立得拟物卡片、温润微光、自然手账微倾、浮墨微光自然顶栏",
     config: {
       "feed.card_variant": "default",
       "header.position": "top",
       "header.layout": "classic",
       "theme.font_family": "sans",
       "theme.color": "#fc466b",
-      "gallery.tilt_mode": "subtle",
+      "gallery.tilt_degree": 2.0,
       "gallery.columns": "auto",
       "gallery.card_gap": 24,
       "gallery.padding": 24,
       "gallery.align": "center",
+      "theme.opacity": 85,
     },
   },
   {
     id: "editorial",
-    name: "📝 京都社论",
-    badge: "Editorial Journal",
+    name: "京都社论",
+    badge: "Kyoto Editorial",
     icon: "ri-book-open-line",
-    desc: "宽幅画报横屏、纯粹典雅衬线排印、极简纯文本融入式顶栏",
+    desc: "宽幅画报横屏、纯粹典雅衬线排印、极简纯文本社论顶栏",
     config: {
       "feed.card_variant": "editorial",
       "header.position": "top",
       "header.layout": "compact",
       "theme.font_family": "serif",
-      "theme.color": "#27272a",
-      "gallery.tilt_mode": "flat",
+      "theme.color": "#78716c",
+      "gallery.tilt_degree": 0.0,
       "gallery.columns": "auto",
       "gallery.card_gap": 24,
       "gallery.padding": 24,
       "gallery.align": "center",
+      "theme.opacity": 100,
     },
   },
   {
-    id: "terminal",
-    name: "💻 极客墨影",
-    badge: "Dark Terminal",
-    icon: "ri-terminal-box-line",
-    desc: "44px 高密单行、便签自适应单行终端条、极简融入顶栏",
+    id: "galaxy",
+    name: "星穹幽夜",
+    badge: "Celestial Galaxy",
+    icon: "ri-planet-line",
+    desc: "幽蓝星光、通透毛玻璃卡片、手账微托盘顶栏",
     config: {
-      "feed.card_variant": "compact",
+      "feed.card_variant": "poster",
       "header.position": "top",
-      "header.layout": "compact",
-      "theme.font_family": "mono",
-      "theme.color": "#00f2fe",
-      "gallery.tilt_mode": "flat",
+      "header.layout": "dock",
+      "theme.font_family": "sans",
+      "theme.color": "#38bdf8",
+      "gallery.tilt_degree": 1.2,
       "gallery.columns": "auto",
-      "gallery.card_gap": 16,
+      "gallery.card_gap": 20,
       "gallery.padding": 24,
-      "gallery.align": "fluid",
+      "gallery.align": "center",
+      "theme.opacity": 70,
+    },
+  },
+  {
+    id: "amber",
+    name: "琥珀手账",
+    badge: "Amber Washi",
+    icon: "ri-camera-lens-line",
+    desc: "暖杏焦糖、活泼错落拟物手账、纸质微托盘顶栏",
+    config: {
+      "feed.card_variant": "default",
+      "header.position": "top",
+      "header.layout": "dock",
+      "theme.font_family": "serif",
+      "theme.color": "#f59e0b",
+      "gallery.tilt_degree": 3.4,
+      "gallery.columns": "auto",
+      "gallery.card_gap": 22,
+      "gallery.padding": 24,
+      "gallery.align": "center",
+      "theme.opacity": 90,
     },
   },
 ];
@@ -93,10 +124,33 @@ export function InSituAestheticStudio() {
   const [siteNameVal, setSiteNameVal] = useState(siteConfig.name || "Rin");
   const [siteDescVal, setSiteDescVal] = useState(siteConfig.description || "");
 
+  // Dynamic parameters state
+  const [tiltVal, setTiltVal] = useState(siteConfig.galleryTiltDegree ?? 1.8);
+  const [gapVal, setGapVal] = useState(siteConfig.galleryCardGap ?? 24);
+  const [wallpaperUrlVal, setWallpaperUrlVal] = useState(siteConfig.themeWallpaper || "");
+  const [wallpaperOpacityVal, setWallpaperOpacityVal] = useState(siteConfig.themeWallpaperOpacity ?? 35);
+  const [customCursorVal, setCustomCursorVal] = useState(siteConfig.themeCustomCursor !== false);
+  const [readingProgressVal, setReadingProgressVal] = useState(siteConfig.themeReadingProgress !== false);
+
   useEffect(() => {
     if (siteConfig.name) setSiteNameVal(siteConfig.name);
     if (siteConfig.description) setSiteDescVal(siteConfig.description);
-  }, [siteConfig.name, siteConfig.description]);
+    if (siteConfig.galleryTiltDegree !== undefined) setTiltVal(siteConfig.galleryTiltDegree);
+    if (siteConfig.galleryCardGap !== undefined) setGapVal(siteConfig.galleryCardGap);
+    if (siteConfig.themeWallpaper !== undefined) setWallpaperUrlVal(siteConfig.themeWallpaper);
+    if (siteConfig.themeWallpaperOpacity !== undefined) setWallpaperOpacityVal(siteConfig.themeWallpaperOpacity);
+    if (siteConfig.themeCustomCursor !== undefined) setCustomCursorVal(siteConfig.themeCustomCursor !== false);
+    if (siteConfig.themeReadingProgress !== undefined) setReadingProgressVal(siteConfig.themeReadingProgress !== false);
+  }, [
+    siteConfig.name,
+    siteConfig.description,
+    siteConfig.galleryTiltDegree,
+    siteConfig.galleryCardGap,
+    siteConfig.themeWallpaper,
+    siteConfig.themeWallpaperOpacity,
+    siteConfig.themeCustomCursor,
+    siteConfig.themeReadingProgress,
+  ]);
 
   // 严格在所有 Hooks 之后返回（杜绝 React Error #310 / #300 钩子数量不匹配）
   if (location.startsWith("/admin")) {
@@ -105,11 +159,6 @@ export function InSituAestheticStudio() {
 
   const activeVariant = (siteConfig.feedCardVariant || "default") as FeedCardVariant;
   const activeColor = siteConfig.themeColor || "#fc466b";
-  const activeOpacity = siteConfig.themeOpacity ?? 100;
-  const activeColumns = String(siteConfig.galleryColumns ?? "auto");
-  const activeGap = siteConfig.galleryCardGap ?? 24;
-  const activePadding = siteConfig.galleryPadding ?? 24;
-  const activeAlign = siteConfig.galleryAlign || "center";
   const activeHeaderLayout = siteConfig.headerLayout || "classic";
   const activeFontFamily = (() => {
     try {
@@ -119,7 +168,6 @@ export function InSituAestheticStudio() {
       return "sans";
     }
   })();
-  const activeHeaderPosition = String(siteConfig.headerPosition ?? "top");
 
   const handleSaveBrand = () => {
     void persistConfig({
@@ -148,6 +196,13 @@ export function InSituAestheticStudio() {
   const handleApplyMasterPreset = (preset: MasterPreset) => {
     applyThemeColor(String(preset.config["theme.color"]));
     applyThemeFontFamily(String(preset.config["theme.font_family"]));
+    if (preset.config["gallery.tilt_degree"] !== undefined) {
+      applyGalleryTiltDegree(Number(preset.config["gallery.tilt_degree"]));
+      setTiltVal(Number(preset.config["gallery.tilt_degree"]));
+    }
+    if (preset.config["theme.opacity"] !== undefined) {
+      applyThemeOpacity(preset.config["theme.opacity"]);
+    }
     void persistConfig(preset.config);
   };
 
@@ -158,27 +213,6 @@ export function InSituAestheticStudio() {
   const handleSelectColor = (color: string) => {
     applyThemeColor(color);
     void persistConfig({ "theme.color": color, "theme.preset": "custom" });
-  };
-
-  const handleSelectOpacity = (opacity: number) => {
-    applyThemeOpacity(opacity);
-    void persistConfig({ "theme.opacity": opacity });
-  };
-
-  const handleSelectColumns = (cols: string) => {
-    void persistConfig({ "gallery.columns": cols });
-  };
-
-  const handleSelectGap = (gap: number) => {
-    void persistConfig({ "gallery.card_gap": gap });
-  };
-
-  const handleSelectPadding = (pad: number) => {
-    void persistConfig({ "gallery.padding": pad });
-  };
-
-  const handleSelectAlign = (align: string) => {
-    void persistConfig({ "gallery.align": align });
   };
 
   const handleSelectHeaderLayout = (layout: string) => {
@@ -196,15 +230,58 @@ export function InSituAestheticStudio() {
     setThemeMode(next);
   };
 
+  // Continuous Tilt Slider Handler
+  const handleChangeTilt = (val: number) => {
+    setTiltVal(val);
+    applyGalleryTiltDegree(val);
+    void persistConfig({ "gallery.tilt_degree": val });
+  };
+
+  // Card Gap Slider Handler
+  const handleChangeGap = (val: number) => {
+    setGapVal(val);
+    void persistConfig({ "gallery.card_gap": val });
+  };
+
+  // Wallpaper Handlers
+  const handleSaveWallpaper = () => {
+    applyThemeWallpaper(wallpaperUrlVal, wallpaperOpacityVal);
+    void persistConfig({
+      "theme.wallpaper": wallpaperUrlVal.trim(),
+      "theme.wallpaper_opacity": wallpaperOpacityVal,
+    });
+  };
+
+  const handleChangeWallpaperOpacity = (val: number) => {
+    setWallpaperOpacityVal(val);
+    applyThemeWallpaper(wallpaperUrlVal, val);
+    void persistConfig({ "theme.wallpaper_opacity": val });
+  };
+
+  // Custom Cursor Toggle
+  const handleToggleCursor = () => {
+    const next = !customCursorVal;
+    setCustomCursorVal(next);
+    applyThemeCustomCursor(next);
+    void persistConfig({ "theme.custom_cursor": next });
+  };
+
+  // Reading Progress Toggle
+  const handleToggleReadingProgress = () => {
+    const next = !readingProgressVal;
+    setReadingProgressVal(next);
+    void persistConfig({ "theme.reading_progress": next });
+  };
+
   return createPortal(
     <>
-      {/* 浮动唤起圆纽（仅前台展示，精致极简 40x40 矢量图标，杜绝文字突兀） */}
+      {/* 浮动唤起圆纽（精致极简 40x40 矢量图标，杜绝文字突兀） */}
       <div className="fixed bottom-6 left-6 z-40 select-none">
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
           className="group relative flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white/85 dark:border-white/10 dark:bg-neutral-900/85 shadow-lg backdrop-blur-xl hover:border-theme hover:scale-110 active:scale-95 transition-all text-neutral-600 dark:text-neutral-300 hover:text-theme cursor-pointer"
-          title="前台美学工坊 (排版、色彩、留白与字族微调)"
+          title="前台美学工坊 (无级参数滑块、色彩、壁纸与字族微调)"
         >
           <i className="ri-palette-line text-lg text-theme group-hover:rotate-12 transition-transform" />
           {saving ? <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-theme animate-ping" /> : null}
@@ -219,44 +296,46 @@ export function InSituAestheticStudio() {
         />
       ) : null}
 
-      {/* 美学工坊滑出抽屉 */}
+      {/* 侧边滑出美学设计工坊抽屉 */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-full max-w-sm border-r border-black/10 bg-white/95 dark:border-white/10 dark:bg-[#12161f]/95 shadow-2xl backdrop-blur-2xl transition-transform duration-300 select-none flex flex-col ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-full sm:w-[420px] bg-white/95 dark:bg-[#12161f]/95 backdrop-blur-2xl shadow-2xl border-r border-black/10 dark:border-white/10 flex flex-col transition-transform duration-300 ease-out select-none ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* 顶部标题栏 */}
-        <div className="flex items-center justify-between border-b border-black/5 p-4 dark:border-white/5">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme">
-              <i className="ri-equalizer-line text-sm" />
+        {/* 抽屉顶栏 */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-black/5 dark:border-white/5 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-theme/10 text-theme text-sm">
+              <i className="ri-palette-line" />
             </span>
             <div>
-              <h2 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">前台美学工坊</h2>
-              <p className="text-[11px] text-neutral-400 font-mono">In-Situ Aesthetic Studio</p>
+              <h2 className="text-sm font-bold t-primary">前台美学工坊 · 参数中枢</h2>
+              <p className="text-[10px] text-neutral-400">实时调整无级滑块与视觉预设，所见即所得</p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="flex h-8 w-8 items-center justify-center rounded-xl text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5 transition"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100 hover:bg-black/5 dark:hover:bg-white/5 transition"
           >
-            <i className="ri-close-line text-lg" />
+            <i className="ri-close-line text-base" />
           </button>
         </div>
 
-        {/* 核心配置流 */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {/* 0. 站点基本身份与标语 */}
-          <div className="space-y-2 p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+        {/* 抽屉滚动内容 */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-6 text-xs">
+          {/* 1. 站点身份标题快速修改 */}
+          <div className="space-y-2 p-3.5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-                站点名称与描述
-              </label>
+              <span className="text-xs font-bold t-primary flex items-center gap-1.5">
+                <i className="ri-quill-pen-line text-theme" />
+                <span>站点名称与描述</span>
+              </span>
               <button
                 type="button"
                 onClick={handleSaveBrand}
-                className="text-[11px] text-theme font-bold hover:underline cursor-pointer"
+                disabled={saving}
+                className="px-2 py-0.5 rounded-md bg-theme/10 hover:bg-theme/20 text-theme text-[10px] font-bold transition cursor-pointer"
               >
                 保存身份
               </button>
@@ -277,272 +356,299 @@ export function InSituAestheticStudio() {
             />
           </div>
 
-          {/* 大师级画廊意境一键预设 (Master Gallery Aesthetics) */}
+          {/* 2. 四大画廊意境一键变奏 (Master Gallery Aesthetics) */}
           <div className="space-y-2.5 p-3.5 rounded-2xl bg-gradient-to-br from-theme/5 to-transparent border border-theme/20 shadow-2xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-theme uppercase tracking-wider flex items-center gap-1.5">
                 <i className="ri-magic-line" />
-                <span>三大画廊意境一键变奏</span>
+                <span>四大画廊意境一键变奏</span>
               </span>
               <span className="text-[10px] font-mono text-neutral-400">1-Click</span>
             </div>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {MASTER_PRESETS.map((preset) => {
                 const isCurrent =
                   activeVariant === preset.config["feed.card_variant"] &&
-                  activeHeaderPosition === preset.config["header.position"] &&
-                  activeFontFamily === preset.config["theme.font_family"];
+                  activeHeaderLayout === preset.config["header.layout"];
                 return (
                   <button
                     key={preset.id}
                     type="button"
                     onClick={() => handleApplyMasterPreset(preset)}
-                    className={`group relative flex items-start gap-3 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    className={`flex flex-col items-start p-2.5 rounded-xl border text-left transition-all ${
                       isCurrent
-                        ? "border-theme bg-theme/10 ring-2 ring-theme/30 shadow-xs"
-                        : "border-black/5 dark:border-white/5 bg-white/60 dark:bg-white/[0.02] hover:border-theme/40 hover:bg-white/90"
+                        ? "border-theme bg-theme/10 ring-1 ring-theme/30 shadow-xs"
+                        : "border-black/5 bg-white/70 dark:bg-white/5 hover:border-theme/30 hover:bg-white"
                     }`}
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-base shrink-0 group-hover:scale-110 transition-transform">
-                      <i className={preset.icon} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs t-primary">{preset.name}</span>
-                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-md bg-black/5 dark:bg-white/10 text-neutral-500">
-                          {preset.badge}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-neutral-400 mt-0.5 leading-relaxed">
-                        {preset.desc}
-                      </p>
+                    <div className="flex items-center gap-1.5 font-bold text-xs t-primary">
+                      <i className={`${preset.icon} text-theme`} />
+                      <span>{preset.name}</span>
                     </div>
+                    <span className="text-[10px] text-neutral-400 line-clamp-1 mt-0.5">
+                      {preset.badge}
+                    </span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* 1. 卡片版式骨架 (4 种结构级差异变体) */}
+          {/* 3. 无级参数微调滑块集群 (Continuous Sliders) */}
+          <div className="space-y-4 p-3.5 rounded-2xl bg-neutral-50/70 dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+            <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-2">
+              <span className="text-xs font-bold t-primary flex items-center gap-1.5">
+                <i className="ri-equalizer-line text-theme" />
+                <span>动态无级参数微调 (实时生效)</span>
+              </span>
+              <span className="text-[10px] font-mono text-neutral-400">Sliders</span>
+            </div>
+
+            {/* 拍立得倾斜角滑块 (0° ~ 8.0°) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-neutral-600 dark:text-neutral-300">
+                  拍立得错落倾斜度
+                </span>
+                <span className="font-mono text-theme font-bold text-[11px]">
+                  {tiltVal.toFixed(1)}°
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="8"
+                step="0.2"
+                value={tiltVal}
+                onChange={(e) => handleChangeTilt(Number.parseFloat(e.target.value))}
+                className="w-full accent-theme h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-lg cursor-pointer"
+              />
+              <div className="flex items-center justify-between text-[10px] text-neutral-400">
+                <span>0.0° (纯平整齐)</span>
+                <span>2.0° (自然微倾)</span>
+                <span>8.0° (随性错落)</span>
+              </div>
+            </div>
+
+            {/* 卡片间距滑块 (8px ~ 48px) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-neutral-600 dark:text-neutral-300">
+                  画廊卡片间距 (Gap)
+                </span>
+                <span className="font-mono text-theme font-bold text-[11px]">{gapVal}px</span>
+              </div>
+              <input
+                type="range"
+                min="8"
+                max="48"
+                step="2"
+                value={gapVal}
+                onChange={(e) => handleChangeGap(Number.parseInt(e.target.value, 10))}
+                className="w-full accent-theme h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-lg cursor-pointer"
+              />
+            </div>
+          </div>
+
+          {/* 4. 全屏通透沉浸壁纸设置 (Custom Wallpaper) */}
+          <div className="space-y-3 p-3.5 rounded-2xl bg-neutral-50/70 dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+            <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-2">
+              <span className="text-xs font-bold t-primary flex items-center gap-1.5">
+                <i className="ri-image-line text-theme" />
+                <span>全屏通透背景壁纸</span>
+              </span>
+              <button
+                type="button"
+                onClick={handleSaveWallpaper}
+                className="px-2 py-0.5 rounded-md bg-theme text-white text-[10px] font-bold transition hover:bg-theme-hover cursor-pointer"
+              >
+                应用壁纸
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-neutral-500">壁纸图片 URL (支持外部图床直链)</label>
+              <input
+                type="text"
+                value={wallpaperUrlVal}
+                onChange={(e) => setWallpaperUrlVal(e.target.value)}
+                placeholder="https://... 或点击右侧应用"
+                className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-mono outline-none focus:border-theme"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-neutral-500">壁纸半透显影强度</span>
+                <span className="font-mono text-theme font-bold text-[11px]">{wallpaperOpacityVal}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={wallpaperOpacityVal}
+                onChange={(e) => handleChangeWallpaperOpacity(Number.parseInt(e.target.value, 10))}
+                className="w-full accent-theme h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-lg cursor-pointer"
+              />
+            </div>
+          </div>
+
+          {/* 5. 交互与微动效开关 (光标 & 极光进度条) */}
+          <div className="space-y-2 p-3.5 rounded-2xl bg-neutral-50/70 dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+            <span className="text-xs font-bold t-primary flex items-center gap-1.5 border-b border-black/5 dark:border-white/5 pb-2">
+              <i className="ri-sparkling-line text-theme" />
+              <span>二次元微动效与光标体验</span>
+            </span>
+
+            {/* 二次元萌系光标开关 */}
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex flex-col">
+                <span className="font-semibold text-xs t-primary">二次元定制鼠标指针</span>
+                <span className="text-[10px] text-neutral-400">可爱动漫小箭头与点击手势指针</span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={customCursorVal}
+                onClick={handleToggleCursor}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                  customCursorVal ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 rounded-full bg-white shadow-xs transition transform mt-1 ${
+                    customCursorVal ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* 顶端极光阅读进度条开关 */}
+            <div className="flex items-center justify-between pt-2 border-t border-black/5 dark:border-white/5">
+              <div className="flex flex-col">
+                <span className="font-semibold text-xs t-primary">顶端极光阅读进度条</span>
+                <span className="text-[10px] text-neutral-400">滚动下拉时全站顶端渐变进度随动</span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={readingProgressVal}
+                onClick={handleToggleReadingProgress}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                  readingProgressVal ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 rounded-full bg-white shadow-xs transition transform mt-1 ${
+                    readingProgressVal ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* 6. 顶栏导航 3 大风格切换 */}
           <div className="space-y-2.5">
-            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              卡片版式骨架
+            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5">
+              <i className="ri-layout-top-line text-theme" />
+              <span>顶栏导航风格 (自然融入，绝不遮挡)</span>
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              {CARD_VARIANTS.map((variant) => {
-                const isSelected = activeVariant === variant.id;
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: "classic", label: "浮墨微光流" },
+                { id: "compact", label: "京都社论流" },
+                { id: "dock", label: "手账微托盘" },
+              ].map((hl) => {
+                const isSelected = activeHeaderLayout === hl.id;
                 return (
                   <button
-                    key={variant.id}
+                    key={hl.id}
                     type="button"
-                    onClick={() => handleSelectVariant(variant.id)}
-                    className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
+                    onClick={() => handleSelectHeaderLayout(hl.id)}
+                    className={`py-2 px-1 rounded-xl border text-[11px] font-bold transition-all text-center ${
                       isSelected
-                        ? "border-theme bg-theme/5 shadow-2xs text-theme"
-                        : "border-black/5 hover:border-black/15 bg-neutral-50/50 dark:border-white/5 dark:bg-white/[0.02] dark:hover:border-white/15 text-neutral-700 dark:text-neutral-300"
+                        ? "border-theme bg-theme text-white shadow-2xs"
+                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 font-bold text-xs">
-                      <i className={variant.icon} />
-                      <span>{variant.label}</span>
-                    </div>
-                    <span className="text-[10px] text-neutral-400 mt-1 line-clamp-1">
-                      {variant.desc}
-                    </span>
+                    {hl.label}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* 2. 温润多色组合意境色盘 */}
+          {/* 7. 卡片展示形态 (4 大卡片模板) */}
+          <div className="space-y-2.5">
+            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              卡片排版形态
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {CARD_VARIANTS.map((v) => {
+                const isSelected = activeVariant === v.id;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => handleSelectVariant(v.id)}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all ${
+                      isSelected
+                        ? "border-theme bg-theme/10 ring-1 ring-theme/30 text-theme font-bold shadow-xs"
+                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-700 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
+                    }`}
+                  >
+                    <i className={`${v.icon} text-sm ${isSelected ? "text-theme" : "text-neutral-400"}`} />
+                    <span className="text-xs">{v.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 8. 核心主题色盘 */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-                多色组合氛围色盘
+                核心主题微光色
               </label>
-              <span className="text-[10px] font-mono text-neutral-400">主色 · 底色 · 辉光</span>
+              <span className="text-[11px] font-mono text-neutral-400">{activeColor}</span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {CURATED_PRESETS.map((preset) => {
-                const isSelected = activeColor.toLowerCase() === preset.color.toLowerCase();
+            <div className="grid grid-cols-4 gap-2">
+              {CURATED_PRESETS.map((p) => {
+                const isSelected = activeColor.toLowerCase() === p.color.toLowerCase();
                 return (
                   <button
-                    key={preset.id}
+                    key={p.id}
                     type="button"
-                    onClick={() => handleSelectColor(preset.color)}
-                    className={`group flex items-center gap-2.5 p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                    onClick={() => handleSelectColor(p.color)}
+                    className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all ${
                       isSelected
-                        ? "border-theme bg-theme/5 shadow-xs ring-2 ring-theme/20"
-                        : "border-black/5 dark:border-white/5 bg-white/40 dark:bg-white/[0.02] hover:border-black/20 dark:hover:border-white/20"
+                        ? "border-theme ring-2 ring-theme/30 bg-theme/5"
+                        : "border-black/5 hover:border-black/20 dark:border-white/5"
                     }`}
-                    title={preset.description}
                   >
-                    {/* 三色组合层叠色球 */}
-                    <div className="flex items-center shrink-0">
-                      <span
-                        className="h-5 w-5 rounded-full shadow-2xs z-3 flex items-center justify-center text-white"
-                        style={{ backgroundColor: preset.color }}
-                      >
-                        {isSelected ? <i className="ri-check-line text-[10px]" /> : null}
-                      </span>
-                      <span
-                        className="h-4 w-4 rounded-full -ml-2 border border-white dark:border-neutral-900 shadow-2xs z-2"
-                        style={{ backgroundColor: preset.previewBg }}
-                      />
-                      <span
-                        className="h-3 w-3 rounded-full -ml-1.5 border border-white dark:border-neutral-900 shadow-2xs z-1"
-                        style={{ backgroundColor: preset.accent }}
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 block truncate">
-                        {preset.name}
-                      </span>
-                      <span className="text-[9px] text-neutral-400 block truncate mt-0.5">
-                        {preset.description}
-                      </span>
-                    </div>
+                    <span
+                      className="h-6 w-6 rounded-full shadow-2xs transition-transform hover:scale-110"
+                      style={{ backgroundColor: p.color }}
+                    />
+                    <span className="text-[10px] font-semibold text-neutral-600 dark:text-neutral-300 truncate w-full text-center">
+                      {p.name}
+                    </span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* 3. 瀑布流排布列数 */}
+          {/* 9. 全局字族方案 */}
           <div className="space-y-2.5">
             <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              瀑布流排布列数
-            </label>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {[
-                { id: "auto", label: "自适应 Auto" },
-                { id: "2", label: "2 列" },
-                { id: "3", label: "3 列" },
-                { id: "4", label: "4 列" },
-                { id: "5", label: "5 列" },
-              ].map((col) => {
-                const isSelected = activeColumns === col.id;
-                return (
-                  <button
-                    key={col.id}
-                    type="button"
-                    onClick={() => handleSelectColumns(col.id)}
-                    className={`flex-1 min-w-[54px] py-1.5 rounded-xl border text-xs font-mono font-bold transition-all ${
-                      isSelected
-                        ? "border-theme bg-theme text-white shadow-2xs"
-                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
-                    }`}
-                  >
-                    {col.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 3.1 画廊两侧留白边距 */}
-          <div className="space-y-2.5">
-            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              首页两侧留白边距
-            </label>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {[
-                { val: 0, label: "无边距 0px" },
-                { val: 12, label: "12px" },
-                { val: 24, label: "24px" },
-                { val: 48, label: "48px" },
-                { val: 80, label: "80px" },
-              ].map((p) => {
-                const isSelected = Number(activePadding) === p.val;
-                return (
-                  <button
-                    key={p.val}
-                    type="button"
-                    onClick={() => handleSelectPadding(p.val)}
-                    className={`flex-1 min-w-[54px] py-1.5 rounded-xl border text-xs font-mono font-bold transition-all ${
-                      isSelected
-                        ? "border-theme bg-theme text-white shadow-2xs"
-                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 3.2 画廊排版对齐方式 */}
-          <div className="space-y-2.5">
-            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              画廊排版对齐方式
+              全站艺术字体族
             </label>
             <div className="flex items-center gap-2">
               {[
-                { id: "center", label: "居中聚拢 (Center)" },
-                { id: "fluid", label: "撑满两端 (Fluid)" },
-              ].map((a) => {
-                const isSelected = activeAlign === a.id;
-                return (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => handleSelectAlign(a.id)}
-                    className={`flex-1 py-1.5 rounded-xl border text-xs font-bold transition-all ${
-                      isSelected
-                        ? "border-theme bg-theme text-white shadow-2xs"
-                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
-                    }`}
-                  >
-                    {a.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 4. 卡片间距与间隙 */}
-          <div className="space-y-2.5">
-            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              卡片列间距与间隙
-            </label>
-            <div className="flex items-center gap-2">
-              {[
-                { val: 12, label: "极密 12px" },
-                { val: 16, label: "紧凑 16px" },
-                { val: 24, label: "标准 24px" },
-                { val: 32, label: "宽松 32px" },
-              ].map((g) => {
-                const isSelected = Number(activeGap) === g.val;
-                return (
-                  <button
-                    key={g.val}
-                    type="button"
-                    onClick={() => handleSelectGap(g.val)}
-                    className={`flex-1 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all ${
-                      isSelected
-                        ? "border-theme bg-theme text-white shadow-2xs"
-                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
-                    }`}
-                  >
-                    {g.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 5. 全站排印字族 */}
-          <div className="space-y-2.5">
-            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              全站排印字族
-            </label>
-            <div className="flex items-center gap-2">
-              {[
-                { id: "sans", label: "现代无衬线", desc: "极简现代" },
-                { id: "serif", label: "典雅衬线", desc: "书卷杂志" },
-                { id: "mono", label: "极客等宽", desc: "终端代码" },
+                { id: "sans", label: "现代无衬线" },
+                { id: "serif", label: "京都优雅衬线" },
+                { id: "mono", label: "等宽极客字符" },
               ].map((f) => {
                 const isSelected = activeFontFamily === f.id;
                 return (
@@ -563,65 +669,10 @@ export function InSituAestheticStudio() {
             </div>
           </div>
 
-          {/* 6. 顶栏导航风格 (文字直接嵌入网页，彻底杜绝悬浮遮挡与字体变形) */}
+          {/* 10. 日夜光照模式 */}
           <div className="space-y-2.5">
             <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              顶栏文字排印风格 (嵌入网页)
-            </label>
-            <div className="flex items-center gap-2">
-              {[
-                { id: "classic", label: "经典自然顶栏 (居中舒展)" },
-                { id: "compact", label: "极简纯文本顶栏 (社论右对齐)" },
-              ].map((hl) => {
-                const isSelected = activeHeaderLayout === hl.id;
-                return (
-                  <button
-                    key={hl.id}
-                    type="button"
-                    onClick={() => handleSelectHeaderLayout(hl.id)}
-                    className={`flex-1 py-1.5 px-1.5 rounded-xl border text-[11px] font-bold transition-all text-center ${
-                      isSelected
-                        ? "border-theme bg-theme text-white shadow-2xs"
-                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
-                    }`}
-                  >
-                    {hl.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 7. 卡片透光度 */}
-          <div className="space-y-2.5">
-            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              卡片透光度
-            </label>
-            <div className="flex items-center gap-2">
-              {[100, 85, 70].map((val) => {
-                const isSelected = Number(activeOpacity) === val;
-                return (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => handleSelectOpacity(val)}
-                    className={`flex-1 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all ${
-                      isSelected
-                        ? "border-theme bg-theme text-white"
-                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
-                    }`}
-                  >
-                    {val}%
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 6. 日夜光照模式 */}
-          <div className="space-y-2.5">
-            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              光照模式
+              日夜模式
             </label>
             <button
               type="button"
@@ -629,23 +680,12 @@ export function InSituAestheticStudio() {
               className="w-full flex items-center justify-between p-3 rounded-2xl border border-black/5 dark:border-white/5 bg-neutral-50/50 dark:bg-white/[0.02] hover:bg-neutral-100 dark:hover:bg-white/5 transition"
             >
               <div className="flex items-center gap-2 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                <i className="ri-sun-line text-amber-500" />
-                <span>日夜模式极速切换</span>
+                <i className="ri-sun-line text-amber-500 text-sm" />
+                <span>明暗光照模式极速切换</span>
               </div>
               <span className="text-xs font-mono text-neutral-400">切换</span>
             </button>
           </div>
-        </div>
-
-        {/* 底部：底层机房快捷通道 */}
-        <div className="p-4 border-t border-black/5 dark:border-white/5 bg-neutral-50/50 dark:bg-white/[0.01]">
-          <a
-            href="/admin/dashboard"
-            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-xs font-bold shadow-xs hover:opacity-90 transition active:scale-98"
-          >
-            <i className="ri-dashboard-3-line" />
-            <span>进入底层机房 (Engine Room)</span>
-          </a>
         </div>
       </div>
     </>,

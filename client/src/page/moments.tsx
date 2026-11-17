@@ -221,14 +221,14 @@ export function MomentsPage() {
         <meta property="og:url" content={document.URL} />
       </Helmet>
       <Waiting for={!loading}>
-        <main className="w-full flex flex-col justify-center items-center mb-8 ani-show">
+        <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 mb-12 ani-show">
           {/* Moments Top Header */}
-          <div className="wauto text-start py-4 mb-2">
+          <div className="w-full text-start py-4 mb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-black/10 dark:border-white/10">
               <div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-xs font-bold mb-2">
-                  <i className="ri-chat-smile-2-line" />
-                  <span>朋友圈 · 碎碎念日常</span>
+                  <i className="ri-chat-heart-line text-sm" />
+                  <span>随笔手账 · 生活灵感</span>
                 </div>
                 <h1
                   className={`text-3xl sm:text-4xl font-extrabold tracking-tight art-title-${
@@ -238,7 +238,7 @@ export function MomentsPage() {
                   日常随想
                 </h1>
                 <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                  共收录 {length} 条生活随想与技术碎碎念
+                  共收录 {length} 条生活随笔与即时灵感
                 </p>
               </div>
 
@@ -265,15 +265,15 @@ export function MomentsPage() {
                     }`}
                   >
                     <i className={isPublisherOpen ? "ri-close-line" : "ri-edit-line"} />
-                    <span>{isPublisherOpen ? "收起编辑器" : "发朋友圈动态"}</span>
+                    <span>{isPublisherOpen ? "收起便签" : "记录新灵感"}</span>
                   </button>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="wauto">
-            {/* 管理员登录状态下的轻量级画廊留言板式发布面板 */}
+          <div className="w-full">
+            {/* 管理员登录状态下的轻量级手账留言板式发布面板 */}
             {profile?.permission && isPublisherOpen && (
               <div
                 ref={publisherRef}
@@ -285,14 +285,14 @@ export function MomentsPage() {
                 <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 mb-3">
                   <div className="flex items-center gap-2">
                     <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-sm">
-                      <i className="ri-terminal-box-line" />
+                      <i className="ri-quill-pen-line" />
                     </span>
                     <div>
                       <h3 className="text-sm font-bold t-primary">
-                        {editingMoment ? "编辑朋友圈动态" : "发布朋友圈动态 (画廊留言板样式)"}
+                        {editingMoment ? "编辑随笔便签" : "发布随笔便签 (手账留言板)"}
                       </h3>
                       <p className="text-[11px] text-neutral-400">
-                        支持 Markdown、代码块、二次元心情胶囊与颜文字
+                        记录生活见闻、闪念灵感与心得随笔，支持 Markdown 语法
                       </p>
                     </div>
                   </div>
@@ -457,9 +457,9 @@ export function MomentsPage() {
               </div>
             )}
 
-            {/* Moments 动态列表 */}
+            {/* Moments 动态列表：双列日系便签瀑布流排布 (高信息密度，一屏纵览 6~8 条) */}
             {moments && moments.length > 0 ? (
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 items-start">
                 {moments.map((moment) => (
                   <MomentItem
                     key={moment.id}

@@ -884,7 +884,7 @@ export function FriendsPage() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight t-primary flex items-center gap-2">
-                        <span className="text-theme">🌸</span>
+                        <i className="ri-planet-line text-theme" />
                         <span>星标友链 · 画廊漫游</span>
                     </h1>
                     <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">

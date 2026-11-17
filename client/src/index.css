@@ -27,6 +27,96 @@ body {
   font-family: var(--rin-font-family, Cantarell, "Source Han Serif CN VF", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif) !important;
   font-size: var(--rin-font-size, 16px);
   min-height: 100vh;
+  position: relative;
+}
+
+/* ============================================================
+   全屏漫游壁纸层 (body::before 绝美通透半透明底座)
+   ============================================================ */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -2;
+  background-image: var(--rin-wallpaper-url, url('https://cdn.nodeimage.com/i/qAdktUUKq1wrLwlSuYIbhHDiZtf3lXCp.png'));
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: var(--rin-wallpaper-opacity, 0.35);
+  pointer-events: none;
+  transition: opacity 0.3s ease, background-image 0.5s ease;
+}
+
+/* ============================================================
+   二次元自定义鼠标指针 (支持在美学工坊一键开启/关闭)
+   ============================================================ */
+body.custom-cursor-enabled,
+body.custom-cursor-enabled * {
+  cursor: url('https://npm.elemecdn.com/kang-static/Hexo/img/default.cur'), auto !important;
+}
+
+body.custom-cursor-enabled a,
+body.custom-cursor-enabled button,
+body.custom-cursor-enabled img,
+body.custom-cursor-enabled input,
+body.custom-cursor-enabled select,
+body.custom-cursor-enabled textarea,
+body.custom-cursor-enabled [role="button"],
+body.custom-cursor-enabled .cursor-pointer {
+  cursor: url('https://npm.elemecdn.com/kang-static/Hexo/img/pointer.cur'), pointer !important;
+}
+
+/* ============================================================
+   滚动条美化：45°优雅半透明斜纹糖果棒
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: rgba(200, 200, 200, 0.15);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgb(var(--theme-rgb) / 0.4);
+  background-image: -webkit-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.45) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0.45) 75%,
+    transparent 75%,
+    transparent
+  );
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(var(--theme-rgb) / 0.7);
+}
+
+/* ============================================================
+   头像立体白边与触觉微阴影
+   ============================================================ */
+.avatar-tactile,
+.brand-avatar,
+[data-avatar="true"] {
+  border: 3px solid #ffffff !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12) !important;
+  border-radius: 20px !important;
+}
+
+[data-color-mode="dark"] .avatar-tactile,
+[data-color-mode="dark"] .brand-avatar,
+[data-color-mode="dark"] [data-avatar="true"] {
+  border-color: rgba(255, 255, 255, 0.25) !important;
 }
 
 textarea:focus {

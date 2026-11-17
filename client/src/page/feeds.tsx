@@ -9,6 +9,7 @@ import { siteName } from "../utils/constants";
 import { useTranslation } from "react-i18next";
 import { useAlert } from "../components/dialog";
 import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
+import { VectorIcon } from "../components/vector-icon";
 
 type FeedsData = {
     size: number;
@@ -50,47 +51,13 @@ function EmptyFeedsState({ listState, canWrite }: { listState: FeedType; canWrit
     );
 }
 
-// Organic tilt angles for the scattered atelier cards based on galleryTiltMode
-const getTiltAngle = (index: number, tiltOffset: number, mode: string = "subtle") => {
-    if (mode === "flat") return "rotate-0";
-    if (mode === "pronounced") {
-        const angles = [
-            "-rotate-[3.2deg]",
-            "rotate-[2.6deg]",
-            "-rotate-[3.5deg]",
-            "rotate-[3deg]",
-            "-rotate-[2.2deg]",
-            "rotate-[2.8deg]",
-            "-rotate-[3.4deg]",
-            "rotate-[2.2deg]",
-        ];
-        return angles[(index + tiltOffset) % angles.length];
-    }
-    if (mode === "dynamic") {
-        const angles = [
-            "-rotate-[2.5deg]",
-            "rotate-[1.5deg]",
-            "-rotate-[3deg]",
-            "rotate-[2deg]",
-            "-rotate-[1.2deg]",
-            "rotate-[2.8deg]",
-            "-rotate-[2deg]",
-            "rotate-[1.6deg]",
-        ];
-        return angles[(index + tiltOffset) % angles.length];
-    }
-    // "subtle" (default)
-    const angles = [
-        "-rotate-[1.8deg]",
-        "rotate-[1.4deg]",
-        "-rotate-[2.2deg]",
-        "rotate-[1.9deg]",
-        "-rotate-[1.2deg]",
-        "rotate-[1.6deg]",
-        "-rotate-[2.4deg]",
-        "rotate-[1.1deg]",
-    ];
-    return angles[(index + tiltOffset) % angles.length];
+// Dynamic organic tilt calculation based on configurable continuous degree slider (0° ~ 10°)
+const getTiltStyle = (index: number, tiltOffset: number, baseDegree: number = 1.8): React.CSSProperties => {
+    if (baseDegree <= 0) return { transform: "rotate(0deg)" };
+    const factors = [-1.0, 0.8, -1.2, 1.1, -0.7, 0.9, -1.3, 0.6];
+    const factor = factors[(index + tiltOffset) % factors.length];
+    const angle = (factor * baseDegree).toFixed(2);
+    return { "--card-tilt": `${angle}deg`, transform: `rotate(var(--card-tilt))` } as React.CSSProperties;
 };
 
 // Translucent washi-tape accent colors
@@ -137,7 +104,7 @@ function AtelierPhotoCard({
     const { t } = useTranslation();
     const siteConfig = useSiteConfig();
     const [imageError, setImageError] = useState(false);
-    const tilt = getTiltAngle(index, tiltOffset, siteConfig.galleryTiltMode);
+    const tiltStyle = getTiltStyle(index, tiltOffset, siteConfig.galleryTiltDegree);
     const tapeColor = TAPE_COLORS[(index + tiltOffset) % TAPE_COLORS.length];
     const readingTime = feed.readingTime || Math.max(1, Math.ceil((feed.summary?.length || 100) / 100));
 
@@ -317,14 +284,18 @@ function AtelierPhotoCard({
                             >
                                 <i className="ri-image-edit-line text-xs" />
                             </button>
-                            <Link
-                                href={`/admin/writing/${feed.id}`}
-                                onClick={(e) => e.stopPropagation()}
-                                title="编辑文章"
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.dispatchEvent(new CustomEvent("rin:open-writing-drawer", { detail: { id: feed.id } }));
+                                }}
+                                title="在场编辑文章"
                                 className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-theme shadow-xs backdrop-blur-xs transition hover:scale-110"
                             >
                                 <i className="ri-edit-line text-xs" />
-                            </Link>
+                            </button>
                         </div>
                     ) : null}
 
@@ -368,11 +339,12 @@ function AtelierPhotoCard({
             onDragOver={onDragOver}
             onDrop={onDrop}
             onDragEnd={onDragEnd}
-            className={`group relative break-inside-avoid block w-full mb-5 sm:mb-6 rounded-[26px] border bg-white p-3 pb-3.5 shadow-md hover:shadow-2xl transition-all duration-400 transform ${tilt} hover:rotate-0 hover:scale-[1.03] hover:z-30 dark:bg-neutral-900 ${
+            className={`group relative break-inside-avoid block w-full mb-5 sm:mb-6 rounded-[26px] border bg-white p-3 pb-3.5 shadow-md hover:shadow-2xl transition-all duration-400 transform hover:!rotate-0 hover:scale-[1.03] hover:z-30 dark:bg-neutral-900 ${
                 isDragging ? "opacity-35 scale-95 border-theme border-dashed ring-2 ring-theme/40" : ""
             } ${
                 isDragOver ? "ring-4 ring-theme/40 border-theme scale-[1.02] shadow-xl" : "border-black/10 dark:border-white/10"
             }`}
+            style={tiltStyle}
         >
             <div
                 className={`absolute -top-2.5 left-1/2 -translate-x-1/2 w-14 h-4 ${tapeColor} rounded-xs shadow-2xs rotate-[-2deg] pointer-events-none z-10 opacity-90`}
@@ -402,14 +374,18 @@ function AtelierPhotoCard({
                     >
                         <i className="ri-image-edit-line text-xs" />
                     </button>
-                    <Link
-                        href={`/admin/writing/${feed.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        title="进入写作后台编辑正文"
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.dispatchEvent(new CustomEvent("rin:open-writing-drawer", { detail: { id: feed.id } }));
+                        }}
+                        title="在场就地编辑文章"
                         className="flex h-7 w-7 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme"
                     >
                         <i className="ri-edit-line text-xs" />
-                    </Link>
+                    </button>
                 </div>
             )}
 
@@ -426,7 +402,7 @@ function AtelierPhotoCard({
                     />
                 ) : (
                     <div className="flex flex-col items-center justify-center p-8 min-h-60 bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200 dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-950 text-center">
-                        <span className="text-3xl mb-3 opacity-60">✍️</span>
+                        <i className="ri-quill-pen-line text-3xl mb-3 opacity-60 text-theme" />
                         <h2 className="text-xl font-bold t-primary line-clamp-3 leading-snug">
                             {feed.title}
                         </h2>
@@ -626,7 +602,9 @@ function StickyNoteItem({
                     {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
                     <div className="relative z-10 flex flex-col items-center">
                         {renderAdminControls("about")}
-                        <span className="text-3xl mb-1">{siteConfig.atelierAboutIcon || "🐾"}</span>
+                        <span className="text-3xl mb-1 text-amber-500">
+                            <VectorIcon name={siteConfig.atelierAboutIcon} fallback="ri-user-smile-line" />
+                        </span>
                         <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-amber-900 dark:text-amber-200"}`}>
                             {siteConfig.name || "80hou"}
                         </p>
@@ -651,7 +629,9 @@ function StickyNoteItem({
                 >
                     {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
                     <div className="relative z-10 flex items-center gap-2.5 min-w-0">
-                        <span className="text-xl">{siteConfig.atelierAboutIcon || "🐾"}</span>
+                        <span className="text-xl text-amber-500">
+                            <VectorIcon name={siteConfig.atelierAboutIcon} fallback="ri-user-smile-line" />
+                        </span>
                         <div className="min-w-0 truncate">
                             <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-amber-900 dark:text-amber-200"}`}>关于我</p>
                             <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>{siteConfig.name || "80hou's Home"}</p>
@@ -682,7 +662,9 @@ function StickyNoteItem({
                 {renderAdminControls("about")}
 
                 <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                    <span className="text-2xl mb-1 block">{siteConfig.atelierAboutIcon || "🐾"}</span>
+                    <span className="text-2xl mb-1 block text-amber-500">
+                        <VectorIcon name={siteConfig.atelierAboutIcon} fallback="ri-user-smile-line" />
+                    </span>
                     <p className={`font-bold text-base ${bgImage ? "text-white" : "text-amber-900 dark:text-amber-200"}`}>
                         {siteConfig.name || "80hou's Home"}
                     </p>
@@ -715,7 +697,9 @@ function StickyNoteItem({
                     {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
                     <div className="relative z-10 flex flex-col items-center">
                         {renderAdminControls("timeline")}
-                        <span className="text-3xl mb-1">{siteConfig.atelierTimelineIcon || "⏳"}</span>
+                        <span className="text-3xl mb-1 text-orange-500">
+                            <VectorIcon name={siteConfig.atelierTimelineIcon} fallback="ri-time-line" />
+                        </span>
                         <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-orange-900 dark:text-orange-200"}`}>岁月轨迹</p>
                         <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-orange-300" : "text-orange-700/80 dark:text-orange-300/80"}`}>
                             时光足迹 &rarr;
@@ -737,7 +721,9 @@ function StickyNoteItem({
                 >
                     {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
                     <div className="relative z-10 flex items-center gap-2.5 min-w-0">
-                        <span className="text-xl">{siteConfig.atelierTimelineIcon || "⏳"}</span>
+                        <span className="text-xl text-orange-500">
+                            <VectorIcon name={siteConfig.atelierTimelineIcon} fallback="ri-time-line" />
+                        </span>
                         <div className="min-w-0 truncate">
                             <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-orange-900 dark:text-orange-200"}`}>岁月轨迹</p>
                             <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>时光长河刻度</p>
@@ -767,7 +753,9 @@ function StickyNoteItem({
                 {renderAdminControls("timeline")}
 
                 <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                    <span className="text-2xl mb-1 block">{siteConfig.atelierTimelineIcon || "⏳"}</span>
+                    <span className="text-2xl mb-1 block text-orange-500">
+                        <VectorIcon name={siteConfig.atelierTimelineIcon} fallback="ri-time-line" />
+                    </span>
                     <p className={`font-bold text-base ${bgImage ? "text-white" : "text-orange-900 dark:text-orange-200"}`}>岁月轨迹</p>
                     <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-orange-700/80 dark:text-orange-300/70"}`}>
                         {siteConfig.atelierTimelineDesc || "以时间为轴，串联起每一次灵感与技术实践。"}
@@ -798,7 +786,9 @@ function StickyNoteItem({
                     {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
                     <div className="relative z-10 flex flex-col items-center">
                         {renderAdminControls("moments")}
-                        <span className="text-3xl mb-1">{siteConfig.atelierMomentsIcon || "💭"}</span>
+                        <span className="text-3xl mb-1 text-emerald-500">
+                            <VectorIcon name={siteConfig.atelierMomentsIcon} fallback="ri-chat-heart-line" />
+                        </span>
                         <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-emerald-900 dark:text-emerald-200"}`}>日常随想</p>
                         <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-emerald-300" : "text-emerald-700/80 dark:text-emerald-300/80"}`}>
                             动态碎碎念 &rarr;
@@ -820,7 +810,9 @@ function StickyNoteItem({
                 >
                     {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
                     <div className="relative z-10 flex items-center gap-2.5 min-w-0">
-                        <span className="text-xl">{siteConfig.atelierMomentsIcon || "💭"}</span>
+                        <span className="text-xl text-emerald-500">
+                            <VectorIcon name={siteConfig.atelierMomentsIcon} fallback="ri-chat-heart-line" />
+                        </span>
                         <div className="min-w-0 truncate">
                             <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-emerald-900 dark:text-emerald-200"}`}>日常随想</p>
                             <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>朋友圈动态</p>
@@ -850,7 +842,9 @@ function StickyNoteItem({
                 {renderAdminControls("moments")}
 
                 <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                    <span className="text-2xl mb-1 block">{siteConfig.atelierMomentsIcon || "💭"}</span>
+                    <span className="text-2xl mb-1 block text-emerald-500">
+                        <VectorIcon name={siteConfig.atelierMomentsIcon} fallback="ri-chat-heart-line" />
+                    </span>
                     <p className={`font-bold text-base ${bgImage ? "text-white" : "text-emerald-900 dark:text-emerald-200"}`}>日常随想</p>
                     <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-emerald-700/80 dark:text-emerald-300/70"}`}>
                         {siteConfig.atelierMomentsDesc || "生活碎碎念、朋友圈动态与不设限的日常记录。"}
@@ -881,7 +875,9 @@ function StickyNoteItem({
                     {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
                     <div className="relative z-10 flex flex-col items-center">
                         {renderAdminControls("friends")}
-                        <span className="text-3xl mb-1">{siteConfig.atelierFriendsIcon || "🌸"}</span>
+                        <span className="text-3xl mb-1 text-rose-500">
+                            <VectorIcon name={siteConfig.atelierFriendsIcon} fallback="ri-planet-line" />
+                        </span>
                         <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-rose-900 dark:text-rose-200"}`}>星廊</p>
                         <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-rose-300" : "text-rose-700/80 dark:text-rose-300/80"}`}>
                             拜访朋友们 &rarr;
@@ -903,7 +899,9 @@ function StickyNoteItem({
                 >
                     {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
                     <div className="relative z-10 flex items-center gap-2.5 min-w-0">
-                        <span className="text-xl">{siteConfig.atelierFriendsIcon || "🌸"}</span>
+                        <span className="text-xl text-rose-500">
+                            <VectorIcon name={siteConfig.atelierFriendsIcon} fallback="ri-planet-line" />
+                        </span>
                         <div className="min-w-0 truncate">
                             <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-rose-900 dark:text-rose-200"}`}>星廊</p>
                             <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>博主数字花园</p>
@@ -933,7 +931,9 @@ function StickyNoteItem({
                 {renderAdminControls("friends")}
 
                 <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                    <span className="text-2xl mb-1 block">{siteConfig.atelierFriendsIcon || "🌸"}</span>
+                    <span className="text-2xl mb-1 block text-rose-500">
+                        <VectorIcon name={siteConfig.atelierFriendsIcon} fallback="ri-planet-line" />
+                    </span>
                     <p className={`font-bold text-base ${bgImage ? "text-white" : "text-rose-900 dark:text-rose-200"}`}>星廊</p>
                     <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-rose-700/80 dark:text-rose-300/70"}`}>
                         {siteConfig.atelierFriendsDesc || "漫步在同好博主的数字花园，交换思想火花。"}
@@ -963,7 +963,9 @@ function StickyNoteItem({
                 {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
                 <div className="relative z-10 flex flex-col items-center">
                     {renderAdminControls("search")}
-                    <span className="text-3xl mb-1">{siteConfig.atelierSearchIcon || "🔍"}</span>
+                    <span className="text-3xl mb-1 text-sky-500">
+                        <VectorIcon name={siteConfig.atelierSearchIcon} fallback="ri-search-line" />
+                    </span>
                     <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-sky-900 dark:text-sky-200"}`}>随心探索</p>
                     <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-sky-300" : "text-sky-700/80 dark:text-sky-300/80"}`}>
                         检索全站 &rarr;
@@ -985,7 +987,9 @@ function StickyNoteItem({
             >
                 {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
                 <div className="relative z-10 flex items-center gap-2.5 min-w-0">
-                    <span className="text-xl">{siteConfig.atelierSearchIcon || "🔍"}</span>
+                    <span className="text-xl text-sky-500">
+                        <VectorIcon name={siteConfig.atelierSearchIcon} fallback="ri-search-line" />
+                    </span>
                     <div className="min-w-0 truncate">
                         <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-sky-900 dark:text-sky-200"}`}>随心探索</p>
                         <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>检索文章与标签</p>
@@ -1014,7 +1018,9 @@ function StickyNoteItem({
             {renderAdminControls("search")}
 
             <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                <span className="text-2xl mb-1 block">{siteConfig.atelierSearchIcon || "🔍"}</span>
+                <span className="text-2xl mb-1 block text-sky-500">
+                    <VectorIcon name={siteConfig.atelierSearchIcon} fallback="ri-search-line" />
+                </span>
                 <p className={`font-bold text-base ${bgImage ? "text-white" : "text-sky-900 dark:text-sky-200"}`}>随心探索</p>
                 <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-sky-700/80 dark:text-sky-300/70"}`}>
                     输入关键词即刻检索文章与解决方案。
@@ -1158,7 +1164,9 @@ function NextDeckFlipCard({
             )}
 
             <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                <span className="text-4xl block mb-2">{isDragging ? "📥" : "🃏"}</span>
+                <span className="text-4xl block mb-2 text-theme">
+                    {isDragging ? <i className="ri-inbox-archive-line" /> : <VectorIcon name={siteConfig.atelierDeckIcon} fallback="ri-camera-lens-line" />}
+                </span>
                 <p className={`font-extrabold text-base ${bgImage ? "text-white" : "t-primary"}`}>
                     {isDragging ? "松开即刻上传至 R2" : "记忆翻动"}
                 </p>

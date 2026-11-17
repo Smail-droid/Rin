@@ -170,7 +170,6 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
   const { showAlert, AlertUI } = useAlert();
   const { showConfirm, ConfirmUI } = useConfirm();
   const [top, setTop] = useState<number>(0);
-  const [readingProgress, setReadingProgress] = useState<number>(0);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [adjacentData, setAdjacentData] = useState<any>(null);
   const [unlockPassword, setUnlockPassword] = useState("");
@@ -282,17 +281,6 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
     void fetchDanmakuData();
   }, [feed?.id]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
-      if (totalScroll > 0) {
-        const current = (window.scrollY / totalScroll) * 100;
-        setReadingProgress(Math.min(100, Math.max(0, current)));
-      }
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
   function deleteFeed() {
     // Confirm
     showConfirm(
@@ -394,11 +382,6 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
           />
         </Helmet>
       )}
-      {/* 顶部微光极光渐变阅读进度条 */}
-      <div
-        className="fixed top-0 left-0 h-1 z-50 bg-gradient-to-r from-theme via-sky-400 to-purple-500 transition-all duration-150 pointer-events-none shadow-xs"
-        style={{ width: `${readingProgress}%` }}
-      />
 
       <div className="w-full flex flex-row justify-center ani-show">
         {error && (

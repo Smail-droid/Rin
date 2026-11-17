@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ConfigWrapper } from "@rin/config";
 import type { Profile } from "../state/profile";
 import { defaultClientConfig } from "../state/config";
-import { applyArtTitleColor, applyThemeColor, applyThemeFontSize, applyThemeOpacity } from "../utils/theme-color";
+import { applyArtTitleColor, applyGalleryTiltDegree, applyThemeColor, applyThemeCustomCursor, applyThemeFontSize, applyThemeOpacity, applyThemeWallpaper } from "../utils/theme-color";
 import { readBootstrappedClientConfig } from "./bootstrap-config";
 import { client } from "./runtime";
 
@@ -37,6 +37,11 @@ export function useAppBootstrap() {
       applyThemeColor(typeof nextConfig["theme.color"] === "string" ? nextConfig["theme.color"] : undefined);
       applyThemeOpacity(nextConfig["theme.opacity"]);
       applyThemeFontSize(nextConfig["theme.font_size"]);
+      applyThemeWallpaper(typeof nextConfig["theme.wallpaper"] === "string" ? nextConfig["theme.wallpaper"] : undefined, typeof nextConfig["theme.wallpaper_opacity"] === "number" ? nextConfig["theme.wallpaper_opacity"] : undefined);
+      applyThemeCustomCursor(nextConfig["theme.custom_cursor"] !== false && nextConfig["theme.custom_cursor"] !== "false");
+      if (nextConfig["gallery.tilt_degree"] !== undefined) {
+        applyGalleryTiltDegree(Number.parseFloat(String(nextConfig["gallery.tilt_degree"])));
+      }
       if (nextConfig["atelier.title_custom_color_enabled"] === true || nextConfig["atelier.title_custom_color_enabled"] === "true") {
         applyArtTitleColor(typeof nextConfig["atelier.title_color"] === "string" ? nextConfig["atelier.title_color"] : undefined);
       } else {
@@ -80,6 +85,11 @@ export function useAppBootstrap() {
       applyThemeColor(typeof configObject["theme.color"] === "string" ? configObject["theme.color"] : undefined);
       applyThemeOpacity(configObject["theme.opacity"]);
       applyThemeFontSize(configObject["theme.font_size"]);
+      applyThemeWallpaper(typeof configObject["theme.wallpaper"] === "string" ? configObject["theme.wallpaper"] : undefined, typeof configObject["theme.wallpaper_opacity"] === "number" ? configObject["theme.wallpaper_opacity"] : undefined);
+      applyThemeCustomCursor(configObject["theme.custom_cursor"] !== false && configObject["theme.custom_cursor"] !== "false");
+      if (configObject["gallery.tilt_degree"] !== undefined) {
+        applyGalleryTiltDegree(Number.parseFloat(String(configObject["gallery.tilt_degree"])));
+      }
       if (configObject["atelier.title_custom_color_enabled"] === true || configObject["atelier.title_custom_color_enabled"] === "true") {
         applyArtTitleColor(typeof configObject["atelier.title_color"] === "string" ? configObject["atelier.title_color"] : undefined);
       } else {
