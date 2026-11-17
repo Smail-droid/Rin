@@ -182,16 +182,12 @@ export function InSituAestheticStudio() {
   };
 
   const handleSelectHeaderLayout = (layout: string) => {
-    void persistConfig({ "header.layout": layout });
+    void persistConfig({ "header.position": "top", "header.layout": layout });
   };
 
   const handleSelectFontFamily = (family: string) => {
     applyThemeFontFamily(family);
     void persistConfig({ "theme.font_family": family });
-  };
-
-  const handleSelectHeaderPosition = (pos: string) => {
-    void persistConfig({ "header.position": pos });
   };
 
   const handleToggleThemeMode = () => {
@@ -567,38 +563,15 @@ export function InSituAestheticStudio() {
             </div>
           </div>
 
-          {/* 6. 顶栏导航形态与风格 */}
+          {/* 6. 顶栏导航风格 (文字直接嵌入网页，彻底杜绝悬浮遮挡与字体变形) */}
           <div className="space-y-2.5">
             <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              顶栏导航形态与风格
+              顶栏文字排印风格 (嵌入网页)
             </label>
             <div className="flex items-center gap-2">
               {[
-                { id: "float", label: "居中浮动药丸" },
-                { id: "top", label: "顶部常规固定" },
-                { id: "bottom", label: "底部便携挂件" },
-              ].map((h) => {
-                const isSelected = activeHeaderPosition === h.id;
-                return (
-                  <button
-                    key={h.id}
-                    type="button"
-                    onClick={() => handleSelectHeaderPosition(h.id)}
-                    className={`flex-1 py-1.5 px-1.5 rounded-xl border text-[11px] font-bold transition-all text-center ${
-                      isSelected
-                        ? "border-theme bg-theme text-white shadow-2xs"
-                        : "border-black/5 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-600 dark:border-white/5 dark:bg-white/5 dark:text-neutral-300"
-                    }`}
-                  >
-                    {h.label}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              {[
-                { id: "classic", label: "经典居中导航" },
-                { id: "compact", label: "极简纯文本导航" },
+                { id: "classic", label: "经典自然顶栏 (居中舒展)" },
+                { id: "compact", label: "极简纯文本顶栏 (社论右对齐)" },
               ].map((hl) => {
                 const isSelected = activeHeaderLayout === hl.id;
                 return (

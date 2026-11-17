@@ -165,8 +165,8 @@ describe('StorageService', () => {
             const r2App = createAppWithEnv(env, 1);
             const formData = new FormData();
             formData.append('key', 'huge.png');
-            // Fake a file larger than 10MB
-            const hugeContent = new Uint8Array(11 * 1024 * 1024);
+            // Fake a file larger than 100MB
+            const hugeContent = new Uint8Array(101 * 1024 * 1024);
             formData.append('file', new File([hugeContent], 'huge.png', { type: 'image/png' }));
 
             const res = await r2App.request('/', {

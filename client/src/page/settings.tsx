@@ -389,7 +389,7 @@ export function Settings() {
                     页面容量: {String(clientConfig.get("site.page_size") || 12)} 篇/页
                   </span>
                   <span className="px-2.5 py-1 rounded-xl bg-theme/10 text-theme font-bold">
-                    导航模式: {String(clientConfig.get("header.position") || "top") === "float" ? "居中浮动" : String(clientConfig.get("header.position") || "top") === "bottom" ? "底部挂件" : "顶部固定"}
+                    导航排布: 文字直接嵌入网页 (经典自然)
                   </span>
                 </div>
               </div>
@@ -463,18 +463,14 @@ export function Settings() {
                 />
               </div>
 
-              {/* 切片 2: 全站导航条位置与挂件模式 (画中画微缩预览创意卡片) */}
+              {/* 切片 2: 全站导航顶栏风格与融入模式 (文字直接嵌入网页，彻底消灭悬浮遮挡与字体变形) */}
               <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 gap-3">
                   <div className="flex items-center gap-2 flex-wrap">
                     <i className="ri-layout-top-line text-theme text-base" />
-                    <h3 className="text-sm font-bold t-primary">前台导航条排布位置与挂件形态</h3>
+                    <h3 className="text-sm font-bold t-primary">前台导航顶栏文字排布风格</h3>
                     <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-theme/10 text-theme">
-                      {String(clientConfig.get("header.position") || "top") === "float"
-                        ? "居中浮动胶囊"
-                        : String(clientConfig.get("header.position") || "top") === "bottom"
-                        ? "底部便携挂件"
-                        : "顶部固定导航"}
+                      {String(clientConfig.get("header.layout") || "classic") === "compact" ? "极简纯文本社论顶栏" : "经典自然居中顶栏"}
                     </span>
                     <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
                       (clientConfig.get("header.show_nav") !== false && clientConfig.get("header.show_nav") !== "false")
@@ -509,26 +505,25 @@ export function Settings() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                   {[
                     {
-                      id: "top",
-                      title: "顶部固定",
-                      badge: "CLASSIC FIXED",
-                      desc: "常驻屏幕最顶端，融入毛玻璃与呼吸微光，沉浸大气",
+                      id: "classic",
+                      title: "经典自然居中顶栏",
+                      badge: "CLASSIC NATURAL",
+                      desc: "文字直接嵌在网页顶端，居中舒展大方，高度充裕，无任何多余药丸外框与悬浮遮挡",
                       icon: "ri-layout-top-line",
                       preview: (
-                        <div className="w-full h-20 rounded-xl bg-neutral-100 dark:bg-neutral-900/80 p-2 border border-black/5 dark:border-white/5 flex flex-col justify-between relative overflow-hidden group-hover:border-theme/30 transition-colors">
-                          {/* Top Nav Bar Mock */}
-                          <div className="w-full h-4 rounded-lg bg-white dark:bg-neutral-800 shadow-2xs border border-black/5 dark:border-white/5 flex items-center justify-between px-2">
-                            <span className="h-1.5 w-6 rounded-full bg-theme" />
-                            <div className="flex items-center gap-1">
-                              <span className="h-1.5 w-3 rounded-full bg-neutral-300 dark:bg-neutral-600" />
-                              <span className="h-1.5 w-3 rounded-full bg-neutral-300 dark:bg-neutral-600" />
-                              <span className="h-1.5 w-3 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+                        <div className="w-full h-20 rounded-xl bg-neutral-100 dark:bg-neutral-900/80 p-2.5 border border-black/5 dark:border-white/5 flex flex-col justify-between relative overflow-hidden group-hover:border-theme/30 transition-colors">
+                          <div className="w-full h-5 rounded-lg bg-white dark:bg-neutral-800 shadow-2xs border border-black/5 dark:border-white/5 flex items-center justify-between px-2.5">
+                            <span className="h-2 w-6 rounded bg-theme" />
+                            <div className="flex items-center gap-1.5">
+                              <span className="h-1.5 w-4 rounded bg-neutral-400 dark:bg-neutral-500" />
+                              <span className="h-1.5 w-4 rounded bg-neutral-400 dark:bg-neutral-500" />
+                              <span className="h-1.5 w-4 rounded bg-neutral-400 dark:bg-neutral-500" />
                             </div>
+                            <span className="h-2 w-2 rounded-full bg-neutral-300" />
                           </div>
-                          {/* Content Lines */}
                           <div className="space-y-1 px-1">
                             <div className="h-1.5 w-1/2 rounded bg-neutral-200 dark:bg-neutral-800" />
                             <div className="h-1.5 w-3/4 rounded bg-neutral-200/60 dark:bg-neutral-800/60" />
@@ -537,84 +532,61 @@ export function Settings() {
                       ),
                     },
                     {
-                      id: "float",
-                      title: "居中浮动胶囊",
-                      badge: "DYNAMIC ISLAND",
-                      desc: "灵动岛般悬浮于中央半空，内容在其下方穿梭流动",
-                      icon: "ri-capsule-line",
+                      id: "compact",
+                      title: "极简纯文本社论顶栏",
+                      badge: "EDITORIAL JOURNAL",
+                      desc: "京都杂志社论风，透气排版，文字自然靠右排开，衬线优雅",
+                      icon: "ri-font-sans-serif",
                       preview: (
-                        <div className="w-full h-20 rounded-xl bg-neutral-100 dark:bg-neutral-900/80 p-2 border border-black/5 dark:border-white/5 flex flex-col items-center justify-between relative overflow-hidden group-hover:border-theme/30 transition-colors">
-                          {/* Floating Capsule Mock */}
-                          <div className="w-24 h-4 rounded-full bg-white dark:bg-neutral-800 shadow-md border border-theme/30 flex items-center justify-between px-2.5">
-                            <span className="h-1.5 w-2 rounded-full bg-theme animate-pulse" />
-                            <div className="flex items-center gap-1">
-                              <span className="h-1.5 w-2.5 rounded-full bg-neutral-300 dark:bg-neutral-600" />
-                              <span className="h-1.5 w-2.5 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+                        <div className="w-full h-20 rounded-xl bg-neutral-100 dark:bg-neutral-900/80 p-2.5 border border-black/5 dark:border-white/5 flex flex-col justify-between relative overflow-hidden group-hover:border-theme/30 transition-colors">
+                          <div className="w-full h-5 rounded-lg bg-white dark:bg-neutral-800 shadow-2xs border border-black/5 dark:border-white/5 flex items-center justify-between px-2.5">
+                            <span className="h-2 w-8 rounded bg-neutral-700 dark:bg-neutral-300" />
+                            <div className="flex items-center gap-2">
+                              <span className="h-1.5 w-3 rounded bg-neutral-300 dark:bg-neutral-600" />
+                              <span className="h-1.5 w-3 rounded bg-neutral-300 dark:bg-neutral-600" />
+                              <span className="h-1.5 w-3 rounded bg-neutral-300 dark:bg-neutral-600" />
                             </div>
                           </div>
-                          {/* Content Lines flowing underneath */}
-                          <div className="w-full space-y-1 px-1 pb-1">
+                          <div className="space-y-1 px-1">
                             <div className="h-1.5 w-2/3 rounded bg-neutral-200 dark:bg-neutral-800" />
                             <div className="h-1.5 w-5/6 rounded bg-neutral-200/60 dark:bg-neutral-800/60" />
                           </div>
                         </div>
                       ),
                     },
-                    {
-                      id: "bottom",
-                      title: "底部便携挂件",
-                      badge: "BOTTOM DOCK",
-                      desc: "移至屏幕下方打造单手掌控操作岛，顶部纯净极目远眺",
-                      icon: "ri-layout-bottom-line",
-                      preview: (
-                        <div className="w-full h-20 rounded-xl bg-neutral-100 dark:bg-neutral-900/80 p-2 border border-black/5 dark:border-white/5 flex flex-col justify-between relative overflow-hidden group-hover:border-theme/30 transition-colors">
-                          {/* Top Clean Content */}
-                          <div className="space-y-1 px-1 pt-1">
-                            <div className="h-1.5 w-1/2 rounded bg-neutral-200 dark:bg-neutral-800" />
-                            <div className="h-1.5 w-4/5 rounded bg-neutral-200/60 dark:bg-neutral-800/60" />
-                          </div>
-                          {/* Bottom Dock Bar Mock */}
-                          <div className="w-32 mx-auto h-4 rounded-full bg-white dark:bg-neutral-800 shadow-md border border-black/10 dark:border-white/10 flex items-center justify-around px-2">
-                            <span className="h-1.5 w-1.5 rounded-full bg-theme" />
-                            <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
-                            <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
-                            <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
-                          </div>
-                        </div>
-                      ),
-                    },
-                  ].map((pos) => {
-                    const currentPos = String(clientConfig.get("header.position") || "top");
-                    const isSelected = currentPos === pos.id;
+                  ].map((layout) => {
+                    const currentLayout = String(clientConfig.get("header.layout") || "classic");
+                    const isSelected = currentLayout === layout.id;
                     return (
                       <div
-                        key={pos.id}
-                        onClick={() => setConfigValue("client", "header.position", pos.id)}
+                        key={layout.id}
+                        onClick={() => {
+                          setConfigValue("client", "header.position", "top");
+                          setConfigValue("client", "header.layout", layout.id);
+                        }}
                         className={`group relative flex flex-col justify-between p-3.5 rounded-xl border cursor-pointer transition-all duration-200 select-none ${
                           isSelected
                             ? "border-theme bg-theme/[0.04] ring-2 ring-theme/20 shadow-md shadow-theme/10 -translate-y-0.5"
                             : "border-black/10 dark:border-white/10 bg-w hover:border-theme/40 hover:bg-black/[0.01] dark:hover:bg-white/[0.01]"
                         }`}
                       >
-                        {/* Preview Area */}
-                        {pos.preview}
-
+                        {layout.preview}
                         <div className="mt-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
-                              <i className={`${pos.icon} ${isSelected ? "text-theme" : "text-neutral-500"} text-sm`} />
+                              <i className={`${layout.icon} ${isSelected ? "text-theme" : "text-neutral-500"} text-sm`} />
                               <span className={`font-bold text-xs ${isSelected ? "text-theme" : "t-primary"}`}>
-                                {pos.title}
+                                {layout.title}
                               </span>
                             </div>
                             <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded ${
                               isSelected ? "bg-theme text-white" : "bg-black/5 dark:bg-white/10 text-neutral-400"
                             }`}>
-                              {pos.badge}
+                              {layout.badge}
                             </span>
                           </div>
-                          <p className="text-[11px] text-neutral-400 mt-1 line-clamp-2 leading-relaxed">
-                            {pos.desc}
+                          <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
+                            {layout.desc}
                           </p>
                         </div>
                       </div>

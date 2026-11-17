@@ -50,19 +50,24 @@ export function Checkbox({
   setValue,
   className,
   placeholder,
+  id,
+  title,
 }: {
   value: boolean;
   className?: string;
   placeholder: string;
   id: string;
+  title?: string;
   setValue: Dispatch<SetStateAction<boolean>>;
 }) {
   return (
     <button
+      id={id}
       type="button"
       role="switch"
       aria-label={placeholder}
       aria-checked={value}
+      title={title || placeholder}
       onClick={(event) => {
         event.stopPropagation();
         setValue((current) => !current);

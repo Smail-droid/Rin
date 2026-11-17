@@ -3,7 +3,7 @@ import type { AppContext } from "../core/hono-types";
 import { profileAsync } from "../core/server-timing";
 import { getStorageObject, getStoragePublicUrl, putStorageObject } from "../utils/storage";
 
-const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_UPLOAD_SIZE = 100 * 1024 * 1024; // 100MB (Cloudflare Worker Request Body Limit)
 const DANGEROUS_EXTENSIONS = new Set([
     'html', 'htm', 'xhtml', 'php', 'phtml', 'sh', 'bash', 'bat', 'cmd', 'exe',
     'dll', 'vbs', 'js', 'mjs', 'cjs', 'wasm', 'jsp', 'asp', 'aspx', 'cgi'
@@ -36,7 +36,7 @@ export function StorageService(): Hono {
         }
 
         if (file.size > MAX_UPLOAD_SIZE) {
-            return c.text('File size exceeds 10MB limit', 413);
+            return c.text('File size exceeds 100MB limit', 413);
         }
 
         const rawSuffix = (key && key.includes(".")) ? key.split('.').pop() || "" : "";
@@ -99,11 +99,11 @@ export function StorageService(): Hono {
         }
 
         if (file.size > MAX_UPLOAD_SIZE) {
-            return c.json({ success: false, error: "文件大小超过 10MB 上限" }, 413);
+            return c.json({ success: false, error: "文件大小超过 100MB 上限" }, 413);
         }
 
         const rawSuffix = (key && key.includes(".")) ? key.split('.').pop() || "" : (file.name?.split('.').pop() || "");
-        const cleanSuffix = rawSuffix.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'png';
+        const cleanSuffix = rawSuffix.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
         if (DANGEROUS_EXTENSIONS.has(cleanSuffix)) {
             return c.json({ success: false, error: "不允许上传潜在危险格式" }, 400);

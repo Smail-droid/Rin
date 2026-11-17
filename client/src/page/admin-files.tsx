@@ -31,12 +31,18 @@ function formatDate(isoString: string): string {
     }
 }
 
-function getFileCategory(contentType: string, key: string): "image" | "document" | "video" | "other" {
+export type FileCategory = "image" | "document" | "video" | "audio" | "archive" | "other";
+
+function getFileCategory(contentType: string, key: string): FileCategory {
     if (contentType?.startsWith("image/")) return "image";
     if (contentType?.startsWith("video/")) return "video";
+    if (contentType?.startsWith("audio/")) return "audio";
     const ext = key.split(".").pop()?.toLowerCase() || "";
-    if (["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico"].includes(ext)) return "image";
-    if (["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md", "csv"].includes(ext)) return "document";
+    if (["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico", "avif"].includes(ext)) return "image";
+    if (["mp4", "webm", "mkv", "mov", "avi"].includes(ext)) return "video";
+    if (["mp3", "wav", "flac", "aac", "ogg", "m4a"].includes(ext)) return "audio";
+    if (["zip", "rar", "7z", "tar", "gz", "bz2"].includes(ext)) return "archive";
+    if (["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md", "csv", "json"].includes(ext)) return "document";
     return "other";
 }
 
@@ -58,9 +64,9 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Filters and sorting
+    // Filters and sorting - 默认优先展示图片，非图片通过选项分类切换
     const [searchQuery, setSearchQuery] = useState("");
-    const [typeFilter, setTypeFilter] = useState<"all" | "image" | "document" | "other">("all");
+    const [typeFilter, setTypeFilter] = useState<FileCategory | "all">("image");
     const [sortBy, setSortBy] = useState<"newest" | "oldest" | "largest" | "smallest">("newest");
 
     // Per-card format selection: key -> "url" | "html" | "markdown" | "bbcode"
@@ -194,19 +200,20 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
         const handlePaste = (e: ClipboardEvent) => {
             if (!e.clipboardData) return;
             const items = e.clipboardData.items;
-            const imageFiles: File[] = [];
+            const pastedFiles: File[] = [];
 
             for (let i = 0; i < items.length; i++) {
-                if (items[i].type.startsWith("image/")) {
-                    const file = items[i].getAsFile();
+                const item = items[i];
+                if (item.kind === "file") {
+                    const file = item.getAsFile();
                     if (file) {
-                        imageFiles.push(file);
+                        pastedFiles.push(file);
                     }
                 }
             }
 
-            if (imageFiles.length > 0) {
-                uploadFiles(imageFiles);
+            if (pastedFiles.length > 0) {
+                uploadFiles(pastedFiles);
             }
         };
 
@@ -258,14 +265,36 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
         return files.reduce((acc, f) => acc + (f.size || 0), 0);
     }, [files]);
 
-    // 构建全功能画廊交互幻灯片
+    // 分类统计 (各类型数量分布，为分类Tab提供数字Badge)
+    const categoryCounts = useMemo(() => {
+        const counts: Record<string, number> = {
+            image: 0,
+            document: 0,
+            video: 0,
+            audio: 0,
+            archive: 0,
+            other: 0,
+            all: files.length,
+        };
+        for (const f of files) {
+            const cat = getFileCategory(f.contentType, f.key);
+            counts[cat] = (counts[cat] || 0) + 1;
+        }
+        return counts;
+    }, [files]);
+
+    // 仅针对图片构建全功能画廊交互幻灯片
+    const imageFilesOnly = useMemo(() => {
+        return filteredFiles.filter((f) => getFileCategory(f.contentType, f.key) === "image");
+    }, [filteredFiles]);
+
     const imageSlides = useMemo(() => {
-        return filteredFiles.map((f) => ({
+        return imageFilesOnly.map((f) => ({
             src: f.url,
             title: f.key,
             download: f.url,
         }));
-    }, [filteredFiles]);
+    }, [imageFilesOnly]);
 
     // Selection handlers
     const toggleSelectAll = () => {
@@ -417,13 +446,12 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                 </div>
             )}
 
-            {/* Hidden file input */}
+            {/* Hidden file input (允许任意非危险扩展名上传) */}
             {!readOnly && (
                 <input
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept="image/*,application/pdf"
                     className="hidden"
                     onChange={handleFileInputChange}
                 />
@@ -514,7 +542,7 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                 className="inline-flex items-center gap-1.5 rounded-xl bg-theme px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-theme-hover active:scale-95 transition disabled:opacity-50"
                             >
                                 <i className="ri-upload-cloud-line text-sm" />
-                                <span>{isUploading ? "正在上传..." : "上传媒体图片"}</span>
+                                <span>{isUploading ? "正在上传..." : "上传媒体与文件"}</span>
                             </button>
                         )}
                         <button
@@ -526,6 +554,41 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                             <span>{t("admin_files.refresh", "刷新")}</span>
                         </button>
                     </div>
+                </div>
+
+                {/* 分类快捷筛选 Tab 栏 (默认选中图片相册，非图片需点击切换) */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs select-none">
+                    {[
+                        { key: "image", label: "图片相册", icon: "ri-image-line", count: categoryCounts.image },
+                        { key: "document", label: "文档资料", icon: "ri-file-text-line", count: categoryCounts.document },
+                        { key: "video", label: "视频媒体", icon: "ri-movie-line", count: categoryCounts.video },
+                        { key: "audio", label: "音频音乐", icon: "ri-music-2-line", count: categoryCounts.audio },
+                        { key: "archive", label: "压缩包", icon: "ri-folder-zip-line", count: categoryCounts.archive },
+                        { key: "other", label: "其他格式", icon: "ri-file-line", count: categoryCounts.other },
+                        { key: "all", label: "全部文件", icon: "ri-archive-line", count: categoryCounts.all },
+                    ].map((tab) => {
+                        const active = typeFilter === tab.key;
+                        return (
+                            <button
+                                key={tab.key}
+                                type="button"
+                                onClick={() => setTypeFilter(tab.key as any)}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition whitespace-nowrap cursor-pointer ${
+                                    active
+                                        ? "bg-theme text-white shadow-xs"
+                                        : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10 dark:hover:bg-white/10"
+                                }`}
+                            >
+                                <i className={tab.icon} />
+                                <span>{tab.label}</span>
+                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                                    active ? "bg-white/25 text-white" : "bg-black/10 dark:bg-white/10 text-neutral-500 dark:text-neutral-400"
+                                }`}>
+                                    {tab.count}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* Search & Filter Toolbar */}
@@ -555,10 +618,13 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                         onChange={(e) => setTypeFilter(e.target.value as any)}
                         className="rounded-xl border border-black/10 bg-w px-3 py-2 text-sm t-primary focus:outline-none dark:border-white/10 dark:bg-neutral-900 cursor-pointer"
                     >
+                        <option value="image">{t("admin_files.filter_images", "图片相册")}</option>
+                        <option value="document">{t("admin_files.filter_documents", "文档资料")}</option>
+                        <option value="video">视频媒体</option>
+                        <option value="audio">音频音乐</option>
+                        <option value="archive">压缩包</option>
+                        <option value="other">{t("admin_files.filter_other", "其他格式")}</option>
                         <option value="all">{t("admin_files.filter_all", "全部类型")}</option>
-                        <option value="image">{t("admin_files.filter_images", "图片")}</option>
-                        <option value="document">{t("admin_files.filter_documents", "文档")}</option>
-                        <option value="other">{t("admin_files.filter_other", "其他")}</option>
                     </select>
 
                     {/* Sort Dropdown */}
@@ -640,7 +706,8 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                     )}
                     {filteredFiles.map((file) => {
                         const fileName = file.key.split("/").pop() || file.key;
-                        const isImage = getFileCategory(file.contentType, file.key) === "image";
+                        const category = getFileCategory(file.contentType, file.key);
+                        const isImage = category === "image";
                         const isSelected = selectedKeys.has(file.key);
                         const currentFormat = cardFormats[file.key] || "html";
                         const displayCode = getCodeForFormat(file, currentFormat);
@@ -680,14 +747,18 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                     )}
                                 </div>
 
-                                {/* Preview Area (点击直接画廊大图预览并翻页) */}
+                                {/* Preview Area (图片点击直接画廊大图预览并翻页，非图片点击在新标签打开直链) */}
                                 <div
                                     onClick={() => {
-                                        const idx = filteredFiles.findIndex((f) => f.key === file.key);
-                                        if (idx !== -1) setPreviewIndex(idx);
+                                        if (isImage) {
+                                            const idx = imageFilesOnly.findIndex((f) => f.key === file.key);
+                                            if (idx !== -1) setPreviewIndex(idx);
+                                        } else {
+                                            window.open(file.url, "_blank");
+                                        }
                                     }}
                                     className="h-44 sm:h-48 w-full overflow-hidden rounded-xl bg-neutral-50/70 dark:bg-neutral-950/40 mb-2.5 flex items-center justify-center relative cursor-pointer group/img border border-black/5 dark:border-white/5"
-                                    title="点击画廊大图全屏预览 (支持左右切换翻页)"
+                                    title={isImage ? "点击画廊大图全屏预览 (支持左右切换翻页)" : "点击在新标签页打开文件"}
                                 >
                                     {isImage ? (
                                         <img
@@ -700,9 +771,13 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                             }}
                                         />
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center text-neutral-400">
-                                            <i className="ri-file-text-line text-3xl" />
-                                            <span className="text-[10px] uppercase font-semibold mt-1 tracking-wider">
+                                        <div className="flex flex-col items-center justify-center text-neutral-400 p-2 text-center group-hover/img:scale-105 transition-transform">
+                                            {category === "video" && <i className="ri-movie-2-line text-4xl text-sky-500 mb-1" />}
+                                            {category === "audio" && <i className="ri-music-2-line text-4xl text-emerald-500 mb-1" />}
+                                            {category === "archive" && <i className="ri-folder-zip-line text-4xl text-amber-500 mb-1" />}
+                                            {category === "document" && <i className="ri-file-text-line text-4xl text-indigo-500 mb-1" />}
+                                            {category === "other" && <i className="ri-file-3-line text-4xl text-neutral-400 mb-1" />}
+                                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-neutral-600 dark:text-neutral-300">
                                                 {file.key.split(".").pop() || "FILE"}
                                             </span>
                                         </div>

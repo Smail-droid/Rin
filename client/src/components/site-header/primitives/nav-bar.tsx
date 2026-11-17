@@ -28,7 +28,11 @@ export function NavBar({
           href={siteConfig.openlistWorkerUrl}
           target="_blank"
           rel="noreferrer"
-          className={`${menu ? "" : "hidden"} md:inline-flex items-center gap-1 cursor-pointer hover:text-theme duration-300 px-2 py-4 md:p-4 text-sm dark:text-white ${itemClassName}`}
+          className={`${
+            menu
+              ? "flex items-center w-full px-4 py-2.5 text-sm font-medium rounded-xl transition-colors text-neutral-700 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5"
+              : "hidden md:inline-flex items-center gap-1 cursor-pointer text-sm font-medium tracking-wide whitespace-nowrap shrink-0 transition-colors text-neutral-700 dark:text-neutral-300 hover:text-theme px-3.5 py-2"
+          } ${itemClassName}`}
           onClick={onClick}
         >
           <span>{siteConfig.openlistNavTitle || "资源列表"}</span>
@@ -59,9 +63,17 @@ function NavItem({
   return when ? (
     <Link
       href={href}
-      className={`${menu ? "" : "hidden"} md:inline-flex items-center cursor-pointer hover:text-theme transition text-xs font-semibold ${
-        selected ? "text-theme font-bold bg-theme/10" : "text-neutral-700 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5"
-      } ${itemClassName || "px-3 py-1.5 rounded-full"}`}
+      className={`${
+        menu
+          ? `flex items-center w-full px-4 py-2.5 text-sm font-medium rounded-xl transition-colors ${
+              selected ? "text-theme font-bold bg-theme/10" : "text-neutral-700 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5"
+            }`
+          : `hidden md:inline-flex items-center cursor-pointer text-sm font-medium tracking-wide whitespace-nowrap shrink-0 transition-colors relative ${
+              selected
+                ? "text-theme font-bold after:absolute after:bottom-0 after:left-3 after:right-3 after:h-0.5 after:bg-theme after:rounded-full"
+                : "text-neutral-700 dark:text-neutral-300 hover:text-theme dark:hover:text-theme"
+            } px-3.5 py-2`
+      } ${itemClassName}`}
       state={{ animate: true }}
       onClick={onClick}
     >

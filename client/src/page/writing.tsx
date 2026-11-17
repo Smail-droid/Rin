@@ -161,6 +161,15 @@ export function WritingPage({ id: propId }: { id?: number }) {
   const [mediaFiles, setMediaFiles] = useState<any[]>([]);
   const [loadingMedia, setLoadingMedia] = useState(false);
 
+  // 仅过滤图片格式素材供文章插图使用，避免非图片混入其中造成破图
+  const imageFiles = useMemo(() => {
+    return mediaFiles.filter((file) => {
+      const ext = file.key?.split(".").pop()?.toLowerCase() || "";
+      const isImgExt = ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico", "avif"].includes(ext);
+      return Boolean(file.contentType?.startsWith("image/") || isImgExt);
+    });
+  }, [mediaFiles]);
+
   // 从后台读取自定义提示词预设库
   const [presetsList] = useState<any[]>(() => {
     try {
@@ -431,20 +440,55 @@ export function WritingPage({ id: propId }: { id?: number }) {
                 />
               </div>
 
-              <div className="mt-3 pt-2.5 border-t border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-4">
-                  <Checkbox
-                    id="draft"
-                    placeholder={t("draft")}
-                    value={draft}
-                    setValue={setDraft}
-                  />
-                  <Checkbox
-                    id="listed"
-                    placeholder={t("listed")}
-                    value={listed}
-                    setValue={setListed}
-                  />
+              <div className="mt-3 pt-2.5 border-t border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-4 text-xs">
+                <div className="flex flex-wrap items-center gap-5">
+                  {/* 1. 草稿状态开关 */}
+                  <label
+                    htmlFor="draft"
+                    className="flex items-center gap-2.5 cursor-pointer select-none group"
+                    title={draft ? "当前为【草稿】：仅博主在后台草稿箱可见，前台不公开发布" : "当前为【正式】：发布后将正式呈现给访客"}
+                  >
+                    <Checkbox
+                      id="draft"
+                      placeholder={t("draft") || "草稿"}
+                      title={draft ? "草稿箱模式 (点击切换为正式发布)" : "正式文章模式 (点击存为草稿)"}
+                      value={draft}
+                      setValue={setDraft}
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-xs t-primary flex items-center gap-1 group-hover:text-theme transition-colors">
+                        <i className={`text-xs ${draft ? "ri-draft-line text-amber-500" : "ri-article-line text-emerald-500"}`} />
+                        <span>草稿模式</span>
+                      </span>
+                      <span className="text-[10px] text-neutral-400">
+                        {draft ? "草稿箱 (仅后台可见)" : "正式发布 (公开展现)"}
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* 2. 首页列表可见性开关 */}
+                  <label
+                    htmlFor="listed"
+                    className="flex items-center gap-2.5 cursor-pointer select-none group"
+                    title={listed ? "当前为【公开显示】：文章将正常出现在首页流与分类列表中" : "当前为【未列出】：不在首页流展示，仅知晓具体链接的人可访问 (轻量私密)"}
+                  >
+                    <Checkbox
+                      id="listed"
+                      placeholder={t("listed") || "列出在文章中"}
+                      title={listed ? "公开列出模式 (点击切换为隐藏未列出)" : "未列出隐藏模式 (点击切换为首页公开)"}
+                      value={listed}
+                      setValue={setListed}
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-xs t-primary flex items-center gap-1 group-hover:text-theme transition-colors">
+                        <i className={`text-xs ${listed ? "ri-eye-line text-theme" : "ri-eye-off-line text-neutral-400"}`} />
+                        <span>列表可见</span>
+                      </span>
+                      <span className="text-[10px] text-neutral-400">
+                        {listed ? "在首页列表中公开" : "未列出 (仅知直链可访)"}
+                      </span>
+                    </div>
+                  </label>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-neutral-400 font-mono text-[11px]">发表时间:</span>
@@ -720,13 +764,13 @@ export function WritingPage({ id: propId }: { id?: number }) {
                 <i className="ri-loader-4-line animate-spin text-xl text-theme mr-2" />
                 <span>正在加载 R2 图床相册…</span>
               </div>
-            ) : mediaFiles.length === 0 ? (
+            ) : imageFiles.length === 0 ? (
               <div className="py-12 text-center text-xs text-neutral-400">
-                暂未获取到图片，您可以前往【媒体】中心上传
+                暂未获取到图片素材，您可以前往【图库相册】上传
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-                {mediaFiles.map((file) => (
+                {imageFiles.map((file) => (
                   <div
                     key={file.key}
                     onClick={() => insertImageToContent(file.url, file.key.split("/").pop())}
