@@ -44,8 +44,11 @@ export function listenSystemMode() {
     const mode = localStorage.getItem("theme");
     if (mode === null || mode === "system") {
       const autoDark = mediaQuery.matches || isNightTime();
-      document.documentElement.setAttribute("data-color-mode", autoDark ? "dark" : "light");
-      window.dispatchEvent(new Event("colorSchemeChange"));
+      const target = autoDark ? "dark" : "light";
+      if (document.documentElement.getAttribute("data-color-mode") !== target) {
+        document.documentElement.setAttribute("data-color-mode", target);
+        window.dispatchEvent(new Event("colorSchemeChange"));
+      }
     }
   }
 

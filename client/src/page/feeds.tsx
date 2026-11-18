@@ -60,13 +60,13 @@ const getTiltStyle = (index: number, tiltOffset: number, baseDegree: number = 1.
     return { "--card-tilt": `${angle}deg`, transform: `rotate(var(--card-tilt))` } as React.CSSProperties;
 };
 
-// 低饱和和纸胶带色系，与任意主题配色柔和共生
+// 清亮晶透和纸胶带色系
 const TAPE_COLORS = [
-    "bg-[#ece5d8]/90 dark:bg-[#3a342a]/70 text-[#6e5c45] dark:text-[#d8c8b0]",
-    "bg-[#e2ebf1]/90 dark:bg-[#263440]/70 text-[#435f73] dark:text-[#b4cadb]",
-    "bg-[#f0e3e7]/90 dark:bg-[#3c2930]/70 text-[#784b58] dark:text-[#debcc6]",
-    "bg-[#e1ece6]/90 dark:bg-[#25362e]/70 text-[#3e6152] dark:text-[#b0d1c3]",
-    "bg-[#e8e5f2]/90 dark:bg-[#2e2a40]/70 text-[#554e75] dark:text-[#c7c0e3]",
+    "bg-amber-100/85 dark:bg-amber-900/45 text-amber-700 dark:text-amber-300",
+    "bg-sky-100/85 dark:bg-sky-900/45 text-sky-700 dark:text-sky-300",
+    "bg-rose-100/85 dark:bg-rose-900/45 text-rose-700 dark:text-rose-300",
+    "bg-emerald-100/85 dark:bg-emerald-900/45 text-emerald-700 dark:text-emerald-300",
+    "bg-violet-100/85 dark:bg-violet-900/45 text-violet-700 dark:text-violet-300",
 ];
 
 /**
@@ -1571,13 +1571,13 @@ export function FeedsPage() {
             ];
             return cyber[index % cyber.length];
         }
-        // "pastel" (素雅和纸书签低饱和色)
+        // "pastel" (清亮晶透书签色)
         const pastel = [
-            "bg-[#faf6ef]/95 text-[#6b5338] border-[#e8dcc8] dark:bg-[#242019]/80 dark:text-[#e2cfa9] dark:border-[#3e3528]",
-            "bg-[#f3f7fa]/95 text-[#38556a] border-[#d6e3ec] dark:bg-[#19222a]/80 dark:text-[#b7d1e3] dark:border-[#2a3b48]",
-            "bg-[#faf3f5]/95 text-[#754350] border-[#ebd5dc] dark:bg-[#261b1f]/80 dark:text-[#e0b8c3] dark:border-[#422c34]",
-            "bg-[#f3f8f5]/95 text-[#355c4d] border-[#d3e6dc] dark:bg-[#18241f]/80 dark:text-[#b4d6c8] dark:border-[#293d35]",
-            "bg-[#f6f4fa]/95 text-[#514872] border-[#dfd9ec] dark:bg-[#1f1c29]/80 dark:text-[#c9c2e3] dark:border-[#353048]",
+            "bg-sky-50/90 text-sky-700 border-sky-200/80 dark:bg-sky-950/45 dark:text-sky-300 dark:border-sky-800/50",
+            "bg-rose-50/90 text-rose-600 border-rose-200/80 dark:bg-rose-950/45 dark:text-rose-300 dark:border-rose-800/50",
+            "bg-emerald-50/90 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/45 dark:text-emerald-300 dark:border-emerald-800/50",
+            "bg-violet-50/90 text-violet-700 border-violet-200/80 dark:bg-violet-950/45 dark:text-violet-300 dark:border-violet-800/50",
+            "bg-amber-50/90 text-amber-700 border-amber-200/80 dark:bg-amber-950/45 dark:text-amber-300 dark:border-amber-800/50",
         ];
         return pastel[index % pastel.length];
     };

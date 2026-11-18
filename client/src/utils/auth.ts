@@ -2,17 +2,22 @@ const TOKEN_KEY = 'rin_auth_token';
 
 // In-memory fallback for environments without localStorage (e.g., tests)
 let memoryToken: string | null = null;
+let cachedStorageAvailability: boolean | null = null;
 
 function isLocalStorageAvailable(): boolean {
+    if (typeof localStorage === 'undefined') {
+        return false;
+    }
+    if (cachedStorageAvailability !== null) {
+        return cachedStorageAvailability;
+    }
     try {
-        if (typeof localStorage === 'undefined') {
-            return false;
-        }
-        // Test localStorage
         localStorage.setItem('__test__', 'test');
         localStorage.removeItem('__test__');
+        cachedStorageAvailability = true;
         return true;
     } catch {
+        cachedStorageAvailability = false;
         return false;
     }
 }
@@ -42,11 +47,11 @@ export function removeAuthToken(): void {
 
 export function headersWithAuth(): Record<string, string> {
     const headers: Record<string, string> = {};
-    
+
     const token = getAuthToken();
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     return headers;
 }

@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import { ClientConfigContext } from "../state/config";
 import { normalizeFeedCardVariant } from "../components/feed-card-options";
 import { normalizeFeedLayout } from "../components/feed-layout-options";
@@ -113,9 +113,10 @@ export const SITE_CONFIG_KEYS = {
     danmakuSpeed: "danmaku.speed",
 } as const;
 
-// Hook to get site configuration
+// Hook to get site configuration (memoized per ConfigWrapper instance to avoid 50+ redundant JSON.parse/allocations per render)
 export function useSiteConfig() {
     const config = useContext(ClientConfigContext);
+    return useMemo(() => {
     const pageSizeValue = config.get<string | number>(SITE_CONFIG_KEYS.pageSize);
     const parsedPageSize =
         typeof pageSizeValue === "number"
@@ -260,6 +261,7 @@ export function useSiteConfig() {
             return ["友邻博客", "主机算力", "探针测速", "极客工具", "技术社区", "漫游灵感"];
         })(),
     };
+    }, [config]);
 }
 
 // Hook to get a specific site config value

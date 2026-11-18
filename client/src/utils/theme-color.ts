@@ -81,7 +81,7 @@ export const WALLPAPER_PRESETS: WallpaperPreset[] = [
   },
 ];
 
-/** 8 套明快清新的精选主题色盘（供顶部一键快切与后台快速挑选） */
+/** 8 套明快清新的精选主题色盘（浅色画布一律保持纯白清亮，告别发粉发灰昏沉感） */
 export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
   {
     id: "sakura",
@@ -90,9 +90,9 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#fb5678",
     secondary: "#ff85a1",
     accent: "#ffd0da",
-    tintLight: "#fff9fa",
-    tintDark: "#15161c",
-    surfaceDark: "#1e2028",
+    tintLight: "#ffffff",
+    tintDark: "#14151a",
+    surfaceDark: "#1d1f27",
     description: "经典蔷薇樱粉，明快灵动",
   },
   {
@@ -102,9 +102,9 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#38bdf8",
     secondary: "#38bdf8",
     accent: "#bae6fd",
-    tintLight: "#f7fbff",
-    tintDark: "#121720",
-    surfaceDark: "#1b222e",
+    tintLight: "#ffffff",
+    tintDark: "#11161f",
+    surfaceDark: "#1a212d",
     description: "澄澈晴空天蓝，清透辽阔",
   },
   {
@@ -114,9 +114,9 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#818cf8",
     secondary: "#818cf8",
     accent: "#c7d2fe",
-    tintLight: "#f8f9ff",
-    tintDark: "#141521",
-    surfaceDark: "#1d1f2f",
+    tintLight: "#ffffff",
+    tintDark: "#131420",
+    surfaceDark: "#1c1e2e",
     description: "星夜靛蓝紫，沉静有质感",
   },
   {
@@ -126,9 +126,9 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#a78bfa",
     secondary: "#c084fc",
     accent: "#ddd6fe",
-    tintLight: "#faf8ff",
-    tintDark: "#171422",
-    surfaceDark: "#211d30",
+    tintLight: "#ffffff",
+    tintDark: "#161321",
+    surfaceDark: "#201c2f",
     description: "晚霞梦幻紫韵，轻盈浪漫",
   },
   {
@@ -138,9 +138,9 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#2dd4bf",
     secondary: "#2dd4bf",
     accent: "#99f6e4",
-    tintLight: "#f6fefe",
-    tintDark: "#111a1b",
-    surfaceDark: "#192628",
+    tintLight: "#ffffff",
+    tintDark: "#10191a",
+    surfaceDark: "#182527",
     description: "清凉薄荷气泡，清爽透气",
   },
   {
@@ -150,9 +150,9 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#34d399",
     secondary: "#34d399",
     accent: "#a7f3d0",
-    tintLight: "#f6fdf9",
-    tintDark: "#111a16",
-    surfaceDark: "#192620",
+    tintLight: "#ffffff",
+    tintDark: "#101915",
+    surfaceDark: "#18251f",
     description: "生机翡翠嫩绿，自然治愈",
   },
   {
@@ -162,9 +162,9 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#fbbf24",
     secondary: "#fbbf24",
     accent: "#fde68a",
-    tintLight: "#fffdf7",
-    tintDark: "#1a1712",
-    surfaceDark: "#25211a",
+    tintLight: "#ffffff",
+    tintDark: "#181611",
+    surfaceDark: "#242019",
     description: "暖阳晚霞流金，明朗治愈",
   },
   {
@@ -174,7 +174,7 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#6366f1",
     secondary: "#71717a",
     accent: "#e4e4e7",
-    tintLight: "#fafafa",
+    tintLight: "#ffffff",
     tintDark: "#141518",
     surfaceDark: "#1e2026",
     description: "纯粹纸墨黑白，经典耐看",
@@ -385,12 +385,12 @@ export function applyThemeColor(
   setRootVarIfChanged(root, "--theme-active-rgb", toCssRgb(shade(effectiveHex, isDark ? 0.22 : -0.24)));
   setRootVarIfChanged(root, "--theme-secondary-rgb", toCssRgb(secRgb));
 
-  // 画布保持清透干净的白/浅雪与深炭夜，绝不发灰发闷
+  // 浅色画布一律保持纯白清亮（杜绝整页蒙上灰粉雾），深色画布保持通透深炭夜
   if (isDark) {
-    setRootVarIfChanged(root, "--rin-canvas-rgb", matchedPalette ? toCssRgb(hexToRgb(matchedPalette.tintDark)) : "21 22 28");
-    setRootVarIfChanged(root, "--rin-surface-rgb", matchedPalette ? toCssRgb(hexToRgb(matchedPalette.surfaceDark)) : "30 32 40");
+    setRootVarIfChanged(root, "--rin-canvas-rgb", matchedPalette ? toCssRgb(hexToRgb(matchedPalette.tintDark)) : "20 21 26");
+    setRootVarIfChanged(root, "--rin-surface-rgb", matchedPalette ? toCssRgb(hexToRgb(matchedPalette.surfaceDark)) : "29 31 39");
   } else {
-    setRootVarIfChanged(root, "--rin-canvas-rgb", matchedPalette ? toCssRgb(hexToRgb(matchedPalette.tintLight)) : "248 250 252");
+    setRootVarIfChanged(root, "--rin-canvas-rgb", "255 255 255");
     setRootVarIfChanged(root, "--rin-surface-rgb", "255 255 255");
   }
 }
@@ -483,7 +483,9 @@ export function applyThemeWallpaper(url: string | undefined | null, opacity?: nu
   root.style.setProperty("--rin-wallpaper-repeat", isDotPattern ? "repeat" : "no-repeat");
 
   if (opacity !== undefined) {
-    const alpha = Math.min(100, Math.max(0, opacity)) / 100;
+    // 历史残留的高饱和 CSS 渐变壁纸自动柔化浓度上限，避免把整张纯白画布染成昏沉粉雾
+    const capped = isCssImageFn && !isDotPattern ? Math.min(28, Math.max(0, opacity)) : Math.min(100, Math.max(0, opacity));
+    const alpha = capped / 100;
     root.style.setProperty("--rin-wallpaper-opacity", alpha.toFixed(2));
   }
 }

@@ -31,31 +31,31 @@ const TAG_ROTATIONS = [
     "rotate-[0.8deg] -translate-y-0.5",
 ];
 
-// 素雅和纸书签低饱和色系：自然散落不杂乱、与任何主题配色和谐共存
+// 清亮明快的晶透书签色系：在纯白画布上清澈透亮、告别暗沉土灰
 const TAG_BOOKMARK_STYLES = [
     {
-        card: "bg-[#faf6ef]/95 text-[#6b5338] border-[#e8dcc8] hover:border-[#cbb799] dark:bg-[#242019]/80 dark:text-[#e2cfa9] dark:border-[#3e3528]",
-        dot: "bg-[#c8a97e]",
+        card: "bg-sky-50/90 text-sky-700 border-sky-200/80 hover:border-sky-300 dark:bg-sky-950/45 dark:text-sky-300 dark:border-sky-800/50",
+        dot: "bg-sky-400",
     },
     {
-        card: "bg-[#f3f7fa]/95 text-[#38556a] border-[#d6e3ec] hover:border-[#a9c3d6] dark:bg-[#19222a]/80 dark:text-[#b7d1e3] dark:border-[#2a3b48]",
-        dot: "bg-[#7fa6c2]",
+        card: "bg-rose-50/90 text-rose-600 border-rose-200/80 hover:border-rose-300 dark:bg-rose-950/45 dark:text-rose-300 dark:border-rose-800/50",
+        dot: "bg-rose-400",
     },
     {
-        card: "bg-[#faf3f5]/95 text-[#754350] border-[#ebd5dc] hover:border-[#d3aeb9] dark:bg-[#261b1f]/80 dark:text-[#e0b8c3] dark:border-[#422c34]",
-        dot: "bg-[#c58a99]",
+        card: "bg-emerald-50/90 text-emerald-700 border-emerald-200/80 hover:border-emerald-300 dark:bg-emerald-950/45 dark:text-emerald-300 dark:border-emerald-800/50",
+        dot: "bg-emerald-400",
     },
     {
-        card: "bg-[#f3f8f5]/95 text-[#355c4d] border-[#d3e6dc] hover:border-[#a8ccb9] dark:bg-[#18241f]/80 dark:text-[#b4d6c8] dark:border-[#293d35]",
-        dot: "bg-[#7eab98]",
+        card: "bg-violet-50/90 text-violet-700 border-violet-200/80 hover:border-violet-300 dark:bg-violet-950/45 dark:text-violet-300 dark:border-violet-800/50",
+        dot: "bg-violet-400",
     },
     {
-        card: "bg-[#f6f4fa]/95 text-[#514872] border-[#dfd9ec] hover:border-[#bdb2d8] dark:bg-[#1f1c29]/80 dark:text-[#c9c2e3] dark:border-[#353048]",
-        dot: "bg-[#9d93c4]",
+        card: "bg-amber-50/90 text-amber-700 border-amber-200/80 hover:border-amber-300 dark:bg-amber-950/45 dark:text-amber-300 dark:border-amber-800/50",
+        dot: "bg-amber-400",
     },
     {
-        card: "bg-[#f7f6f4]/95 text-[#4e5359] border-[#e2e0dc] hover:border-[#c3c0ba] dark:bg-[#202124]/80 dark:text-[#cfd2d6] dark:border-[#35373c]",
-        dot: "bg-[#9ea3a9]",
+        card: "bg-cyan-50/90 text-cyan-700 border-cyan-200/80 hover:border-cyan-300 dark:bg-cyan-950/45 dark:text-cyan-300 dark:border-cyan-800/50",
+        dot: "bg-cyan-400",
     },
 ];
 

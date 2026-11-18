@@ -376,10 +376,16 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [currentTrack]);
 
-  // 绑定原生音频事件
+  const lastReportedTimeRef = useRef<number>(0);
+
+  // 绑定原生音频事件（节流 0.4s 精度更新，避免音频播放时每 250ms 触发顶层 Context 高频重渲染）
   const handleTimeUpdate = () => {
     if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
+      const t = audioRef.current.currentTime;
+      if (Math.abs(t - lastReportedTimeRef.current) >= 0.4 || t === 0) {
+        lastReportedTimeRef.current = t;
+        setCurrentTime(t);
+      }
     }
   };
 
@@ -431,42 +437,74 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const contextValue = useMemo(
+    () => ({
+      currentTrack,
+      playlist,
+      isPlaying,
+      currentTime,
+      duration,
+      volume,
+      isMuted,
+      playMode,
+      isExpanded,
+      showLyrics,
+      showPlaylist,
+      currentLyricText,
+      parsedLyrics,
+      loadError,
+      play,
+      pause,
+      togglePlay,
+      next,
+      prev,
+      seek,
+      setVolume,
+      toggleMute,
+      setPlayMode,
+      setIsExpanded,
+      setShowLyrics,
+      setShowPlaylist,
+      addTrack,
+      playTemporaryTrack,
+      removeTrack,
+      setPlaylist,
+      clearPlaylist,
+    }),
+    [
+      currentTrack,
+      playlist,
+      isPlaying,
+      currentTime,
+      duration,
+      volume,
+      isMuted,
+      playMode,
+      isExpanded,
+      showLyrics,
+      showPlaylist,
+      currentLyricText,
+      parsedLyrics,
+      loadError,
+      play,
+      pause,
+      togglePlay,
+      next,
+      prev,
+      seek,
+      setVolume,
+      toggleMute,
+      setPlayMode,
+      addTrack,
+      playTemporaryTrack,
+      removeTrack,
+      setPlaylist,
+      clearPlaylist,
+    ]
+  );
+
   return (
-    <MusicPlayerContext.Provider
-      value={{
-        currentTrack,
-        playlist,
-        isPlaying,
-        currentTime,
-        duration,
-        volume,
-        isMuted,
-        playMode,
-        isExpanded,
-        showLyrics,
-        showPlaylist,
-        currentLyricText,
-        parsedLyrics,
-        loadError,
-        play,
-        pause,
-        togglePlay,
-        next,
-        prev,
-        seek,
-        setVolume,
-        toggleMute,
-        setPlayMode,
-        setIsExpanded,
-        setShowLyrics,
-        setShowPlaylist,
-        addTrack,
-        playTemporaryTrack,
-        removeTrack,
-        setPlaylist,
-        clearPlaylist,
-      }}
-    >
+    <MusicPlayerContext.Provider value={contextValue}>
       {/* 核心：全局唯一常驻原生 Audio DOM 节点，跨所有 SPA 页面不中断 */}
       <audio
         ref={audioRef}

@@ -7,9 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v1.0.7] - 2026-11-15
+## [v1.0.7] - 2026-11-18
 
 ### Added
+- **Frontend Aesthetic & UX Governance Charter (`docs/AESTHETIC_CHARTER.md`)**: Codified non-negotiable UI/UX boundaries in `docs/AESTHETIC_CHARTER.md` and bound them to `AGENTS.md` (single entrypoint, zero duplicate day/night buttons, uncropped artwork integrity, subtle sticky notes with hover-only cover text, luminous color system, deterministic ambience effects, unified comment primitives).
+- **Borderless Top-Center Embedded Atelier Ribbon (`TopAtelierRibbon`)**: Removed the bulky floating bottom-right pill and 9-tab side drawer completely; embedded a clean, borderless icon+text ribbon centered below the header with independent visitor toggles for **樱花 (Sakura)**, **细雨 (Rain)**, and **萤火 (Fireflies)**, plus admin 1-click variant/palette/color-picker & quick-create shortcuts.
+- **Unified Gallery Comment System Across Articles & Moments (`UnifiedCommentComposer` / `UnifiedCommentItem`)**: Refactored `gallery-comments.tsx` into reusable primitives and wired `moment_item.tsx` directly to them — logged-in users inherit identity automatically, guests receive randomized anime nicknames/avatars, with spacious multi-line Markdown composer and unified moderation.
+- **Sticky Note Cover Text Strategy (`atelier.<note>_text_mode`)**: Added `hover` (default — 100% unobstructed cover art until hovered), `hidden`, and `always` modes for all sticky notes and gallery deck card, paired with compact note sizing.
+- **Modular Appearance Settings Panel (`settings-appearance.tsx`)**: Restored a clean, block-based `/admin/settings?tab=theme` dashboard featuring 18 bright theme presets, 16-color circular accent palette, native rainbow color picker, HEX input, card opacity slider, wallpaper presets, ambience selector, and waterfall layout controls.
+
+### Performance & Bug Fixes
+- **Eliminated 60fps Color-Picker Stutter & Full-Tree Re-renders**: Switched live color picker dragging to `requestAnimationFrame` pure CSS variable updates (`applyThemeColor`) with debounced persistence (`350ms`/`250ms`), eliminating 60/sec full-app React re-renders and Cloudflare Worker POST storms.
+- **Removed Render-Blocking Google Fonts `@import`**: Eliminated 7 deprecated external Google Fonts stylesheets from `client/src/index.css` that previously blocked initial page paint.
+- **GPU-Accelerated Reading Progress Bar (`GlobalReadingProgress`)**: Replaced scroll `setState` + CSS `width` layout thrashing with `requestAnimationFrame` + GPU `transform: scaleX()` (0 React re-renders and 0 reflows while scrolling) and fixed theme variable binding.
+- **Incremental DOM Config Diffing (`useAppBootstrap`) & Memoized `useSiteConfig`**: Added field-level dirty checking before mutating global DOM/CSS properties and memoized `useSiteConfig()` per `ConfigWrapper` instance, eliminating 50+ redundant `JSON.parse` allocations per render.
+- **Throttled & Memoized `MusicPlayerProvider`**: Memoized context value and throttled `timeupdate` state ticks to prevent unnecessary top-level context churn during playback.
+- **Cached Auth Storage Probe & Silent Dark-Mode Timer Guard**: Cached `isLocalStorageAvailable()` in `auth.ts` instead of writing/deleting test keys on every API call, and guarded `darkModeUtils.ts` 60-second timer against redundant `colorSchemeChange` broadcasts.
+- **Pure Crisp White Canvas & Luminous Bookmark Tags**: Set light-mode canvas to pure `#ffffff` across all themes, capped historical CSS gradient wallpaper wash opacity, redesigned `/hashtags` into compact scattered crystal-clear bookmarks, removed stray arrows on homepage tags, uncropped `poster` gallery covers (`w-full h-auto`), fixed Moments danmaku off-label (`弹幕 / 已关弹幕`), and corrected Friends sort order to ascending (`1, 2, 3...` with `0` defaults last).
 - **Integrated Natural Header Flow (`header.position: "top"`)**: Unified all master presets to default to the natural top header layout that directly integrates with page text, eliminating awkward floating pill widgets hovering over the stream title and preventing vertical title collision.
 - **Server-Side Client Config Bootstrapping (`useAppBootstrap`)**: Asynchronously syncs client config from `/api/config/client` on initial load, preventing site name from erroneously falling back to default "Rin" on clean sessions or page reload.
 - **Tighter Editorial Layout & Eliminated Blank Spacers**: Removed intrusive stacked paddings and floated admin action buttons over the image top-right, eliminating empty white gaps across editorial article cards.

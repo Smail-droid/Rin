@@ -1,43 +1,56 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 
+/**
+ * 顶部阅读进度条（纯 GPU 合成层驱动）：
+ * 使用 rAF + transform: scaleX()，滚动过程 0 次 React 重渲染、0 次 Layout 重排。
+ */
 export function GlobalReadingProgress() {
   const siteConfig = useSiteConfig();
-  const [progress, setProgress] = useState(0);
+  const barRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!siteConfig.themeReadingProgress) {
-      setProgress(0);
-      return;
-    }
+    if (!siteConfig.themeReadingProgress) return;
+
+    let rafId: number | null = null;
+
+    const updateBar = () => {
+      rafId = null;
+      const el = barRef.current;
+      if (!el) return;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const ratio = docHeight <= 0 ? 0 : Math.min(1, Math.max(0, window.scrollY / docHeight));
+      el.style.transform = `scaleX(${ratio})`;
+    };
 
     const handleScroll = () => {
-      const scrollY = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      if (docHeight <= 0) {
-        setProgress(0);
-        return;
+      if (rafId === null) {
+        rafId = requestAnimationFrame(updateBar);
       }
-      const pct = Math.min(100, Math.max(0, (scrollY / docHeight) * 100));
-      setProgress(pct);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
+    window.addEventListener("resize", handleScroll, { passive: true });
+    updateBar();
 
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, [siteConfig.themeReadingProgress]);
 
   if (!siteConfig.themeReadingProgress) return null;
 
   return (
     <div
+      ref={barRef}
       aria-hidden="true"
-      className="fixed top-0 left-0 right-0 h-[3px] z-[9999] pointer-events-none transition-all duration-150 ease-out"
+      className="fixed top-0 left-0 right-0 h-[3px] z-[9999] pointer-events-none origin-left will-change-transform"
       style={{
-        background: `linear-gradient(90deg, var(--theme-color, #fc466b) 0%, #38bdf8 50%, #a855f7 100%)`,
-        width: `${progress}%`,
-        boxShadow: "0 0 12px rgba(var(--theme-rgb, 252 70 107) / 0.6)",
+        background: `linear-gradient(90deg, rgb(var(--theme-rgb, 252 70 107)) 0%, #38bdf8 55%, #a855f7 100%)`,
+        transform: "scaleX(0)",
+        boxShadow: "0 0 10px rgb(var(--theme-rgb, 252 70 107) / 0.45)",
       }}
     />
   );

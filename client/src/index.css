@@ -1,8 +1,7 @@
 @import "./base.css";
 @import "@rin/ui/styles.css";
 
-/* 引入 12 种艺术标题专属 Web 字体族 (支持 Cloudflare Fonts 边缘 CDN 自动同源缓存与加速) */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Comfortaa:wght@700&family=Fira+Code:wght@700&family=Ma+Shan+Zheng&family=Righteous&family=Silkscreen:wght@400;700&family=ZCOOL+KuaiLe&display=swap');
+/* 已移除废弃的 7 套外部 Google Fonts 阻塞 @import，消除首屏渲染阻塞与海外字体超时 */
 
 /* cantarell-latin-400-normal */
 @font-face {
