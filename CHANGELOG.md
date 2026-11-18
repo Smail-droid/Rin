@@ -189,3 +189,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Polaroid Sticky Notes Wall**: Gallery homepage featuring polaroid paper textures and organic tilts (`rotate-[-1.8°]`).
 - **Comprehensive Test Suite**: 54 suites, 484 unit/integration tests passing (100% green).
 [v1.0.4]: https://github.com/Smail-droid/Rin/releases/tag/v1.0.4
+[v1.0.7]: https://github.com/Smail-droid/Rin/releases/tag/v1.0.7
