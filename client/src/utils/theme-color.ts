@@ -287,11 +287,6 @@ export function getRelativeLuminance(hex: string): number {
   return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
 }
 
-export function getContrastRatioWithWhite(hex: string): number {
-  const lum = getRelativeLuminance(hex);
-  return (1.0 + 0.05) / (lum + 0.05);
-}
-
 export function normalizeThemeColor(value: string | undefined | null) {
   return normalizeHex(value, "#fc466b");
 }
@@ -418,17 +413,6 @@ export function applyThemeOpacity(value: unknown) {
   root.style.setProperty("--rin-glass-border-alpha", opacity >= 98 ? "0.08" : `${(0.08 + (1 - alpha) * 0.12).toFixed(2)}`);
 }
 
-export function applyArtTitleColor(value: string | undefined | null) {
-  if (typeof document === "undefined") return;
-  const root = document.documentElement;
-  if (!value || value.trim().length === 0) {
-    root.style.removeProperty("--art-title-rgb");
-    return;
-  }
-  const color = normalizeHex(value);
-  root.style.setProperty("--art-title-rgb", toCssRgb(hexToRgb(color)));
-}
-
 export function applyThemeFontFamily(family: string | undefined | null) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
@@ -503,9 +487,4 @@ export function applyGalleryTiltDegree(degree: number) {
   if (typeof document === "undefined") return;
   const clamped = Math.min(10, Math.max(0, degree));
   document.documentElement.style.setProperty("--rin-tilt-degree", `${clamped}deg`);
-}
-
-export function applyFullTheme(color?: string | null, opacity?: unknown, secondaryColor?: string | null, presetId?: string | null) {
-  applyThemeColor(color, secondaryColor, presetId);
-  applyThemeOpacity(opacity);
 }

@@ -4,8 +4,6 @@ import { useLocation } from "wouter";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 import { AmbientEffectsCanvas, normalizeAmbienceMode, type AmbienceMode } from "../ambient-effects-canvas";
 
-export { WALLPAPER_PRESETS } from "../../utils/theme-color";
-
 /**
  * 全站环境氛围画布宿主（遵守《美化章程》第五章）：
  * - 支持后台默认配置 (`theme.ambience`) 与访客在顶部居中微工具栏的独立实时开关；

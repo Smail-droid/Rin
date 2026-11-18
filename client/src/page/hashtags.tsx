@@ -156,19 +156,12 @@ export function HashtagsPage() {
     // 过滤与排序
     const sortedHashtags = useMemo(() => {
         if (!hashtags) return [];
-        let list = [...hashtags];
-        if (!showEmptyTags) {
-            list = list.filter(({ feeds }) => feeds > 0);
-        }
+        const list = showEmptyTags ? [...hashtags] : hashtags.filter(({ feeds }) => feeds > 0);
         return list.sort((a, b) => {
-            if (sortBy === 'popular') {
-                if (b.feeds !== a.feeds) {
-                    return b.feeds - a.feeds;
-                }
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-            } else {
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            if (sortBy === 'popular' && b.feeds !== a.feeds) {
+                return b.feeds - a.feeds;
             }
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
     }, [hashtags, showEmptyTags, sortBy]);
 
@@ -185,32 +178,28 @@ export function HashtagsPage() {
             <ConfirmUI />
 
             {/* Toast 提示条 */}
-            {toastMessage && (
+            {toastMessage ? (
                 <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-2xl bg-neutral-900/90 text-white dark:bg-white/95 dark:text-neutral-900 border border-theme/30 backdrop-blur-md shadow-2xl text-xs font-bold ani-show flex items-center gap-2">
                     <i className="ri-checkbox-circle-fill text-theme" />
                     <span>{toastMessage}</span>
                 </div>
-            )}
+            ) : null}
 
             <Waiting for={hashtags}>
                 <main className="w-full flex flex-col justify-center items-center mb-8 ani-show">
                     {/* 顶栏信息与排序 */}
                     <div className="wauto text-start py-4 border-b border-black/10 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 text-xs font-bold mb-2">
-                                <i className="ri-price-tag-3-line" />
-                                <span>灵感星云</span>
-                            </div>
                             <h1 className={`text-3xl sm:text-4xl font-extrabold tracking-tight art-title-${siteConfig.hashtagsTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"}`}>
                                 {t('hashtags')}
                             </h1>
                             <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1 flex items-center gap-2 flex-wrap">
                                 <span>{t('total_tags', { count: sortedHashtags?.length || 0 })}</span>
-                                {unlinkedCount > 0 && (
-                                    <span className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full font-mono font-medium">
-                                        含 {unlinkedCount} 个空标签
+                                {unlinkedCount > 0 ? (
+                                    <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-medium">
+                                        · 含 {unlinkedCount} 个空标签
                                     </span>
-                                )}
+                                ) : null}
                             </p>
                         </div>
 
@@ -252,7 +241,7 @@ export function HashtagsPage() {
                     </div>
 
                     {/* 管理员专属：前台快捷管理控制台 */}
-                    {profile?.permission && (
+                    {profile?.permission ? (
                         <div className="wauto mt-4 p-3.5 rounded-2xl bg-theme/5 border border-theme/15 flex flex-col gap-3 text-xs">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                                 <div className="flex items-center gap-2 text-theme font-medium">
@@ -273,7 +262,7 @@ export function HashtagsPage() {
                                         <span>{showEmptyTags ? "已显示空标签" : "透出0篇空标签"}</span>
                                     </button>
 
-                                    {unlinkedCount > 0 && (
+                                    {unlinkedCount > 0 ? (
                                         <button
                                             type="button"
                                             onClick={handleCleanUnlinkedTags}
@@ -284,7 +273,7 @@ export function HashtagsPage() {
                                             <i className={`ri-delete-bin-line ${isCleaning ? "animate-spin" : ""}`} />
                                             <span>{isCleaning ? "正在清理..." : `清理空标签 (${unlinkedCount})`}</span>
                                         </button>
-                                    )}
+                                    ) : null}
 
                                     <Link
                                         href="/admin/tags"
@@ -331,7 +320,7 @@ export function HashtagsPage() {
                                 </div>
                             </div>
                         </div>
-                    )}
+                    ) : null}
 
                     {/* 小巧散落的纸质书签标签墙 */}
                     <div className="wauto flex flex-wrap items-center justify-start gap-x-2.5 gap-y-3 mt-7 pb-14">

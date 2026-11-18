@@ -17,7 +17,7 @@
 }
 
 :root {
-  --theme-secondary-rgb: 211 142 158;
+  --theme-secondary-rgb: 255 133 161;
 }
 
 body {
@@ -29,11 +29,6 @@ body {
   font-size: var(--rin-font-size, 16px);
   min-height: 100vh;
   position: relative;
-}
-
-/* 启用预设或自定义壁纸时自动关闭底层 body 光晕，杜绝双层渐变叠加发脏 */
-body.has-wallpaper {
-  background-image: none;
 }
 
 /* ============================================================
@@ -382,25 +377,9 @@ select.bg-w {
   background-color: rgb(var(--rin-surface-rgb) / var(--rin-surface-alpha, 1)) !important;
 }
 
-.rin-glass {
-  background-color: rgb(var(--rin-surface-rgb) / var(--rin-surface-alpha, 1));
-  backdrop-filter: blur(var(--rin-glass-blur, 0px));
-  -webkit-backdrop-filter: blur(var(--rin-glass-blur, 0px));
-}
-
 /* 现代前台抽屉统一表单控件原语 */
 .rin-field {
   @apply w-full rounded-lg border border-neutral-200/90 bg-white px-3 py-2 text-xs text-neutral-800 placeholder:text-neutral-400 outline-none transition-colors focus:border-theme focus:ring-2 focus:ring-theme/15 dark:border-white/10 dark:bg-white/[0.04] dark:text-neutral-100 dark:placeholder:text-neutral-500;
-}
-
-/* ==========================================================================
-   Gallery Artistic Title Styles (首页画廊艺术标题效果定制)
-   ========================================================================== */
-
-@keyframes auroraFlowAnimation {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
 }
 
 /* ==========================================================================

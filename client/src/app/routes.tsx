@@ -7,12 +7,10 @@ import Footer from "../components/footer";
 import { Header } from "../components/header";
 import { TopAtelierRibbon } from "../components/in-situ/top-atelier-ribbon";
 import { Padding } from "../components/padding";
-import { getHeaderLayoutDefinition } from "../components/site-header/layout-registry";
 import { GlobalReadingProgress } from "../components/global-reading-progress";
 import { Tips, TipsPage } from "../components/tips";
 import { TOCHeader } from "../components/toc-header";
 import useTableOfContents from "../hooks/useTableOfContents";
-import { useSiteConfig } from "../hooks/useSiteConfig";
 import { ErrorPage } from "../page/error";
 import { ProfileContext } from "../state/profile";
 import { tryInt } from "../utils/int";
@@ -218,7 +216,6 @@ function AppRoute({
   requirePermission?: boolean;
 }) {
   const profile = useContext(ProfileContext);
-  const siteConfig = useSiteConfig();
   const { t } = useTranslation();
 
   return (
@@ -237,28 +234,18 @@ function AppRoute({
         }
 
         const resolvedContent = typeof children === "function" ? children(params) : children;
-        const layoutDefinition = getHeaderLayoutDefinition(siteConfig.headerLayout);
 
         return (
           <>
             <GlobalReadingProgress />
-            {layoutDefinition.renderRouteShell({
-              header: (
-                <>
-                  <Header>{headerComponent}</Header>
-                  <TopAtelierRibbon />
-                </>
-              ),
-              content: (
-                <Padding className={paddingClassName}>
-                  <Suspense fallback={<RouteLoadingFallback />}>
-                    {resolvedContent}
-                  </Suspense>
-                </Padding>
-              ),
-              footer: <Footer />,
-              paddingClassName,
-            })}
+            <Header>{headerComponent}</Header>
+            <TopAtelierRibbon />
+            <Padding className={paddingClassName}>
+              <Suspense fallback={<RouteLoadingFallback />}>
+                {resolvedContent}
+              </Suspense>
+            </Padding>
+            <Footer />
           </>
         );
       }}

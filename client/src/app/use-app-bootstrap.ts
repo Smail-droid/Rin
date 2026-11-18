@@ -3,7 +3,6 @@ import { ConfigWrapper } from "@rin/config";
 import type { Profile } from "../state/profile";
 import { defaultClientConfig } from "../state/config";
 import {
-  applyArtTitleColor,
   applyGalleryTiltDegree,
   applyThemeColor,
   applyThemeCustomCursor,
@@ -31,7 +30,6 @@ type AppliedDomSnapshot = {
   wallpaperOpacity?: number;
   customCursor?: boolean;
   tiltDegree?: number;
-  artTitleColor?: string;
 };
 
 /** 增量脏检查应用 DOM/CSS 副作用，避免改一个颜色时重刷全站字体/字号/壁纸引发整页重排 */
@@ -84,17 +82,6 @@ function applyDomConfigIncremental(nextConfig: Record<string, unknown>, prev: Ap
       applyGalleryTiltDegree(tilt);
       prev.tiltDegree = tilt;
     }
-  }
-
-  const artTitleColor =
-    nextConfig["atelier.title_custom_color_enabled"] === true || nextConfig["atelier.title_custom_color_enabled"] === "true"
-      ? typeof nextConfig["atelier.title_color"] === "string"
-        ? nextConfig["atelier.title_color"]
-        : undefined
-      : undefined;
-  if (artTitleColor !== prev.artTitleColor) {
-    applyArtTitleColor(artTitleColor);
-    prev.artTitleColor = artTitleColor;
   }
 }
 
