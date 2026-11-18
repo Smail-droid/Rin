@@ -78,6 +78,26 @@ describe('FriendService', () => {
             const data = await res.json() as any;
             expect(data.friend_list).toEqual([]);
         });
+
+        it('should sort friends with smaller positive sort_order first and 0 defaults last', async () => {
+            sqlite.exec(`
+                INSERT INTO friends (id, name, desc, avatar, url, uid, accepted, sort_order) VALUES
+                (1, 'DefaultZero', 'Desc', 'a.png', 'https://z.com', 2, 1, 0),
+                (2, 'RankThree', 'Desc', 'a.png', 'https://3.com', 2, 1, 3),
+                (3, 'RankOne', 'Desc', 'a.png', 'https://1.com', 2, 1, 1),
+                (4, 'RankTwo', 'Desc', 'a.png', 'https://2.com', 2, 1, 2)
+            `);
+
+            const res = await app.request('/', { method: 'GET' }, env);
+            expect(res.status).toBe(200);
+            const data = await res.json() as any;
+            expect(data.friend_list.map((f: any) => f.name)).toEqual([
+                'RankOne',
+                'RankTwo',
+                'RankThree',
+                'DefaultZero',
+            ]);
+        });
     });
 
     describe('POST / - Create friend', () => {

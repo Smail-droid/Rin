@@ -7,30 +7,34 @@ import { AmbientEffectsCanvas, normalizeAmbienceMode, type AmbienceMode } from "
 export { WALLPAPER_PRESETS } from "../../utils/theme-color";
 
 /**
- * 全站环境氛围画布宿主（遵守《美化章程》第一章与第五章）：
- * - 彻底废除 420px 多 Tab 侧滑大抽屉、左侧悬浮轨与重复日夜按钮；
- * - 仅在前台挂载由站点配置 (`theme.ambience`) 驱动的粒子画布；
- * - 管理员前台“点一下即切换”快捷操作统一收口至 InSituDeskDock，完整配置统一归口后台 /admin/settings。
+ * 全站环境氛围画布宿主（遵守《美化章程》第五章）：
+ * - 支持后台默认配置 (`theme.ambience`) 与访客在顶部居中微工具栏的独立实时开关；
+ * - 零侧滑抽屉、零悬浮轨、零重复日夜按钮。
  */
 export function InSituAestheticStudio() {
-  // REACT HOOKS 铁律：全部 Hooks 无条件置于组件顶层
   const [location] = useLocation();
   const siteConfig = useSiteConfig();
   const isAdminRoute = location.startsWith("/admin");
 
-  const [ambienceMode, setAmbienceMode] = useState<AmbienceMode>(() =>
-    normalizeAmbienceMode(siteConfig.themeAmbience)
-  );
+  const [ambienceMode, setAmbienceMode] = useState<AmbienceMode>(() => {
+    try {
+      const visitorSaved = sessionStorage.getItem("rin_visitor_ambience");
+      if (visitorSaved !== null) return normalizeAmbienceMode(visitorSaved);
+    } catch {}
+    return normalizeAmbienceMode(siteConfig.themeAmbience);
+  });
 
-  // 响应后台配置或管理员一键循环切换的实时同步
   useEffect(() => {
+    try {
+      if (sessionStorage.getItem("rin_visitor_ambience") !== null) return;
+    } catch {}
     setAmbienceMode(normalizeAmbienceMode(siteConfig.themeAmbience));
   }, [siteConfig.themeAmbience]);
 
   useEffect(() => {
     const handleAmbienceChange = (e: Event) => {
       const next = (e as CustomEvent<{ mode?: AmbienceMode }>).detail?.mode;
-      if (next) {
+      if (next !== undefined) {
         setAmbienceMode(normalizeAmbienceMode(next));
       }
     };

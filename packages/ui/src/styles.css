@@ -1,16 +1,16 @@
 :root {
-  --theme-rgb: 252 70 107;
-  --theme-hover-rgb: 177 48 73;
-  --theme-active-rgb: 151 32 56;
-  --rin-canvas-rgb: 245 245 245;
+  --theme-rgb: 181 68 94;
+  --theme-hover-rgb: 152 57 79;
+  --theme-active-rgb: 134 50 70;
+  --rin-canvas-rgb: 250 248 248;
   --rin-surface-rgb: 255 255 255;
-  --rin-surface-muted-rgb: 245 245 245;
-  --rin-surface-hover-rgb: 229 229 229;
-  --rin-surface-active-rgb: 212 212 212;
-  --rin-text-rgb: 23 23 23;
-  --rin-text-muted-rgb: 82 82 91;
+  --rin-surface-muted-rgb: 245 244 244;
+  --rin-surface-hover-rgb: 235 233 233;
+  --rin-surface-active-rgb: 222 220 220;
+  --rin-text-rgb: 28 28 32;
+  --rin-text-muted-rgb: 100 100 108;
   --rin-border-rgb: 24 24 27;
-  --rin-overlay-color: rgb(9 9 11 / 0.58);
+  --rin-overlay-color: rgb(9 9 11 / 0.56);
   --rin-radius-control: 0.75rem;
   --rin-radius-surface: 1rem;
   --rin-shadow-overlay: 0 24px 80px rgb(0 0 0 / 0.22), 0 4px 20px rgb(0 0 0 / 0.12);
@@ -19,13 +19,13 @@
 }
 
 [data-color-mode="dark"] {
-  --rin-canvas-rgb: 28 28 30;
-  --rin-surface-rgb: 51 51 51;
-  --rin-surface-muted-rgb: 64 64 64;
-  --rin-surface-hover-rgb: 82 82 82;
-  --rin-surface-active-rgb: 115 115 115;
-  --rin-text-rgb: 250 250 250;
-  --rin-text-muted-rgb: 212 212 216;
+  --rin-canvas-rgb: 20 19 22;
+  --rin-surface-rgb: 29 27 32;
+  --rin-surface-muted-rgb: 42 40 46;
+  --rin-surface-hover-rgb: 56 54 62;
+  --rin-surface-active-rgb: 74 72 82;
+  --rin-text-rgb: 244 244 246;
+  --rin-text-muted-rgb: 168 168 178;
   --rin-border-rgb: 255 255 255;
   --rin-overlay-color: rgb(0 0 0 / 0.68);
   --rin-shadow-overlay: 0 28px 90px rgb(0 0 0 / 0.5), 0 4px 24px rgb(0 0 0 / 0.3);

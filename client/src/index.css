@@ -18,14 +18,12 @@
 }
 
 :root {
-  --theme-secondary-rgb: 245 158 108;
+  --theme-secondary-rgb: 211 142 158;
 }
 
 body {
   background-color: rgb(var(--rin-canvas-rgb));
-  background-image:
-    radial-gradient(ellipse 70% 40% at 18% -10%, rgb(var(--theme-rgb) / 0.055), transparent 68%),
-    radial-gradient(ellipse 60% 38% at 85% 0%, rgb(var(--theme-secondary-rgb) / 0.045), transparent 62%);
+  background-image: none;
   background-attachment: fixed;
   color: rgb(var(--rin-text-rgb));
   font-family: var(--rin-font-family, Cantarell, "Source Han Serif CN VF", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif) !important;

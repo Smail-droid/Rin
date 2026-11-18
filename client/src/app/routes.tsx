@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import { AdminLayout } from "../components/admin-layout";
 import Footer from "../components/footer";
 import { Header } from "../components/header";
+import { TopAtelierRibbon } from "../components/in-situ/top-atelier-ribbon";
 import { Padding } from "../components/padding";
 import { getHeaderLayoutDefinition } from "../components/site-header/layout-registry";
 import { GlobalReadingProgress } from "../components/global-reading-progress";
@@ -242,7 +243,12 @@ function AppRoute({
           <>
             <GlobalReadingProgress />
             {layoutDefinition.renderRouteShell({
-              header: <Header>{headerComponent}</Header>,
+              header: (
+                <>
+                  <Header>{headerComponent}</Header>
+                  <TopAtelierRibbon />
+                </>
+              ),
               content: (
                 <Padding className={paddingClassName}>
                   <Suspense fallback={<RouteLoadingFallback />}>

@@ -104,13 +104,13 @@ describe("theme-color utils", () => {
       const kyoto = MULTI_COLOR_PALETTES.find((p) => p.id === "kyoto_ink")!;
       document.documentElement.setAttribute("data-color-mode", "light");
       applyThemePalette(kyoto);
-      expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("51 65 85");
+      expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("63 77 94");
       expect(document.documentElement.style.getPropertyValue("--rin-surface-rgb")).toBe("255 255 255");
 
       document.documentElement.setAttribute("data-color-mode", "dark");
       applyThemePalette(kyoto);
-      // 暗黑模式必须使用高对比印章朱而非浅灰 (#cbd5e1)，严防浅底白字
-      expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("194 65 12");
+      // 暗黑模式必须使用同色系高对比石板蓝 (#4e6076) 而非浅灰，严防浅底白字
+      expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("78 96 118");
       expect(document.documentElement.style.getPropertyValue("--rin-canvas-rgb")).toBe("19 21 24");
       document.documentElement.setAttribute("data-color-mode", "light");
     });

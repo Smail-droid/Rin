@@ -19,18 +19,44 @@ type Hashtag = {
 }
 
 const TAG_ROTATIONS = [
-    "rotate-[-2.5deg]", "rotate-[2deg]", "-rotate-1", "rotate-[2.5deg]",
-    "rotate-[-1.5deg]", "rotate-[1.5deg]", "-rotate-2", "rotate-[3deg]",
-    "rotate-[-2deg]", "rotate-[1deg]"
+    "-rotate-[2deg] translate-y-0",
+    "rotate-[1.5deg] translate-y-1",
+    "-rotate-[1deg] -translate-y-0.5",
+    "rotate-[2.2deg] translate-y-0.5",
+    "-rotate-[1.8deg] translate-y-1",
+    "rotate-[1.2deg] -translate-y-0.5",
+    "-rotate-[2.4deg] translate-y-0.5",
+    "rotate-[2deg] translate-y-0",
+    "-rotate-[1.2deg] translate-y-1",
+    "rotate-[0.8deg] -translate-y-0.5",
 ];
 
-const TAG_COLOR_SCHEMES = [
-    "bg-amber-100/90 text-amber-900 border-amber-300/70 hover:border-amber-400 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800/40",
-    "bg-sky-100/90 text-sky-900 border-sky-300/70 hover:border-sky-400 dark:bg-sky-950/40 dark:text-sky-200 dark:border-sky-800/40",
-    "bg-rose-100/90 text-rose-900 border-rose-300/70 hover:border-rose-400 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-800/40",
-    "bg-emerald-100/90 text-emerald-900 border-emerald-300/70 hover:border-emerald-400 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800/40",
-    "bg-purple-100/90 text-purple-900 border-purple-300/70 hover:border-purple-400 dark:bg-purple-950/40 dark:text-purple-200 dark:border-purple-800/40",
-    "bg-teal-100/90 text-teal-900 border-teal-300/70 hover:border-teal-400 dark:bg-teal-950/40 dark:text-teal-200 dark:border-teal-800/40",
+// 素雅和纸书签低饱和色系：自然散落不杂乱、与任何主题配色和谐共存
+const TAG_BOOKMARK_STYLES = [
+    {
+        card: "bg-[#faf6ef]/95 text-[#6b5338] border-[#e8dcc8] hover:border-[#cbb799] dark:bg-[#242019]/80 dark:text-[#e2cfa9] dark:border-[#3e3528]",
+        dot: "bg-[#c8a97e]",
+    },
+    {
+        card: "bg-[#f3f7fa]/95 text-[#38556a] border-[#d6e3ec] hover:border-[#a9c3d6] dark:bg-[#19222a]/80 dark:text-[#b7d1e3] dark:border-[#2a3b48]",
+        dot: "bg-[#7fa6c2]",
+    },
+    {
+        card: "bg-[#faf3f5]/95 text-[#754350] border-[#ebd5dc] hover:border-[#d3aeb9] dark:bg-[#261b1f]/80 dark:text-[#e0b8c3] dark:border-[#422c34]",
+        dot: "bg-[#c58a99]",
+    },
+    {
+        card: "bg-[#f3f8f5]/95 text-[#355c4d] border-[#d3e6dc] hover:border-[#a8ccb9] dark:bg-[#18241f]/80 dark:text-[#b4d6c8] dark:border-[#293d35]",
+        dot: "bg-[#7eab98]",
+    },
+    {
+        card: "bg-[#f6f4fa]/95 text-[#514872] border-[#dfd9ec] hover:border-[#bdb2d8] dark:bg-[#1f1c29]/80 dark:text-[#c9c2e3] dark:border-[#353048]",
+        dot: "bg-[#9d93c4]",
+    },
+    {
+        card: "bg-[#f7f6f4]/95 text-[#4e5359] border-[#e2e0dc] hover:border-[#c3c0ba] dark:bg-[#202124]/80 dark:text-[#cfd2d6] dark:border-[#35373c]",
+        dot: "bg-[#9ea3a9]",
+    },
 ];
 
 export function HashtagsPage() {
@@ -307,16 +333,19 @@ export function HashtagsPage() {
                         </div>
                     )}
 
-                    {/* Organic Scattered Gallery Tag Notes Wall (二次元彩色散落便签墙) */}
-                    <div className="wauto flex flex-wrap items-center justify-start gap-3 sm:gap-4 mt-8 pb-12">
+                    {/* 小巧散落的纸质书签标签墙 */}
+                    <div className="wauto flex flex-wrap items-center justify-start gap-x-2.5 gap-y-3 mt-7 pb-14">
                         {sortedHashtags?.map((hashtag, index) => {
                             const rot = TAG_ROTATIONS[index % TAG_ROTATIONS.length];
                             const isSingleArticle = hashtag.feeds === 1 && Boolean(hashtag.singleFeedId);
                             const isEmptyTag = (hashtag.feeds || 0) === 0;
 
-                            const colorScheme = isEmptyTag
-                                ? "bg-neutral-100/80 text-neutral-400 border-dashed border-neutral-300 dark:bg-neutral-800/40 dark:text-neutral-500 dark:border-neutral-700/50"
-                                : TAG_COLOR_SCHEMES[index % TAG_COLOR_SCHEMES.length];
+                            const bookmarkStyle = isEmptyTag
+                                ? {
+                                      card: "bg-neutral-100/80 text-neutral-400 border-dashed border-neutral-300 dark:bg-neutral-800/40 dark:text-neutral-500 dark:border-neutral-700/60",
+                                      dot: "bg-neutral-300 dark:bg-neutral-600",
+                                  }
+                                : TAG_BOOKMARK_STYLES[index % TAG_BOOKMARK_STYLES.length];
 
                             // 单篇标签直达文章 / 多篇进入列表聚合
                             const targetHref = isSingleArticle
@@ -332,22 +361,23 @@ export function HashtagsPage() {
                             return (
                                 <div
                                     key={hashtag.id || index}
-                                    className={`group relative inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border shadow-2xs text-xs sm:text-sm font-semibold transform ${rot} hover:rotate-0 hover:scale-110 hover:shadow-lg transition-all duration-300 select-none ${colorScheme}`}
+                                    className={`group relative inline-flex items-center gap-1.5 pl-2.5 pr-2.5 py-1 rounded-md rounded-r-xl border shadow-[0_1px_2px_rgba(15,23,42,0.05)] text-[11px] sm:text-xs font-medium transform ${rot} hover:rotate-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 select-none ${bookmarkStyle.card}`}
                                 >
+                                    {/* 书签穿孔小圆点 */}
+                                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 opacity-80 ${bookmarkStyle.dot}`} aria-hidden="true" />
                                     <Link
                                         href={targetHref}
-                                        className="inline-flex items-center gap-1.5 cursor-pointer"
+                                        className="inline-flex items-center gap-1 cursor-pointer"
                                         title={tooltip}
                                     >
-                                        <i className="ri-price-tag-3-line text-xs opacity-60" />
-                                        <span className="font-bold">#{hashtag.name}</span>
-                                        <span className="ml-0.5 rounded-full bg-black/10 dark:bg-white/10 px-1.5 py-0.2 text-[10px] font-mono">
+                                        <span className="font-semibold tracking-tight">#{hashtag.name}</span>
+                                        <span className="text-[10px] font-mono opacity-60">
                                             {hashtag.feeds}
                                         </span>
                                     </Link>
 
                                     {/* 管理员模式下针对空标签的单项删除快捷叉 */}
-                                    {profile?.permission && isEmptyTag && (
+                                    {profile?.permission && isEmptyTag ? (
                                         <button
                                             type="button"
                                             onClick={(e) => {
@@ -355,12 +385,12 @@ export function HashtagsPage() {
                                                 e.stopPropagation();
                                                 handleDeleteSingleTag(hashtag.id, hashtag.name);
                                             }}
-                                            className="text-neutral-400 hover:text-rose-500 p-0.5 ml-1 transition cursor-pointer"
+                                            className="text-neutral-400 hover:text-rose-500 p-0.5 ml-0.5 transition cursor-pointer"
                                             title={`删除空标签 #${hashtag.name}`}
                                         >
                                             <i className="ri-close-line text-xs" />
                                         </button>
-                                    )}
+                                    ) : null}
                                 </div>
                             );
                         })}

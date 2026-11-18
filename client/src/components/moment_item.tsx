@@ -208,7 +208,7 @@ export function MomentItem({
         <button
           type="button"
           onClick={() => setDanmakuEnabled((p) => !p)}
-          title={danmakuEnabled ? "点击隐藏动态弹幕" : "点击开启飘屏弹幕"}
+          title={danmakuEnabled ? "点击关闭飘屏弹幕" : "点击开启飘屏弹幕"}
           className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-lg transition cursor-pointer ${
             danmakuEnabled
               ? "text-theme font-bold bg-theme/10"
@@ -216,7 +216,7 @@ export function MomentItem({
           }`}
         >
           <i className={danmakuEnabled ? "ri-chat-voice-line" : "ri-chat-off-line"} />
-          <span>{danmakuEnabled ? "弹幕" : "静音"}</span>
+          <span>{danmakuEnabled ? "弹幕" : "已关弹幕"}</span>
           {approvedComments.length > 0 ? <span className="font-mono">({approvedComments.length})</span> : null}
         </button>
 

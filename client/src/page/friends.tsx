@@ -1536,7 +1536,7 @@ function FriendCard({
                                     if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
                                 }}
                                 className="w-10 text-center rounded bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme focus:border-theme outline-none text-[10px] font-mono font-bold py-0.2"
-                                title="输入排序权重敲回车即时排序 (数字越大越靠前)"
+                                title="输入排序序号敲回车即时排序 (数字越小越靠前，0 为默认)"
                             />
                         </div>
                     )}
@@ -1735,7 +1735,7 @@ function CompactFriendRow({
                             if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
                         }}
                         className="w-9 text-center rounded bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme outline-none text-[10px] font-mono font-bold py-0.2 shrink-0"
-                        title="输入排序权重后敲回车立即换序"
+                        title="输入排序序号后敲回车立即换序 (数字越小越靠前，0 为默认)"
                     />
                 )}
                 <a
@@ -1888,7 +1888,7 @@ function PolaroidFriendCard({
                                 if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
                             }}
                             className="w-9 text-center rounded bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme outline-none text-[10px] font-mono font-bold py-0.2 shrink-0"
-                            title="输入排序权重后敲回车立即换序"
+                            title="输入排序序号后敲回车立即换序 (数字越小越靠前，0 为默认)"
                         />
                     )}
                 </div>
@@ -2167,7 +2167,7 @@ function EditFriendModal({
                         </select>
                     </div>
                     <div>
-                        <label className="block text-neutral-500 mb-1">排序权重 (数字越大越靠前)</label>
+                        <label className="block text-neutral-500 mb-1">排序序号 (数字越小越靠前，0 为默认)</label>
                         <input
                             type="number"
                             value={sortOrder}

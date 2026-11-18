@@ -1,5 +1,5 @@
-const DEFAULT_THEME_COLOR = "#d6336c";
-const DEFAULT_SECONDARY_COLOR = "#ea7b52";
+const DEFAULT_THEME_COLOR = "#b5445e";
+const DEFAULT_SECONDARY_COLOR = "#d38e9e";
 export const DEFAULT_THEME_OPACITY = 100;
 
 export interface ThemePreset {
@@ -45,115 +45,115 @@ export const WALLPAPER_PRESETS: WallpaperPreset[] = [
     name: "纯色留白",
     subtitle: "干净通透纯色画布",
     url: "none",
-    previewStyle: { background: "#f8fafc" },
+    previewStyle: { background: "#faf8f8" },
   },
   {
     id: "sakura-glow",
-    name: "樱桃柔光",
-    subtitle: "粉橘暖调微光",
-    url: "radial-gradient(ellipse 80% 55% at 20% 0%, rgba(214, 51, 108, 0.14), transparent 65%), radial-gradient(ellipse 65% 50% at 85% 15%, rgba(234, 123, 82, 0.14), transparent 65%)",
-    previewStyle: { background: "linear-gradient(135deg, #ffe4ec 0%, #fff1e6 55%, #ffffff 100%)" },
+    name: "浅樱柔雾",
+    subtitle: "低饱和淡粉微光",
+    url: "radial-gradient(ellipse 75% 50% at 20% 0%, rgba(181, 68, 94, 0.08), transparent 68%), radial-gradient(ellipse 65% 45% at 85% 10%, rgba(211, 142, 158, 0.09), transparent 65%)",
+    previewStyle: { background: "linear-gradient(135deg, #f8eaee 0%, #faf5f6 60%, #ffffff 100%)" },
   },
   {
     id: "starry-nebula",
-    name: "暮光星云",
-    subtitle: "靛紫冷调氛围",
-    url: "radial-gradient(ellipse 80% 50% at 25% 0%, rgba(79, 70, 229, 0.14), transparent 68%), radial-gradient(circle 540px at 85% 15%, rgba(147, 51, 234, 0.12), transparent 60%)",
-    previewStyle: { background: "linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 60%, #f8fafc 100%)" },
+    name: "紫藤暮色",
+    subtitle: "素雅靛紫雾霭",
+    url: "radial-gradient(ellipse 75% 48% at 25% 0%, rgba(90, 82, 168, 0.09), transparent 68%), radial-gradient(circle 500px at 85% 15%, rgba(149, 143, 209, 0.08), transparent 62%)",
+    previewStyle: { background: "linear-gradient(135deg, #ecebf8 0%, #f5f4fb 60%, #ffffff 100%)" },
   },
   {
     id: "washi-dots",
     name: "手账点阵",
     subtitle: "极细纸面网格点",
-    url: "radial-gradient(rgba(100, 116, 139, 0.22) 1px, transparent 1px)",
+    url: "radial-gradient(rgba(100, 116, 139, 0.18) 1px, transparent 1px)",
     previewStyle: {
-      backgroundColor: "#f8fafc",
-      backgroundImage: "radial-gradient(rgba(100, 116, 139, 0.35) 1px, transparent 1px)",
+      backgroundColor: "#f8f8f7",
+      backgroundImage: "radial-gradient(rgba(100, 116, 139, 0.32) 1px, transparent 1px)",
       backgroundSize: "8px 8px",
     },
   },
   {
     id: "morning-mist",
     name: "海盐青岚",
-    subtitle: "晴蓝薄荷呼吸感",
-    url: "radial-gradient(ellipse 80% 55% at 15% 0%, rgba(3, 105, 161, 0.13), transparent 68%), radial-gradient(circle 520px at 88% 20%, rgba(13, 148, 136, 0.13), transparent 60%)",
-    previewStyle: { background: "linear-gradient(135deg, #e0f2fe 0%, #ccfbf1 55%, #ffffff 100%)" },
+    subtitle: "清透雾蓝呼吸感",
+    url: "radial-gradient(ellipse 75% 50% at 18% 0%, rgba(36, 106, 136, 0.08), transparent 68%), radial-gradient(circle 500px at 85% 18%, rgba(111, 164, 188, 0.08), transparent 62%)",
+    previewStyle: { background: "linear-gradient(135deg, #e9f2f7 0%, #f4f9fb 60%, #ffffff 100%)" },
   },
 ];
 
-/** 6 套明暗双修、通过 WCAG AA 对比度校对的语义联动色盘 */
+/** 6 套低饱和同色系画廊配色（全线 WCAG AA ≥ 5.2:1，杜绝高饱和撞色） */
 export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
   {
-    id: "cherry_peach",
-    name: "樱桃绯红",
-    primary: "#d6336c",
-    primaryDark: "#d6336c",
-    secondary: "#ea7b52",
-    accent: "#fbcfe8",
-    tintLight: "#fdf8f9",
-    tintDark: "#141216",
-    surfaceDark: "#1f1b24",
-    description: "暖樱绯 × 蜜桃杏",
-  },
-  {
-    id: "sea_salt",
-    name: "海盐晴蓝",
-    primary: "#0369a1",
-    primaryDark: "#0275b2",
-    secondary: "#0d9488",
-    accent: "#bae6fd",
-    tintLight: "#f6fafc",
-    tintDark: "#0f161d",
-    surfaceDark: "#17222c",
-    description: "海盐蓝 × 清薄荷",
-  },
-  {
-    id: "forest_sun",
-    name: "森屿松翠",
-    primary: "#047857",
-    primaryDark: "#047857",
-    secondary: "#d97706",
-    accent: "#a7f3d0",
-    tintLight: "#f6fbf8",
-    tintDark: "#101916",
-    surfaceDark: "#182420",
-    description: "松柏翠 × 暖琥珀",
-  },
-  {
-    id: "twilight_nebula",
-    name: "暮光靛紫",
-    primary: "#4f46e5",
-    primaryDark: "#5850ec",
-    secondary: "#9333ea",
-    accent: "#c7d2fe",
-    tintLight: "#f8f7fc",
-    tintDark: "#13121e",
-    surfaceDark: "#1d1b2c",
-    description: "暮光靛 × 星云紫",
+    id: "rose_mist",
+    name: "浅樱豆沙",
+    primary: "#b5445e",
+    primaryDark: "#b5445e",
+    secondary: "#d38e9e",
+    accent: "#f3dce2",
+    tintLight: "#faf8f8",
+    tintDark: "#141316",
+    surfaceDark: "#1d1b20",
+    description: "豆沙玫瑰 × 浅烟粉",
   },
   {
     id: "kyoto_ink",
     name: "京都纸墨",
-    primary: "#334155",
-    primaryDark: "#c2410c",
-    secondary: "#c2410c",
-    accent: "#cbd5e1",
-    tintLight: "#f8f9fa",
+    primary: "#3f4d5e",
+    primaryDark: "#4e6076",
+    secondary: "#8494a6",
+    accent: "#dde3ea",
+    tintLight: "#f8f8f7",
     tintDark: "#131518",
-    surfaceDark: "#1d2025",
-    description: "黛石板 × 印章朱",
+    surfaceDark: "#1c1f24",
+    description: "青石墨蓝 × 宣纸白",
   },
   {
-    id: "sunset_caramel",
-    name: "落日琥珀",
-    primary: "#c2410c",
-    primaryDark: "#c2410c",
-    secondary: "#e11d48",
-    accent: "#fed7aa",
-    tintLight: "#fcf8f5",
-    tintDark: "#191412",
-    surfaceDark: "#251e1b",
-    description: "焦糖橙 × 玫瑰绯",
+    id: "sea_mist",
+    name: "海盐雾蓝",
+    primary: "#246a88",
+    primaryDark: "#277191",
+    secondary: "#6fa4bc",
+    accent: "#d5e7f0",
+    tintLight: "#f6f9fb",
+    tintDark: "#10161c",
+    surfaceDark: "#182129",
+    description: "雾海青蓝 × 浅海盐",
+  },
+  {
+    id: "moss_tea",
+    name: "抹茶苔绿",
+    primary: "#2c6d58",
+    primaryDark: "#2f745e",
+    secondary: "#77a696",
+    accent: "#d4e8e0",
+    tintLight: "#f7faf8",
+    tintDark: "#111815",
+    surfaceDark: "#19231f",
+    description: "抹茶松绿 × 浅艾草",
+  },
+  {
+    id: "wisteria_dusk",
+    name: "暮山紫藤",
+    primary: "#5a52a8",
+    primaryDark: "#6159b3",
+    secondary: "#958fd1",
+    accent: "#e1dff5",
+    tintLight: "#f8f7fb",
+    tintDark: "#14131d",
+    surfaceDark: "#1d1c2a",
+    description: "紫藤暮靛 × 浅丁香",
+  },
+  {
+    id: "amber_latte",
+    name: "焦糖拿铁",
+    primary: "#9a5033",
+    primaryDark: "#a65738",
+    secondary: "#c8937c",
+    accent: "#efe0d8",
+    tintLight: "#faf8f6",
+    tintDark: "#181412",
+    surfaceDark: "#231e1b",
+    description: "赤陶焦糖 × 燕麦奶咖",
   },
 ];
 
@@ -280,17 +280,19 @@ export function normalizeThemeOpacity(value: unknown): number {
 
 let currentThemeColorHex = DEFAULT_THEME_COLOR;
 let currentSecondaryColorHex = DEFAULT_SECONDARY_COLOR;
-let currentPaletteId: string | undefined = "cherry_peach";
+let currentPaletteId: string | undefined = "rose_mist";
 
-/** 根据预设 ID 或主色自动匹配对应的语义多色色盘 */
+/** 根据预设 ID 或主色自动匹配对应的语义色盘（兼容历史预设 ID 平滑迁移） */
 export function findPaletteByIdOrColor(presetId?: string | null, colorHex?: string | null): MultiColorPalette | undefined {
   if (presetId) {
     const byId = MULTI_COLOR_PALETTES.find((p) => p.id === presetId);
     if (byId) return byId;
-    if (presetId === "sakura") return MULTI_COLOR_PALETTES[0];
-    if (presetId === "paper_ink") return MULTI_COLOR_PALETTES[4];
-    if (presetId === "cyber_cold" || presetId === "aoi_sora") return MULTI_COLOR_PALETTES[1];
-    if (presetId === "midnight_deep") return MULTI_COLOR_PALETTES[3];
+    if (presetId === "cherry_peach" || presetId === "sakura") return MULTI_COLOR_PALETTES[0];
+    if (presetId === "paper_ink") return MULTI_COLOR_PALETTES[1];
+    if (presetId === "sea_salt" || presetId === "cyber_cold" || presetId === "aoi_sora") return MULTI_COLOR_PALETTES[2];
+    if (presetId === "forest_sun") return MULTI_COLOR_PALETTES[3];
+    if (presetId === "twilight_nebula" || presetId === "midnight_deep") return MULTI_COLOR_PALETTES[4];
+    if (presetId === "sunset_caramel") return MULTI_COLOR_PALETTES[5];
   }
   if (colorHex) {
     const norm = normalizeHex(colorHex);

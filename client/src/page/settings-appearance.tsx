@@ -120,8 +120,8 @@ export function SettingsAppearancePanel({
   setConfigValue: (type: "client" | "server", key: string, value: unknown) => void;
 }) {
   const cardVariant = normalizeFeedCardVariant(String(clientConfig.get("feed.card_variant") ?? "default"));
-  const activePreset = String(clientConfig.get("theme.preset") ?? "cherry_peach");
-  const activeColor = String(clientConfig.get("theme.color") ?? "#d6336c").toLowerCase();
+  const activePreset = String(clientConfig.get("theme.preset") ?? "rose_mist");
+  const activeColor = String(clientConfig.get("theme.color") ?? "#b5445e").toLowerCase();
   const activeAmbience = normalizeAmbienceMode(clientConfig.get("theme.ambience"));
   const wallpaperUrl = String(clientConfig.get("theme.wallpaper") ?? "none");
   const wallpaperOpacity = Number.parseInt(String(clientConfig.get("theme.wallpaper_opacity") ?? 35), 10) || 35;
@@ -226,7 +226,7 @@ export function SettingsAppearancePanel({
           <div className="flex items-center gap-2">
             <input
               type="color"
-              value={/^#[0-9a-f]{6}$/i.test(activeColor) ? activeColor : "#d6336c"}
+              value={/^#[0-9a-f]{6}$/i.test(activeColor) ? activeColor : "#b5445e"}
               onChange={(e) => {
                 const hex = e.target.value;
                 applyThemeColor(hex);

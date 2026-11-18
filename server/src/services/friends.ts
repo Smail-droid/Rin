@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { AppContext, CacheImpl, DB } from '../core/hono-types';
 import { friends } from '../db/schema';
 import { notify } from '../utils/webhook';
@@ -24,15 +24,17 @@ export function FriendService(): Hono {
 
         const friend_list = await profileAsync(c, 'friend_list_db', () => (admin
             ? db.query.friends.findMany({
-                orderBy: (friends: any, { asc, desc }: { asc: any, desc: any }) => [
-                    desc(friends.sort_order),
+                orderBy: (friends: any, { asc }: { asc: any }) => [
+                    sql`CASE WHEN ${friends.sort_order} > 0 THEN 0 ELSE 1 END`,
+                    asc(friends.sort_order),
                     asc(friends.createdAt)
                 ]
             })
             : db.query.friends.findMany({
                 where: eq(friends.accepted, 1),
-                orderBy: (friends: any, { asc, desc }: { asc: any, desc: any }) => [
-                    desc(friends.sort_order),
+                orderBy: (friends: any, { asc }: { asc: any }) => [
+                    sql`CASE WHEN ${friends.sort_order} > 0 THEN 0 ELSE 1 END`,
+                    asc(friends.sort_order),
                     asc(friends.createdAt)
                 ]
             })));
