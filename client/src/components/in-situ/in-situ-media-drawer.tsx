@@ -168,21 +168,21 @@ export function InSituMediaDrawer({
   return createPortal(
     <>
       <div
-        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs transition-opacity animate-fade-in"
+        className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px] transition-opacity"
         onClick={onClose}
       />
 
-      <div className="fixed top-0 bottom-0 right-0 z-50 w-full sm:w-[88vw] md:w-[780px] lg:w-[920px] bg-white dark:bg-[#12161f] shadow-2xl border-l border-black/10 dark:border-white/10 flex flex-col transition-transform duration-300 ease-out select-none">
+      <div className="fixed top-0 bottom-0 right-0 z-50 w-full sm:w-[86vw] md:w-[760px] lg:w-[860px] bg-white dark:bg-[#111520] shadow-[-12px_0_40px_-16px_rgba(15,23,42,0.22)] border-l border-neutral-200/80 dark:border-white/10 flex flex-col select-none ani-show-fast">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-black/5 dark:border-white/5 bg-neutral-50/60 dark:bg-white/[0.02] shrink-0">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-200/75 dark:border-white/[0.08] bg-neutral-50/70 dark:bg-white/[0.02] shrink-0">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-base">
               <i className="ri-folder-image-line" />
             </span>
             <div>
-              <h2 className="text-sm font-bold t-primary">星穹媒体暗房 · 资产聚合中心</h2>
-              <p className="text-[10px] text-neutral-400">
-                图床画廊与音廊曲库统一管理，支持拖拽直传与多种直链格式
+              <h2 className="text-[13px] font-bold text-neutral-900 dark:text-neutral-100">图床与媒体库</h2>
+              <p className="text-[11px] text-neutral-400">
+                图片、音频与附件统一管理，支持拖拽上传与复制外链
               </p>
             </div>
           </div>
@@ -288,7 +288,7 @@ export function InSituMediaDrawer({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索媒体..."
-              className="px-3 py-1 text-xs rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 outline-none focus:border-theme w-36 sm:w-48"
+              className="rin-field py-1.5 w-36 sm:w-48"
             />
             {activeTab === "music" ? (
               <button

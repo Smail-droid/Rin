@@ -1,59 +1,152 @@
 const DEFAULT_THEME_COLOR = "#fc466b";
+const DEFAULT_SECONDARY_COLOR = "#f59e6c";
 export const DEFAULT_THEME_OPACITY = 100;
 
 export interface ThemePreset {
   id: string;
   name: string;
   color: string;
+  secondary?: string;
   previewBg: string;
   accent: string;
   description: string;
 }
 
+export interface MultiColorPalette {
+  id: string;
+  name: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+  tintLight: string;
+  tintDark: string;
+  description: string;
+}
+
+/** 8 套多色联动色盘：每套同时驱动主强调色、辅助呼应色与柔和画布氛围 */
+export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
+  {
+    id: "cherry_peach",
+    name: "樱桃蜜桃",
+    primary: "#e84a72",
+    secondary: "#f59e6c",
+    accent: "#fbcfe8",
+    tintLight: "#fff5f7",
+    tintDark: "#24141b",
+    description: "暖樱粉 × 蜜桃杏",
+  },
+  {
+    id: "sea_salt",
+    name: "海盐薄荷",
+    primary: "#0284c7",
+    secondary: "#14b8a6",
+    accent: "#bae6fd",
+    tintLight: "#f0f9ff",
+    tintDark: "#0f1d28",
+    description: "晴空蓝 × 清薄荷",
+  },
+  {
+    id: "twilight_nebula",
+    name: "暮光星云",
+    primary: "#4f46e5",
+    secondary: "#a855f7",
+    accent: "#c7d2fe",
+    tintLight: "#f5f3ff",
+    tintDark: "#17142b",
+    description: "靛蓝 × 星云紫",
+  },
+  {
+    id: "forest_sun",
+    name: "森屿暖阳",
+    primary: "#059669",
+    secondary: "#d97706",
+    accent: "#a7f3d0",
+    tintLight: "#f0fdf4",
+    tintDark: "#10221c",
+    description: "松柏绿 × 暖琥珀",
+  },
+  {
+    id: "kyoto_ink",
+    name: "京都纸墨",
+    primary: "#334155",
+    secondary: "#c2410c",
+    accent: "#cbd5e1",
+    tintLight: "#f8fafc",
+    tintDark: "#161a20",
+    description: "黛石板 × 印章朱",
+  },
+  {
+    id: "sunset_caramel",
+    name: "落日焦糖",
+    primary: "#ea580c",
+    secondary: "#e11d48",
+    accent: "#fed7aa",
+    tintLight: "#fff7ed",
+    tintDark: "#241612",
+    description: "琥珀橙 × 玫瑰绯",
+  },
+  {
+    id: "aurora_prism",
+    name: "极光青紫",
+    primary: "#0d9488",
+    secondary: "#7c3aed",
+    accent: "#99f6e4",
+    tintLight: "#f0fdfa",
+    tintDark: "#112023",
+    description: "青翠 × 极光紫",
+  },
+  {
+    id: "berry_champagne",
+    name: "奶油浆果",
+    primary: "#be185d",
+    secondary: "#ca8a04",
+    accent: "#fbcfe8",
+    tintLight: "#fdf2f8",
+    tintDark: "#23131c",
+    description: "浆果梅 × 香槟金",
+  },
+];
+
 export const THEME_PRESETS: ThemePreset[] = [
-  { id: "sakura", name: "春日樱落", color: "#fc466b", previewBg: "#fff1f3", accent: "#ffd0da", description: "经典蔷薇绯红，生机与浪漫交织" },
-  { id: "paper_ink", name: "极简纸墨", color: "#27272a", previewBg: "#f4f4f5", accent: "#e4e4e7", description: "极简纯粹纸墨，水墨书卷雅致风范" },
-  { id: "cyber_cold", name: "赛博冷萃", color: "#00c4ff", previewBg: "#e0f7ff", accent: "#70e1ff", description: "冰蓝电光冷萃，通透未来科技质感" },
-  { id: "aoi_sora", name: "和风青空", color: "#0284c7", previewBg: "#e0f2fe", accent: "#7dd3fc", description: "海风拂过澄澈天际，辽阔明亮" },
-  { id: "midnight_deep", name: "午夜深邃", color: "#6366f1", previewBg: "#eef2ff", accent: "#a5b4fc", description: "静谧午夜深蓝星空，专注而内敛" },
-  { id: "violet_twilight", name: "暮光紫霞", color: "#8b5cf6", previewBg: "#f5f3ff", accent: "#c4b5fd", description: "落霞与晚霭交融的梦幻紫韵" },
-  { id: "forest_mist", name: "森屿绿野", color: "#059669", previewBg: "#ecfdf5", accent: "#6ee7b7", description: "苍翠幽深森林，带来源泉般的清新" },
-  { id: "golden_sunset", name: "落日熔金", color: "#d97706", previewBg: "#fffbeb", accent: "#fde68a", description: "暖阳晚霞熔金，温馨治愈的暮色" },
-  { id: "rose_cream", name: "玫瑰奶霜", color: "#f43f5e", previewBg: "#fff1f2", accent: "#fecdd3", description: "丝滑甜润的玫瑰奶霜，柔和典雅" },
-  { id: "mint_soda", name: "薄荷苏打", color: "#0d9488", previewBg: "#f0fdfa", accent: "#99f6e4", description: "清凉通透薄荷气泡，沁人心脾" },
-  { id: "ocean_abyss", name: "蔚蓝深海", color: "#2563eb", previewBg: "#eff6ff", accent: "#93c5fd", description: "浩瀚神秘深海，沉静广袤之美" },
-  { id: "lilac_dream", name: "迷雾丁香", color: "#c026d3", previewBg: "#fdf4ff", accent: "#f0abfc", description: "微风吹拂的丁香花海，轻盈曼妙" },
-  { id: "caramel_amber", name: "焦糖琥珀", color: "#b45309", previewBg: "#fef3c7", accent: "#fde68a", description: "温润沉香焦糖，富有复古年代韵味" },
-  { id: "moss_rain", name: "雨后青苔", color: "#65a30d", previewBg: "#f7fee7", accent: "#bef264", description: "初霁雨后青石苔藓，生机盎然" },
-  { id: "obsidian_slate", name: "黑曜石影", color: "#475569", previewBg: "#f1f5f9", accent: "#cbd5e1", description: "理性内敛石板灰调，高级质感" },
-  { id: "peach_coral", name: "珊瑚蜜桃", color: "#fb7185", previewBg: "#fff1f2", accent: "#fecdd3", description: "清甜初熟珊瑚蜜桃，活泼灵动" },
-  { id: "aurora_teal", name: "极光青翠", color: "#14b8a6", previewBg: "#ccfbf1", accent: "#5eead4", description: "北极星空下的青翠极光波纹" },
-  { id: "crimson_flame", name: "赤焰朱砂", color: "#dc2626", previewBg: "#fef2f2", accent: "#fca5a5", description: "东方传统朱砂赤金，端庄热烈" },
+  ...MULTI_COLOR_PALETTES.map((p) => ({
+    id: p.id,
+    name: p.name,
+    color: p.primary,
+    secondary: p.secondary,
+    previewBg: p.tintLight,
+    accent: p.accent,
+    description: p.description,
+  })),
+  { id: "sakura", name: "春日樱落", color: "#fc466b", secondary: "#f59e6c", previewBg: "#fff1f3", accent: "#ffd0da", description: "经典蔷薇绯红，生机与浪漫交织" },
+  { id: "paper_ink", name: "极简纸墨", color: "#27272a", secondary: "#c2410c", previewBg: "#f4f4f5", accent: "#e4e4e7", description: "极简纯粹纸墨，水墨书卷雅致风范" },
+  { id: "cyber_cold", name: "赛博冷萃", color: "#00c4ff", secondary: "#6366f1", previewBg: "#e0f7ff", accent: "#70e1ff", description: "冰蓝电光冷萃，通透未来科技质感" },
+  { id: "aoi_sora", name: "和风青空", color: "#0284c7", secondary: "#14b8a6", previewBg: "#e0f2fe", accent: "#7dd3fc", description: "海风拂过澄澈天际，辽阔明亮" },
+  { id: "midnight_deep", name: "午夜深邃", color: "#6366f1", secondary: "#a855f7", previewBg: "#eef2ff", accent: "#a5b4fc", description: "静谧午夜深蓝星空，专注而内敛" },
 ];
 
 export const ACCENT_COLOR_PRESETS = [
-  "#0ea5e9", // 天蓝 Sky
-  "#2563eb", // 宝蓝 Blue
-  "#4f46e5", // 靛蓝 Indigo
-  "#7c3aed", // 紫罗兰 Violet
-  "#9333ea", // 紫色 Purple
-  "#c026d3", // 品红 Fuchsia
-  "#fc466b", // 蔷薇粉 Rose
-  "#e11d48", // 玫瑰红 Crimson
-  "#ea580c", // 暖橙 Orange
-  "#d97706", // 琥珀黄 Amber
-  "#eab308", // 金黄 Yellow
-  "#84cc16", // 嫩绿 Lime
-  "#16a34a", // 翠绿 Green
-  "#0d9488", // 青绿 Teal
-  "#06b6d4", // 湖蓝 Cyan
-  "#475569", // 石板灰 Slate
+  "#0ea5e9",
+  "#2563eb",
+  "#4f46e5",
+  "#7c3aed",
+  "#9333ea",
+  "#c026d3",
+  "#e84a72",
+  "#e11d48",
+  "#ea580c",
+  "#d97706",
+  "#eab308",
+  "#84cc16",
+  "#16a34a",
+  "#0d9488",
+  "#06b6d4",
+  "#475569",
 ];
 
-export const OPACITY_SHORTCUTS = [100, 85, 70];
+export const OPACITY_SHORTCUTS = [100, 92, 82];
 
-function normalizeHex(value: string | undefined | null) {
-  if (!value) return DEFAULT_THEME_COLOR;
+function normalizeHex(value: string | undefined | null, fallback = DEFAULT_THEME_COLOR) {
+  if (!value) return fallback;
   const trimmed = value.trim();
 
   const short = /^#([0-9a-f]{3})$/i.exec(trimmed);
@@ -69,7 +162,7 @@ function normalizeHex(value: string | undefined | null) {
     return trimmed.toLowerCase();
   }
 
-  return DEFAULT_THEME_COLOR;
+  return fallback;
 }
 
 function hexToRgb(hex: string) {
@@ -123,39 +216,69 @@ export function normalizeThemeOpacity(value: unknown): number {
 }
 
 let currentThemeColorHex = DEFAULT_THEME_COLOR;
+let currentSecondaryColorHex = DEFAULT_SECONDARY_COLOR;
 
 function getPerceivedLuminance(rgb: { r: number; g: number; b: number }): number {
   return 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
 }
 
+/** 根据预设 ID 或主色自动匹配对应的多色组合 */
+export function findPaletteByIdOrColor(presetId?: string | null, colorHex?: string | null): MultiColorPalette | undefined {
+  if (presetId) {
+    const byId = MULTI_COLOR_PALETTES.find((p) => p.id === presetId);
+    if (byId) return byId;
+  }
+  if (colorHex) {
+    const norm = normalizeHex(colorHex);
+    const byColor = MULTI_COLOR_PALETTES.find((p) => p.primary.toLowerCase() === norm);
+    if (byColor) return byColor;
+  }
+  return undefined;
+}
+
 if (typeof window !== "undefined") {
   window.addEventListener("colorSchemeChange", () => {
-    applyThemeColor(currentThemeColorHex);
+    applyThemeColor(currentThemeColorHex, currentSecondaryColorHex);
   });
 }
 
-export function applyThemeColor(value: string | undefined | null) {
+export function applyThemeColor(value: string | undefined | null, secondaryValue?: string | null) {
   const color = normalizeHex(value);
+  const matchedPalette = findPaletteByIdOrColor(undefined, color);
+  const secondary = secondaryValue
+    ? normalizeHex(secondaryValue, DEFAULT_SECONDARY_COLOR)
+    : matchedPalette?.secondary || DEFAULT_SECONDARY_COLOR;
+
   currentThemeColorHex = color;
+  currentSecondaryColorHex = secondary;
+
   if (typeof document === "undefined") return;
   const root = document.documentElement;
 
   const isDark = root.getAttribute("data-color-mode") === "dark" || root.classList.contains("dark");
   const rgb = hexToRgb(color);
+  const secRgb = hexToRgb(secondary);
   const luminance = getPerceivedLuminance(rgb);
+  const secLuminance = getPerceivedLuminance(secRgb);
 
-  // 暗色模式下的低明度对比度自适应保护：防止选“极简纸墨”（#27272a）等深色在黑夜模式下造成“一片黑”
-  const effectiveRgb = isDark && luminance < 60 ? { r: 228, g: 228, b: 231 } : rgb;
+  // 暗色模式低明度对比度自适应保护：避免深黛/纸墨色在黑夜模式下融进背景
+  const effectiveRgb = isDark && luminance < 75 ? { r: 203, g: 213, b: 225 } : rgb;
+  const effectiveSecRgb = isDark && secLuminance < 75 ? { r: 251, g: 146, b: 60 } : secRgb;
 
   root.style.setProperty("--theme-rgb", toCssRgb(effectiveRgb));
   root.style.setProperty(
     "--theme-hover-rgb",
-    toCssRgb(isDark && luminance < 60 ? { r: 244, g: 244, b: 245 } : shade(color, -0.3))
+    toCssRgb(isDark && luminance < 75 ? { r: 226, g: 232, b: 240 } : shade(color, -0.22))
   );
   root.style.setProperty(
     "--theme-active-rgb",
-    toCssRgb(isDark && luminance < 60 ? { r: 212, g: 212, b: 216 } : shade(color, -0.4))
+    toCssRgb(isDark && luminance < 75 ? { r: 148, g: 163, b: 184 } : shade(color, -0.34))
   );
+  root.style.setProperty("--theme-secondary-rgb", toCssRgb(effectiveSecRgb));
+}
+
+export function applyThemePalette(palette: MultiColorPalette) {
+  applyThemeColor(palette.primary, palette.secondary);
 }
 
 export function applyThemeOpacity(value: unknown) {
@@ -166,10 +289,10 @@ export function applyThemeOpacity(value: unknown) {
   const alpha = opacity / 100;
   root.style.setProperty("--rin-surface-alpha", alpha.toString());
   root.style.setProperty("--rin-glass-opacity", `${opacity}%`);
-  // 毛玻璃模糊度：不透明时为 0px，透明时平滑增加模糊质感
-  const blurPx = opacity >= 100 ? 0 : Math.round((1 - alpha) * 20 + 6);
+  // 克制模糊度：避免重度发虚，仅在半透明时给予轻微清透磨砂
+  const blurPx = opacity >= 98 ? 0 : Math.min(12, Math.round((1 - alpha) * 18 + 3));
   root.style.setProperty("--rin-glass-blur", `${blurPx}px`);
-  root.style.setProperty("--rin-glass-border-alpha", opacity >= 100 ? "0.1" : `${(0.1 + (1 - alpha) * 0.15).toFixed(2)}`);
+  root.style.setProperty("--rin-glass-border-alpha", opacity >= 98 ? "0.08" : `${(0.08 + (1 - alpha) * 0.12).toFixed(2)}`);
 }
 
 export function applyArtTitleColor(value: string | undefined | null) {
@@ -219,12 +342,22 @@ export function applyThemeWallpaper(url: string | undefined | null, opacity?: nu
   if (!cleanUrl || cleanUrl === "none" || cleanUrl === "empty") {
     root.style.setProperty("--rin-wallpaper-url", "none");
     root.style.setProperty("--rin-wallpaper-opacity", "0");
+    root.style.setProperty("--rin-wallpaper-size", "cover");
+    root.style.setProperty("--rin-wallpaper-repeat", "no-repeat");
     document.body.classList.add("no-wallpaper");
     return;
   }
 
   document.body.classList.remove("no-wallpaper");
-  root.style.setProperty("--rin-wallpaper-url", `url('${cleanUrl}')`);
+
+  // 区分 CSS 渐变函数与图片 URL，彻底修复 radial-gradient 被错包进 url(...) 导致失效的问题
+  const isCssImageFn = /^(radial-gradient|linear-gradient|conic-gradient|repeating-linear-gradient|repeating-radial-gradient|url)\(/i.test(cleanUrl);
+  const isDotPattern = /1px,\s*transparent\s*1px/i.test(cleanUrl);
+
+  root.style.setProperty("--rin-wallpaper-url", isCssImageFn ? cleanUrl : `url('${cleanUrl}')`);
+  root.style.setProperty("--rin-wallpaper-size", isDotPattern ? "22px 22px" : "cover");
+  root.style.setProperty("--rin-wallpaper-repeat", isDotPattern ? "repeat" : "no-repeat");
+
   if (opacity !== undefined) {
     const alpha = Math.min(100, Math.max(0, opacity)) / 100;
     root.style.setProperty("--rin-wallpaper-opacity", alpha.toFixed(2));
@@ -246,7 +379,7 @@ export function applyGalleryTiltDegree(degree: number) {
   document.documentElement.style.setProperty("--rin-tilt-degree", `${clamped}deg`);
 }
 
-export function applyFullTheme(color?: string | null, opacity?: unknown) {
-  applyThemeColor(color);
+export function applyFullTheme(color?: string | null, opacity?: unknown, secondaryColor?: string | null) {
+  applyThemeColor(color, secondaryColor);
   applyThemeOpacity(opacity);
 }

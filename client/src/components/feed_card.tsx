@@ -133,44 +133,33 @@ export function FeedCard({ id, title, avatar, draft, listed, top, summary, readi
     }
 
     // =========================================================================
-    // 2. 巨幅画册海报 (Poster Visual Hero) - 沉浸式海报背景，横幅宽屏画幅，文字悬浮微光蒙版
+    // 2. 全幅沉浸画册 (Poster) - 无白边 4:3 画框 + 底部克制磨砂铭牌
     // =========================================================================
     if (activeVariant === "poster" && avatar) {
         const posterBody = (
-            <div className="group relative my-3 overflow-hidden rounded-3xl border border-black/10 shadow-lg hover:shadow-2xl transition-all duration-300 dark:border-white/10 break-inside-avoid">
-                <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-900">
+            <div className="group relative my-3 overflow-hidden rounded-2xl bg-neutral-900 shadow-sm hover:shadow-xl transition-all duration-300 break-inside-avoid">
+                <div className="relative aspect-[4/3] w-full overflow-hidden">
                     <img
                         src={avatar}
                         alt=""
-                        className="absolute inset-0 h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                        className="absolute inset-0 h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
                     />
-                    {/* 微光暗部渐变与磨砂文字浮层 */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent flex flex-col justify-end p-5 text-white">
+                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/65 via-black/20 to-transparent pointer-events-none" />
+                    <div className="absolute inset-x-3 bottom-3 rounded-xl bg-black/50 backdrop-blur-md border border-white/15 px-3.5 py-2.5 text-white">
+                        <div className="flex items-center justify-between text-[10px] font-mono text-white/75 mb-1">
+                            <span>{timeago(createdAt)}</span>
+                            <span>{finalReadingMinutes} 分钟</span>
+                        </div>
+                        <h2 className="text-base font-bold leading-snug line-clamp-1">
+                            {title}
+                        </h2>
                         {safeHashtags.length > 0 ? (
-                            <div className="flex items-center gap-1.5 flex-wrap text-xs text-white/70 mb-2">
-                                {safeHashtags.map(({ name }, i) => (
+                            <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-white/70 mt-1">
+                                {safeHashtags.slice(0, 3).map(({ name }, i) => (
                                     <span key={i}>#{name}</span>
                                 ))}
                             </div>
                         ) : null}
-                        <h2 className="text-xl font-bold leading-snug drop-shadow-sm group-hover:text-theme-hover transition-colors">
-                            {title}
-                        </h2>
-                        {summary ? (
-                            <p className="mt-2 line-clamp-2 text-xs text-white/80 leading-relaxed font-normal">
-                                {summary}
-                            </p>
-                        ) : null}
-                        <div className="flex items-center justify-between text-[11px] text-white/60 mt-3 pt-2.5 border-t border-white/15">
-                            <div className="flex items-center gap-2">
-                                <span>{timeago(createdAt)}</span>
-                                {top === 1 ? <span className="text-amber-400 font-bold">· {t('article.top.title')}</span> : null}
-                            </div>
-                            <span className="flex items-center gap-1">
-                                <i className="ri-time-line" />
-                                {finalReadingMinutes} 分钟
-                            </span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -179,41 +168,40 @@ export function FeedCard({ id, title, avatar, draft, listed, top, summary, readi
     }
 
     // =========================================================================
-    // 3. 极简杂志社论 (Editorial Magazine) - 宽幅艺术画报、典雅衬线标题与呼吸感摘要
+    // 3. 图文双栏杂志 (Editorial) - 横向 6:4 左文右图，去白底厚卡片框
     // =========================================================================
     if (activeVariant === "editorial") {
         const editorialBody = (
-            <article className="group my-2 break-inside-avoid overflow-hidden rounded-2xl border border-black/10 bg-w p-3.5 sm:p-4 shadow-xs hover:shadow-lg transition-all hover:-translate-y-0.5 dark:border-white/10">
-                {avatar ? (
-                    <div className="w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden rounded-xl mb-2.5 border border-black/5 dark:border-white/10 bg-neutral-100 dark:bg-neutral-800">
-                        <img src={avatar} alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            <article className="group py-5 border-b border-neutral-200/80 dark:border-white/10 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-5">
+                <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-2 text-[11px] font-mono text-neutral-400">
+                        <span>{timeago(createdAt)}</span>
+                        <span>·</span>
+                        <span>{finalReadingMinutes} 分钟阅读</span>
+                        {top === 1 ? <span className="text-theme font-sans font-semibold">· {t("article.top.title")}</span> : null}
+                        {draft === 1 ? <span className="text-amber-500 font-sans">· {t("draft")}</span> : null}
                     </div>
-                ) : null}
-                <div className="flex flex-col gap-1 px-0.5">
-                    {safeHashtags.length > 0 ? (
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-0.5 flex items-center gap-1.5 flex-wrap">
-                            {safeHashtags.map(({ name }, i) => (
-                                <span key={i} className="hover:text-theme">#{name}</span>
-                            ))}
-                        </div>
-                    ) : null}
-                    <h2 className="text-base sm:text-lg font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors leading-snug">
+                    <h2 className="text-lg sm:text-xl font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors leading-snug">
                         {title}
                     </h2>
                     {summary ? (
-                        <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300 font-normal">
+                        <p className="line-clamp-3 text-xs sm:text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
                             {summary}
                         </p>
                     ) : null}
+                    {safeHashtags.length > 0 ? (
+                        <div className="text-[11px] text-neutral-400 flex items-center gap-2 flex-wrap pt-1">
+                            {safeHashtags.slice(0, 4).map(({ name }, i) => (
+                                <span key={i}>#{name}</span>
+                            ))}
+                        </div>
+                    ) : null}
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-neutral-400 mt-2.5 pt-2 border-t border-black/5 dark:border-white/5 font-mono px-0.5">
-                    <div className="flex items-center gap-2">
-                        <span>{timeago(createdAt)}</span>
-                        {top === 1 ? <span className="text-theme font-semibold">· {t('article.top.title')}</span> : null}
-                        {draft === 1 ? <span className="text-amber-500">· {t("draft")}</span> : null}
+                {avatar ? (
+                    <div className="w-full sm:w-48 md:w-56 shrink-0 aspect-[16/10] overflow-hidden rounded-xl border border-neutral-200/70 dark:border-white/10 bg-neutral-100 dark:bg-neutral-800">
+                        <img src={avatar} alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     </div>
-                    <span>{finalReadingMinutes} 分钟阅读</span>
-                </div>
+                ) : null}
             </article>
         );
         return preview ? editorialBody : <Link href={`/feed/${id}`} target="_blank" rel="noopener noreferrer" className="block min-w-0 w-full">{editorialBody}</Link>;

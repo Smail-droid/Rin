@@ -215,24 +215,24 @@ export function InSituWritingDrawer({
     <>
       {/* 遮罩 */}
       <div
-        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs transition-opacity animate-fade-in"
+        className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px] transition-opacity"
         onClick={onClose}
       />
 
-      {/* 右侧滑出沉浸式在场写作工坊抽屉 */}
-      <div className="fixed top-0 bottom-0 right-0 z-50 w-full sm:w-[88vw] md:w-[780px] lg:w-[920px] bg-white dark:bg-[#12161f] shadow-2xl border-l border-black/10 dark:border-white/10 flex flex-col transition-transform duration-300 ease-out select-none">
+      {/* 右侧滑出写作抽屉（与全站统一设计语言对齐） */}
+      <div className="fixed top-0 bottom-0 right-0 z-50 w-full sm:w-[86vw] md:w-[760px] lg:w-[880px] bg-white dark:bg-[#111520] shadow-[-12px_0_40px_-16px_rgba(15,23,42,0.22)] border-l border-neutral-200/80 dark:border-white/10 flex flex-col select-none ani-show-fast">
         {/* 1. 顶部操作栏 */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-black/5 dark:border-white/5 bg-neutral-50/60 dark:bg-white/[0.02] shrink-0">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-200/75 dark:border-white/[0.08] bg-neutral-50/70 dark:bg-white/[0.02] shrink-0">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-base">
               <i className="ri-quill-pen-line" />
             </span>
             <div>
-              <h2 className="text-sm font-bold t-primary">
-                {editId ? `在场编辑文章 #${editId}` : "灵感笔筒 · 在场创作工坊"}
+              <h2 className="text-[13px] font-bold text-neutral-900 dark:text-neutral-100">
+                {editId ? `编辑文章 #${editId}` : "撰写新文章"}
               </h2>
-              <p className="text-[10px] text-neutral-400">
-                原地创作与排版，无需跳转独立后台页面
+              <p className="text-[11px] text-neutral-400">
+                前台原地写作与排版，完成后直接发布
               </p>
             </div>
           </div>
@@ -272,22 +272,22 @@ export function InSituWritingDrawer({
         </div>
 
         {/* 2. 标题与属性折叠区 */}
-        <div className="p-4 sm:p-5 border-b border-black/5 dark:border-white/5 space-y-3 shrink-0 bg-white/80 dark:bg-[#12161f]/80">
+        <div className="p-4 sm:p-5 border-b border-neutral-200/75 dark:border-white/[0.08] space-y-3 shrink-0 bg-white dark:bg-[#111520]">
           <div className="flex items-center gap-2">
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="文章标题..."
-              className="flex-1 px-4 py-2.5 rounded-2xl border border-black/10 dark:border-white/10 bg-black/[0.015] dark:bg-white/[0.02] text-sm sm:text-base font-bold t-primary outline-none focus:border-theme focus:ring-2 focus:ring-theme/20 transition"
+              className="flex-1 px-3.5 py-2 rounded-xl border border-neutral-200/90 dark:border-white/10 bg-white dark:bg-white/[0.04] text-sm sm:text-base font-bold text-neutral-900 dark:text-neutral-100 outline-none focus:border-theme focus:ring-2 focus:ring-theme/15 transition"
             />
             <button
               type="button"
               onClick={() => setIsMetaExpanded((p) => !p)}
-              className={`px-3 py-2.5 rounded-2xl border text-xs font-bold transition flex items-center gap-1 shrink-0 ${
+              className={`px-3 py-2 rounded-xl border text-xs font-semibold transition flex items-center gap-1 shrink-0 cursor-pointer ${
                 isMetaExpanded
                   ? "border-theme bg-theme/10 text-theme"
-                  : "border-black/10 dark:border-white/10 text-neutral-500 hover:border-theme hover:text-theme"
+                  : "border-neutral-200/90 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:border-theme hover:text-theme"
               }`}
               title="展开更多属性 (简介、别名、标签、可见性)"
             >
@@ -331,8 +331,8 @@ export function InSituWritingDrawer({
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="文章专属密码锁 (留空为公开，设置后访客需密码解锁)..."
-                    className="w-full pl-8 pr-3 py-2 rounded-2xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-neutral-800 text-xs outline-none focus:border-theme"
+                    placeholder="文章访问密码 (留空为公开)..."
+                    className="rin-field pl-8"
                   />
                 </div>
               </div>

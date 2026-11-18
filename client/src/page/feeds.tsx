@@ -111,13 +111,13 @@ function AtelierPhotoCard({
     const hasImage = Boolean(feed.avatar) && !imageError;
     const variant = siteConfig.feedCardVariant || "default";
 
-    // 1. 极客高密单行 (Compact - 标题绝对优先满宽展现，绝不被日期与管理按钮挤压截断)
+    // 1. 紧凑文章列表 (Compact - 表格级高密单行，日期左置、标题满宽、操作悬浮显现)
     if (variant === "compact") {
         const dateObj = new Date(feed.createdAt);
         const shortDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
 
         return (
-            <div className="relative group/card break-inside-avoid w-full mb-2">
+            <div className="relative group/card w-full">
                 <Link
                     href={`/feed/${feed.id}`}
                     draggable={draggable && canManage}
@@ -125,37 +125,37 @@ function AtelierPhotoCard({
                     onDragOver={onDragOver}
                     onDrop={onDrop}
                     onDragEnd={onDragEnd}
-                    className={`group flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3 rounded-2xl border border-black/5 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xs px-3.5 py-2.5 transition-all hover:border-theme/40 hover:bg-white dark:border-white/5 dark:hover:border-theme/40 dark:hover:bg-neutral-800/70 shadow-2xs ${
-                        isDragging ? "opacity-35 scale-95 border-theme border-dashed" : ""
-                    } ${isDragOver ? "ring-2 ring-theme/40 scale-[1.01]" : ""}`}
+                    className={`group flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4 px-4 py-3 transition-colors hover:bg-theme/[0.04] dark:hover:bg-white/[0.03] ${
+                        isDragging ? "opacity-35 bg-theme/5" : ""
+                    } ${isDragOver ? "ring-2 ring-inset ring-theme/40" : ""}`}
                 >
-                    {/* 主区：文章标题占满绝大部分宽度，清晰可读 */}
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className="hidden sm:inline-block w-[84px] shrink-0 font-mono text-[11px] tabular-nums text-neutral-400">
+                            {shortDate}
+                        </span>
                         {feed.top === 1 ? (
-                            <span className="shrink-0 rounded-md bg-theme/10 px-1.5 py-0.5 text-[10px] font-bold text-theme">
-                                {t('article.top.title')}
+                            <span className="shrink-0 rounded-md bg-theme/10 px-1.5 py-0.5 text-[10px] font-semibold text-theme">
+                                {t("article.top.title")}
                             </span>
                         ) : null}
                         {feed.draft === 1 ? (
-                            <span className="shrink-0 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-500">
+                            <span className="shrink-0 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
                                 {t("draft")}
                             </span>
                         ) : null}
-                        <h2 className="text-[13px] sm:text-sm font-semibold text-neutral-800 dark:text-neutral-200 line-clamp-1 sm:truncate group-hover:text-theme transition-colors flex-1 min-w-0">
+                        <h2 className="text-[13px] sm:text-sm font-medium text-neutral-800 dark:text-neutral-100 line-clamp-1 sm:truncate group-hover:text-theme transition-colors flex-1 min-w-0">
                             {feed.title}
                         </h2>
                     </div>
 
-                    {/* 副区：日期、阅读时长与轻巧管理操作 (手机端沉入下方微行不挤标题，桌面端右对齐且操作悬浮显现) */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 text-[11px] text-neutral-400">
-                        <div className="flex items-center gap-2 font-mono text-[10px] sm:text-[11px] opacity-80">
-                            <span>{shortDate}</span>
-                            <span className="opacity-50">·</span>
+                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 text-[11px] text-neutral-400">
+                        <div className="flex items-center gap-2 font-mono text-[11px] tabular-nums">
+                            <span className="sm:hidden">{shortDate}</span>
                             <span>{readingTime} 分钟</span>
                         </div>
                         {canManage ? (
                             <div
-                                className="flex items-center gap-1 sm:opacity-40 sm:group-hover:opacity-100 transition-opacity"
+                                className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <button
@@ -166,8 +166,8 @@ function AtelierPhotoCard({
                                         onToggleTop?.(feed.id, feed.top === 1 ? 0 : 1);
                                     }}
                                     title={feed.top === 1 ? "取消置顶" : "置顶"}
-                                    className={`h-5 w-5 sm:h-6 sm:w-6 rounded-md flex items-center justify-center text-[11px] transition cursor-pointer ${
-                                        feed.top === 1 ? "bg-theme text-white" : "bg-black/5 dark:bg-white/5 hover:text-theme"
+                                    className={`h-6 w-6 rounded-md flex items-center justify-center text-xs transition cursor-pointer ${
+                                        feed.top === 1 ? "bg-theme text-white" : "bg-neutral-100 dark:bg-white/10 hover:text-theme"
                                     }`}
                                 >
                                     <i className={feed.top === 1 ? "ri-pushpin-fill" : "ri-pushpin-line"} />
@@ -181,8 +181,8 @@ function AtelierPhotoCard({
                                             new CustomEvent("rin:open-writing-drawer", { detail: { id: feed.id } })
                                         );
                                     }}
-                                    title="在场编辑文章"
-                                    className="h-5 w-5 sm:h-6 sm:w-6 rounded-md flex items-center justify-center text-[11px] bg-black/5 dark:bg-white/5 hover:text-theme transition cursor-pointer"
+                                    title="就地编辑文章"
+                                    className="h-6 w-6 rounded-md flex items-center justify-center text-xs bg-neutral-100 dark:bg-white/10 hover:text-theme transition cursor-pointer"
                                 >
                                     <i className="ri-edit-line" />
                                 </button>
@@ -194,10 +194,10 @@ function AtelierPhotoCard({
         );
     }
 
-    // 2. 巨幅画册海报 (Poster - 封面立绘100%纯净展现，文字下移分离，绝不遮挡角色原画)
+    // 2. 全幅沉浸画册 (Poster - 无白边满幅展墙，4:3 艺术画框 + 底部克制磨砂铭牌)
     if (variant === "poster") {
         return (
-            <div className="relative group/card break-inside-avoid w-full mb-5 sm:mb-6">
+            <div className="relative group/card w-full">
                 <Link
                     href={`/feed/${feed.id}`}
                     draggable={draggable && canManage}
@@ -205,12 +205,12 @@ function AtelierPhotoCard({
                     onDragOver={onDragOver}
                     onDrop={onDrop}
                     onDragEnd={onDragEnd}
-                    className={`group relative block w-full overflow-hidden rounded-3xl border border-black/10 dark:border-white/10 bg-white/85 dark:bg-[#18181b]/85 backdrop-blur-md shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 ${
-                        isDragging ? "opacity-35 scale-95 border-theme border-dashed" : ""
+                    className={`group relative block aspect-[4/3] w-full overflow-hidden rounded-2xl bg-neutral-900 shadow-sm hover:shadow-xl transition-all duration-300 ${
+                        isDragging ? "opacity-35 scale-95 ring-2 ring-theme" : ""
                     } ${isDragOver ? "ring-4 ring-theme/40" : ""}`}
                 >
                     {canManage ? (
-                        <div className="absolute right-3.5 top-3.5 z-20 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                             <button
                                 type="button"
                                 onClick={(e) => {
@@ -219,7 +219,7 @@ function AtelierPhotoCard({
                                     onEditCover?.(feed);
                                 }}
                                 title="更换封面"
-                                className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme"
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-md border border-white/15 transition hover:bg-theme"
                             >
                                 <i className="ri-image-edit-line text-xs" />
                             </button>
@@ -230,98 +230,8 @@ function AtelierPhotoCard({
                                     e.stopPropagation();
                                     window.dispatchEvent(new CustomEvent("rin:open-writing-drawer", { detail: { id: feed.id } }));
                                 }}
-                                title="在场就地编辑文章"
-                                className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme"
-                            >
-                                <i className="ri-edit-line text-xs" />
-                            </button>
-                        </div>
-                    ) : null}
-
-                    {/* 1. 顶部 100% 完整原画插图展示区 (无任何文字遮挡遮挡) */}
-                    <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                        {hasImage ? (
-                            <img
-                                src={feed.avatar}
-                                alt=""
-                                className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                            />
-                        ) : (
-                            <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-tr from-theme/10 to-transparent">
-                                <i className="ri-image-line text-4xl text-theme/60 mb-2" />
-                                <span className="text-xs text-neutral-400">暂无插图封面</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* 2. 底部文字与信息区 (下移分离，保留完整画质) */}
-                    <div className="p-4 sm:p-5 flex flex-col justify-between">
-                        <div className="flex items-center gap-2 mb-1.5 text-[11px] font-mono text-neutral-400">
-                            <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
-                            {feed.top === 1 ? <span className="text-theme font-bold">· 置顶</span> : null}
-                            {feed.draft === 1 ? <span className="text-amber-500 font-bold">· 草稿</span> : null}
-                        </div>
-                        <h2 className="text-base sm:text-lg font-bold leading-snug t-primary group-hover:text-theme transition-colors line-clamp-2">
-                            {feed.title}
-                        </h2>
-                        {feed.summary ? (
-                            <p className="mt-1.5 line-clamp-2 text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed font-normal">
-                                {feed.summary}
-                            </p>
-                        ) : null}
-                        <div className="flex items-center justify-between text-[11px] text-neutral-400 mt-3 pt-2.5 border-t border-black/5 dark:border-white/5 font-mono">
-                            <span className="flex items-center gap-1">
-                                <i className="ri-time-line text-xs" />
-                                <span>{readingTime} 分钟阅读</span>
-                            </span>
-                            <span className="text-theme opacity-80 group-hover:translate-x-1 transition-transform inline-flex items-center gap-0.5 font-bold">
-                                阅读全文 <i className="ri-arrow-right-line" />
-                            </span>
-                        </div>
-                    </div>
-                </Link>
-            </div>
-        );
-    }
-
-    // 3. 极简杂志社论 (Editorial)
-    if (variant === "editorial") {
-        return (
-            <div className="relative group/card break-inside-avoid w-full mb-5 sm:mb-6">
-                <Link
-                    href={`/feed/${feed.id}`}
-                    draggable={draggable && canManage}
-                    onDragStart={onDragStart}
-                    onDragOver={onDragOver}
-                    onDrop={onDrop}
-                    onDragEnd={onDragEnd}
-                    className={`group relative block w-full rounded-2xl border border-black/10 bg-white dark:bg-neutral-900 p-3.5 sm:p-4 shadow-xs hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 dark:border-white/10 ${
-                        isDragging ? "opacity-35 scale-95 border-theme border-dashed" : ""
-                    } ${isDragOver ? "ring-4 ring-theme/40" : ""}`}
-                >
-                    {canManage ? (
-                        <div className="absolute right-3 top-3 z-20 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onEditCover?.(feed);
-                                }}
-                                title="更换封面"
-                                className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-theme shadow-xs backdrop-blur-xs transition hover:scale-110"
-                            >
-                                <i className="ri-image-edit-line text-xs" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    window.dispatchEvent(new CustomEvent("rin:open-writing-drawer", { detail: { id: feed.id } }));
-                                }}
-                                title="在场编辑文章"
-                                className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-theme shadow-xs backdrop-blur-xs transition hover:scale-110"
+                                title="就地编辑文章"
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-md border border-white/15 transition hover:bg-theme"
                             >
                                 <i className="ri-edit-line text-xs" />
                             </button>
@@ -329,33 +239,135 @@ function AtelierPhotoCard({
                     ) : null}
 
                     {hasImage ? (
-                        <div className="w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden rounded-xl mb-2.5 border border-black/5 dark:border-white/10 bg-neutral-100 dark:bg-neutral-800">
-                            <img src={feed.avatar} alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img
+                            src={feed.avatar}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            onError={() => setImageError(true)}
+                            className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                        />
+                    ) : (
+                        <div className="h-full w-full bg-gradient-to-br from-theme/85 via-theme-secondary/75 to-neutral-900 p-6 flex items-start justify-end">
+                            <i className="ri-gallery-line text-4xl text-white/25" />
                         </div>
-                    ) : null}
-                    <div className="flex flex-col gap-1 px-0.5">
-                        <div className="flex items-center gap-2 mb-0.5 text-[11px] font-mono text-neutral-400">
-                            <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
-                            {feed.top === 1 ? <span className="text-theme font-bold">· 置顶</span> : null}
-                            {feed.draft === 1 ? <span className="text-amber-500 font-bold">· 草稿</span> : null}
+                    )}
+
+                    {/* 底部微渐变保护 + 克制悬浮展厅铭牌 */}
+                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/65 via-black/20 to-transparent pointer-events-none" />
+                    <div className="absolute inset-x-3 bottom-3 rounded-xl bg-black/50 backdrop-blur-md border border-white/15 px-3.5 py-2.5 text-white transition-transform duration-300 group-hover:-translate-y-0.5">
+                        <div className="flex items-center justify-between gap-2 text-[10px] font-mono text-white/75 mb-1">
+                            <span className="flex items-center gap-1.5">
+                                <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
+                                {feed.top === 1 ? <span className="px-1.5 py-0.2 rounded bg-theme/85 text-white font-sans font-semibold">置顶</span> : null}
+                                {feed.draft === 1 ? <span className="px-1.5 py-0.2 rounded bg-amber-500/85 text-white font-sans font-semibold">草稿</span> : null}
+                            </span>
+                            <span>{readingTime} 分钟</span>
                         </div>
-                        <h2 className="text-base sm:text-lg font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors leading-snug">
+                        <h2 className="text-sm sm:text-[15px] font-bold leading-snug line-clamp-1 tracking-tight">
                             {feed.title}
                         </h2>
-                        {feed.summary ? (
-                            <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
-                                {feed.summary}
-                            </p>
-                        ) : null}
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-neutral-400 mt-2.5 pt-2 border-t border-black/5 dark:border-white/5 font-mono px-0.5">
-                        <span>{readingTime} 分钟阅读</span>
-                        <span className="text-theme opacity-80 group-hover:translate-x-1 transition-transform inline-flex items-center gap-0.5">
-                            阅读全文 <i className="ri-arrow-right-line" />
-                        </span>
                     </div>
                 </Link>
             </div>
+        );
+    }
+
+    // 3. 图文双栏杂志 (Editorial - 单列宽幅 6:4 左文右图，去白底厚卡片框，用细横线分隔)
+    if (variant === "editorial") {
+        return (
+            <article className="relative group/card w-full">
+                <Link
+                    href={`/feed/${feed.id}`}
+                    draggable={draggable && canManage}
+                    onDragStart={onDragStart}
+                    onDragOver={onDragOver}
+                    onDrop={onDrop}
+                    onDragEnd={onDragEnd}
+                    className={`group relative flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-5 sm:gap-8 py-6 sm:py-7 transition-colors ${
+                        isDragging ? "opacity-35" : ""
+                    } ${isDragOver ? "bg-theme/[0.04] rounded-xl px-3" : ""}`}
+                >
+                    {/* 左侧 60% 文字主区：刊号元信息 + 大号衬线标题 + 3 行摘要 */}
+                    <div className="flex-1 min-w-0 flex flex-col gap-2">
+                        <div className="flex items-center gap-2.5 text-[11px] font-mono text-neutral-400">
+                            <span className="tabular-nums">{new Date(feed.createdAt).toLocaleDateString()}</span>
+                            <span>·</span>
+                            <span>{readingTime} 分钟阅读</span>
+                            {feed.top === 1 ? (
+                                <span className="px-1.5 py-0.5 rounded bg-theme/10 text-theme font-sans font-semibold text-[10px]">
+                                    置顶
+                                </span>
+                            ) : null}
+                            {feed.draft === 1 ? (
+                                <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-sans font-semibold text-[10px]">
+                                    草稿
+                                </span>
+                            ) : null}
+                        </div>
+
+                        <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-50 group-hover:text-theme transition-colors leading-snug">
+                            {feed.title}
+                        </h2>
+
+                        {feed.summary ? (
+                            <p className="line-clamp-3 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 max-w-2xl">
+                                {feed.summary}
+                            </p>
+                        ) : null}
+
+                        <div className="flex items-center justify-between pt-1.5">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-theme group-hover:gap-2 transition-all">
+                                <span>阅读全文</span>
+                                <i className="ri-arrow-right-line" />
+                            </span>
+
+                            {canManage ? (
+                                <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onEditCover?.(feed);
+                                        }}
+                                        title="更换封面"
+                                        className="h-6 w-6 rounded-md border border-neutral-200 dark:border-white/10 flex items-center justify-center text-neutral-500 hover:text-theme hover:border-theme transition"
+                                    >
+                                        <i className="ri-image-edit-line text-xs" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            window.dispatchEvent(new CustomEvent("rin:open-writing-drawer", { detail: { id: feed.id } }));
+                                        }}
+                                        title="就地编辑文章"
+                                        className="h-6 w-6 rounded-md border border-neutral-200 dark:border-white/10 flex items-center justify-center text-neutral-500 hover:text-theme hover:border-theme transition"
+                                    >
+                                        <i className="ri-edit-line text-xs" />
+                                    </button>
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    {/* 右侧 40% 配图：简洁无杂饰的 16:10 摄影构图 */}
+                    {hasImage ? (
+                        <div className="w-full sm:w-56 md:w-72 shrink-0 aspect-[16/10] overflow-hidden rounded-xl border border-neutral-200/70 dark:border-white/10 bg-neutral-100 dark:bg-neutral-800">
+                            <img
+                                src={feed.avatar}
+                                alt=""
+                                loading="lazy"
+                                decoding="async"
+                                onError={() => setImageError(true)}
+                                className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                            />
+                        </div>
+                    ) : null}
+                </Link>
+            </article>
         );
     }
 
@@ -581,32 +593,51 @@ function StickyNoteItem({
         );
     };
 
-    // 极客高密单行适配 (Terminal Compact Adapter: 便签整齐融入单行数据流，彻底消灭违和感)
-    if (siteConfig?.feedCardVariant === "compact") {
+    // 紧凑文章列表 / 图文双栏杂志适配：便签自动收敛为克制横向导览条，避免破坏阅读流
+    if (siteConfig?.feedCardVariant === "compact" || siteConfig?.feedCardVariant === "editorial") {
+        const isEditorial = siteConfig?.feedCardVariant === "editorial";
         const meta = {
             about: { icon: "ri-user-smile-line", title: "关于我", url: siteConfig.atelierAboutUrl || "/about", desc: siteConfig.atelierAboutDesc || "记忆工坊与随笔空间" },
             timeline: { icon: "ri-time-line", title: "岁月轨迹", url: siteConfig.atelierTimelineUrl || "/timeline", desc: siteConfig.atelierTimelineDesc || "时间轴历程与脚印" },
-            moments: { icon: "ri-chat-smile-2-line", title: "生活随笔", url: siteConfig.atelierMomentsUrl || "/moments", desc: siteConfig.atelierMomentsDesc || "日常随笔与微言动态" },
-            friends: { icon: "ri-links-line", title: "星标友链", url: siteConfig.atelierFriendsUrl || "/friends", desc: siteConfig.atelierFriendsDesc || "友情链接与同行空间" },
+            moments: { icon: "ri-chat-smile-2-line", title: "日常随想", url: siteConfig.atelierMomentsUrl || "/moments", desc: siteConfig.atelierMomentsDesc || "日常随笔与动态" },
+            friends: { icon: "ri-links-line", title: "星廊友链", url: siteConfig.atelierFriendsUrl || "/friends", desc: siteConfig.atelierFriendsDesc || "友情链接与同行空间" },
             search: { icon: "ri-search-line", title: "站内检索", url: siteConfig.atelierSearchUrl || "/search", desc: siteConfig.atelierSearchDesc || "输入关键词快速检索" },
         }[type];
 
         return (
-            <div className={`group my-1.5 flex items-center justify-between gap-3 rounded-2xl border border-dashed border-theme/40 bg-theme/[0.04] hover:bg-theme/[0.08] px-4 py-3 transition-all text-xs ${dragStyleClasses}`} {...dragHandlers}>
+            <div
+                className={`group flex items-center justify-between gap-3 transition-colors text-xs ${
+                    isEditorial
+                        ? "py-4 pl-4 border-l-2 border-theme/60 bg-theme/[0.025] hover:bg-theme/[0.05] pr-3 my-2 rounded-r-xl"
+                        : "px-4 py-2.5 bg-neutral-50/70 dark:bg-white/[0.02] hover:bg-theme/[0.04]"
+                } ${dragStyleClasses}`}
+                {...dragHandlers}
+            >
                 <Link href={meta.url} className="flex items-center gap-3 min-w-0 flex-1">
                     <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-theme/10 text-theme shrink-0">
                         <i className={meta.icon} />
                     </span>
-                    <span className="font-mono font-bold text-theme shrink-0">[{meta.title}]</span>
-                    <span className="truncate text-neutral-500 dark:text-neutral-400 font-mono text-xs">{meta.desc}</span>
+                    <span className="font-semibold text-neutral-800 dark:text-neutral-100 shrink-0">{meta.title}</span>
+                    <span className="truncate text-neutral-500 dark:text-neutral-400">{meta.desc}</span>
                 </Link>
                 <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] font-mono text-theme/70 font-bold">ENTRY ➔</span>
-                    {canManage && (
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEditNote?.(type); }} className="text-neutral-400 hover:text-theme p-1">
+                    <Link href={meta.url} className="text-[11px] font-medium text-theme hover:underline">
+                        进入 &rarr;
+                    </Link>
+                    {canManage ? (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onEditNote?.(type);
+                            }}
+                            className="text-neutral-400 hover:text-theme p-1 cursor-pointer"
+                            title="编辑此导览卡片"
+                        >
                             <i className="ri-settings-4-line text-xs" />
                         </button>
-                    )}
+                    ) : null}
                 </div>
             </div>
         );
@@ -1128,24 +1159,42 @@ function NextDeckFlipCard({
         }
     };
 
-    // 极客高密单行适配 (Terminal Compact Flip Card)
-    if (siteConfig?.feedCardVariant === "compact") {
+    // 紧凑列表与图文杂志适配：画廊入口与列表节奏统一
+    if (siteConfig?.feedCardVariant === "compact" || siteConfig?.feedCardVariant === "editorial") {
+        const isEditorial = siteConfig?.feedCardVariant === "editorial";
         return (
-            <div className="group my-1.5 flex items-center justify-between gap-3 rounded-2xl border border-dashed border-theme/40 bg-theme/[0.04] hover:bg-theme/[0.08] px-4 py-3 transition-all text-xs">
+            <div
+                className={`group flex items-center justify-between gap-3 transition-colors text-xs ${
+                    isEditorial
+                        ? "py-4 pl-4 border-l-2 border-theme-secondary/70 bg-theme-secondary/[0.04] pr-3 my-2 rounded-r-xl"
+                        : "px-4 py-2.5 bg-neutral-50/70 dark:bg-white/[0.02] hover:bg-theme/[0.04]"
+                }`}
+            >
                 <Link href={deckUrl} className="flex items-center gap-3 min-w-0 flex-1">
                     <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-theme/10 text-theme shrink-0">
                         <i className="ri-gallery-line" />
                     </span>
-                    <span className="font-mono font-bold text-theme shrink-0">[记忆翻动]</span>
-                    <span className="truncate text-neutral-500 dark:text-neutral-400 font-mono text-xs">{deckDesc}</span>
+                    <span className="font-semibold text-neutral-800 dark:text-neutral-100 shrink-0">图库相册</span>
+                    <span className="truncate text-neutral-500 dark:text-neutral-400">{deckDesc}</span>
                 </Link>
                 <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] font-mono text-theme/70 font-bold">GALLERY ➔</span>
-                    {canManage && (
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEditDeck?.(); }} className="text-neutral-400 hover:text-theme p-1">
+                    <Link href={deckUrl} className="text-[11px] font-medium text-theme hover:underline">
+                        浏览 &rarr;
+                    </Link>
+                    {canManage ? (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onEditDeck?.();
+                            }}
+                            className="text-neutral-400 hover:text-theme p-1 cursor-pointer"
+                            title="编辑图库入口"
+                        >
                             <i className="ri-settings-4-line text-xs" />
                         </button>
-                    )}
+                    ) : null}
                 </div>
             </div>
         );
@@ -2125,8 +2174,22 @@ export function FeedsPage() {
                     <EmptyFeedsState listState={listState} canWrite={Boolean(profile?.permission)} />
                 ) : (
                     <div
-                        style={{ columnGap: `${gapSize}px` }}
-                        className={`${siteConfig.feedCardVariant === "compact" ? "max-w-4xl mx-auto space-y-2.5" : `${getColumnsClass(siteConfig.galleryColumns)} space-y-6`} ani-show`}
+                        style={
+                            siteConfig.feedCardVariant === "poster"
+                                ? { gap: `${gapSize}px` }
+                                : siteConfig.feedCardVariant === "default"
+                                ? { columnGap: `${gapSize}px` }
+                                : undefined
+                        }
+                        className={`${
+                            siteConfig.feedCardVariant === "compact"
+                                ? "max-w-4xl mx-auto rounded-2xl border border-neutral-200/80 dark:border-white/10 bg-white/95 dark:bg-neutral-900/90 divide-y divide-neutral-100 dark:divide-white/[0.06] overflow-hidden shadow-2xs"
+                                : siteConfig.feedCardVariant === "editorial"
+                                ? "max-w-4xl mx-auto divide-y divide-neutral-200/80 dark:divide-white/10"
+                                : siteConfig.feedCardVariant === "poster"
+                                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                                : `${getColumnsClass(siteConfig.galleryColumns)} space-y-6`
+                        } ani-show`}
                     >
                         {interleavedItems.map((item, idx) => {
                             const currentFirstPageKeys = interleavedItems.map(getItemKey);

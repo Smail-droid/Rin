@@ -1,107 +1,86 @@
 import { useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useLocation } from "wouter";
 import { ProfileContext } from "../../state/profile";
 import { InSituWritingDrawer } from "./in-situ-writing-drawer";
 import { InSituMediaDrawer } from "./in-situ-media-drawer";
-import { InSituSettingsDrawer } from "./in-situ-settings-drawer";
 
 export function InSituDeskDock() {
+  // REACT HOOKS 铁律：所有 Hooks 无条件置于组件顶层
+  const [location] = useLocation();
   const profile = useContext(ProfileContext);
-
   const [writingOpen, setWritingOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [mediaOpen, setMediaOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Listen to global open requests (e.g. from article cards or shortcuts)
   useEffect(() => {
     const handleOpenWriting = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       setEditId(detail?.id || null);
       setWritingOpen(true);
     };
-
     const handleOpenMedia = () => setMediaOpen(true);
-    const handleOpenSettings = () => setSettingsOpen(true);
 
     window.addEventListener("rin:open-writing-drawer", handleOpenWriting);
     window.addEventListener("rin:open-media-drawer", handleOpenMedia);
-    window.addEventListener("rin:open-settings-drawer", handleOpenSettings);
 
     return () => {
       window.removeEventListener("rin:open-writing-drawer", handleOpenWriting);
       window.removeEventListener("rin:open-media-drawer", handleOpenMedia);
-      window.removeEventListener("rin:open-settings-drawer", handleOpenSettings);
     };
   }, []);
 
-  // Only render desk objects when admin is signed in
-  if (!profile?.permission) {
+  if (!profile?.permission || location.startsWith("/admin")) {
     return null;
   }
 
   return createPortal(
     <>
-      {/* 具象化在场工坊侍从坞 (Desk Atelier Objects) - 右下角优雅常驻 */}
+      {/* 右下角轻巧管理员快捷操作条（与左侧 44px 悬浮轨保持同一设计语言；系统设置已整合进统一抽屉） */}
       <aside
-        aria-label="在场工坊桌面物件"
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 select-none"
+        aria-label="管理员快捷操作栏"
+        className="fixed bottom-5 right-5 z-40 flex items-center gap-1 p-1.5 rounded-2xl border border-neutral-200/80 dark:border-white/10 bg-white/85 dark:bg-[#131722]/85 shadow-[0_8px_28px_-8px_rgba(15,23,42,0.14)] backdrop-blur-md select-none"
       >
-        <div className="flex items-center gap-1.5 p-1 rounded-full border border-black/10 bg-white/85 dark:border-white/10 dark:bg-neutral-900/85 shadow-lg backdrop-blur-xl transition-all">
-          {/* 1. 灵感笔筒 (Quill & Desk) */}
-          <button
-            type="button"
-            onClick={() => {
-              setEditId(null);
-              setWritingOpen(true);
-            }}
-            className="group relative flex h-10 w-10 items-center justify-center rounded-full bg-theme/10 hover:bg-theme text-theme hover:text-white shadow-2xs hover:scale-110 active:scale-95 transition-all cursor-pointer"
-            title="灵感笔筒 · 原地撰写新文章"
-          >
-            <i className="ri-quill-pen-line text-lg group-hover:rotate-[-8deg] transition-transform" />
-          </button>
+        <button
+          type="button"
+          onClick={() => {
+            setEditId(null);
+            setWritingOpen(true);
+          }}
+          className="group relative flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme hover:bg-theme hover:text-white transition-all active:scale-95 cursor-pointer"
+          title="写新文章"
+        >
+          <i className="ri-quill-pen-line text-[15px]" />
+        </button>
 
-          {/* 2. 黑胶音廊工作台 (Vinyl Music Studio) */}
-          <a
-            href="/admin/music"
-            className="group relative flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10 hover:bg-emerald-600 text-emerald-600 dark:text-emerald-400 hover:text-white shadow-2xs hover:scale-110 active:scale-95 transition-all cursor-pointer"
-            title="黑胶音廊 · 曲库搜歌/封面/播放列表工作台"
-          >
-            <i className="ri-music-2-line text-lg group-hover:scale-110 transition-transform" />
-          </a>
+        <button
+          type="button"
+          onClick={() => setMediaOpen(true)}
+          className="group relative flex h-8 w-8 items-center justify-center rounded-xl text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/[0.06] hover:text-neutral-900 dark:hover:text-white transition-all active:scale-95 cursor-pointer"
+          title="图床与媒体库"
+        >
+          <i className="ri-folder-image-line text-[15px]" />
+        </button>
 
-          {/* 3. 暗房胶卷盒 (Media Darkroom) */}
-          <button
-            type="button"
-            onClick={() => setMediaOpen(true)}
-            className="group relative flex h-10 w-10 items-center justify-center rounded-full bg-black/5 hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:text-white dark:hover:bg-white/20 shadow-2xs hover:scale-110 active:scale-95 transition-all cursor-pointer"
-            title="暗房胶卷盒 · 媒体与音轨中心"
-          >
-            <i className="ri-folder-image-line text-lg group-hover:scale-110 transition-transform" />
-          </button>
+        <a
+          href="/admin/music"
+          className="group relative flex h-8 w-8 items-center justify-center rounded-xl text-neutral-500 dark:text-neutral-400 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all active:scale-95 cursor-pointer"
+          title="音乐曲库管理"
+        >
+          <i className="ri-music-2-line text-[15px]" />
+        </a>
 
-          {/* 4. 系统百宝箱 (Cabinet) */}
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            className="group relative flex h-10 w-10 items-center justify-center rounded-full bg-black/5 hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:text-white dark:hover:bg-white/20 shadow-2xs hover:scale-110 active:scale-95 transition-all cursor-pointer"
-            title="百宝箱 · 在场微调全站配置"
-          >
-            <i className="ri-settings-4-line text-lg group-hover:rotate-45 transition-transform" />
-          </button>
+        <div className="mx-0.5 h-4 w-px bg-neutral-200/80 dark:bg-white/10" />
 
-          {/* 5. 底层总控大盘 (Dashboard) */}
-          <a
-            href="/admin/dashboard"
-            className="group relative flex h-10 w-10 items-center justify-center rounded-full bg-black/5 hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:text-white dark:hover:bg-white/20 shadow-2xs hover:scale-110 active:scale-95 transition-all cursor-pointer"
-            title="底层总控大盘 · 文章管理/PV/UV/系统备份"
-          >
-            <i className="ri-dashboard-3-line text-lg group-hover:scale-110 transition-transform" />
-          </a>
-        </div>
+        <a
+          href="/admin/dashboard"
+          className="group relative flex h-8 w-8 items-center justify-center rounded-xl text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/[0.06] hover:text-neutral-900 dark:hover:text-white transition-all active:scale-95 cursor-pointer"
+          title="后台总控台"
+        >
+          <i className="ri-dashboard-3-line text-[15px]" />
+        </a>
       </aside>
 
-      {/* 3 大在场式抽屉 */}
       <InSituWritingDrawer
         isOpen={writingOpen}
         onClose={() => {
@@ -114,11 +93,6 @@ export function InSituDeskDock() {
       <InSituMediaDrawer
         isOpen={mediaOpen}
         onClose={() => setMediaOpen(false)}
-      />
-
-      <InSituSettingsDrawer
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
       />
     </>,
     document.body

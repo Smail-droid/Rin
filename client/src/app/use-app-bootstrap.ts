@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ConfigWrapper } from "@rin/config";
 import type { Profile } from "../state/profile";
 import { defaultClientConfig } from "../state/config";
-import { applyArtTitleColor, applyGalleryTiltDegree, applyThemeColor, applyThemeCustomCursor, applyThemeFontSize, applyThemeOpacity, applyThemeWallpaper } from "../utils/theme-color";
+import { applyArtTitleColor, applyGalleryTiltDegree, applyThemeColor, applyThemeCustomCursor, applyThemeFontFamily, applyThemeFontSize, applyThemeOpacity, applyThemeWallpaper } from "../utils/theme-color";
 import { readBootstrappedClientConfig } from "./bootstrap-config";
 import { client } from "./runtime";
 
@@ -34,8 +34,12 @@ export function useAppBootstrap() {
     const updateClientConfig = (nextConfig: Record<string, unknown>) => {
       sessionStorage.setItem("config", JSON.stringify(nextConfig));
       setConfig(new ConfigWrapper(nextConfig, defaultClientConfig));
-      applyThemeColor(typeof nextConfig["theme.color"] === "string" ? nextConfig["theme.color"] : undefined);
+      applyThemeColor(
+        typeof nextConfig["theme.color"] === "string" ? nextConfig["theme.color"] : undefined,
+        typeof nextConfig["theme.secondary_color"] === "string" ? nextConfig["theme.secondary_color"] : undefined
+      );
       applyThemeOpacity(nextConfig["theme.opacity"]);
+      applyThemeFontFamily(typeof nextConfig["theme.font_family"] === "string" ? nextConfig["theme.font_family"] : undefined);
       applyThemeFontSize(nextConfig["theme.font_size"]);
       applyThemeWallpaper(typeof nextConfig["theme.wallpaper"] === "string" ? nextConfig["theme.wallpaper"] : undefined, typeof nextConfig["theme.wallpaper_opacity"] === "number" ? nextConfig["theme.wallpaper_opacity"] : undefined);
       applyThemeCustomCursor(nextConfig["theme.custom_cursor"] !== false && nextConfig["theme.custom_cursor"] !== "false");
@@ -82,8 +86,12 @@ export function useAppBootstrap() {
     } else if (cachedConfig) {
       const configObject = JSON.parse(cachedConfig) as Record<string, unknown>;
       setConfig(new ConfigWrapper(configObject, defaultClientConfig));
-      applyThemeColor(typeof configObject["theme.color"] === "string" ? configObject["theme.color"] : undefined);
+      applyThemeColor(
+        typeof configObject["theme.color"] === "string" ? configObject["theme.color"] : undefined,
+        typeof configObject["theme.secondary_color"] === "string" ? configObject["theme.secondary_color"] : undefined
+      );
       applyThemeOpacity(configObject["theme.opacity"]);
+      applyThemeFontFamily(typeof configObject["theme.font_family"] === "string" ? configObject["theme.font_family"] : undefined);
       applyThemeFontSize(configObject["theme.font_size"]);
       applyThemeWallpaper(typeof configObject["theme.wallpaper"] === "string" ? configObject["theme.wallpaper"] : undefined, typeof configObject["theme.wallpaper_opacity"] === "number" ? configObject["theme.wallpaper_opacity"] : undefined);
       applyThemeCustomCursor(configObject["theme.custom_cursor"] !== false && configObject["theme.custom_cursor"] !== "false");

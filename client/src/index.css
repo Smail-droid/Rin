@@ -17,11 +17,15 @@
     U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+:root {
+  --theme-secondary-rgb: 245 158 108;
+}
+
 body {
   background-color: rgb(var(--rin-canvas-rgb));
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgb(var(--theme-rgb) / 0.16), transparent 70%),
-    radial-gradient(circle 600px at 0% 20%, rgb(var(--theme-rgb) / 0.06), transparent 50%);
+    radial-gradient(ellipse 75% 45% at 20% -8%, rgb(var(--theme-rgb) / 0.11), transparent 68%),
+    radial-gradient(ellipse 65% 42% at 85% 4%, rgb(var(--theme-secondary-rgb) / 0.09), transparent 62%);
   background-attachment: fixed;
   color: rgb(var(--rin-text-rgb));
   font-family: var(--rin-font-family, Cantarell, "Source Han Serif CN VF", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif) !important;
@@ -31,7 +35,7 @@ body {
 }
 
 /* ============================================================
-   全屏漫游壁纸层 (body::before 绝美通透半透明底座)
+   全屏漫游壁纸层 (支持图片 URL、CSS 渐变与点阵平铺)
    ============================================================ */
 body::before {
   content: "";
@@ -40,14 +44,19 @@ body::before {
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: -2;
+  z-index: 0;
   background-image: var(--rin-wallpaper-url, none);
   background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
+  background-size: var(--rin-wallpaper-size, cover);
+  background-repeat: var(--rin-wallpaper-repeat, no-repeat);
   opacity: var(--rin-wallpaper-opacity, 0.35);
   pointer-events: none;
   transition: opacity 0.3s ease, background-image 0.5s ease;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
 }
 
 body.no-wallpaper::before {
@@ -350,12 +359,21 @@ a.toc-link {
   padding-right: 1rem;
 }
 
-/* Glassmorphism & Translucency Enhancement */
+/* Surface & Clean Glassmorphism (隔离表单输入控件，杜绝输入框出现发虚厚重黑影) */
 .bg-w {
   background-color: rgb(var(--rin-surface-rgb) / var(--rin-surface-alpha, 1)) !important;
   backdrop-filter: blur(var(--rin-glass-blur, 0px));
   -webkit-backdrop-filter: blur(var(--rin-glass-blur, 0px));
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, calc((1 - var(--rin-surface-alpha, 1)) * 0.15 + 0.03));
+  box-shadow: 0 1px 3px rgba(15, 23, 42, calc((1 - var(--rin-surface-alpha, 1)) * 0.08 + 0.03));
+}
+
+input.bg-w,
+textarea.bg-w,
+select.bg-w {
+  background-color: rgb(var(--rin-surface-rgb)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
 }
 
 [data-color-mode="dark"] .bg-w {
@@ -366,6 +384,11 @@ a.toc-link {
   background-color: rgb(var(--rin-surface-rgb) / var(--rin-surface-alpha, 1));
   backdrop-filter: blur(var(--rin-glass-blur, 0px));
   -webkit-backdrop-filter: blur(var(--rin-glass-blur, 0px));
+}
+
+/* 现代前台抽屉统一表单控件原语 */
+.rin-field {
+  @apply w-full rounded-lg border border-neutral-200/90 bg-white px-3 py-2 text-xs text-neutral-800 placeholder:text-neutral-400 outline-none transition-colors focus:border-theme focus:ring-2 focus:ring-theme/15 dark:border-white/10 dark:bg-white/[0.04] dark:text-neutral-100 dark:placeholder:text-neutral-500;
 }
 
 /* ==========================================================================
