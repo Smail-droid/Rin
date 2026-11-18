@@ -3,9 +3,13 @@ import { describe, expect, it } from "bun:test";
 import {
   ACCENT_COLOR_PRESETS,
   DEFAULT_THEME_OPACITY,
+  MULTI_COLOR_PALETTES,
   THEME_PRESETS,
   applyThemeColor,
   applyThemeOpacity,
+  applyThemePalette,
+  applyThemeWallpaper,
+  getContrastRatioWithWhite,
   normalizeThemeColor,
   normalizeThemeOpacity,
 } from "../theme-color";
@@ -87,6 +91,38 @@ describe("theme-color utils", () => {
       expect(normalizeThemeColor(null)).toBe("#fc466b");
       applyThemeColor("#2563eb");
       expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("37 99 235");
+    });
+
+    it("enforces WCAG AA contrast (>= 4.5) for all curated palettes in both light and dark modes", () => {
+      for (const palette of MULTI_COLOR_PALETTES) {
+        expect(getContrastRatioWithWhite(palette.primary)).toBeGreaterThanOrEqual(4.5);
+        expect(getContrastRatioWithWhite(palette.primaryDark)).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
+    it("updates canvas and surface semantic tokens when applying palette in light/dark mode", () => {
+      const kyoto = MULTI_COLOR_PALETTES.find((p) => p.id === "kyoto_ink")!;
+      document.documentElement.setAttribute("data-color-mode", "light");
+      applyThemePalette(kyoto);
+      expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("51 65 85");
+      expect(document.documentElement.style.getPropertyValue("--rin-surface-rgb")).toBe("255 255 255");
+
+      document.documentElement.setAttribute("data-color-mode", "dark");
+      applyThemePalette(kyoto);
+      // 暗黑模式必须使用高对比印章朱而非浅灰 (#cbd5e1)，严防浅底白字
+      expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("194 65 12");
+      expect(document.documentElement.style.getPropertyValue("--rin-canvas-rgb")).toBe("19 21 24");
+      document.documentElement.setAttribute("data-color-mode", "light");
+    });
+
+    it("toggles has-wallpaper and no-wallpaper body classes cleanly to prevent double gradients", () => {
+      applyThemeWallpaper("radial-gradient(circle, red, blue)", 40);
+      expect(document.body.classList.contains("has-wallpaper")).toBe(true);
+      expect(document.body.classList.contains("no-wallpaper")).toBe(false);
+
+      applyThemeWallpaper("none", 0);
+      expect(document.body.classList.contains("no-wallpaper")).toBe(true);
+      expect(document.body.classList.contains("has-wallpaper")).toBe(false);
     });
   });
 });

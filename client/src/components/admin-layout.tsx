@@ -116,19 +116,7 @@ export function AdminLayout({
             </Link>
           </div>
 
-          {/* 纯净日夜切换：无背景底色，太阳黄色，月亮粉色 */}
-          <div className="py-2 w-full flex justify-center border-b border-black/5 dark:border-white/5">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="flex h-8 w-8 items-center justify-center transition-transform hover:scale-115 active:scale-95"
-              title={colorMode === "dark" ? "当前: 暗黑模式 (点击切换为浅色)" : "当前: 浅色模式 (点击切换为暗黑)"}
-            >
-              <i className={colorMode === "dark" ? "ri-moon-line text-rose-400 text-lg" : "ri-sun-line text-amber-500 text-lg"} />
-            </button>
-          </div>
-
-          {/* 紧凑纯图标导航列表 (向日葵专业暗黑配色：未选中 #a1a1aa，选中深炭灰底 + 亮粉字) */}
+          {/* 紧凑纯图标导航列表 (向日葵专业暗黑配色：未选中 #a1a1aa，选中深炭灰底 + 亮粉字；日夜切换严格保留在顶栏唯一一处) */}
           <nav className="flex flex-col gap-1 p-1.5 w-full overflow-y-auto max-h-[calc(100vh-220px)] scrollbar-none">
             {filteredNavItems.map((item) => {
               const isActive = location === item.href || location.startsWith(`${item.href}/`);

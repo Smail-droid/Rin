@@ -36,7 +36,8 @@ export function useAppBootstrap() {
       setConfig(new ConfigWrapper(nextConfig, defaultClientConfig));
       applyThemeColor(
         typeof nextConfig["theme.color"] === "string" ? nextConfig["theme.color"] : undefined,
-        typeof nextConfig["theme.secondary_color"] === "string" ? nextConfig["theme.secondary_color"] : undefined
+        typeof nextConfig["theme.secondary_color"] === "string" ? nextConfig["theme.secondary_color"] : undefined,
+        typeof nextConfig["theme.preset"] === "string" ? nextConfig["theme.preset"] : undefined
       );
       applyThemeOpacity(nextConfig["theme.opacity"]);
       applyThemeFontFamily(typeof nextConfig["theme.font_family"] === "string" ? nextConfig["theme.font_family"] : undefined);
@@ -88,7 +89,8 @@ export function useAppBootstrap() {
       setConfig(new ConfigWrapper(configObject, defaultClientConfig));
       applyThemeColor(
         typeof configObject["theme.color"] === "string" ? configObject["theme.color"] : undefined,
-        typeof configObject["theme.secondary_color"] === "string" ? configObject["theme.secondary_color"] : undefined
+        typeof configObject["theme.secondary_color"] === "string" ? configObject["theme.secondary_color"] : undefined,
+        typeof configObject["theme.preset"] === "string" ? configObject["theme.preset"] : undefined
       );
       applyThemeOpacity(configObject["theme.opacity"]);
       applyThemeFontFamily(typeof configObject["theme.font_family"] === "string" ? configObject["theme.font_family"] : undefined);

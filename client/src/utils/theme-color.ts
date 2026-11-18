@@ -1,5 +1,5 @@
-const DEFAULT_THEME_COLOR = "#fc466b";
-const DEFAULT_SECONDARY_COLOR = "#f59e6c";
+const DEFAULT_THEME_COLOR = "#d6336c";
+const DEFAULT_SECONDARY_COLOR = "#ea7b52";
 export const DEFAULT_THEME_OPACITY = 100;
 
 export interface ThemePreset {
@@ -16,94 +16,144 @@ export interface MultiColorPalette {
   id: string;
   name: string;
   primary: string;
+  primaryDark: string;
   secondary: string;
   accent: string;
   tintLight: string;
   tintDark: string;
+  surfaceDark: string;
   description: string;
 }
 
-/** 8 套多色联动色盘：每套同时驱动主强调色、辅助呼应色与柔和画布氛围 */
+export interface WallpaperPreset {
+  id: string;
+  name: string;
+  subtitle: string;
+  url: string;
+  previewStyle: {
+    background?: string;
+    backgroundColor?: string;
+    backgroundImage?: string;
+    backgroundSize?: string;
+  };
+}
+
+/** 5 款克制轻量 CSS 背景纹理预设 */
+export const WALLPAPER_PRESETS: WallpaperPreset[] = [
+  {
+    id: "none",
+    name: "纯色留白",
+    subtitle: "干净通透纯色画布",
+    url: "none",
+    previewStyle: { background: "#f8fafc" },
+  },
+  {
+    id: "sakura-glow",
+    name: "樱桃柔光",
+    subtitle: "粉橘暖调微光",
+    url: "radial-gradient(ellipse 80% 55% at 20% 0%, rgba(214, 51, 108, 0.14), transparent 65%), radial-gradient(ellipse 65% 50% at 85% 15%, rgba(234, 123, 82, 0.14), transparent 65%)",
+    previewStyle: { background: "linear-gradient(135deg, #ffe4ec 0%, #fff1e6 55%, #ffffff 100%)" },
+  },
+  {
+    id: "starry-nebula",
+    name: "暮光星云",
+    subtitle: "靛紫冷调氛围",
+    url: "radial-gradient(ellipse 80% 50% at 25% 0%, rgba(79, 70, 229, 0.14), transparent 68%), radial-gradient(circle 540px at 85% 15%, rgba(147, 51, 234, 0.12), transparent 60%)",
+    previewStyle: { background: "linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 60%, #f8fafc 100%)" },
+  },
+  {
+    id: "washi-dots",
+    name: "手账点阵",
+    subtitle: "极细纸面网格点",
+    url: "radial-gradient(rgba(100, 116, 139, 0.22) 1px, transparent 1px)",
+    previewStyle: {
+      backgroundColor: "#f8fafc",
+      backgroundImage: "radial-gradient(rgba(100, 116, 139, 0.35) 1px, transparent 1px)",
+      backgroundSize: "8px 8px",
+    },
+  },
+  {
+    id: "morning-mist",
+    name: "海盐青岚",
+    subtitle: "晴蓝薄荷呼吸感",
+    url: "radial-gradient(ellipse 80% 55% at 15% 0%, rgba(3, 105, 161, 0.13), transparent 68%), radial-gradient(circle 520px at 88% 20%, rgba(13, 148, 136, 0.13), transparent 60%)",
+    previewStyle: { background: "linear-gradient(135deg, #e0f2fe 0%, #ccfbf1 55%, #ffffff 100%)" },
+  },
+];
+
+/** 6 套明暗双修、通过 WCAG AA 对比度校对的语义联动色盘 */
 export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
   {
     id: "cherry_peach",
-    name: "樱桃蜜桃",
-    primary: "#e84a72",
-    secondary: "#f59e6c",
+    name: "樱桃绯红",
+    primary: "#d6336c",
+    primaryDark: "#d6336c",
+    secondary: "#ea7b52",
     accent: "#fbcfe8",
-    tintLight: "#fff5f7",
-    tintDark: "#24141b",
-    description: "暖樱粉 × 蜜桃杏",
+    tintLight: "#fdf8f9",
+    tintDark: "#141216",
+    surfaceDark: "#1f1b24",
+    description: "暖樱绯 × 蜜桃杏",
   },
   {
     id: "sea_salt",
-    name: "海盐薄荷",
-    primary: "#0284c7",
-    secondary: "#14b8a6",
+    name: "海盐晴蓝",
+    primary: "#0369a1",
+    primaryDark: "#0275b2",
+    secondary: "#0d9488",
     accent: "#bae6fd",
-    tintLight: "#f0f9ff",
-    tintDark: "#0f1d28",
-    description: "晴空蓝 × 清薄荷",
-  },
-  {
-    id: "twilight_nebula",
-    name: "暮光星云",
-    primary: "#4f46e5",
-    secondary: "#a855f7",
-    accent: "#c7d2fe",
-    tintLight: "#f5f3ff",
-    tintDark: "#17142b",
-    description: "靛蓝 × 星云紫",
+    tintLight: "#f6fafc",
+    tintDark: "#0f161d",
+    surfaceDark: "#17222c",
+    description: "海盐蓝 × 清薄荷",
   },
   {
     id: "forest_sun",
-    name: "森屿暖阳",
-    primary: "#059669",
+    name: "森屿松翠",
+    primary: "#047857",
+    primaryDark: "#047857",
     secondary: "#d97706",
     accent: "#a7f3d0",
-    tintLight: "#f0fdf4",
-    tintDark: "#10221c",
-    description: "松柏绿 × 暖琥珀",
+    tintLight: "#f6fbf8",
+    tintDark: "#101916",
+    surfaceDark: "#182420",
+    description: "松柏翠 × 暖琥珀",
+  },
+  {
+    id: "twilight_nebula",
+    name: "暮光靛紫",
+    primary: "#4f46e5",
+    primaryDark: "#5850ec",
+    secondary: "#9333ea",
+    accent: "#c7d2fe",
+    tintLight: "#f8f7fc",
+    tintDark: "#13121e",
+    surfaceDark: "#1d1b2c",
+    description: "暮光靛 × 星云紫",
   },
   {
     id: "kyoto_ink",
     name: "京都纸墨",
     primary: "#334155",
+    primaryDark: "#c2410c",
     secondary: "#c2410c",
     accent: "#cbd5e1",
-    tintLight: "#f8fafc",
-    tintDark: "#161a20",
+    tintLight: "#f8f9fa",
+    tintDark: "#131518",
+    surfaceDark: "#1d2025",
     description: "黛石板 × 印章朱",
   },
   {
     id: "sunset_caramel",
-    name: "落日焦糖",
-    primary: "#ea580c",
+    name: "落日琥珀",
+    primary: "#c2410c",
+    primaryDark: "#c2410c",
     secondary: "#e11d48",
     accent: "#fed7aa",
-    tintLight: "#fff7ed",
-    tintDark: "#241612",
-    description: "琥珀橙 × 玫瑰绯",
-  },
-  {
-    id: "aurora_prism",
-    name: "极光青紫",
-    primary: "#0d9488",
-    secondary: "#7c3aed",
-    accent: "#99f6e4",
-    tintLight: "#f0fdfa",
-    tintDark: "#112023",
-    description: "青翠 × 极光紫",
-  },
-  {
-    id: "berry_champagne",
-    name: "奶油浆果",
-    primary: "#be185d",
-    secondary: "#ca8a04",
-    accent: "#fbcfe8",
-    tintLight: "#fdf2f8",
-    tintDark: "#23131c",
-    description: "浆果梅 × 香槟金",
+    tintLight: "#fcf8f5",
+    tintDark: "#191412",
+    surfaceDark: "#251e1b",
+    description: "焦糖橙 × 玫瑰绯",
   },
 ];
 
@@ -117,30 +167,28 @@ export const THEME_PRESETS: ThemePreset[] = [
     accent: p.accent,
     description: p.description,
   })),
-  { id: "sakura", name: "春日樱落", color: "#fc466b", secondary: "#f59e6c", previewBg: "#fff1f3", accent: "#ffd0da", description: "经典蔷薇绯红，生机与浪漫交织" },
-  { id: "paper_ink", name: "极简纸墨", color: "#27272a", secondary: "#c2410c", previewBg: "#f4f4f5", accent: "#e4e4e7", description: "极简纯粹纸墨，水墨书卷雅致风范" },
-  { id: "cyber_cold", name: "赛博冷萃", color: "#00c4ff", secondary: "#6366f1", previewBg: "#e0f7ff", accent: "#70e1ff", description: "冰蓝电光冷萃，通透未来科技质感" },
-  { id: "aoi_sora", name: "和风青空", color: "#0284c7", secondary: "#14b8a6", previewBg: "#e0f2fe", accent: "#7dd3fc", description: "海风拂过澄澈天际，辽阔明亮" },
-  { id: "midnight_deep", name: "午夜深邃", color: "#6366f1", secondary: "#a855f7", previewBg: "#eef2ff", accent: "#a5b4fc", description: "静谧午夜深蓝星空，专注而内敛" },
+  { id: "sakura", name: "春日樱落", color: "#d6336c", secondary: "#ea7b52", previewBg: "#fdf8f9", accent: "#ffd0da", description: "经典蔷薇绯红，生机与浪漫交织" },
+  { id: "paper_ink", name: "极简纸墨", color: "#334155", secondary: "#c2410c", previewBg: "#f8f9fa", accent: "#e4e4e7", description: "极简纯粹纸墨，水墨书卷雅致风范" },
+  { id: "cyber_cold", name: "赛博冷萃", color: "#0369a1", secondary: "#4f46e5", previewBg: "#f6fafc", accent: "#70e1ff", description: "清透冷萃蓝，冷静克制质感" },
+  { id: "aoi_sora", name: "和风青空", color: "#0284c7", secondary: "#0d9488", previewBg: "#f0f9ff", accent: "#7dd3fc", description: "海风拂过澄澈天际，辽阔明亮" },
+  { id: "midnight_deep", name: "午夜深邃", color: "#4f46e5", secondary: "#9333ea", previewBg: "#f8f7fc", accent: "#a5b4fc", description: "静谧午夜深蓝星空，专注而内敛" },
 ];
 
 export const ACCENT_COLOR_PRESETS = [
-  "#0ea5e9",
+  "#0284c7",
+  "#0369a1",
   "#2563eb",
   "#4f46e5",
   "#7c3aed",
   "#9333ea",
   "#c026d3",
-  "#e84a72",
+  "#d6336c",
   "#e11d48",
-  "#ea580c",
-  "#d97706",
-  "#eab308",
-  "#84cc16",
-  "#16a34a",
+  "#c2410c",
+  "#b45309",
+  "#047857",
   "#0d9488",
-  "#06b6d4",
-  "#475569",
+  "#334155",
 ];
 
 export const OPACITY_SHORTCUTS = [100, 92, 82];
@@ -198,8 +246,23 @@ function toCssRgb({ r, g, b }: { r: number; g: number; b: number }) {
   return `${r} ${g} ${b}`;
 }
 
+/** 计算 WCAG 2.1 相对亮度与白字对比度，确保主色按钮永不出现“浅底白字” */
+export function getRelativeLuminance(hex: string): number {
+  const { r, g, b } = hexToRgb(hex);
+  const toLinear = (c: number) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+}
+
+export function getContrastRatioWithWhite(hex: string): number {
+  const lum = getRelativeLuminance(hex);
+  return (1.0 + 0.05) / (lum + 0.05);
+}
+
 export function normalizeThemeColor(value: string | undefined | null) {
-  return normalizeHex(value);
+  return normalizeHex(value, "#fc466b");
 }
 
 export function normalizeThemeOpacity(value: unknown): number {
@@ -217,20 +280,23 @@ export function normalizeThemeOpacity(value: unknown): number {
 
 let currentThemeColorHex = DEFAULT_THEME_COLOR;
 let currentSecondaryColorHex = DEFAULT_SECONDARY_COLOR;
+let currentPaletteId: string | undefined = "cherry_peach";
 
-function getPerceivedLuminance(rgb: { r: number; g: number; b: number }): number {
-  return 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
-}
-
-/** 根据预设 ID 或主色自动匹配对应的多色组合 */
+/** 根据预设 ID 或主色自动匹配对应的语义多色色盘 */
 export function findPaletteByIdOrColor(presetId?: string | null, colorHex?: string | null): MultiColorPalette | undefined {
   if (presetId) {
     const byId = MULTI_COLOR_PALETTES.find((p) => p.id === presetId);
     if (byId) return byId;
+    if (presetId === "sakura") return MULTI_COLOR_PALETTES[0];
+    if (presetId === "paper_ink") return MULTI_COLOR_PALETTES[4];
+    if (presetId === "cyber_cold" || presetId === "aoi_sora") return MULTI_COLOR_PALETTES[1];
+    if (presetId === "midnight_deep") return MULTI_COLOR_PALETTES[3];
   }
   if (colorHex) {
     const norm = normalizeHex(colorHex);
-    const byColor = MULTI_COLOR_PALETTES.find((p) => p.primary.toLowerCase() === norm);
+    const byColor = MULTI_COLOR_PALETTES.find(
+      (p) => p.primary.toLowerCase() === norm || p.primaryDark.toLowerCase() === norm
+    );
     if (byColor) return byColor;
   }
   return undefined;
@@ -238,47 +304,64 @@ export function findPaletteByIdOrColor(presetId?: string | null, colorHex?: stri
 
 if (typeof window !== "undefined") {
   window.addEventListener("colorSchemeChange", () => {
-    applyThemeColor(currentThemeColorHex, currentSecondaryColorHex);
+    applyThemeColor(currentThemeColorHex, currentSecondaryColorHex, currentPaletteId);
   });
 }
 
-export function applyThemeColor(value: string | undefined | null, secondaryValue?: string | null) {
+export function applyThemeColor(
+  value: string | undefined | null,
+  secondaryValue?: string | null,
+  presetId?: string | null
+) {
   const color = normalizeHex(value);
-  const matchedPalette = findPaletteByIdOrColor(undefined, color);
+  const matchedPalette = findPaletteByIdOrColor(presetId, color);
   const secondary = secondaryValue
     ? normalizeHex(secondaryValue, DEFAULT_SECONDARY_COLOR)
     : matchedPalette?.secondary || DEFAULT_SECONDARY_COLOR;
 
   currentThemeColorHex = color;
   currentSecondaryColorHex = secondary;
+  currentPaletteId = matchedPalette?.id;
 
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-
   const isDark = root.getAttribute("data-color-mode") === "dark" || root.classList.contains("dark");
-  const rgb = hexToRgb(color);
-  const secRgb = hexToRgb(secondary);
-  const luminance = getPerceivedLuminance(rgb);
-  const secLuminance = getPerceivedLuminance(secRgb);
 
-  // 暗色模式低明度对比度自适应保护：避免深黛/纸墨色在黑夜模式下融进背景
-  const effectiveRgb = isDark && luminance < 75 ? { r: 203, g: 213, b: 225 } : rgb;
-  const effectiveSecRgb = isDark && secLuminance < 75 ? { r: 251, g: 146, b: 60 } : secRgb;
+  // 暗黑模式使用色盘专属高对比暗色主色；自定义超暗色自动使用高对比暖朱色而非浅灰，严禁“浅底白字”
+  let effectiveHex = color;
+  if (isDark) {
+    if (matchedPalette) {
+      effectiveHex = matchedPalette.primaryDark;
+    } else if (getRelativeLuminance(color) < 0.05) {
+      effectiveHex = "#c2410c";
+    }
+  }
+
+  const effectiveRgb = hexToRgb(effectiveHex);
+  const secRgb = hexToRgb(secondary);
 
   root.style.setProperty("--theme-rgb", toCssRgb(effectiveRgb));
-  root.style.setProperty(
-    "--theme-hover-rgb",
-    toCssRgb(isDark && luminance < 75 ? { r: 226, g: 232, b: 240 } : shade(color, -0.22))
-  );
-  root.style.setProperty(
-    "--theme-active-rgb",
-    toCssRgb(isDark && luminance < 75 ? { r: 148, g: 163, b: 184 } : shade(color, -0.34))
-  );
-  root.style.setProperty("--theme-secondary-rgb", toCssRgb(effectiveSecRgb));
+  root.style.setProperty("--theme-hover-rgb", toCssRgb(shade(effectiveHex, isDark ? 0.12 : -0.16)));
+  root.style.setProperty("--theme-active-rgb", toCssRgb(shade(effectiveHex, isDark ? 0.2 : -0.26)));
+  root.style.setProperty("--theme-secondary-rgb", toCssRgb(secRgb));
+
+  // 画布与表面语义联动：彻底消除死锁灰底，同时保持高级克制
+  if (matchedPalette) {
+    if (isDark) {
+      root.style.setProperty("--rin-canvas-rgb", toCssRgb(hexToRgb(matchedPalette.tintDark)));
+      root.style.setProperty("--rin-surface-rgb", toCssRgb(hexToRgb(matchedPalette.surfaceDark)));
+    } else {
+      root.style.setProperty("--rin-canvas-rgb", toCssRgb(hexToRgb(matchedPalette.tintLight)));
+      root.style.setProperty("--rin-surface-rgb", "255 255 255");
+    }
+  } else {
+    root.style.removeProperty("--rin-canvas-rgb");
+    root.style.removeProperty("--rin-surface-rgb");
+  }
 }
 
 export function applyThemePalette(palette: MultiColorPalette) {
-  applyThemeColor(palette.primary, palette.secondary);
+  applyThemeColor(palette.primary, palette.secondary, palette.id);
 }
 
 export function applyThemeOpacity(value: unknown) {
@@ -289,7 +372,6 @@ export function applyThemeOpacity(value: unknown) {
   const alpha = opacity / 100;
   root.style.setProperty("--rin-surface-alpha", alpha.toString());
   root.style.setProperty("--rin-glass-opacity", `${opacity}%`);
-  // 克制模糊度：避免重度发虚，仅在半透明时给予轻微清透磨砂
   const blurPx = opacity >= 98 ? 0 : Math.min(12, Math.round((1 - alpha) * 18 + 3));
   root.style.setProperty("--rin-glass-blur", `${blurPx}px`);
   root.style.setProperty("--rin-glass-border-alpha", opacity >= 98 ? "0.08" : `${(0.08 + (1 - alpha) * 0.12).toFixed(2)}`);
@@ -345,12 +427,13 @@ export function applyThemeWallpaper(url: string | undefined | null, opacity?: nu
     root.style.setProperty("--rin-wallpaper-size", "cover");
     root.style.setProperty("--rin-wallpaper-repeat", "no-repeat");
     document.body.classList.add("no-wallpaper");
+    document.body.classList.remove("has-wallpaper");
     return;
   }
 
   document.body.classList.remove("no-wallpaper");
+  document.body.classList.add("has-wallpaper");
 
-  // 区分 CSS 渐变函数与图片 URL，彻底修复 radial-gradient 被错包进 url(...) 导致失效的问题
   const isCssImageFn = /^(radial-gradient|linear-gradient|conic-gradient|repeating-linear-gradient|repeating-radial-gradient|url)\(/i.test(cleanUrl);
   const isDotPattern = /1px,\s*transparent\s*1px/i.test(cleanUrl);
 
@@ -379,7 +462,7 @@ export function applyGalleryTiltDegree(degree: number) {
   document.documentElement.style.setProperty("--rin-tilt-degree", `${clamped}deg`);
 }
 
-export function applyFullTheme(color?: string | null, opacity?: unknown, secondaryColor?: string | null) {
-  applyThemeColor(color, secondaryColor);
+export function applyFullTheme(color?: string | null, opacity?: unknown, secondaryColor?: string | null, presetId?: string | null) {
+  applyThemeColor(color, secondaryColor, presetId);
   applyThemeOpacity(opacity);
 }

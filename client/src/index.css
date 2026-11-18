@@ -24,14 +24,19 @@
 body {
   background-color: rgb(var(--rin-canvas-rgb));
   background-image:
-    radial-gradient(ellipse 75% 45% at 20% -8%, rgb(var(--theme-rgb) / 0.11), transparent 68%),
-    radial-gradient(ellipse 65% 42% at 85% 4%, rgb(var(--theme-secondary-rgb) / 0.09), transparent 62%);
+    radial-gradient(ellipse 70% 40% at 18% -10%, rgb(var(--theme-rgb) / 0.055), transparent 68%),
+    radial-gradient(ellipse 60% 38% at 85% 0%, rgb(var(--theme-secondary-rgb) / 0.045), transparent 62%);
   background-attachment: fixed;
   color: rgb(var(--rin-text-rgb));
   font-family: var(--rin-font-family, Cantarell, "Source Han Serif CN VF", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif) !important;
   font-size: var(--rin-font-size, 16px);
   min-height: 100vh;
   position: relative;
+}
+
+/* 启用预设或自定义壁纸时自动关闭底层 body 光晕，杜绝双层渐变叠加发脏 */
+body.has-wallpaper {
+  background-image: none;
 }
 
 /* ============================================================

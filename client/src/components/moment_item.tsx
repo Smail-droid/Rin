@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Markdown } from "./markdown";
 import { timeago } from "../utils/timeago";
 import { ImageWithFallback } from "./image-with-fallback";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { client } from "../app/runtime";
+import { ProfileContext } from "../state/profile";
+import {
+  UnifiedCommentComposer,
+  UnifiedCommentItem,
+  type CommentData,
+  type UnifiedCommentSubmitPayload,
+  type UnifiedCommentSubmitResult,
+} from "./gallery-comments";
 
 interface MomentComment {
   id: number;
@@ -15,8 +23,8 @@ interface MomentComment {
   user?: {
     id: number;
     username: string;
-    avatar: string;
-  };
+    avatar: string | null;
+  } | null;
 }
 
 interface Moment {
@@ -46,17 +54,14 @@ export function MomentItem({
 }) {
   const { t } = useTranslation();
   const siteConfig = useSiteConfig();
+  const profile = useContext(ProfileContext);
   const { createdAt, updatedAt } = moment;
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
 
-  // 弹幕与留言展开状态
+  // 弹幕与统一画廊留言板展开状态
   const [danmakuEnabled, setDanmakuEnabled] = useState(true);
   const [showComments, setShowComments] = useState(false);
-  const [commentContent, setCommentContent] = useState("");
-  const [guestName, setGuestName] = useState("");
-  const [submittingComment, setSubmittingComment] = useState(false);
-  const [commentFeedback, setCommentFeedback] = useState<string | null>(null);
 
   const [commentsList, setCommentsList] = useState<MomentComment[]>(
     Array.isArray(moment.comments) ? moment.comments : []
@@ -72,39 +77,43 @@ export function MomentItem({
     setLikeCount((prev) => (liked ? Math.max(0, prev - 1) : prev + 1));
   };
 
-  const handlePostComment = async () => {
-    if (!commentContent.trim()) return;
+  const handlePostComment = async (
+    payload: UnifiedCommentSubmitPayload
+  ): Promise<UnifiedCommentSubmitResult> => {
+    const { data, error } = await client.moments.createComment(moment.id, {
+      content: payload.content,
+      guestName: payload.guestName,
+    });
 
-    setSubmittingComment(true);
-    setCommentFeedback(null);
-    try {
-      const { data, error } = await client.moments.createComment(moment.id, {
-        content: commentContent.trim(),
-        guestName: guestName.trim() || undefined,
-      });
-
-      if (error) {
-        setCommentFeedback(String(error.value || "留言失败"));
-      } else if (data) {
-        setCommentFeedback(data.message);
-        if (data.approved === 1) {
-          const newCm: MomentComment = {
-            id: data.id,
-            content: commentContent.trim(),
-            guestName: guestName.trim() || "访客",
-            approved: 1,
-            createdAt: new Date().toISOString(),
-          };
-          setCommentsList((p) => [newCm, ...p]);
-        }
-        setCommentContent("");
-        setTimeout(() => setCommentFeedback(null), 3000);
-      }
-    } catch (err: any) {
-      setCommentFeedback(err.message || "网络异常");
-    } finally {
-      setSubmittingComment(false);
+    if (error) {
+      return { ok: false, error: String(error.value || "留言失败") };
     }
+
+    if (data) {
+      const newCm: MomentComment = {
+        id: data.id || Date.now(),
+        content: payload.content,
+        guestName: profile ? undefined : payload.guestName || "画廊访客",
+        approved: data.approved ?? 1,
+        createdAt: new Date().toISOString(),
+        user: profile
+          ? {
+              id: profile.id,
+              username: profile.name || "博主",
+              avatar: profile.avatar || siteConfig.avatar || null,
+            }
+          : null,
+      };
+      if (newCm.approved === 1 || canManage) {
+        setCommentsList((prev) => [newCm, ...prev]);
+      }
+      return {
+        ok: true,
+        message: data.message || "✨ 留言已发布！",
+      };
+    }
+
+    return { ok: true, message: "✨ 留言已发布！" };
   };
 
   const handleApproveComment = async (commentId: number) => {
@@ -122,12 +131,12 @@ export function MomentItem({
   const approvedComments = commentsList.filter((c) => c.approved === 1);
 
   return (
-    <article className="group relative break-inside-avoid flex flex-col justify-between rounded-2xl border border-black/[0.06] bg-white/85 dark:bg-[#18181b]/85 dark:border-white/[0.08] shadow-2xs hover:shadow-lg hover:border-theme/30 transition-all duration-300 p-3.5 sm:p-4 backdrop-blur-md overflow-hidden">
+    <article className="group relative break-inside-avoid flex flex-col justify-between rounded-2xl border border-black/[0.06] bg-w dark:border-white/[0.08] shadow-2xs hover:shadow-lg hover:border-theme/30 transition-all duration-300 p-3.5 sm:p-4 overflow-hidden">
       {/* 顶部手账和纸微光装饰条 */}
       <div className="absolute -top-1.5 left-7 w-8 h-2 bg-theme/20 dark:bg-theme/30 rounded-xs rotate-[-3deg] pointer-events-none z-10" />
 
       {/* 浮动飘屏弹幕轨道 (当开启且有留言时丝滑流转) */}
-      {danmakuEnabled && approvedComments.length > 0 && (
+      {danmakuEnabled && approvedComments.length > 0 ? (
         <div className="absolute top-10 left-0 right-0 overflow-hidden pointer-events-none h-6 z-20">
           <div className="animate-marquee whitespace-nowrap flex items-center gap-6">
             {approvedComments.map((cm) => (
@@ -136,13 +145,13 @@ export function MomentItem({
                 className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-theme/90 text-white font-medium shadow-xs backdrop-blur-xs"
               >
                 <i className="ri-chat-voice-line text-[9px]" />
-                <span className="opacity-90">{cm.guestName || cm.user?.username || "访客"}:</span>
+                <span className="opacity-90">{cm.user?.username || cm.guestName || "访客"}:</span>
                 <span>{cm.content}</span>
               </span>
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* 1. Header: 用户信息、发表时间与管理动作 */}
       <div className="flex items-center justify-between gap-3 mb-2">
@@ -165,7 +174,7 @@ export function MomentItem({
           </div>
         </div>
 
-        {canManage && (
+        {canManage ? (
           <div className="flex items-center gap-1 shrink-0 opacity-70 group-hover:opacity-100 transition-opacity">
             <button
               type="button"
@@ -186,17 +195,16 @@ export function MomentItem({
               <i className="ri-delete-bin-line text-xs" />
             </button>
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* 2. Content: 紧凑纯净 Markdown 正文 (收紧行距，告别冗余空白) */}
+      {/* 2. Content: 紧凑纯净 Markdown 正文 */}
       <div className="flex-1 text-xs leading-normal sm:leading-relaxed text-neutral-800 dark:text-neutral-200 pl-0.5 my-1">
         <Markdown content={moment.content} />
       </div>
 
-      {/* 3. Footer: 弹幕开关、留言展开与心动点赞 (紧凑单行，消灭占位符) */}
+      {/* 3. Footer: 弹幕开关、留言展开与心动点赞 */}
       <div className="mt-2 pt-2 flex items-center justify-between border-t border-black/5 dark:border-white/5 text-xs">
-        {/* 左侧：弹幕飘字开关 */}
         <button
           type="button"
           onClick={() => setDanmakuEnabled((p) => !p)}
@@ -209,10 +217,9 @@ export function MomentItem({
         >
           <i className={danmakuEnabled ? "ri-chat-voice-line" : "ri-chat-off-line"} />
           <span>{danmakuEnabled ? "弹幕" : "静音"}</span>
-          {approvedComments.length > 0 && <span className="font-mono">({approvedComments.length})</span>}
+          {approvedComments.length > 0 ? <span className="font-mono">({approvedComments.length})</span> : null}
         </button>
 
-        {/* 右侧：留言与心动按钮 */}
         <div className="flex items-center gap-1.5">
           <button
             type="button"
@@ -242,104 +249,36 @@ export function MomentItem({
         </div>
       </div>
 
-      {/* 4. 原地展开的动态留言抽屉与输入面板 */}
-      {showComments && (
-        <div className="mt-2.5 pt-2.5 border-t border-black/5 dark:border-white/5 space-y-2 ani-show">
-          {/* 留言列表 */}
+      {/* 4. 联动复用全站统一画廊留言板（自动继承登录身份 / 随机头像 / 宽敞多行 Markdown 编辑器） */}
+      {showComments ? (
+        <div className="mt-3 pt-3 border-t border-black/5 dark:border-white/5 space-y-3 ani-show">
           {commentsList.length > 0 ? (
-            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-              {commentsList.map((cm) => (
-                <div
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {commentsList.map((cm, index) => (
+                <UnifiedCommentItem
                   key={cm.id}
-                  className={`p-2 rounded-xl text-[11px] flex flex-col gap-0.5 ${
-                    cm.approved === 0
-                      ? "bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200"
-                      : "bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-neutral-700 dark:text-neutral-300">
-                      {cm.guestName || cm.user?.username || "访客"}
-                    </span>
-                    <div className="flex items-center gap-1.5 font-mono text-[9px] text-neutral-400">
-                      {cm.approved === 0 && (
-                        <span className="text-amber-600 font-bold bg-amber-500/20 px-1 rounded">
-                          待审批 (外链/敏感)
-                        </span>
-                      )}
-                      <span>{timeago(cm.createdAt)}</span>
-                      {canManage && (
-                        <div className="flex items-center gap-1 ml-1">
-                          {cm.approved === 0 && (
-                            <button
-                              type="button"
-                              onClick={() => handleApproveComment(cm.id)}
-                              className="text-emerald-600 hover:underline font-bold"
-                              title="审核通过"
-                            >
-                              通过
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteComment(cm.id)}
-                            className="text-rose-500 hover:underline"
-                            title="删除"
-                          >
-                            删除
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-neutral-600 dark:text-neutral-300 leading-snug">{cm.content}</p>
-                </div>
+                  comment={cm as CommentData}
+                  floorNumber={commentsList.length - index}
+                  canManage={canManage}
+                  onApprove={handleApproveComment}
+                  onDelete={handleDeleteComment}
+                  compact
+                />
               ))}
             </div>
           ) : (
-            <p className="text-[10px] text-neutral-400 py-1 text-center">暂无留言，快来留下第一句回复吧~</p>
+            <p className="text-[11px] text-neutral-400 py-1.5 text-center">暂无留言，快来留下第一句回复吧~</p>
           )}
 
-          {/* 留言输入栏 */}
-          <div className="flex flex-col gap-1.5 pt-1">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                placeholder="昵称 (可选)"
-                className="w-24 px-2 py-1 rounded-lg border border-black/10 dark:border-white/10 bg-white/60 dark:bg-neutral-800 text-[10px] outline-none focus:border-theme"
-              />
-              <input
-                type="text"
-                value={commentContent}
-                onChange={(e) => setCommentContent(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handlePostComment();
-                  }
-                }}
-                placeholder="回复这条动态 (含外链将进入审批)..."
-                className="flex-1 px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 bg-white/60 dark:bg-neutral-800 text-[11px] outline-none focus:border-theme"
-              />
-              <button
-                type="button"
-                onClick={handlePostComment}
-                disabled={submittingComment || !commentContent.trim()}
-                className="px-3 py-1 rounded-lg bg-theme text-white text-[10px] font-bold shadow-2xs hover:bg-theme-hover transition disabled:opacity-50 shrink-0 cursor-pointer"
-              >
-                {submittingComment ? "发送中..." : "发送"}
-              </button>
-            </div>
-            {commentFeedback && (
-              <p className="text-[10px] text-theme font-medium animate-fade-in pl-1">
-                {commentFeedback}
-              </p>
-            )}
-          </div>
+          <UnifiedCommentComposer
+            profile={profile}
+            onSubmit={handlePostComment}
+            placeholder="回复这条日常随想...（支持 Markdown，含外链将进入审核）"
+            submitLabel="发送留言"
+            compact
+          />
         </div>
-      )}
+      ) : null}
     </article>
   );
 }

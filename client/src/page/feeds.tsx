@@ -194,10 +194,10 @@ function AtelierPhotoCard({
         );
     }
 
-    // 2. 全幅沉浸画册 (Poster - 无白边满幅展墙，4:3 艺术画框 + 底部克制磨砂铭牌)
+    // 2. 全幅沉浸画册 (Poster - 无白边满幅原图完整呈现，严禁强裁 + 贴底轻盈铭牌)
     if (variant === "poster") {
         return (
-            <div className="relative group/card w-full">
+            <div className="relative group/card break-inside-avoid w-full mb-5">
                 <Link
                     href={`/feed/${feed.id}`}
                     draggable={draggable && canManage}
@@ -205,12 +205,12 @@ function AtelierPhotoCard({
                     onDragOver={onDragOver}
                     onDrop={onDrop}
                     onDragEnd={onDragEnd}
-                    className={`group relative block aspect-[4/3] w-full overflow-hidden rounded-2xl bg-neutral-900 shadow-sm hover:shadow-xl transition-all duration-300 ${
+                    className={`group relative block w-full overflow-hidden rounded-2xl bg-neutral-900 shadow-sm hover:shadow-xl transition-all duration-300 ${
                         isDragging ? "opacity-35 scale-95 ring-2 ring-theme" : ""
                     } ${isDragOver ? "ring-4 ring-theme/40" : ""}`}
                 >
                     {canManage ? (
-                        <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                        <div className="absolute right-2.5 top-2.5 z-20 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                             <button
                                 type="button"
                                 onClick={(e) => {
@@ -245,26 +245,25 @@ function AtelierPhotoCard({
                             loading="lazy"
                             decoding="async"
                             onError={() => setImageError(true)}
-                            className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                            className="block w-full h-auto transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                         />
                     ) : (
-                        <div className="h-full w-full bg-gradient-to-br from-theme/85 via-theme-secondary/75 to-neutral-900 p-6 flex items-start justify-end">
-                            <i className="ri-gallery-line text-4xl text-white/25" />
+                        <div className="w-full min-h-48 bg-gradient-to-br from-theme/85 via-theme-secondary/75 to-neutral-900 p-5 flex items-start justify-end">
+                            <i className="ri-gallery-line text-3xl text-white/25" />
                         </div>
                     )}
 
-                    {/* 底部微渐变保护 + 克制悬浮展厅铭牌 */}
-                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/65 via-black/20 to-transparent pointer-events-none" />
-                    <div className="absolute inset-x-3 bottom-3 rounded-xl bg-black/50 backdrop-blur-md border border-white/15 px-3.5 py-2.5 text-white transition-transform duration-300 group-hover:-translate-y-0.5">
-                        <div className="flex items-center justify-between gap-2 text-[10px] font-mono text-white/75 mb-1">
+                    {/* 贴底轻盈铭牌：克制高度，完整让位给原图画作 */}
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent px-3.5 pt-8 pb-2.5 text-white">
+                        <div className="flex items-center justify-between gap-2 text-[10px] font-mono text-white/75 mb-0.5">
                             <span className="flex items-center gap-1.5">
                                 <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
-                                {feed.top === 1 ? <span className="px-1.5 py-0.2 rounded bg-theme/85 text-white font-sans font-semibold">置顶</span> : null}
-                                {feed.draft === 1 ? <span className="px-1.5 py-0.2 rounded bg-amber-500/85 text-white font-sans font-semibold">草稿</span> : null}
+                                {feed.top === 1 ? <span className="px-1.5 py-0.2 rounded bg-theme/90 text-white font-sans font-semibold">置顶</span> : null}
+                                {feed.draft === 1 ? <span className="px-1.5 py-0.2 rounded bg-amber-500/90 text-white font-sans font-semibold">草稿</span> : null}
                             </span>
                             <span>{readingTime} 分钟</span>
                         </div>
-                        <h2 className="text-sm sm:text-[15px] font-bold leading-snug line-clamp-1 tracking-tight">
+                        <h2 className="text-sm font-bold leading-snug line-clamp-1 tracking-tight drop-shadow-2xs">
                             {feed.title}
                         </h2>
                     </div>
@@ -537,55 +536,49 @@ function StickyNoteItem({
         isDragOver ? "ring-2 ring-theme ring-offset-2 ring-dashed scale-102 transition-all shadow-xl" : ""
     }`;
 
-    // 统一的便签右上角管理与拖拽/移动控制条
+    // 统一的便签右上角管理与拖拽/移动控制条（悬停显现，不遮挡封面图）
     const renderAdminControls = (_focusKey: string) => {
         if (!canManage) return null;
         return (
-            <div className="absolute right-3.5 top-3.5 z-30 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                {/* 快捷向前移动 */}
+            <div className="absolute right-2.5 top-2.5 z-30 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                 <button
                     type="button"
                     onClick={(e) => {
                         e.stopPropagation();
                         onMoveStep?.(type, "prev");
                     }}
-                    title="在画廊首屏向前移动一个槽位"
+                    title="向前移动一个槽位"
                     className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-500 hover:text-theme shadow-xs transition hover:scale-110 select-none"
                 >
                     <i className="ri-arrow-left-s-line text-xs" />
                 </button>
-
-                {/* 自由拖拽手柄 */}
                 <div
-                    title="按住手柄自由拖放便签重排次序"
+                    title="按住拖放重排次序"
                     draggable
                     onDragStart={onDragStart}
                     className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-500 hover:text-theme shadow-xs cursor-grab active:cursor-grabbing transition hover:scale-110 select-none"
                 >
                     <i className="ri-drag-move-2-line text-xs" />
                 </div>
-
-                {/* 快捷向后移动 */}
                 <button
                     type="button"
                     onClick={(e) => {
                         e.stopPropagation();
                         onMoveStep?.(type, "next");
                     }}
-                    title="在画廊首屏向后移动一个槽位"
+                    title="向后移动一个槽位"
                     className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-500 hover:text-theme shadow-xs transition hover:scale-110 select-none"
                 >
                     <i className="ri-arrow-right-s-line text-xs" />
                 </button>
-
                 <button
                     type="button"
                     onClick={(e) => {
                         e.stopPropagation();
                         onEditNote?.(type);
                     }}
-                    title="在前台就地编辑此便签的文案、形态与背景"
-                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-xs transition hover:scale-110 hover:text-theme select-none ml-0.5"
+                    title="就地编辑便签设置"
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-xs transition hover:scale-110 hover:text-theme select-none"
                 >
                     <i className="ri-settings-3-line text-xs" />
                 </button>
@@ -608,7 +601,7 @@ function StickyNoteItem({
             <div
                 className={`group flex items-center justify-between gap-3 transition-colors text-xs ${
                     isEditorial
-                        ? "py-4 pl-4 border-l-2 border-theme/60 bg-theme/[0.025] hover:bg-theme/[0.05] pr-3 my-2 rounded-r-xl"
+                        ? "py-3.5 pl-4 border-l-2 border-theme/60 bg-theme/[0.025] hover:bg-theme/[0.05] pr-3 my-2 rounded-r-xl"
                         : "px-4 py-2.5 bg-neutral-50/70 dark:bg-white/[0.02] hover:bg-theme/[0.04]"
                 } ${dragStyleClasses}`}
                 {...dragHandlers}
@@ -643,471 +636,274 @@ function StickyNoteItem({
         );
     }
 
-    if (type === "about") {
-        const aboutUrl = siteConfig.atelierAboutUrl || "/about";
-        const bgImage = siteConfig.atelierAboutBg;
-        const noteStyle = siteConfig.atelierAboutStyle || "card";
+    // 统一克制便签元数据（遵循《美化章程》第三章：体量克制 + 封面图默认悬停浮现文字）
+    const noteSpecMap = {
+        about: {
+            url: siteConfig.atelierAboutUrl || "/about",
+            bgImage: siteConfig.atelierAboutBg || "",
+            style: siteConfig.atelierAboutStyle || "card",
+            textMode: (siteConfig.atelierAboutTextMode || "hover") as "hover" | "hidden" | "always",
+            icon: siteConfig.atelierAboutIcon,
+            fallbackIcon: "ri-user-smile-line",
+            title: siteConfig.name || "关于我",
+            shortSub: "关于我",
+            desc: siteConfig.atelierAboutDesc || "欢迎光临我的记忆工坊与随笔空间。",
+            cta: "关于我",
+            tiltClass: "rotate-[0.8deg]",
+        },
+        timeline: {
+            url: siteConfig.atelierTimelineUrl || "/timeline",
+            bgImage: siteConfig.atelierTimelineBg || "",
+            style: siteConfig.atelierTimelineStyle || "card",
+            textMode: (siteConfig.atelierTimelineTextMode || "hover") as "hover" | "hidden" | "always",
+            icon: siteConfig.atelierTimelineIcon,
+            fallbackIcon: "ri-time-line",
+            title: "岁月轨迹",
+            shortSub: "时光刻度",
+            desc: siteConfig.atelierTimelineDesc || "以时间为轴，串联每一次灵感与足迹。",
+            cta: "查看轨迹",
+            tiltClass: "-rotate-[1deg]",
+        },
+        moments: {
+            url: siteConfig.atelierMomentsUrl || "/moments",
+            bgImage: siteConfig.atelierMomentsBg || "",
+            style: siteConfig.atelierMomentsStyle || "card",
+            textMode: (siteConfig.atelierMomentsTextMode || "hover") as "hover" | "hidden" | "always",
+            icon: siteConfig.atelierMomentsIcon,
+            fallbackIcon: "ri-chat-heart-line",
+            title: "日常随想",
+            shortSub: "随笔动态",
+            desc: siteConfig.atelierMomentsDesc || "生活碎碎念与即兴灵感记录。",
+            cta: "进入动态",
+            tiltClass: "rotate-[1deg]",
+        },
+        friends: {
+            url: siteConfig.atelierFriendsUrl || "/friends",
+            bgImage: siteConfig.atelierFriendsBg || "",
+            style: siteConfig.atelierFriendsStyle || "card",
+            textMode: (siteConfig.atelierFriendsTextMode || "hover") as "hover" | "hidden" | "always",
+            icon: siteConfig.atelierFriendsIcon,
+            fallbackIcon: "ri-planet-line",
+            title: "星廊友链",
+            shortSub: "数字花园",
+            desc: siteConfig.atelierFriendsDesc || "漫步同好博主的数字花园。",
+            cta: "拜访朋友",
+            tiltClass: "-rotate-[0.8deg]",
+        },
+        search: {
+            url: siteConfig.atelierSearchUrl || "/search",
+            bgImage: siteConfig.atelierSearchBg || "",
+            style: siteConfig.atelierSearchStyle || "card",
+            textMode: (siteConfig.atelierSearchTextMode || "hover") as "hover" | "hidden" | "always",
+            icon: siteConfig.atelierSearchIcon,
+            fallbackIcon: "ri-search-line",
+            title: "随心探索",
+            shortSub: "站内检索",
+            desc: siteConfig.atelierSearchDesc || "输入关键词即刻检索全站文章。",
+            cta: "站内检索",
+            tiltClass: "rotate-[0.6deg]",
+        },
+    };
 
-        // 精致小圆盘样式 (Circle Widget)
-        if (noteStyle === "circle") {
-            return (
-                <div
-                    {...dragHandlers}
-                    onClick={() => setLocation(aboutUrl)}
-                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-amber-300/80 ${
-                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-gradient-to-tr from-amber-100 to-amber-50 dark:from-amber-950/60 dark:to-neutral-900"
-                    } text-center ${dragStyleClasses}`}
-                >
-                    {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
-                    <div className="relative z-10 flex flex-col items-center">
-                        {renderAdminControls("about")}
-                        <span className="text-3xl mb-1 text-amber-500">
-                            <VectorIcon name={siteConfig.atelierAboutIcon} fallback="ri-user-smile-line" />
-                        </span>
-                        <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-amber-900 dark:text-amber-200"}`}>
-                            {siteConfig.name || "80hou"}
-                        </p>
-                        <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-amber-300" : "text-amber-700/80 dark:text-amber-300/80"}`}>
-                            关于我 &rarr;
-                        </span>
-                    </div>
-                </div>
-            );
-        }
+    const spec = noteSpecMap[type];
+    const hasBg = Boolean(spec.bgImage && spec.bgImage.trim().length > 0);
+    const showTextOverlay = !hasBg || spec.textMode !== "hidden";
+    const overlayVisibilityClass =
+        hasBg && spec.textMode === "hover"
+            ? "opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+            : "opacity-100";
 
-        // 极简小胶囊样式 (Capsule Widget)
-        if (noteStyle === "capsule") {
-            return (
-                <div
-                    {...dragHandlers}
-                    onClick={() => setLocation(aboutUrl)}
-                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-amber-300/80 ${
-                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-amber-50 dark:bg-amber-950/40"
-                    } ${dragStyleClasses}`}
-                >
-                    {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
-                    <div className="relative z-10 flex items-center gap-2.5 min-w-0">
-                        <span className="text-xl text-amber-500">
-                            <VectorIcon name={siteConfig.atelierAboutIcon} fallback="ri-user-smile-line" />
-                        </span>
-                        <div className="min-w-0 truncate">
-                            <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-amber-900 dark:text-amber-200"}`}>关于我</p>
-                            <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>{siteConfig.name || "80hou's Home"}</p>
-                        </div>
-                    </div>
-                    <div className="relative z-10 flex items-center gap-2 shrink-0">
-                        {renderAdminControls("about")}
-                        <span className={`text-xs group-hover:translate-x-1 transition-transform font-bold ${bgImage ? "text-amber-300" : "text-amber-800 dark:text-amber-300"}`}>&rarr;</span>
-                    </div>
-                </div>
-            );
-        }
-
-        // 默认拍立得长条便签样式
+    // 1. 精致小圆盘样式（收敛为 128~144px 轻巧徽章，绝不膨胀）
+    if (spec.style === "circle") {
         return (
             <div
                 {...dragHandlers}
-                onClick={() => setLocation(aboutUrl)}
-                style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-1 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
-                    bgImage
-                        ? "bg-cover bg-center border border-black/10 dark:border-white/10"
-                        : "bg-amber-100 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/40"
-                } ${dragStyleClasses}`}
-            >
-                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />}
-                <div className="absolute -top-2 left-6 w-8 h-3.5 bg-amber-200/80 dark:bg-amber-800/50 rounded-xs rotate-[-5deg] z-20" />
-                {renderAdminControls("about")}
-
-                <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                    <span className="text-2xl mb-1 block text-amber-500">
-                        <VectorIcon name={siteConfig.atelierAboutIcon} fallback="ri-user-smile-line" />
-                    </span>
-                    <p className={`font-bold text-base ${bgImage ? "text-white" : "text-amber-900 dark:text-amber-200"}`}>
-                        {siteConfig.name || "80hou's Home"}
-                    </p>
-                    <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-amber-700/80 dark:text-amber-300/70"}`}>
-                        {siteConfig.atelierAboutDesc || "欢迎光临我的记忆工坊与随笔空间，点击了解更多。"}
-                    </p>
-                    <div className={`mt-3 flex items-center gap-1 text-xs font-semibold group-hover:underline ${bgImage ? "text-amber-300" : "text-amber-800 dark:text-amber-300"}`}>
-                        <span>关于我 &rarr;</span>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (type === "timeline") {
-        const targetUrl = siteConfig.atelierTimelineUrl || "/timeline";
-        const bgImage = siteConfig.atelierTimelineBg;
-        const noteStyle = siteConfig.atelierTimelineStyle || "card";
-
-        if (noteStyle === "circle") {
-            return (
-                <div
-                    {...dragHandlers}
-                    onClick={() => setLocation(targetUrl)}
-                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-orange-300/80 ${
-                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-gradient-to-tr from-orange-100 to-orange-50 dark:from-orange-950/60 dark:to-neutral-900"
-                    } text-center ${dragStyleClasses}`}
-                >
-                    {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
-                    <div className="relative z-10 flex flex-col items-center">
-                        {renderAdminControls("timeline")}
-                        <span className="text-3xl mb-1 text-orange-500">
-                            <VectorIcon name={siteConfig.atelierTimelineIcon} fallback="ri-time-line" />
-                        </span>
-                        <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-orange-900 dark:text-orange-200"}`}>岁月轨迹</p>
-                        <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-orange-300" : "text-orange-700/80 dark:text-orange-300/80"}`}>
-                            时光足迹 &rarr;
-                        </span>
-                    </div>
-                </div>
-            );
-        }
-
-        if (noteStyle === "capsule") {
-            return (
-                <div
-                    {...dragHandlers}
-                    onClick={() => setLocation(targetUrl)}
-                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-orange-300/80 ${
-                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-orange-50 dark:bg-orange-950/40"
-                    } ${dragStyleClasses}`}
-                >
-                    {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
-                    <div className="relative z-10 flex items-center gap-2.5 min-w-0">
-                        <span className="text-xl text-orange-500">
-                            <VectorIcon name={siteConfig.atelierTimelineIcon} fallback="ri-time-line" />
-                        </span>
-                        <div className="min-w-0 truncate">
-                            <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-orange-900 dark:text-orange-200"}`}>岁月轨迹</p>
-                            <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>时光长河刻度</p>
-                        </div>
-                    </div>
-                    <div className="relative z-10 flex items-center gap-2 shrink-0">
-                        {renderAdminControls("timeline")}
-                        <span className={`text-xs group-hover:translate-x-1 transition-transform font-bold ${bgImage ? "text-orange-300" : "text-orange-800 dark:text-orange-300"}`}>&rarr;</span>
-                    </div>
-                </div>
-            );
-        }
-
-        return (
-            <div
-                {...dragHandlers}
-                onClick={() => setLocation(targetUrl)}
-                style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform -rotate-2 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
-                    bgImage
-                        ? "bg-cover bg-center border border-black/10 dark:border-white/10"
-                        : "bg-orange-50 dark:bg-orange-950/40 border border-orange-200/80 dark:border-orange-800/40"
-                } ${dragStyleClasses}`}
-            >
-                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />}
-                <div className="absolute -top-2.5 right-6 w-10 h-3.5 bg-orange-200/70 dark:bg-orange-800/50 rounded-xs rotate-[3deg] z-20" />
-                {renderAdminControls("timeline")}
-
-                <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                    <span className="text-2xl mb-1 block text-orange-500">
-                        <VectorIcon name={siteConfig.atelierTimelineIcon} fallback="ri-time-line" />
-                    </span>
-                    <p className={`font-bold text-base ${bgImage ? "text-white" : "text-orange-900 dark:text-orange-200"}`}>岁月轨迹</p>
-                    <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-orange-700/80 dark:text-orange-300/70"}`}>
-                        {siteConfig.atelierTimelineDesc || "以时间为轴，串联起每一次灵感与技术实践。"}
-                    </p>
-                    <div className={`mt-3 flex items-center gap-1 text-xs font-semibold group-hover:underline ${bgImage ? "text-orange-300" : "text-orange-800 dark:text-orange-300"}`}>
-                        <span>时光长河足迹 &rarr;</span>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (type === "moments") {
-        const targetUrl = siteConfig.atelierMomentsUrl || "/moments";
-        const bgImage = siteConfig.atelierMomentsBg;
-        const noteStyle = siteConfig.atelierMomentsStyle || "card";
-
-        if (noteStyle === "circle") {
-            return (
-                <div
-                    {...dragHandlers}
-                    onClick={() => setLocation(targetUrl)}
-                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-emerald-300/80 ${
-                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-gradient-to-tr from-emerald-100 to-emerald-50 dark:from-emerald-950/60 dark:to-neutral-900"
-                    } text-center ${dragStyleClasses}`}
-                >
-                    {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
-                    <div className="relative z-10 flex flex-col items-center">
-                        {renderAdminControls("moments")}
-                        <span className="text-3xl mb-1 text-emerald-500">
-                            <VectorIcon name={siteConfig.atelierMomentsIcon} fallback="ri-chat-heart-line" />
-                        </span>
-                        <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-emerald-900 dark:text-emerald-200"}`}>日常随想</p>
-                        <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-emerald-300" : "text-emerald-700/80 dark:text-emerald-300/80"}`}>
-                            动态碎碎念 &rarr;
-                        </span>
-                    </div>
-                </div>
-            );
-        }
-
-        if (noteStyle === "capsule") {
-            return (
-                <div
-                    {...dragHandlers}
-                    onClick={() => setLocation(targetUrl)}
-                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-emerald-300/80 ${
-                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-emerald-50 dark:bg-emerald-950/40"
-                    } ${dragStyleClasses}`}
-                >
-                    {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
-                    <div className="relative z-10 flex items-center gap-2.5 min-w-0">
-                        <span className="text-xl text-emerald-500">
-                            <VectorIcon name={siteConfig.atelierMomentsIcon} fallback="ri-chat-heart-line" />
-                        </span>
-                        <div className="min-w-0 truncate">
-                            <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-emerald-900 dark:text-emerald-200"}`}>日常随想</p>
-                            <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>朋友圈动态</p>
-                        </div>
-                    </div>
-                    <div className="relative z-10 flex items-center gap-2 shrink-0">
-                        {renderAdminControls("moments")}
-                        <span className={`text-xs group-hover:translate-x-1 transition-transform font-bold ${bgImage ? "text-emerald-300" : "text-emerald-800 dark:text-emerald-300"}`}>&rarr;</span>
-                    </div>
-                </div>
-            );
-        }
-
-        return (
-            <div
-                {...dragHandlers}
-                onClick={() => setLocation(targetUrl)}
-                style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-2 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
-                    bgImage
-                        ? "bg-cover bg-center border border-black/10 dark:border-white/10"
-                        : "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/40"
-                } ${dragStyleClasses}`}
-            >
-                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />}
-                <div className="absolute -top-2 left-8 w-10 h-3.5 bg-emerald-200/70 dark:bg-emerald-800/50 rounded-xs rotate-[-3deg] z-20" />
-                {renderAdminControls("moments")}
-
-                <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                    <span className="text-2xl mb-1 block text-emerald-500">
-                        <VectorIcon name={siteConfig.atelierMomentsIcon} fallback="ri-chat-heart-line" />
-                    </span>
-                    <p className={`font-bold text-base ${bgImage ? "text-white" : "text-emerald-900 dark:text-emerald-200"}`}>日常随想</p>
-                    <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-emerald-700/80 dark:text-emerald-300/70"}`}>
-                        {siteConfig.atelierMomentsDesc || "生活碎碎念、朋友圈动态与不设限的日常记录。"}
-                    </p>
-                    <div className={`mt-3 flex items-center gap-1 text-xs font-semibold group-hover:underline ${bgImage ? "text-emerald-300" : "text-emerald-800 dark:text-emerald-300"}`}>
-                        <span>朋友圈随笔 &rarr;</span>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (type === "friends") {
-        const targetUrl = siteConfig.atelierFriendsUrl || "/friends";
-        const bgImage = siteConfig.atelierFriendsBg;
-        const noteStyle = siteConfig.atelierFriendsStyle || "card";
-
-        if (noteStyle === "circle") {
-            return (
-                <div
-                    {...dragHandlers}
-                    onClick={() => setLocation(targetUrl)}
-                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                    className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-rose-300/80 ${
-                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-gradient-to-tr from-rose-100 to-rose-50 dark:from-rose-950/60 dark:to-neutral-900"
-                    } text-center ${dragStyleClasses}`}
-                >
-                    {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
-                    <div className="relative z-10 flex flex-col items-center">
-                        {renderAdminControls("friends")}
-                        <span className="text-3xl mb-1 text-rose-500">
-                            <VectorIcon name={siteConfig.atelierFriendsIcon} fallback="ri-planet-line" />
-                        </span>
-                        <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-rose-900 dark:text-rose-200"}`}>星廊</p>
-                        <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-rose-300" : "text-rose-700/80 dark:text-rose-300/80"}`}>
-                            拜访朋友们 &rarr;
-                        </span>
-                    </div>
-                </div>
-            );
-        }
-
-        if (noteStyle === "capsule") {
-            return (
-                <div
-                    {...dragHandlers}
-                    onClick={() => setLocation(targetUrl)}
-                    style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                    className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-rose-300/80 ${
-                        bgImage ? "bg-cover bg-center overflow-hidden" : "bg-rose-50 dark:bg-rose-950/40"
-                    } ${dragStyleClasses}`}
-                >
-                    {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
-                    <div className="relative z-10 flex items-center gap-2.5 min-w-0">
-                        <span className="text-xl text-rose-500">
-                            <VectorIcon name={siteConfig.atelierFriendsIcon} fallback="ri-planet-line" />
-                        </span>
-                        <div className="min-w-0 truncate">
-                            <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-rose-900 dark:text-rose-200"}`}>星廊</p>
-                            <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>博主数字花园</p>
-                        </div>
-                    </div>
-                    <div className="relative z-10 flex items-center gap-2 shrink-0">
-                        {renderAdminControls("friends")}
-                        <span className={`text-xs group-hover:translate-x-1 transition-transform font-bold ${bgImage ? "text-rose-300" : "text-rose-800 dark:text-rose-300"}`}>&rarr;</span>
-                    </div>
-                </div>
-            );
-        }
-
-        return (
-            <div
-                {...dragHandlers}
-                onClick={() => setLocation(targetUrl)}
-                style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform -rotate-1 hover:rotate-0 hover:scale-[1.03] cursor-pointer select-none overflow-hidden ${
-                    bgImage
-                        ? "bg-cover bg-center border border-black/10 dark:border-white/10"
-                        : "bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/40"
-                } ${dragStyleClasses}`}
-            >
-                {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />}
-                <div className="absolute -top-2 right-8 w-10 h-3.5 bg-rose-200/70 dark:bg-rose-800/50 rounded-xs rotate-[4deg] z-20" />
-                {renderAdminControls("friends")}
-
-                <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                    <span className="text-2xl mb-1 block text-rose-500">
-                        <VectorIcon name={siteConfig.atelierFriendsIcon} fallback="ri-planet-line" />
-                    </span>
-                    <p className={`font-bold text-base ${bgImage ? "text-white" : "text-rose-900 dark:text-rose-200"}`}>星廊</p>
-                    <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-rose-700/80 dark:text-rose-300/70"}`}>
-                        {siteConfig.atelierFriendsDesc || "漫步在同好博主的数字花园，交换思想火花。"}
-                    </p>
-                    <div className={`mt-3 flex items-center gap-1 text-xs font-semibold group-hover:underline ${bgImage ? "text-rose-300" : "text-rose-800 dark:text-rose-300"}`}>
-                        <span>拜访朋友们 &rarr;</span>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Direct Search Sticky Note
-    const bgImage = siteConfig.atelierSearchBg;
-    const noteStyle = siteConfig.atelierSearchStyle || "card";
-
-    if (noteStyle === "circle") {
-        return (
-            <div
-                {...dragHandlers}
-                onClick={() => setLocation("/search")}
-                style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                className={`group relative break-inside-avoid flex flex-col items-center justify-center p-6 rounded-full aspect-square w-48 sm:w-56 mx-auto shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer select-none border border-sky-300/80 ${
-                    bgImage ? "bg-cover bg-center overflow-hidden" : "bg-gradient-to-tr from-sky-100 to-sky-50 dark:from-sky-950/60 dark:to-neutral-900"
+                onClick={() => setLocation(spec.url)}
+                className={`group relative break-inside-avoid mb-5 flex flex-col items-center justify-center rounded-full aspect-square w-32 sm:w-36 mx-auto shadow-sm hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer select-none overflow-hidden border border-neutral-200/80 dark:border-white/10 ${
+                    hasBg ? "bg-neutral-900" : "bg-w"
                 } text-center ${dragStyleClasses}`}
             >
-                {bgImage && <div className="absolute inset-0 bg-black/60 rounded-full" />}
-                <div className="relative z-10 flex flex-col items-center">
-                    {renderAdminControls("search")}
-                    <span className="text-3xl mb-1 text-sky-500">
-                        <VectorIcon name={siteConfig.atelierSearchIcon} fallback="ri-search-line" />
-                    </span>
-                    <p className={`font-bold text-sm truncate w-32 ${bgImage ? "text-white" : "text-sky-900 dark:text-sky-200"}`}>随心探索</p>
-                    <span className={`text-[11px] mt-1 font-semibold group-hover:underline ${bgImage ? "text-sky-300" : "text-sky-700/80 dark:text-sky-300/80"}`}>
-                        检索全站 &rarr;
-                    </span>
-                </div>
+                {hasBg ? (
+                    <img
+                        src={spec.bgImage}
+                        alt={spec.title}
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                ) : null}
+                {renderAdminControls(type)}
+                {showTextOverlay ? (
+                    <div
+                        className={`relative z-10 flex h-full w-full flex-col items-center justify-center p-3 ${
+                            hasBg ? `bg-black/55 backdrop-blur-[1px] text-white ${overlayVisibilityClass}` : ""
+                        }`}
+                    >
+                        <span className={`text-xl mb-1 ${hasBg ? "text-white" : "text-theme"}`}>
+                            <VectorIcon name={spec.icon} fallback={spec.fallbackIcon} />
+                        </span>
+                        <p className={`font-bold text-xs truncate max-w-[96px] ${hasBg ? "text-white" : "t-primary"}`}>
+                            {spec.title}
+                        </p>
+                        <span className={`text-[10px] mt-0.5 font-medium ${hasBg ? "text-white/80" : "text-theme"}`}>
+                            {spec.cta} &rarr;
+                        </span>
+                    </div>
+                ) : null}
             </div>
         );
     }
 
-    if (noteStyle === "capsule") {
+    // 2. 极简小胶囊样式（轻巧单行条，不臃肿）
+    if (spec.style === "capsule") {
         return (
             <div
                 {...dragHandlers}
-                onClick={() => setLocation("/search")}
-                style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-                className={`group relative break-inside-avoid flex items-center justify-between px-5 py-3 rounded-full shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer select-none border border-sky-300/80 ${
-                    bgImage ? "bg-cover bg-center overflow-hidden" : "bg-sky-50 dark:bg-sky-950/40"
+                onClick={() => setLocation(spec.url)}
+                className={`group relative break-inside-avoid mb-4 flex items-center justify-between px-4 py-2.5 rounded-full shadow-2xs hover:shadow-md transition-all duration-200 hover:scale-[1.01] cursor-pointer select-none overflow-hidden border border-neutral-200/80 dark:border-white/10 ${
+                    hasBg ? "bg-neutral-900 min-h-[48px]" : "bg-w"
                 } ${dragStyleClasses}`}
             >
-                {bgImage && <div className="absolute inset-0 bg-black/55 rounded-full" />}
-                <div className="relative z-10 flex items-center gap-2.5 min-w-0">
-                    <span className="text-xl text-sky-500">
-                        <VectorIcon name={siteConfig.atelierSearchIcon} fallback="ri-search-line" />
-                    </span>
-                    <div className="min-w-0 truncate">
-                        <p className={`font-bold text-xs truncate ${bgImage ? "text-white" : "text-sky-900 dark:text-sky-200"}`}>随心探索</p>
-                        <p className={`text-[10px] truncate ${bgImage ? "text-neutral-200" : "text-neutral-400"}`}>检索文章与标签</p>
+                {hasBg ? (
+                    <img
+                        src={spec.bgImage}
+                        alt={spec.title}
+                        className="absolute inset-0 h-full w-full object-cover"
+                    />
+                ) : null}
+                {renderAdminControls(type)}
+                {showTextOverlay ? (
+                    <div
+                        className={`relative z-10 flex w-full items-center justify-between gap-2 ${
+                            hasBg ? `bg-black/45 -mx-4 -my-2.5 px-4 py-2.5 text-white ${overlayVisibilityClass}` : ""
+                        }`}
+                    >
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className={`text-base shrink-0 ${hasBg ? "text-white" : "text-theme"}`}>
+                                <VectorIcon name={spec.icon} fallback={spec.fallbackIcon} />
+                            </span>
+                            <div className="min-w-0 truncate">
+                                <p className={`font-bold text-xs truncate ${hasBg ? "text-white" : "t-primary"}`}>{spec.title}</p>
+                                <p className={`text-[10px] truncate ${hasBg ? "text-white/75" : "text-neutral-400"}`}>{spec.shortSub}</p>
+                            </div>
+                        </div>
+                        <span className={`text-xs shrink-0 font-bold ${hasBg ? "text-white/90" : "text-theme"}`}>&rarr;</span>
                     </div>
-                </div>
-                <div className="relative z-10 flex items-center gap-2 shrink-0">
-                    {renderAdminControls("search")}
-                    <span className={`text-xs group-hover:translate-x-1 transition-transform font-bold ${bgImage ? "text-sky-300" : "text-sky-800 dark:text-sky-300"}`}>&rarr;</span>
-                </div>
+                ) : null}
             </div>
         );
     }
 
+    // 3. 紧凑卡片样式（有封面图时完整展示原图，默认仅悬停时浮现轻磨砂文字，常态零遮挡）
+    if (hasBg) {
+        return (
+            <div
+                {...dragHandlers}
+                onClick={type === "search" ? undefined : () => setLocation(spec.url)}
+                className={`group relative break-inside-avoid mb-5 block w-full rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform ${
+                    siteConfig.feedCardVariant === "poster" ? "" : `${spec.tiltClass} hover:rotate-0`
+                } hover:scale-[1.02] cursor-pointer select-none overflow-hidden border border-black/10 dark:border-white/10 bg-neutral-900 ${dragStyleClasses}`}
+            >
+                {renderAdminControls(type)}
+                <img
+                    src={spec.bgImage}
+                    alt={spec.title}
+                    className="block w-full h-auto transition-transform duration-500 group-hover:scale-[1.03]"
+                />
+                {showTextOverlay ? (
+                    <div
+                        className={`absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3.5 pt-8 pb-3 text-white ${overlayVisibilityClass}`}
+                    >
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-sm text-white/90">
+                                <VectorIcon name={spec.icon} fallback={spec.fallbackIcon} />
+                            </span>
+                            <p className="font-bold text-sm truncate">{spec.title}</p>
+                        </div>
+                        <p className="text-[11px] text-white/80 mt-0.5 line-clamp-2 leading-snug">{spec.desc}</p>
+                        {type === "search" ? (
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    if (searchKeyword.trim()) {
+                                        setLocation(`/search/${encodeURIComponent(searchKeyword.trim())}`);
+                                    }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="mt-2 flex items-center gap-1.5"
+                            >
+                                <input
+                                    type="text"
+                                    value={searchKeyword}
+                                    onChange={(e) => setSearchKeyword(e.target.value)}
+                                    placeholder="输入关键词按回车..."
+                                    className="w-full rounded-lg border border-white/25 bg-black/45 px-2.5 py-1 text-[11px] text-white placeholder-white/60 backdrop-blur-sm focus:outline-none focus:border-white"
+                                />
+                                <button
+                                    type="submit"
+                                    className="shrink-0 rounded-lg bg-theme px-2.5 py-1 text-[11px] font-bold text-white"
+                                >
+                                    搜
+                                </button>
+                            </form>
+                        ) : null}
+                    </div>
+                ) : null}
+            </div>
+        );
+    }
+
+    // 无封面图时的精致克制手账卡片（统一跟随主题色语义令牌，不再强塞五颜六色糖果底）
     return (
         <div
             {...dragHandlers}
-            style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-            className={`group relative break-inside-avoid block w-full rounded-2xl p-5 shadow-md hover:shadow-xl transition-all duration-300 transform rotate-1.5 hover:rotate-0 hover:scale-[1.03] select-none overflow-hidden ${
-                bgImage
-                    ? "bg-cover bg-center border border-black/10 dark:border-white/10"
-                    : "bg-sky-50 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/40"
-            } ${dragStyleClasses}`}
+            onClick={type === "search" ? undefined : () => setLocation(spec.url)}
+            className={`group relative break-inside-avoid mb-5 block w-full rounded-2xl p-3.5 shadow-2xs hover:shadow-md transition-all duration-300 transform ${
+                siteConfig.feedCardVariant === "poster" ? "" : `${spec.tiltClass} hover:rotate-0`
+            } hover:scale-[1.01] cursor-pointer select-none overflow-hidden border border-neutral-200/80 dark:border-white/10 bg-w ${dragStyleClasses}`}
         >
-            {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />}
-            <div className="absolute -top-2.5 left-10 w-10 h-3.5 bg-sky-200/70 dark:bg-sky-800/50 rounded-xs rotate-[-4deg] z-20" />
-            {renderAdminControls("search")}
+            <div className="absolute -top-1.5 left-5 w-7 h-2.5 bg-theme/20 dark:bg-theme/30 rounded-xs rotate-[-4deg] pointer-events-none" />
+            {renderAdminControls(type)}
 
-            <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                <span className="text-2xl mb-1 block text-sky-500">
-                    <VectorIcon name={siteConfig.atelierSearchIcon} fallback="ri-search-line" />
-                </span>
-                <p className={`font-bold text-base ${bgImage ? "text-white" : "text-sky-900 dark:text-sky-200"}`}>随心探索</p>
-                <p className={`text-xs mt-1 leading-relaxed ${bgImage ? "text-neutral-200" : "text-sky-700/80 dark:text-sky-300/70"}`}>
-                    输入关键词即刻检索文章与解决方案。
+            <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-theme/10 text-theme text-sm shrink-0">
+                        <VectorIcon name={spec.icon} fallback={spec.fallbackIcon} />
+                    </span>
+                    <p className="font-bold text-sm t-primary truncate">{spec.title}</p>
+                </div>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed line-clamp-2">
+                    {spec.desc}
                 </p>
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        if (searchKeyword.trim()) {
-                            setLocation(`/search/${encodeURIComponent(searchKeyword.trim())}`);
-                        }
-                    }}
-                    className="mt-3 flex items-center gap-1.5"
-                >
-                    <input
-                        type="text"
-                        value={searchKeyword}
-                        onChange={(e) => setSearchKeyword(e.target.value)}
-                        placeholder="输入关键词按回车..."
-                        className="w-full rounded-xl border border-sky-300/70 bg-white/90 px-3 py-1.5 text-xs text-sky-950 placeholder-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-sky-700 dark:bg-neutral-900 dark:text-sky-100"
-                    />
-                    <button
-                        type="submit"
-                        className="shrink-0 rounded-xl bg-sky-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-sky-600 transition"
+
+                {type === "search" ? (
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            if (searchKeyword.trim()) {
+                                setLocation(`/search/${encodeURIComponent(searchKeyword.trim())}`);
+                            }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-2.5 flex items-center gap-1.5"
                     >
-                        搜索
-                    </button>
-                </form>
+                        <input
+                            type="text"
+                            value={searchKeyword}
+                            onChange={(e) => setSearchKeyword(e.target.value)}
+                            placeholder="输入关键词按回车..."
+                            className="rin-field !py-1.5"
+                        />
+                        <button
+                            type="submit"
+                            className="shrink-0 rounded-lg bg-theme px-3 py-1.5 text-[11px] font-bold text-white hover:bg-theme-hover transition"
+                        >
+                            搜索
+                        </button>
+                    </form>
+                ) : (
+                    <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-theme group-hover:underline">
+                        <span>{spec.cta} &rarr;</span>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -1200,6 +996,14 @@ function NextDeckFlipCard({
         );
     }
 
+    const deckTextMode = (siteConfig?.atelierDeckTextMode || "hover") as "hover" | "hidden" | "always";
+    const deckHasBg = Boolean(bgImage && String(bgImage).trim().length > 0);
+    const deckShowText = !deckHasBg || deckTextMode !== "hidden";
+    const deckOverlayClass =
+        deckHasBg && deckTextMode === "hover"
+            ? "opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+            : "opacity-100";
+
     return (
         <div
             onDragOver={(e) => {
@@ -1216,16 +1020,23 @@ function NextDeckFlipCard({
                     void handleUpload(e.dataTransfer.files[0]);
                 }
             }}
-            style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-            className={`group relative break-inside-avoid block w-full rounded-3xl p-6 text-center select-none shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-[1.03] hover:rotate-0 rotate-1 overflow-hidden border ${
+            className={`group relative break-inside-avoid mb-5 block w-full rounded-2xl text-center select-none shadow-sm hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] hover:rotate-0 ${
+                siteConfig?.feedCardVariant === "poster" ? "" : "rotate-[0.6deg]"
+            } overflow-hidden border ${
                 isDragging
                     ? "border-theme ring-4 ring-theme/30 bg-theme/10 scale-105"
-                    : bgImage
-                    ? "bg-cover bg-center border-black/10 dark:border-white/10"
-                    : "bg-theme/5 border-2 border-dashed border-theme/40"
+                    : deckHasBg
+                    ? "bg-neutral-900 border-black/10 dark:border-white/10"
+                    : "p-4 bg-w border-dashed border-theme/35"
             }`}
         >
-            {bgImage && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[0.5px]" />}
+            {deckHasBg ? (
+                <img
+                    src={bgImage}
+                    alt="记忆翻动"
+                    className="block w-full h-auto transition-transform duration-500 group-hover:scale-[1.03]"
+                />
+            ) : null}
 
             {canManage && (
                 <button
@@ -1234,74 +1045,75 @@ function NextDeckFlipCard({
                         e.stopPropagation();
                         onEditDeck?.();
                     }}
-                    title="在前台就地编辑记忆底卷背景与描述"
-                    className="absolute right-3.5 top-3.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm transition hover:scale-110 hover:text-theme"
+                    title="就地编辑图库便签设置"
+                    className="absolute right-2.5 top-2.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 dark:bg-neutral-800/90 text-neutral-600 dark:text-neutral-200 shadow-sm opacity-0 group-hover:opacity-100 transition hover:scale-110 hover:text-theme"
                 >
                     <i className="ri-settings-3-line text-xs" />
                 </button>
             )}
 
-            <div className={`relative z-10 ${bgImage ? "text-white" : ""}`}>
-                <span className="text-4xl block mb-2 text-theme">
-                    {isDragging ? <i className="ri-inbox-archive-line" /> : <VectorIcon name={siteConfig.atelierDeckIcon} fallback="ri-camera-lens-line" />}
-                </span>
-                <p className={`font-extrabold text-base ${bgImage ? "text-white" : "t-primary"}`}>
-                    {isDragging ? "松开即刻上传至 R2" : "记忆翻动"}
-                </p>
-                <p className={`text-xs mt-1 ${bgImage ? "text-neutral-200" : "text-neutral-500 dark:text-neutral-400"}`}>
-                    {canManage ? "拖入图片直接极速上传到 R2 图床" : deckDesc}
-                </p>
+            {/* 隐藏的上传选择 input */}
+            {canManage && (
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                            void handleUpload(e.target.files[0]);
+                        }
+                    }}
+                />
+            )}
 
-                {/* 隐藏的上传选择 input */}
-                {canManage && (
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                                void handleUpload(e.target.files[0]);
-                            }
-                        }}
-                    />
-                )}
+            {deckShowText ? (
+                <div
+                    className={
+                        deckHasBg
+                            ? `absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/45 to-transparent p-3.5 text-white ${deckOverlayClass}`
+                            : "relative z-10"
+                    }
+                >
+                    <span className={`text-2xl block mb-1 ${deckHasBg ? "text-white" : "text-theme"}`}>
+                        {isDragging ? <i className="ri-inbox-archive-line" /> : <VectorIcon name={siteConfig.atelierDeckIcon} fallback="ri-camera-lens-line" />}
+                    </span>
+                    <p className={`font-bold text-sm ${deckHasBg ? "text-white" : "t-primary"}`}>
+                        {isDragging ? "松开即刻上传至 R2" : "图库相册"}
+                    </p>
+                    <p className={`text-[11px] mt-0.5 line-clamp-2 ${deckHasBg ? "text-white/80" : "text-neutral-500 dark:text-neutral-400"}`}>
+                        {canManage ? "拖入图片极速上传至 R2" : deckDesc}
+                    </p>
 
-                <div className="mt-4 flex flex-col gap-2">
-                    {canManage && (
-                        <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={uploading}
-                            className="w-full inline-flex items-center justify-center gap-1.5 rounded-2xl bg-theme px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-theme-hover active:scale-95 disabled:opacity-50"
+                    <div className="mt-2.5 flex items-center justify-center gap-2">
+                        {canManage ? (
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploading}
+                                className="inline-flex items-center justify-center gap-1 rounded-xl bg-theme px-3 py-1.5 text-[11px] font-bold text-white shadow-xs transition hover:bg-theme-hover active:scale-95 disabled:opacity-50"
+                            >
+                                <i className={uploading ? "ri-loader-4-line animate-spin" : "ri-upload-cloud-2-line"} />
+                                <span>{uploading ? "上传中" : "传图"}</span>
+                            </button>
+                        ) : null}
+
+                        <Link
+                            href={deckUrl}
+                            className={`inline-flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-bold transition active:scale-95 ${
+                                deckHasBg
+                                    ? "bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm"
+                                    : "bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15 t-primary"
+                            }`}
                         >
-                            {uploading ? (
-                                <>
-                                    <i className="ri-loader-4-line animate-spin text-sm" />
-                                    <span>正在上传图片至 R2...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <i className="ri-upload-cloud-2-line text-sm" />
-                                    <span>拖入或点击上传相片</span>
-                                </>
-                            )}
-                        </button>
-                    )}
-
-                    <Link
-                        href={deckUrl}
-                        className={`w-full inline-flex items-center justify-center gap-1.5 rounded-2xl px-4 py-2 text-xs font-bold transition active:scale-95 ${
-                            canManage
-                                ? "bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-neutral-700 dark:text-neutral-200"
-                                : "bg-theme text-white shadow-md hover:opacity-90 py-3 text-sm"
-                        }`}
-                    >
-                        <i className="ri-folder-image-line text-sm" />
-                        <span>漫游图床画廊 {canManage ? "" : "(仅浏览)"}</span>
-                    </Link>
+                            <i className="ri-folder-image-line" />
+                            <span>浏览相册</span>
+                        </Link>
+                    </div>
                 </div>
-            </div>
+            ) : (
+                <Link href={deckUrl} aria-label="漫游图库相册" className="absolute inset-0 z-10" />
+            )}
             <AlertUI />
         </div>
     );
@@ -1335,6 +1147,7 @@ export function FeedsPage() {
     const [noteTitle, setNoteTitle] = useState("");
     const [noteDesc, setNoteDesc] = useState("");
     const [noteStyle, setNoteStyle] = useState("card");
+    const [noteTextMode, setNoteTextMode] = useState<"hover" | "hidden" | "always">("hover");
     const [noteBg, setNoteBg] = useState("");
     const [noteUrl, setNoteUrl] = useState("");
     const [noteShow, setNoteShow] = useState(true);
@@ -1591,6 +1404,7 @@ export function FeedsPage() {
             setNoteTitle(siteConfig.name || "80hou");
             setNoteDesc(siteConfig.atelierAboutDesc || "");
             setNoteStyle(siteConfig.atelierAboutStyle || "card");
+            setNoteTextMode(siteConfig.atelierAboutTextMode || "hover");
             setNoteBg(siteConfig.atelierAboutBg || "");
             setNoteUrl(siteConfig.atelierAboutUrl || "/about");
             setNoteShow(siteConfig.atelierAboutShow !== false);
@@ -1598,6 +1412,7 @@ export function FeedsPage() {
             setNoteTitle("岁月轨迹");
             setNoteDesc(siteConfig.atelierTimelineDesc || "");
             setNoteStyle(siteConfig.atelierTimelineStyle || "card");
+            setNoteTextMode(siteConfig.atelierTimelineTextMode || "hover");
             setNoteBg(siteConfig.atelierTimelineBg || "");
             setNoteUrl(siteConfig.atelierTimelineUrl || "/timeline");
             setNoteShow(siteConfig.atelierTimelineShow !== false);
@@ -1605,6 +1420,7 @@ export function FeedsPage() {
             setNoteTitle("朋友圈动态");
             setNoteDesc(siteConfig.atelierMomentsDesc || "");
             setNoteStyle(siteConfig.atelierMomentsStyle || "card");
+            setNoteTextMode(siteConfig.atelierMomentsTextMode || "hover");
             setNoteBg(siteConfig.atelierMomentsBg || "");
             setNoteUrl(siteConfig.atelierMomentsUrl || "/moments");
             setNoteShow(siteConfig.atelierMomentsShow !== false);
@@ -1612,6 +1428,7 @@ export function FeedsPage() {
             setNoteTitle("星廊");
             setNoteDesc(siteConfig.atelierFriendsDesc || "");
             setNoteStyle(siteConfig.atelierFriendsStyle || "card");
+            setNoteTextMode(siteConfig.atelierFriendsTextMode || "hover");
             setNoteBg(siteConfig.atelierFriendsBg || "");
             setNoteUrl(siteConfig.atelierFriendsUrl || "/friends");
             setNoteShow(siteConfig.atelierFriendsShow !== false);
@@ -1619,13 +1436,15 @@ export function FeedsPage() {
             setNoteTitle("随心探索");
             setNoteDesc(siteConfig.atelierSearchDesc || "");
             setNoteStyle(siteConfig.atelierSearchStyle || "card");
+            setNoteTextMode(siteConfig.atelierSearchTextMode || "hover");
             setNoteBg(siteConfig.atelierSearchBg || "");
             setNoteUrl(siteConfig.atelierSearchUrl || "/search");
             setNoteShow(siteConfig.atelierSearchShow !== false);
         } else if (type === "deck") {
-            setNoteTitle("记忆翻动底卷");
+            setNoteTitle("图库相册");
             setNoteDesc(siteConfig.atelierDeckDesc || "");
             setNoteStyle("card");
+            setNoteTextMode(siteConfig.atelierDeckTextMode || "hover");
             setNoteBg(siteConfig.atelierDeckBg || "");
             setNoteUrl(siteConfig.atelierDeckUrl || "/gallery");
             setNoteShow(siteConfig.atelierDeckShow !== false);
@@ -1663,46 +1482,53 @@ export function FeedsPage() {
         if (editingNoteType === "about") {
             updates["atelier.about_desc"] = noteDesc;
             updates["atelier.about_style"] = noteStyle;
+            updates["atelier.about_text_mode"] = noteTextMode;
             updates["atelier.about_bg"] = noteBg;
             updates["atelier.about_url"] = noteUrl;
             updates["atelier.about_show"] = noteShow;
         } else if (editingNoteType === "timeline") {
             updates["atelier.timeline_desc"] = noteDesc;
             updates["atelier.timeline_style"] = noteStyle;
+            updates["atelier.timeline_text_mode"] = noteTextMode;
             updates["atelier.timeline_bg"] = noteBg;
             updates["atelier.timeline_url"] = noteUrl;
             updates["atelier.timeline_show"] = noteShow;
         } else if (editingNoteType === "moments") {
             updates["atelier.moments_desc"] = noteDesc;
             updates["atelier.moments_style"] = noteStyle;
+            updates["atelier.moments_text_mode"] = noteTextMode;
             updates["atelier.moments_bg"] = noteBg;
             updates["atelier.moments_url"] = noteUrl;
             updates["atelier.moments_show"] = noteShow;
         } else if (editingNoteType === "friends") {
             updates["atelier.friends_desc"] = noteDesc;
             updates["atelier.friends_style"] = noteStyle;
+            updates["atelier.friends_text_mode"] = noteTextMode;
             updates["atelier.friends_bg"] = noteBg;
             updates["atelier.friends_url"] = noteUrl;
             updates["atelier.friends_show"] = noteShow;
         } else if (editingNoteType === "search") {
             updates["atelier.search_desc"] = noteDesc;
             updates["atelier.search_style"] = noteStyle;
+            updates["atelier.search_text_mode"] = noteTextMode;
             updates["atelier.search_bg"] = noteBg;
             updates["atelier.search_url"] = noteUrl;
             updates["atelier.search_show"] = noteShow;
         } else if (editingNoteType === "deck") {
             updates["atelier.deck_desc"] = noteDesc;
+            updates["atelier.deck_text_mode"] = noteTextMode;
             updates["atelier.deck_bg"] = noteBg;
             updates["atelier.deck_url"] = noteUrl;
             updates["atelier.deck_show"] = noteShow;
         }
 
         try {
+            const cached = sessionStorage.getItem("config");
+            const parsed = cached ? JSON.parse(cached) : {};
+            sessionStorage.setItem("config", JSON.stringify({ ...parsed, ...updates }));
+            window.dispatchEvent(new Event("rin:config-updated"));
             await client.config.update("client", updates);
-            showAlert("便签配置已保存并在前台即刻生效！", () => {
-                setEditingNoteType(null);
-                window.location.reload();
-            });
+            setEditingNoteType(null);
         } catch (e: any) {
             showAlert(e.message || "保存失败");
         } finally {
@@ -2120,9 +1946,6 @@ export function FeedsPage() {
                                 >
                                     <span className="opacity-60 text-[10px]">🏷️</span>
                                     <span>#{tagDisplayName}</span>
-                                    {isSingleArticle && (
-                                        <i className="ri-arrow-right-up-line text-[10px] text-theme opacity-80" />
-                                    )}
                                 </Link>
                             );
                         })}
@@ -2175,9 +1998,7 @@ export function FeedsPage() {
                 ) : (
                     <div
                         style={
-                            siteConfig.feedCardVariant === "poster"
-                                ? { gap: `${gapSize}px` }
-                                : siteConfig.feedCardVariant === "default"
+                            siteConfig.feedCardVariant === "poster" || siteConfig.feedCardVariant === "default"
                                 ? { columnGap: `${gapSize}px` }
                                 : undefined
                         }
@@ -2187,7 +2008,7 @@ export function FeedsPage() {
                                 : siteConfig.feedCardVariant === "editorial"
                                 ? "max-w-4xl mx-auto divide-y divide-neutral-200/80 dark:divide-white/10"
                                 : siteConfig.feedCardVariant === "poster"
-                                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                                ? `${getColumnsClass(siteConfig.galleryColumns)} space-y-5`
                                 : `${getColumnsClass(siteConfig.galleryColumns)} space-y-6`
                         } ani-show`}
                     >
@@ -2554,6 +2375,34 @@ export function FeedsPage() {
                                     </button>
                                 </div>
                             )}
+                        </div>
+
+                        {/* 封面图文字显隐策略（遵循《美化章程》第三章：避免文字常驻遮挡封面图） */}
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
+                                封面图文字显示方式（设置背景图时生效）
+                            </label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {[
+                                    { id: "hover" as const, label: "悬停浮现", desc: "默认纯图无遮挡" },
+                                    { id: "hidden" as const, label: "纯图无字", desc: "始终仅展封面" },
+                                    { id: "always" as const, label: "常驻显示", desc: "底部始终显示文字" },
+                                ].map((opt) => (
+                                    <button
+                                        key={opt.id}
+                                        type="button"
+                                        onClick={() => setNoteTextMode(opt.id)}
+                                        className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition select-none cursor-pointer ${
+                                            noteTextMode === opt.id
+                                                ? "border-theme bg-theme/10 text-theme font-bold"
+                                                : "border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-theme/40"
+                                        }`}
+                                    >
+                                        <span className="text-xs">{opt.label}</span>
+                                        <span className="text-[10px] opacity-75">{opt.desc}</span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
                         {/* 跳转目标链接 */}

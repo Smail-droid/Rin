@@ -133,28 +133,27 @@ export function FeedCard({ id, title, avatar, draft, listed, top, summary, readi
     }
 
     // =========================================================================
-    // 2. 全幅沉浸画册 (Poster) - 无白边 4:3 画框 + 底部克制磨砂铭牌
+    // 2. 全幅沉浸画册 (Poster) - 原图完整不裁切 + 贴底轻盈铭牌
     // =========================================================================
     if (activeVariant === "poster" && avatar) {
         const posterBody = (
             <div className="group relative my-3 overflow-hidden rounded-2xl bg-neutral-900 shadow-sm hover:shadow-xl transition-all duration-300 break-inside-avoid">
-                <div className="relative aspect-[4/3] w-full overflow-hidden">
+                <div className="relative w-full overflow-hidden">
                     <img
                         src={avatar}
                         alt=""
-                        className="absolute inset-0 h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                        className="block h-auto w-full group-hover:scale-[1.03] transition-transform duration-500"
                     />
-                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/65 via-black/20 to-transparent pointer-events-none" />
-                    <div className="absolute inset-x-3 bottom-3 rounded-xl bg-black/50 backdrop-blur-md border border-white/15 px-3.5 py-2.5 text-white">
-                        <div className="flex items-center justify-between text-[10px] font-mono text-white/75 mb-1">
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent px-3.5 pt-8 pb-3 text-white">
+                        <div className="flex items-center justify-between text-[10px] font-mono text-white/75 mb-0.5">
                             <span>{timeago(createdAt)}</span>
                             <span>{finalReadingMinutes} 分钟</span>
                         </div>
-                        <h2 className="text-base font-bold leading-snug line-clamp-1">
+                        <h2 className="text-sm sm:text-base font-bold leading-snug line-clamp-1">
                             {title}
                         </h2>
                         {safeHashtags.length > 0 ? (
-                            <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-white/70 mt-1">
+                            <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-white/75 mt-1">
                                 {safeHashtags.slice(0, 3).map(({ name }, i) => (
                                     <span key={i}>#{name}</span>
                                 ))}
