@@ -111,10 +111,13 @@ function AtelierPhotoCard({
     const hasImage = Boolean(feed.avatar) && !imageError;
     const variant = siteConfig.feedCardVariant || "default";
 
-    // 1. 极客高密单行 (Compact)
+    // 1. 极客高密单行 (Compact - 标题绝对优先满宽展现，绝不被日期与管理按钮挤压截断)
     if (variant === "compact") {
+        const dateObj = new Date(feed.createdAt);
+        const shortDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
+
         return (
-            <div className="relative group/card break-inside-avoid w-full mb-2.5">
+            <div className="relative group/card break-inside-avoid w-full mb-2">
                 <Link
                     href={`/feed/${feed.id}`}
                     draggable={draggable && canManage}
@@ -122,34 +125,39 @@ function AtelierPhotoCard({
                     onDragOver={onDragOver}
                     onDrop={onDrop}
                     onDragEnd={onDragEnd}
-                    className={`group flex items-center justify-between gap-3 rounded-2xl border border-black/5 bg-white px-4 py-3 transition-all hover:border-theme/40 hover:bg-neutral-50/80 dark:border-white/5 dark:bg-neutral-900 dark:hover:border-theme/40 dark:hover:bg-neutral-800/40 shadow-xs ${
+                    className={`group flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3 rounded-2xl border border-black/5 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xs px-3.5 py-2.5 transition-all hover:border-theme/40 hover:bg-white dark:border-white/5 dark:hover:border-theme/40 dark:hover:bg-neutral-800/70 shadow-2xs ${
                         isDragging ? "opacity-35 scale-95 border-theme border-dashed" : ""
                     } ${isDragOver ? "ring-2 ring-theme/40 scale-[1.01]" : ""}`}
                 >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <span className="text-xs font-mono text-neutral-400 shrink-0">
-                            {new Date(feed.createdAt).toLocaleDateString()}
-                        </span>
+                    {/* 主区：文章标题占满绝大部分宽度，清晰可读 */}
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                         {feed.top === 1 ? (
-                            <span className="shrink-0 rounded-md bg-theme/10 px-1.5 py-0.5 text-[11px] font-bold text-theme">
+                            <span className="shrink-0 rounded-md bg-theme/10 px-1.5 py-0.5 text-[10px] font-bold text-theme">
                                 {t('article.top.title')}
                             </span>
                         ) : null}
                         {feed.draft === 1 ? (
-                            <span className="shrink-0 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-bold text-amber-500">
+                            <span className="shrink-0 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-500">
                                 {t("draft")}
                             </span>
                         ) : null}
-                        <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate group-hover:text-theme transition-colors">
+                        <h2 className="text-[13px] sm:text-sm font-semibold text-neutral-800 dark:text-neutral-200 line-clamp-1 sm:truncate group-hover:text-theme transition-colors flex-1 min-w-0">
                             {feed.title}
                         </h2>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0 text-xs text-neutral-400">
-                        <span className="text-[11px] font-mono opacity-70">
-                            {readingTime} 分钟
-                        </span>
+
+                    {/* 副区：日期、阅读时长与轻巧管理操作 (手机端沉入下方微行不挤标题，桌面端右对齐且操作悬浮显现) */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 text-[11px] text-neutral-400">
+                        <div className="flex items-center gap-2 font-mono text-[10px] sm:text-[11px] opacity-80">
+                            <span>{shortDate}</span>
+                            <span className="opacity-50">·</span>
+                            <span>{readingTime} 分钟</span>
+                        </div>
                         {canManage ? (
-                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <div
+                                className="flex items-center gap-1 sm:opacity-40 sm:group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => e.stopPropagation()}
+                            >
                                 <button
                                     type="button"
                                     onClick={(e) => {
@@ -158,20 +166,26 @@ function AtelierPhotoCard({
                                         onToggleTop?.(feed.id, feed.top === 1 ? 0 : 1);
                                     }}
                                     title={feed.top === 1 ? "取消置顶" : "置顶"}
-                                    className={`h-6 w-6 rounded-md flex items-center justify-center text-xs transition ${
+                                    className={`h-5 w-5 sm:h-6 sm:w-6 rounded-md flex items-center justify-center text-[11px] transition cursor-pointer ${
                                         feed.top === 1 ? "bg-theme text-white" : "bg-black/5 dark:bg-white/5 hover:text-theme"
                                     }`}
                                 >
                                     <i className={feed.top === 1 ? "ri-pushpin-fill" : "ri-pushpin-line"} />
                                 </button>
-                                <Link
-                                    href={`/admin/writing/${feed.id}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    title="编辑文章"
-                                    className="h-6 w-6 rounded-md flex items-center justify-center text-xs bg-black/5 dark:bg-white/5 hover:text-theme transition"
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        window.dispatchEvent(
+                                            new CustomEvent("rin:open-writing-drawer", { detail: { id: feed.id } })
+                                        );
+                                    }}
+                                    title="在场编辑文章"
+                                    className="h-5 w-5 sm:h-6 sm:w-6 rounded-md flex items-center justify-center text-[11px] bg-black/5 dark:bg-white/5 hover:text-theme transition cursor-pointer"
                                 >
                                     <i className="ri-edit-line" />
-                                </Link>
+                                </button>
                             </div>
                         ) : null}
                     </div>

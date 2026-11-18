@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useContext } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
+import { ProfileContext } from "../../state/profile";
 import { client } from "../../app/runtime";
 import {
   THEME_PRESETS,
@@ -182,9 +183,18 @@ const CARD_VARIANTS: Array<{ id: FeedCardVariant; label: string; icon: string; d
   { id: "compact", label: "极客单行", icon: "ri-list-check-2", desc: "纯粹单行条目，极速扫读" },
 ];
 
+type LabTabId = "ambience" | "card" | "slider" | "wallpaper" | "color" | "interaction" | "site" | "ai";
+
 export function InSituAestheticStudio() {
+  // =========================================================================
+  // ALL HOOKS MUST BE CALLED UNCONDITIONALLY AT TOP (PREVENTS REACT ERROR #310)
+  // =========================================================================
   const [location] = useLocation();
+  const profile = useContext(ProfileContext);
   const siteConfig = useSiteConfig();
+  const isAdmin = Boolean(profile?.permission);
+  const isAdminRoute = location.startsWith("/admin");
+
   const [isOpen, setIsOpen] = useState(false);
 
   // 1. 画廊环境粒子动效 (雨丝 / 落樱 / 萤火星尘 / 纯净)
@@ -207,8 +217,8 @@ export function InSituAestheticStudio() {
     return "sakura";
   });
 
-  // 3. 模块化实验室二级 Tab
-  const [activeTab, setActiveTab] = useState<"ambience" | "card" | "slider" | "wallpaper" | "color" | "interaction">("ambience");
+  // 3. 模块化实验室二级 Tab (管理员登录时额外解锁“站点配置”与“AI 调优”标签卡)
+  const [activeTab, setActiveTab] = useState<LabTabId>("ambience");
 
   // Dynamic parameters state
   const [tiltVal, setTiltVal] = useState(siteConfig.galleryTiltDegree ?? 1.8);
@@ -217,6 +227,11 @@ export function InSituAestheticStudio() {
   const [wallpaperOpacityVal, setWallpaperOpacityVal] = useState(siteConfig.themeWallpaperOpacity ?? 35);
   const [customCursorVal, setCustomCursorVal] = useState(siteConfig.themeCustomCursor !== false);
   const [readingProgressVal, setReadingProgressVal] = useState(siteConfig.themeReadingProgress !== false);
+
+  // 管理员在场站点/AI配置状态 (懒加载，仅在点击对应 Tab 时拉取)
+  const [adminClientCfg, setAdminClientCfg] = useState<Record<string, any>>({});
+  const [adminServerCfg, setAdminServerCfg] = useState<Record<string, any>>({});
+  const [adminCfgLoaded, setAdminCfgLoaded] = useState(false);
 
   // 用户个人收藏壁纸列表
   const [savedWallpapers, setSavedWallpapers] = useState<Array<{ id: string; name: string; url: string }>>(() => {
@@ -233,6 +248,51 @@ export function InSituAestheticStudio() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
   }, []);
+
+  const persistConfig = useCallback(async (updates: Record<string, unknown>) => {
+    try {
+      const cached = sessionStorage.getItem("config");
+      const parsed = cached ? JSON.parse(cached) : {};
+      const next = { ...parsed, ...updates };
+      sessionStorage.setItem("config", JSON.stringify(next));
+
+      window.dispatchEvent(new Event("rin:config-updated"));
+      await client.config.update("client", updates);
+    } catch (err) {
+      console.error("Failed to persist aesthetic config:", err);
+    }
+  }, []);
+
+  const persistServerConfig = useCallback(
+    async (updates: Record<string, unknown>) => {
+      try {
+        await client.config.update("server", updates);
+        setAdminServerCfg((prev) => ({ ...prev, ...updates }));
+        showToast("服务端配置已即时保存");
+      } catch (err: any) {
+        showToast(`保存失败: ${err?.message || "权限不足"}`);
+      }
+    },
+    [showToast]
+  );
+
+  // 懒加载管理员站点与 AI 配置
+  useEffect(() => {
+    if (!isOpen || !isAdmin || adminCfgLoaded) return;
+    if (activeTab !== "site" && activeTab !== "ai") return;
+
+    Promise.allSettled([client.config.get("client"), client.config.get("server")]).then(
+      ([cRes, sRes]) => {
+        if (cRes.status === "fulfilled" && cRes.value.data) {
+          setAdminClientCfg(cRes.value.data as Record<string, any>);
+        }
+        if (sRes.status === "fulfilled" && sRes.value.data) {
+          setAdminServerCfg(sRes.value.data as Record<string, any>);
+        }
+        setAdminCfgLoaded(true);
+      }
+    );
+  }, [isOpen, isAdmin, activeTab, adminCfgLoaded]);
 
   // URL 参数水合 (支持将搭配配置以链接形式直接分享给他人打开)
   useEffect(() => {
@@ -259,7 +319,7 @@ export function InSituAestheticStudio() {
     if (qNav) {
       void persistConfig({ "header.layout": qNav });
     }
-  }, []);
+  }, [persistConfig]);
 
   useEffect(() => {
     if (siteConfig.galleryTiltDegree !== undefined) setTiltVal(siteConfig.galleryTiltDegree);
@@ -277,58 +337,39 @@ export function InSituAestheticStudio() {
     siteConfig.themeReadingProgress,
   ]);
 
-  if (location.startsWith("/admin")) {
-    return null;
-  }
-
-  const activeVariant = siteConfig.feedCardVariant || "default";
-  const activeColor = siteConfig.themeColor || "#fc466b";
-  const activeHeaderLayout = siteConfig.headerLayout || "classic";
-
-  const persistConfig = async (updates: Record<string, unknown>) => {
-    try {
-      const cached = sessionStorage.getItem("config");
-      const parsed = cached ? JSON.parse(cached) : {};
-      const next = { ...parsed, ...updates };
-      sessionStorage.setItem("config", JSON.stringify(next));
-
-      window.dispatchEvent(new Event("rin:config-updated"));
-      await client.config.update("client", updates);
-    } catch (err) {
-      console.error("Failed to persist aesthetic config:", err);
-    }
-  };
-
   // 切换场景预设
-  const handleApplyScene = (scene: ScenePreset) => {
-    setActiveSceneId(scene.id);
-    setAmbienceMode(scene.ambience);
-    try {
-      localStorage.setItem("rin_active_scene_id", scene.id);
-      localStorage.setItem("rin_ambience_mode", scene.ambience);
-    } catch {}
+  const handleApplyScene = useCallback(
+    (scene: ScenePreset) => {
+      setActiveSceneId(scene.id);
+      setAmbienceMode(scene.ambience);
+      try {
+        localStorage.setItem("rin_active_scene_id", scene.id);
+        localStorage.setItem("rin_ambience_mode", scene.ambience);
+      } catch {}
 
-    applyThemeColor(String(scene.config["theme.color"]));
-    applyThemeFontFamily(String(scene.config["theme.font_family"]));
-    if (scene.config["gallery.tilt_degree"] !== undefined) {
-      applyGalleryTiltDegree(Number(scene.config["gallery.tilt_degree"]));
-      setTiltVal(Number(scene.config["gallery.tilt_degree"]));
-    }
-    if (scene.config["theme.wallpaper"] !== undefined) {
-      const wpUrl = String(scene.config["theme.wallpaper"]);
-      const wpOp = Number(scene.config["theme.wallpaper_opacity"] ?? 35);
-      setWallpaperUrlVal(wpUrl);
-      setWallpaperOpacityVal(wpOp);
-      applyThemeWallpaper(wpUrl, wpOp);
-    }
-    void persistConfig(scene.config);
-  };
+      applyThemeColor(String(scene.config["theme.color"]));
+      applyThemeFontFamily(String(scene.config["theme.font_family"]));
+      if (scene.config["gallery.tilt_degree"] !== undefined) {
+        applyGalleryTiltDegree(Number(scene.config["gallery.tilt_degree"]));
+        setTiltVal(Number(scene.config["gallery.tilt_degree"]));
+      }
+      if (scene.config["theme.wallpaper"] !== undefined) {
+        const wpUrl = String(scene.config["theme.wallpaper"]);
+        const wpOp = Number(scene.config["theme.wallpaper_opacity"] ?? 35);
+        setWallpaperUrlVal(wpUrl);
+        setWallpaperOpacityVal(wpOp);
+        applyThemeWallpaper(wpUrl, wpOp);
+      }
+      void persistConfig(scene.config);
+    },
+    [persistConfig]
+  );
 
-  // 灵感一掷：像参考网站“随机一双”一样，随机生成一套协调好玩的搭配
-  const handleRandomRoll = () => {
+  // 灵感一掷：随机生成一套协调好玩的搭配
+  const handleRandomRoll = useCallback(() => {
     const randomScene = SCENE_PRESETS[Math.floor(Math.random() * SCENE_PRESETS.length)];
     const randomTilt = parseFloat((Math.random() * 4).toFixed(1));
-    const randomAmbience: AmbienceMode = ["rain", "sakura", "fireflies"][Math.floor(Math.random() * 3)] as any;
+    const randomAmbience: AmbienceMode = ["rain", "sakura", "fireflies"][Math.floor(Math.random() * 3)] as AmbienceMode;
 
     setActiveSceneId(randomScene.id);
     setAmbienceMode(randomAmbience);
@@ -340,35 +381,24 @@ export function InSituAestheticStudio() {
       "gallery.tilt_degree": randomTilt,
     };
     handleApplyScene({ ...randomScene, ambience: randomAmbience, config: merged });
-    showToast("🎲 灵感一掷：已随机生成一套全新画廊意境搭配！");
-  };
-
-  // 复制当前搭配链接 (参考网站 "复制这一双的链接" 机制)
-  const handleCopyShareLink = () => {
-    const url = new URL(window.location.origin + window.location.pathname);
-    url.searchParams.set("scene", activeSceneId);
-    url.searchParams.set("ambience", ambienceMode);
-    url.searchParams.set("tilt", tiltVal.toFixed(1));
-    url.searchParams.set("variant", activeVariant);
-    url.searchParams.set("nav", activeHeaderLayout);
-
-    navigator.clipboard.writeText(url.toString());
-    showToast("🔗 当前画廊搭配链接已复制，发给朋友可直接还原这套效果！");
-  };
+    showToast("灵感一掷：已随机生成一套全新画廊意境搭配");
+  }, [handleApplyScene, showToast]);
 
   // 还原默认
-  const handleResetDefault = () => {
+  const handleResetDefault = useCallback(() => {
     const defaultScene = SCENE_PRESETS[0];
     handleApplyScene(defaultScene);
-    showToast("🧹 已恢复为初始和风画廊默认设计。");
-  };
+    showToast("已恢复为初始和风画廊默认设计");
+  }, [handleApplyScene, showToast]);
 
-  // 快捷键监听 (参考网站快捷键 R/P/F/Space/0/C)
+  // 快捷键监听 (参考网站快捷键 R/P/F/Space/0/C；在 /admin 后台路由下静默不拦截)
   useEffect(() => {
+    if (isAdminRoute) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 当处于输入框或按下修饰键时不拦截
       if (
         ["input", "textarea", "select"].includes((e.target as HTMLElement)?.tagName?.toLowerCase()) ||
+        (e.target as HTMLElement)?.isContentEditable ||
         e.ctrlKey ||
         e.metaKey ||
         e.altKey
@@ -394,7 +424,30 @@ export function InSituAestheticStudio() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeSceneId, ambienceMode, tiltVal, activeVariant, activeHeaderLayout]);
+  }, [isAdminRoute, handleRandomRoll, handleResetDefault]);
+
+  // =========================================================================
+  // EARLY RETURN ONLY ALLOWED AFTER ALL HOOKS HAVE EXECUTED
+  // =========================================================================
+  if (isAdminRoute) {
+    return null;
+  }
+
+  const activeVariant = siteConfig.feedCardVariant || "default";
+  const activeColor = siteConfig.themeColor || "#fc466b";
+  const activeHeaderLayout = siteConfig.headerLayout || "classic";
+
+  const handleCopyShareLink = () => {
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set("scene", activeSceneId);
+    url.searchParams.set("ambience", ambienceMode);
+    url.searchParams.set("tilt", tiltVal.toFixed(1));
+    url.searchParams.set("variant", activeVariant);
+    url.searchParams.set("nav", activeHeaderLayout);
+
+    navigator.clipboard.writeText(url.toString());
+    showToast("当前画廊搭配链接已复制，发给朋友可直接还原这套效果");
+  };
 
   const handleSelectAmbience = (mode: AmbienceMode) => {
     setAmbienceMode(mode);
@@ -435,6 +488,7 @@ export function InSituAestheticStudio() {
       "theme.wallpaper": wallpaperUrlVal.trim(),
       "theme.wallpaper_opacity": wallpaperOpacityVal,
     });
+    showToast("自定义背景已应用");
   };
 
   const handleBookmarkCurrentWallpaper = () => {
@@ -448,7 +502,16 @@ export function InSituAestheticStudio() {
     try {
       localStorage.setItem("rin_saved_custom_wallpapers", JSON.stringify(updated));
     } catch {}
-    showToast("✓ 壁纸已保存至个人收藏库！");
+    showToast("壁纸已保存至个人收藏库");
+  };
+
+  const handleDeleteSavedWallpaper = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = savedWallpapers.filter((w) => w.id !== id);
+    setSavedWallpapers(updated);
+    try {
+      localStorage.setItem("rin_saved_custom_wallpapers", JSON.stringify(updated));
+    } catch {}
   };
 
   const handleToggleThemeMode = () => {
@@ -470,18 +533,30 @@ export function InSituAestheticStudio() {
     void persistConfig({ "theme.reading_progress": next });
   };
 
-  const handleDeleteSavedWallpaper = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const updated = savedWallpapers.filter((w) => w.id !== id);
-    setSavedWallpapers(updated);
-    try {
-      localStorage.setItem("rin_saved_custom_wallpapers", JSON.stringify(updated));
-    } catch {}
+  const handleSaveAdminClientField = async (key: string, value: unknown) => {
+    setAdminClientCfg((prev) => ({ ...prev, [key]: value }));
+    await persistConfig({ [key]: value });
+    showToast("站点配置已即时生效");
   };
+
+  const labTabs: Array<{ id: LabTabId; label: string; icon: string }> = [
+    { id: "ambience", label: "意境粒子", icon: "ri-sparkling-line" },
+    { id: "card", label: "卡片布局", icon: "ri-layout-grid-line" },
+    { id: "slider", label: "倾角间距", icon: "ri-equalizer-line" },
+    { id: "wallpaper", label: "背景画布", icon: "ri-image-line" },
+    { id: "color", label: "微光色彩", icon: "ri-palette-line" },
+    { id: "interaction", label: "光标体验", icon: "ri-cursor-line" },
+    ...(isAdmin
+      ? [
+          { id: "site" as LabTabId, label: "站点配置", icon: "ri-settings-4-line" },
+          { id: "ai" as LabTabId, label: "AI 调优", icon: "ri-brain-line" },
+        ]
+      : []),
+  ];
 
   return createPortal(
     <>
-      {/* 0. 粒子特效画布：雨丝 / 落樱 / 萤火星尘 (在画布底层轻量流淌，不抢焦点) */}
+      {/* 0. 粒子特效画布：雨丝 / 落樱 / 萤火星尘 */}
       <AmbientEffectsCanvas mode={ambienceMode} />
 
       {/* 1. 左侧快操坞 (Quick Action Rail - 参考站同款悬浮纵向胶囊) */}
@@ -489,7 +564,6 @@ export function InSituAestheticStudio() {
         aria-label="画廊快速意境坞"
         className="fixed left-5 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col items-center gap-2 p-1.5 rounded-full border border-neutral-200/80 dark:border-neutral-800/80 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl shadow-lg select-none"
       >
-        {/* 雨丝天气 */}
         <button
           type="button"
           onClick={() => handleSelectAmbience(ambienceMode === "rain" ? "none" : "rain")}
@@ -507,7 +581,6 @@ export function InSituAestheticStudio() {
           <span className="text-[9px] scale-90">夜雨</span>
         </button>
 
-        {/* 樱落飞花 */}
         <button
           type="button"
           onClick={() => handleSelectAmbience(ambienceMode === "sakura" ? "none" : "sakura")}
@@ -525,7 +598,6 @@ export function InSituAestheticStudio() {
           <span className="text-[9px] scale-90">落樱</span>
         </button>
 
-        {/* 星尘萤火 */}
         <button
           type="button"
           onClick={() => handleSelectAmbience(ambienceMode === "fireflies" ? "none" : "fireflies")}
@@ -545,7 +617,6 @@ export function InSituAestheticStudio() {
 
         <div className="w-5 h-px bg-black/10 dark:bg-white/10 my-0.5" />
 
-        {/* 灵感一掷 (随机一式，空格键触发) */}
         <button
           type="button"
           onClick={handleRandomRoll}
@@ -559,7 +630,6 @@ export function InSituAestheticStudio() {
           <span className="text-[9px] scale-90">灵感</span>
         </button>
 
-        {/* 复位 */}
         <button
           type="button"
           onClick={handleResetDefault}
@@ -573,7 +643,6 @@ export function InSituAestheticStudio() {
           <span className="text-[9px] scale-90">复位</span>
         </button>
 
-        {/* 展开/收起模块化实验室面板 */}
         <button
           type="button"
           onClick={() => setIsOpen((p) => !p)}
@@ -600,7 +669,7 @@ export function InSituAestheticStudio() {
           className="flex h-11 w-11 items-center justify-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900/90 shadow-md backdrop-blur-xl text-neutral-700 dark:text-neutral-200 active:scale-95 transition cursor-pointer"
           title="画廊随想实验室"
         >
-          <i className="ri-palette-line text-lg text-theme" />
+          <i className="ri-sound-module-line text-lg text-theme" />
         </button>
       </div>
 
@@ -614,9 +683,9 @@ export function InSituAestheticStudio() {
 
       {/* 3. 右侧模块化实验室面板 (参考站同款悬浮双层工作大盘) */}
       {isOpen && (
-        <div className="fixed right-4 sm:right-6 top-18 bottom-6 z-50 w-[92vw] sm:w-[380px] max-w-[420px] flex flex-col gap-3 pointer-events-auto select-none font-sans ani-show overflow-hidden">
+        <div className="fixed right-4 sm:right-6 top-18 bottom-6 z-50 w-[92vw] sm:w-[390px] max-w-[430px] flex flex-col gap-3 pointer-events-auto select-none font-sans ani-show overflow-hidden">
           {/* 上层卡片：场景/意境卡片 (Scene Picker) */}
-          <div className="p-3.5 rounded-3xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white/90 dark:bg-[#12161f]/90 backdrop-blur-2xl shadow-xl space-y-2 shrink-0">
+          <div className="p-3.5 rounded-3xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white/92 dark:bg-[#12161f]/92 backdrop-blur-2xl shadow-xl space-y-2 shrink-0">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold tracking-wider text-neutral-500 uppercase flex items-center gap-1.5">
                 <i className="ri-landscape-line text-neutral-400" />
@@ -625,7 +694,7 @@ export function InSituAestheticStudio() {
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="h-6 w-6 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition"
+                className="h-6 w-6 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
               >
                 <i className="ri-close-line text-sm" />
               </button>
@@ -677,24 +746,17 @@ export function InSituAestheticStudio() {
             </div>
           </div>
 
-          {/* 下层卡片：多维度自由搭配实验室 (Modular Deep Customizer) */}
-          <div className="flex-1 flex flex-col rounded-3xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white/90 dark:bg-[#12161f]/90 backdrop-blur-2xl shadow-xl overflow-hidden">
+          {/* 下层卡片：多维度自由搭配实验室 (含管理员专属“站点配置”与“AI 调优”标签卡) */}
+          <div className="flex-1 flex flex-col rounded-3xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white/92 dark:bg-[#12161f]/92 backdrop-blur-2xl shadow-xl overflow-hidden">
             {/* 多标签切换头 */}
             <div className="px-3 pt-3 pb-2 border-b border-neutral-200/60 dark:border-neutral-800/60 flex items-center gap-1 overflow-x-auto scrollbar-none shrink-0 text-xs">
-              {[
-                { id: "ambience", label: "意境粒子", icon: "ri-sparkling-line" },
-                { id: "card", label: "卡片布局", icon: "ri-layout-grid-line" },
-                { id: "slider", label: "倾角间距", icon: "ri-equalizer-line" },
-                { id: "wallpaper", label: "背景画布", icon: "ri-image-line" },
-                { id: "color", label: "微光色彩", icon: "ri-palette-line" },
-                { id: "interaction", label: "光标体验", icon: "ri-cursor-line" },
-              ].map((tab) => {
+              {labTabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => setActiveTab(tab.id)}
                     className={`px-2.5 py-1 rounded-xl font-medium transition flex items-center gap-1 whitespace-nowrap cursor-pointer ${
                       isActive
                         ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 font-bold shadow-2xs"
@@ -743,7 +805,7 @@ export function InSituAestheticStudio() {
                   </div>
 
                   <p className="text-[10px] text-neutral-400 leading-relaxed bg-black/[0.02] dark:bg-white/[0.02] p-2.5 rounded-xl border border-black/5 dark:border-white/5">
-                    💡 提示：按键盘 <kbd className="font-mono px-1 py-0.5 rounded bg-black/10 dark:bg-white/10">R</kbd> 降下雨丝，<kbd className="font-mono px-1 py-0.5 rounded bg-black/10 dark:bg-white/10">P</kbd> 落樱，<kbd className="font-mono px-1 py-0.5 rounded bg-black/10 dark:bg-white/10">F</kbd> 萤火，<kbd className="font-mono px-1 py-0.5 rounded bg-black/10 dark:bg-white/10">Space</kbd> 灵感一掷。
+                    快捷键：<kbd className="font-mono px-1 py-0.5 rounded bg-black/10 dark:bg-white/10">R</kbd> 雨丝，<kbd className="font-mono px-1 py-0.5 rounded bg-black/10 dark:bg-white/10">P</kbd> 落樱，<kbd className="font-mono px-1 py-0.5 rounded bg-black/10 dark:bg-white/10">F</kbd> 萤火，<kbd className="font-mono px-1 py-0.5 rounded bg-black/10 dark:bg-white/10">Space</kbd> 灵感一掷。
                   </p>
                 </div>
               )}
@@ -810,7 +872,6 @@ export function InSituAestheticStudio() {
               {/* 3. 倾角间距 Tab */}
               {activeTab === "slider" && (
                 <div className="space-y-4">
-                  {/* 拍立得倾角滑块 */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-medium text-neutral-700 dark:text-neutral-300">
@@ -836,7 +897,6 @@ export function InSituAestheticStudio() {
                     </div>
                   </div>
 
-                  {/* 卡片间距滑块 */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-medium text-neutral-700 dark:text-neutral-300">
@@ -868,7 +928,7 @@ export function InSituAestheticStudio() {
                       <button
                         type="button"
                         onClick={() => handleSelectWallpaperPreset("none")}
-                        className="text-[10px] text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 underline"
+                        className="text-[10px] text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 underline cursor-pointer"
                       >
                         留空清空
                       </button>
@@ -898,7 +958,6 @@ export function InSituAestheticStudio() {
                     </div>
                   </div>
 
-                  {/* 收藏的壁纸 */}
                   {savedWallpapers.length > 0 && (
                     <div className="space-y-1 pt-1 border-t border-neutral-200/60 dark:border-neutral-800/60">
                       <label className="text-[10px] text-neutral-400">已收藏的个性壁纸</label>
@@ -924,7 +983,6 @@ export function InSituAestheticStudio() {
                     </div>
                   )}
 
-                  {/* 自定义输入与收藏 */}
                   <div className="space-y-1 pt-1">
                     <div className="flex items-center justify-between text-[11px] text-neutral-500">
                       <span>自定义图片直链 / 渐变代码</span>
@@ -948,14 +1006,13 @@ export function InSituAestheticStudio() {
                       <button
                         type="button"
                         onClick={handleSaveCustomWallpaper}
-                        className="px-2.5 py-1 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 font-bold text-[10px] shrink-0"
+                        className="px-2.5 py-1 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 font-bold text-[10px] shrink-0 cursor-pointer"
                       >
                         应用
                       </button>
                     </div>
                   </div>
 
-                  {/* 半透度显影滑块 */}
                   <div className="space-y-1 pt-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-neutral-500">背景显影强度 (Opacity)</span>
@@ -1019,7 +1076,7 @@ export function InSituAestheticStudio() {
                     <button
                       type="button"
                       onClick={handleToggleThemeMode}
-                      className="px-3 py-1 rounded-xl border border-neutral-200 dark:border-neutral-800 text-xs font-semibold hover:border-neutral-400 transition"
+                      className="px-3 py-1 rounded-xl border border-neutral-200 dark:border-neutral-800 text-xs font-semibold hover:border-neutral-400 transition cursor-pointer"
                     >
                       <i className="ri-sun-line text-amber-500 mr-1" />
                       <span>明暗切换</span>
@@ -1031,7 +1088,6 @@ export function InSituAestheticStudio() {
               {/* 6. 光标与阅读交互 Tab */}
               {activeTab === "interaction" && (
                 <div className="space-y-3">
-                  {/* 二次元定制光标开关 */}
                   <div className="flex items-center justify-between p-3 rounded-2xl border border-neutral-200/70 dark:border-neutral-800/70 bg-white/70 dark:bg-neutral-900/60">
                     <div>
                       <p className="font-semibold text-xs text-neutral-800 dark:text-neutral-200">二次元定制鼠标指针</p>
@@ -1054,7 +1110,6 @@ export function InSituAestheticStudio() {
                     </button>
                   </div>
 
-                  {/* 顶端极光阅读进度条开关 */}
                   <div className="flex items-center justify-between p-3 rounded-2xl border border-neutral-200/70 dark:border-neutral-800/70 bg-white/70 dark:bg-neutral-900/60">
                     <div>
                       <p className="font-semibold text-xs text-neutral-800 dark:text-neutral-200">顶端极光阅读进度条</p>
@@ -1075,6 +1130,200 @@ export function InSituAestheticStudio() {
                         }`}
                       />
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 7. 管理员专属：站点核心配置 Tab (把后台设置直接收进前台卡片) */}
+              {isAdmin && activeTab === "site" && (
+                <div className="space-y-3">
+                  <div className="space-y-2 p-3 rounded-2xl border border-neutral-200/70 dark:border-neutral-800/70 bg-white/70 dark:bg-neutral-900/60">
+                    <span className="text-[11px] font-bold text-neutral-500 uppercase">站点基本身份</span>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-neutral-400">站点名称 (失焦自动保存)</label>
+                      <input
+                        type="text"
+                        defaultValue={adminClientCfg["site.name"] ?? siteConfig.name ?? ""}
+                        onBlur={(e) => void handleSaveAdminClientField("site.name", e.target.value.trim())}
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-800 text-xs font-semibold outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-neutral-400">站点简介描述</label>
+                      <input
+                        type="text"
+                        defaultValue={adminClientCfg["site.description"] ?? siteConfig.description ?? ""}
+                        onBlur={(e) => void handleSaveAdminClientField("site.description", e.target.value.trim())}
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-800 text-xs outline-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-neutral-400">头像链接</label>
+                        <input
+                          type="text"
+                          defaultValue={adminClientCfg["site.avatar"] ?? siteConfig.avatar ?? ""}
+                          onBlur={(e) => void handleSaveAdminClientField("site.avatar", e.target.value.trim())}
+                          placeholder="https://..."
+                          className="w-full px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-800 text-[11px] font-mono outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-neutral-400">每页文章数</label>
+                        <input
+                          type="number"
+                          min="3"
+                          max="50"
+                          defaultValue={adminClientCfg["site.page_size"] ?? siteConfig.pageSize ?? 5}
+                          onBlur={(e) =>
+                            void handleSaveAdminClientField("site.page_size", Number.parseInt(e.target.value, 10) || 5)
+                          }
+                          className="w-full px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-800 text-[11px] font-mono outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 功能开关胶囊群 (类似雨丝实验室的多选胶囊形态) */}
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-semibold text-neutral-500">核心模块开关</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { key: "comment.enabled", label: "评论留言" },
+                        { key: "friend_apply_enable", label: "友链申请" },
+                        { key: "counter.enabled", label: "PV/UV统计" },
+                        { key: "login.enabled", label: "前台登录" },
+                        { key: "openlist.show_in_nav", label: "顶栏网盘" },
+                      ].map((toggle) => {
+                        const val = adminClientCfg[toggle.key];
+                        const isOn = val !== false && val !== "false";
+                        return (
+                          <button
+                            key={toggle.key}
+                            type="button"
+                            onClick={() => void handleSaveAdminClientField(toggle.key, !isOn)}
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition cursor-pointer ${
+                              isOn
+                                ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-950 font-bold"
+                                : "border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/60 text-neutral-500"
+                            }`}
+                          >
+                            {toggle.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 8. 管理员专属：AI 模型调优 Tab */}
+              {isAdmin && activeTab === "ai" && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 rounded-2xl border border-neutral-200/70 dark:border-neutral-800/70 bg-white/70 dark:bg-neutral-900/60">
+                    <div>
+                      <p className="font-semibold text-xs text-neutral-800 dark:text-neutral-200">AI 智能摘要与流水线</p>
+                      <p className="text-[10px] text-neutral-400">自动提炼文章导读与智能排版</p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={
+                        adminServerCfg["ai_summary.enabled"] === true ||
+                        adminServerCfg["ai_summary.enabled"] === "true"
+                      }
+                      onClick={() => {
+                        const cur =
+                          adminServerCfg["ai_summary.enabled"] === true ||
+                          adminServerCfg["ai_summary.enabled"] === "true";
+                        void persistServerConfig({ "ai_summary.enabled": !cur });
+                      }}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                        adminServerCfg["ai_summary.enabled"] === true ||
+                        adminServerCfg["ai_summary.enabled"] === "true"
+                          ? "bg-neutral-900 dark:bg-white"
+                          : "bg-neutral-200 dark:bg-neutral-700"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 rounded-full ${
+                          adminServerCfg["ai_summary.enabled"] === true ||
+                          adminServerCfg["ai_summary.enabled"] === "true"
+                            ? "bg-white dark:bg-neutral-900 translate-x-6"
+                            : "bg-white translate-x-1"
+                        } shadow-xs transition transform mt-1`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 p-3 rounded-2xl border border-neutral-200/70 dark:border-neutral-800/70 bg-white/70 dark:bg-neutral-900/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-neutral-500">服务商与模型</span>
+                      <a
+                        href="/admin/ai"
+                        className="text-[10px] text-theme hover:underline font-semibold flex items-center gap-0.5"
+                      >
+                        <span>提示词工坊</span>
+                        <i className="ri-external-link-line" />
+                      </a>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { id: "cloudflare", label: "Worker AI" },
+                        { id: "openai", label: "OpenAI" },
+                        { id: "claude", label: "Claude" },
+                        { id: "gemini", label: "Gemini" },
+                        { id: "deepseek", label: "DeepSeek" },
+                      ].map((prov) => {
+                        const isSelected = (adminServerCfg["ai_summary.provider"] || "cloudflare") === prov.id;
+                        return (
+                          <button
+                            key={prov.id}
+                            type="button"
+                            onClick={() => void persistServerConfig({ "ai_summary.provider": prov.id })}
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition cursor-pointer ${
+                              isSelected
+                                ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-950 font-bold"
+                                : "border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-800 text-neutral-500"
+                            }`}
+                          >
+                            {prov.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="space-y-1 pt-1">
+                      <label className="text-[10px] text-neutral-400">模型 ID</label>
+                      <input
+                        type="text"
+                        defaultValue={adminServerCfg["ai_summary.model"] || ""}
+                        onBlur={(e) => void persistServerConfig({ "ai_summary.model": e.target.value.trim() })}
+                        placeholder="如 gpt-4o-mini / deepseek-chat"
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-800 text-[11px] font-mono outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-neutral-400">API Key (安全存储于服务端)</label>
+                      <input
+                        type="password"
+                        defaultValue={adminServerCfg["ai_summary.api_key"] || ""}
+                        onBlur={(e) => void persistServerConfig({ "ai_summary.api_key": e.target.value.trim() })}
+                        placeholder="sk-..."
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-800 text-[11px] font-mono outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-neutral-400">自定义 API Base URL (可选)</label>
+                      <input
+                        type="text"
+                        defaultValue={adminServerCfg["ai_summary.api_url"] || ""}
+                        onBlur={(e) => void persistServerConfig({ "ai_summary.api_url": e.target.value.trim() })}
+                        placeholder="https://..."
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-800 text-[11px] font-mono outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
