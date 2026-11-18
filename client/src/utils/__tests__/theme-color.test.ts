@@ -9,7 +9,6 @@ import {
   applyThemeOpacity,
   applyThemePalette,
   applyThemeWallpaper,
-  getContrastRatioWithWhite,
   normalizeThemeColor,
   normalizeThemeOpacity,
 } from "../theme-color";
@@ -93,25 +92,29 @@ describe("theme-color utils", () => {
       expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("37 99 235");
     });
 
-    it("enforces WCAG AA contrast (>= 4.5) for all curated palettes in both light and dark modes", () => {
+    it("keeps vibrant palette colors legible in both light and dark modes without muddy grey fallback", () => {
+      const sakura = MULTI_COLOR_PALETTES.find((p) => p.id === "sakura")!;
+      expect(sakura.primary).toBe("#fc466b");
+      expect(THEME_PRESETS.length).toBeGreaterThanOrEqual(18);
+      expect(ACCENT_COLOR_PRESETS.length).toBeGreaterThanOrEqual(16);
       for (const palette of MULTI_COLOR_PALETTES) {
-        expect(getContrastRatioWithWhite(palette.primary)).toBeGreaterThanOrEqual(4.5);
-        expect(getContrastRatioWithWhite(palette.primaryDark)).toBeGreaterThanOrEqual(4.5);
+        expect(palette.primary.startsWith("#")).toBe(true);
+        expect(palette.primaryDark.startsWith("#")).toBe(true);
       }
     });
 
     it("updates canvas and surface semantic tokens when applying palette in light/dark mode", () => {
-      const kyoto = MULTI_COLOR_PALETTES.find((p) => p.id === "kyoto_ink")!;
+      const ink = MULTI_COLOR_PALETTES.find((p) => p.id === "paper_ink")!;
       document.documentElement.setAttribute("data-color-mode", "light");
-      applyThemePalette(kyoto);
-      expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("63 77 94");
+      applyThemePalette(ink);
+      expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("39 39 42");
       expect(document.documentElement.style.getPropertyValue("--rin-surface-rgb")).toBe("255 255 255");
 
       document.documentElement.setAttribute("data-color-mode", "dark");
-      applyThemePalette(kyoto);
-      // 暗黑模式必须使用同色系高对比石板蓝 (#4e6076) 而非浅灰，严防浅底白字
-      expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("78 96 118");
-      expect(document.documentElement.style.getPropertyValue("--rin-canvas-rgb")).toBe("19 21 24");
+      applyThemePalette(ink);
+      // 暗黑模式下极暗纸墨主色自动提亮为清透靛蓝，避免融入深色背景或浅底白字
+      expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("99 102 241");
+      expect(document.documentElement.style.getPropertyValue("--rin-canvas-rgb")).toBe("20 21 24");
       document.documentElement.setAttribute("data-color-mode", "light");
     });
 

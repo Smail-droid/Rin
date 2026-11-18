@@ -2,7 +2,7 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { ProfileContext } from "../../state/profile";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 import { client } from "../../app/runtime";
-import { MULTI_COLOR_PALETTES, applyThemePalette } from "../../utils/theme-color";
+import { MULTI_COLOR_PALETTES, applyThemeColor, applyThemePalette, normalizeThemeColor } from "../../utils/theme-color";
 import type { FeedCardVariant } from "../feed-card-options";
 import { normalizeAmbienceMode, type AmbienceMode } from "../ambient-effects-canvas";
 
@@ -246,16 +246,41 @@ export function TopAtelierRibbon() {
             <button
               type="button"
               onClick={handleCyclePalette}
-              title={`切换主题配色（当前：${currentPalette.name}）`}
+              title={`切换明快主题色（当前：${currentPalette.name}）`}
               className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-medium text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors cursor-pointer"
             >
               <span
                 className="h-2.5 w-2.5 rounded-full ring-2 ring-offset-1 ring-offset-transparent ring-black/10 dark:ring-white/20 shrink-0"
-                style={{ backgroundColor: currentPalette.primary }}
+                style={{ backgroundColor: siteConfig.themeColor || currentPalette.primary }}
                 aria-hidden="true"
               />
               <span className="hidden sm:inline">{currentPalette.name}</span>
             </button>
+
+            <label
+              title="打开调色盘自由选色"
+              className="relative inline-flex h-6 w-6 items-center justify-center rounded-lg hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors cursor-pointer"
+            >
+              <span
+                className="h-3.5 w-3.5 rounded-full bg-gradient-to-tr from-rose-500 via-amber-400 via-emerald-400 to-sky-500 ring-1 ring-black/10 dark:ring-white/20"
+                aria-hidden="true"
+              />
+              <input
+                type="color"
+                aria-label="自由调色盘选色"
+                value={normalizeThemeColor(siteConfig.themeColor)}
+                onChange={(e) => {
+                  const hex = normalizeThemeColor(e.target.value);
+                  applyThemeColor(hex, undefined, "custom");
+                  void persistClientConfig({
+                    "theme.preset": "custom",
+                    "theme.color": hex,
+                    "theme.secondary_color": "",
+                  });
+                }}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              />
+            </label>
 
             <span className="mx-1 h-3.5 w-px bg-black/10 dark:bg-white/10" aria-hidden="true" />
 

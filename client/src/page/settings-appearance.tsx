@@ -1,12 +1,16 @@
 import {
-  MULTI_COLOR_PALETTES,
+  ACCENT_COLOR_PRESETS,
+  OPACITY_SHORTCUTS,
+  THEME_PRESETS,
   WALLPAPER_PRESETS,
   applyGalleryTiltDegree,
   applyThemeColor,
   applyThemeCustomCursor,
   applyThemeFontFamily,
-  applyThemePalette,
+  applyThemeOpacity,
   applyThemeWallpaper,
+  normalizeThemeColor,
+  normalizeThemeOpacity,
 } from "../utils/theme-color";
 import { normalizeFeedCardVariant, type FeedCardVariant } from "../components/feed-card-options";
 import { normalizeAmbienceMode, type AmbienceMode } from "../components/ambient-effects-canvas";
@@ -120,8 +124,9 @@ export function SettingsAppearancePanel({
   setConfigValue: (type: "client" | "server", key: string, value: unknown) => void;
 }) {
   const cardVariant = normalizeFeedCardVariant(String(clientConfig.get("feed.card_variant") ?? "default"));
-  const activePreset = String(clientConfig.get("theme.preset") ?? "rose_mist");
-  const activeColor = String(clientConfig.get("theme.color") ?? "#b5445e").toLowerCase();
+  const activePreset = String(clientConfig.get("theme.preset") ?? "sakura");
+  const activeColor = normalizeThemeColor(String(clientConfig.get("theme.color") ?? "#fc466b"));
+  const themeOpacity = normalizeThemeOpacity(clientConfig.get("theme.opacity"));
   const activeAmbience = normalizeAmbienceMode(clientConfig.get("theme.ambience"));
   const wallpaperUrl = String(clientConfig.get("theme.wallpaper") ?? "none");
   const wallpaperOpacity = Number.parseInt(String(clientConfig.get("theme.wallpaper_opacity") ?? 35), 10) || 35;
@@ -133,6 +138,7 @@ export function SettingsAppearancePanel({
   const fontFamily = String(clientConfig.get("theme.font_family") ?? "sans");
   const customCursor = clientConfig.get("theme.custom_cursor") !== false && clientConfig.get("theme.custom_cursor") !== "false";
   const readingProgress = clientConfig.get("theme.reading_progress") !== false && clientConfig.get("theme.reading_progress") !== "false";
+  const matchedPresetObj = THEME_PRESETS.find((p) => p.id === activePreset);
 
   return (
     <div className="w-full flex flex-col space-y-4 ani-show">
@@ -175,67 +181,173 @@ export function SettingsAppearancePanel({
         </div>
       </section>
 
-      {/* 分块 2：语义多色配色 */}
-      <section className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3.5">
+      {/* 分块 2：18 套明快主题预设 + 经典 16 色自由调色盘 + 彩虹取色器 */}
+      <section className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-2.5 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center gap-2">
             <i className="ri-palette-line text-theme text-base" />
-            <h3 className="font-bold text-sm t-primary">主题配色方案</h3>
+            <h3 className="font-bold text-sm t-primary">主题配色与自由调色盘</h3>
           </div>
-          <span className="text-[11px] text-neutral-400">明暗模式双修 · 自动联动画布底色与按钮对比度</span>
+          <span className="font-mono text-xs font-bold text-theme">{activeColor}</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-          {MULTI_COLOR_PALETTES.map((p) => {
-            const selected = activePreset === p.id || activeColor === p.primary.toLowerCase();
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  applyThemePalette(p);
-                  setConfigValue("client", "theme.preset", p.id);
-                  setConfigValue("client", "theme.color", p.primary);
-                  setConfigValue("client", "theme.secondary_color", p.secondary);
-                }}
-                className={`flex flex-col gap-2 p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                  selected
-                    ? "border-theme bg-theme/[0.06] ring-1 ring-theme/25"
-                    : "border-black/10 dark:border-white/10 hover:border-theme/40"
-                }`}
-              >
-                <div className="flex h-7 w-full overflow-hidden rounded-lg border border-black/5 dark:border-white/10">
-                  <span className="flex-[1.5]" style={{ backgroundColor: p.primary }} />
-                  <span className="flex-1" style={{ backgroundColor: p.secondary }} />
-                  <span className="flex-[0.8]" style={{ backgroundColor: p.tintLight }} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className={`text-xs font-bold ${selected ? "text-theme" : "t-primary"}`}>
-                    {p.name}
-                  </span>
-                  {selected ? <i className="ri-check-line text-theme text-xs font-bold" /> : null}
-                </div>
-              </button>
-            );
-          })}
+        {/* 18 套经典明快主题色珠 */}
+        <div className="space-y-2">
+          <div className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+            18 套明快预设主题（点击即刻全局生效）
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {THEME_PRESETS.map((preset) => {
+              const isSelected = activePreset === preset.id && activeColor === preset.color.toLowerCase();
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  title={`${preset.name} · ${preset.description}`}
+                  onClick={() => {
+                    applyThemeColor(preset.color, preset.secondary, preset.id);
+                    setConfigValue("client", "theme.preset", preset.id);
+                    setConfigValue("client", "theme.color", preset.color);
+                    setConfigValue("client", "theme.secondary_color", preset.secondary || "");
+                  }}
+                  className={`group relative flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer ${
+                    isSelected ? "ring-2 ring-offset-2 ring-theme shadow-sm scale-105" : "hover:shadow-xs"
+                  }`}
+                  style={{
+                    backgroundColor: preset.previewBg,
+                    border: `1.5px solid ${isSelected ? preset.color : "rgba(0,0,0,0.12)"}`,
+                  }}
+                >
+                  <span
+                    className="h-4 w-4 rounded-full shadow-2xs transition-transform group-hover:scale-110"
+                    style={{ backgroundColor: preset.color }}
+                  />
+                  {isSelected ? (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <i className="ri-check-line text-[11px] font-bold text-white drop-shadow-xs" />
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+          {matchedPresetObj ? (
+            <div className="inline-flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 bg-black/[0.02] dark:bg-white/[0.03] px-3 py-1.5 rounded-xl border border-black/5 dark:border-white/5">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: matchedPresetObj.color }} />
+              <span className="font-semibold t-primary">{matchedPresetObj.name}</span>
+              <span>·</span>
+              <span>{matchedPresetObj.description}</span>
+            </div>
+          ) : null}
         </div>
 
-        {/* 自定义主色微调 */}
-        <div className="flex items-center justify-between pt-2 border-t border-black/5 dark:border-white/5 text-xs">
-          <span className="font-semibold t-primary">自定义主色</span>
-          <div className="flex items-center gap-2">
+        {/* 16 色自由调色盘 + 彩虹原生自由取色器 + HEX 手输 */}
+        <div className="space-y-2.5 pt-3 border-t border-black/5 dark:border-white/5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+              自由调色盘（点选任意高亮色珠，或点击彩虹色盘无限制取色）
+            </span>
             <input
-              type="color"
-              value={/^#[0-9a-f]{6}$/i.test(activeColor) ? activeColor : "#b5445e"}
+              type="text"
+              value={activeColor}
               onChange={(e) => {
-                const hex = e.target.value;
-                applyThemeColor(hex);
+                const raw = e.target.value.trim();
                 setConfigValue("client", "theme.preset", "custom");
-                setConfigValue("client", "theme.color", hex);
+                setConfigValue("client", "theme.color", raw);
+                if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw)) {
+                  applyThemeColor(raw, undefined, "custom");
+                }
               }}
-              className="h-7 w-10 rounded-lg border border-black/10 dark:border-white/10 cursor-pointer bg-transparent"
+              className="w-24 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-center font-mono text-xs t-primary outline-none focus:border-theme"
+              aria-label="自定义 HEX 色值"
             />
-            <span className="font-mono text-[11px] text-neutral-500">{activeColor}</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {ACCENT_COLOR_PRESETS.map((color) => {
+              const isSelected = activeColor === color.toLowerCase();
+              return (
+                <button
+                  key={color}
+                  type="button"
+                  title={color}
+                  onClick={() => {
+                    applyThemeColor(color, undefined, "custom");
+                    setConfigValue("client", "theme.preset", "custom");
+                    setConfigValue("client", "theme.color", color);
+                    setConfigValue("client", "theme.secondary_color", "");
+                  }}
+                  className={`relative flex h-7 w-7 items-center justify-center rounded-full transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer ${
+                    isSelected ? "ring-2 ring-offset-2 ring-theme shadow-sm scale-105" : "hover:shadow-xs"
+                  }`}
+                  style={{ backgroundColor: color }}
+                >
+                  {isSelected ? <i className="ri-check-line text-xs font-bold text-white drop-shadow-xs" /> : null}
+                </button>
+              );
+            })}
+
+            {/* 经典彩虹渐变自由调色盘 */}
+            <label
+              title="打开系统自由调色盘"
+              className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-gradient-to-tr from-rose-500 via-amber-400 via-emerald-400 to-sky-500 text-white shadow-sm transition-transform hover:scale-110 active:scale-95 ring-1 ring-black/10 dark:ring-white/20"
+            >
+              <i className="ri-palette-line text-xs drop-shadow-xs" />
+              <input
+                type="color"
+                value={/^#[0-9a-f]{6}$/i.test(activeColor) ? activeColor : "#fc466b"}
+                onChange={(e) => {
+                  const normalized = normalizeThemeColor(e.target.value);
+                  applyThemeColor(normalized, undefined, "custom");
+                  setConfigValue("client", "theme.preset", "custom");
+                  setConfigValue("client", "theme.color", normalized);
+                  setConfigValue("client", "theme.secondary_color", "");
+                }}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* 卡片通透度 / 轻磨砂滑块 */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-black/5 dark:border-white/5 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold t-primary">卡片通透度</span>
+            <span className="font-mono text-theme font-bold">{themeOpacity}%</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              {OPACITY_SHORTCUTS.map((val) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => {
+                    applyThemeOpacity(val);
+                    setConfigValue("client", "theme.opacity", val);
+                  }}
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition cursor-pointer ${
+                    themeOpacity === val
+                      ? "bg-theme text-white"
+                      : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10"
+                  }`}
+                >
+                  {val === 100 ? "纯白" : `${val}%`}
+                </button>
+              ))}
+            </div>
+            <input
+              type="range"
+              min={50}
+              max={100}
+              step={2}
+              value={themeOpacity}
+              onChange={(e) => {
+                const val = Number.parseInt(e.target.value, 10);
+                applyThemeOpacity(val);
+                setConfigValue("client", "theme.opacity", val);
+              }}
+              className="w-28 accent-theme cursor-pointer"
+            />
           </div>
         </div>
       </section>
