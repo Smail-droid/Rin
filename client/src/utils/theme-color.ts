@@ -341,6 +341,12 @@ if (typeof window !== "undefined") {
   });
 }
 
+function setRootVarIfChanged(root: HTMLElement, name: string, value: string) {
+  if (root.style.getPropertyValue(name) !== value) {
+    root.style.setProperty(name, value);
+  }
+}
+
 export function applyThemeColor(
   value: string | undefined | null,
   secondaryValue?: string | null,
@@ -374,18 +380,18 @@ export function applyThemeColor(
   const effectiveRgb = hexToRgb(effectiveHex);
   const secRgb = hexToRgb(secondary);
 
-  root.style.setProperty("--theme-rgb", toCssRgb(effectiveRgb));
-  root.style.setProperty("--theme-hover-rgb", toCssRgb(shade(effectiveHex, isDark ? 0.14 : -0.14)));
-  root.style.setProperty("--theme-active-rgb", toCssRgb(shade(effectiveHex, isDark ? 0.22 : -0.24)));
-  root.style.setProperty("--theme-secondary-rgb", toCssRgb(secRgb));
+  setRootVarIfChanged(root, "--theme-rgb", toCssRgb(effectiveRgb));
+  setRootVarIfChanged(root, "--theme-hover-rgb", toCssRgb(shade(effectiveHex, isDark ? 0.14 : -0.14)));
+  setRootVarIfChanged(root, "--theme-active-rgb", toCssRgb(shade(effectiveHex, isDark ? 0.22 : -0.24)));
+  setRootVarIfChanged(root, "--theme-secondary-rgb", toCssRgb(secRgb));
 
   // 画布保持清透干净的白/浅雪与深炭夜，绝不发灰发闷
   if (isDark) {
-    root.style.setProperty("--rin-canvas-rgb", matchedPalette ? toCssRgb(hexToRgb(matchedPalette.tintDark)) : "21 22 28");
-    root.style.setProperty("--rin-surface-rgb", matchedPalette ? toCssRgb(hexToRgb(matchedPalette.surfaceDark)) : "30 32 40");
+    setRootVarIfChanged(root, "--rin-canvas-rgb", matchedPalette ? toCssRgb(hexToRgb(matchedPalette.tintDark)) : "21 22 28");
+    setRootVarIfChanged(root, "--rin-surface-rgb", matchedPalette ? toCssRgb(hexToRgb(matchedPalette.surfaceDark)) : "30 32 40");
   } else {
-    root.style.setProperty("--rin-canvas-rgb", matchedPalette ? toCssRgb(hexToRgb(matchedPalette.tintLight)) : "248 250 252");
-    root.style.setProperty("--rin-surface-rgb", "255 255 255");
+    setRootVarIfChanged(root, "--rin-canvas-rgb", matchedPalette ? toCssRgb(hexToRgb(matchedPalette.tintLight)) : "248 250 252");
+    setRootVarIfChanged(root, "--rin-surface-rgb", "255 255 255");
   }
 }
 

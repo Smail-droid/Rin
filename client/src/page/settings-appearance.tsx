@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef } from "react";
 import {
   ACCENT_COLOR_PRESETS,
   OPACITY_SHORTCUTS,
@@ -139,6 +140,59 @@ export function SettingsAppearancePanel({
   const customCursor = clientConfig.get("theme.custom_cursor") !== false && clientConfig.get("theme.custom_cursor") !== "false";
   const readingProgress = clientConfig.get("theme.reading_progress") !== false && clientConfig.get("theme.reading_progress") !== "false";
   const matchedPresetObj = THEME_PRESETS.find((p) => p.id === activePreset);
+
+  // 高频滑块/取色器 rAF 实时预览 + 250ms 防抖写入草稿，杜绝拖动时整页重渲染卡顿
+  const colorInputRef = useRef<HTMLInputElement | null>(null);
+  const colorRafRef = useRef<number | null>(null);
+  const colorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingColorRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (colorInputRef.current && document.activeElement !== colorInputRef.current && /^#[0-9a-f]{6}$/i.test(activeColor)) {
+      colorInputRef.current.value = activeColor;
+    }
+  }, [activeColor]);
+
+  useEffect(() => {
+    return () => {
+      if (colorRafRef.current !== null) cancelAnimationFrame(colorRafRef.current);
+      if (colorTimerRef.current !== null) clearTimeout(colorTimerRef.current);
+    };
+  }, []);
+
+  const commitDraftColor = useCallback(
+    (hex: string) => {
+      if (colorTimerRef.current !== null) {
+        clearTimeout(colorTimerRef.current);
+        colorTimerRef.current = null;
+      }
+      pendingColorRef.current = null;
+      setConfigValue("client", "theme.preset", "custom");
+      setConfigValue("client", "theme.color", hex);
+      setConfigValue("client", "theme.secondary_color", "");
+    },
+    [setConfigValue]
+  );
+
+  const handleLivePickerInput = useCallback(
+    (rawHex: string) => {
+      const normalized = normalizeThemeColor(rawHex);
+      pendingColorRef.current = normalized;
+      if (colorRafRef.current === null) {
+        colorRafRef.current = requestAnimationFrame(() => {
+          colorRafRef.current = null;
+          if (pendingColorRef.current) {
+            applyThemeColor(pendingColorRef.current, undefined, "custom");
+          }
+        });
+      }
+      if (colorTimerRef.current !== null) clearTimeout(colorTimerRef.current);
+      colorTimerRef.current = setTimeout(() => {
+        commitDraftColor(normalized);
+      }, 250);
+    },
+    [commitDraftColor]
+  );
 
   return (
     <div className="w-full flex flex-col space-y-4 ani-show">
@@ -294,14 +348,14 @@ export function SettingsAppearancePanel({
             >
               <i className="ri-palette-line text-xs drop-shadow-xs" />
               <input
+                ref={colorInputRef}
                 type="color"
-                value={/^#[0-9a-f]{6}$/i.test(activeColor) ? activeColor : "#fc466b"}
-                onChange={(e) => {
-                  const normalized = normalizeThemeColor(e.target.value);
-                  applyThemeColor(normalized, undefined, "custom");
-                  setConfigValue("client", "theme.preset", "custom");
-                  setConfigValue("client", "theme.color", normalized);
-                  setConfigValue("client", "theme.secondary_color", "");
+                defaultValue={/^#[0-9a-f]{6}$/i.test(activeColor) ? activeColor : "#fc466b"}
+                onInput={(e) => handleLivePickerInput((e.target as HTMLInputElement).value)}
+                onBlur={(e) => {
+                  if (pendingColorRef.current) {
+                    commitDraftColor(normalizeThemeColor(e.target.value));
+                  }
                 }}
                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
               />
