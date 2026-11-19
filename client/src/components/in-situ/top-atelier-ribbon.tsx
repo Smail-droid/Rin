@@ -1,4 +1,5 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Link } from "wouter";
 import { ProfileContext } from "../../state/profile";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 import { client } from "../../app/runtime";
@@ -94,6 +95,15 @@ function IconSliders({ className = "h-3.5 w-3.5" }: { className?: string }) {
       <circle cx="10" cy="7" r="2" />
       <circle cx="16" cy="12" r="2" />
       <circle cx="12" cy="17" r="2" />
+    </svg>
+  );
+}
+
+function IconTag({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
+      <path d="M7 7h.01" />
     </svg>
   );
 }
@@ -265,7 +275,7 @@ export function TopAtelierRibbon() {
   return (
     <div
       aria-label="画廊氛围与快捷栏"
-      className="w-full max-w-5xl mx-auto px-4 pt-1 pb-2 flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 text-xs select-none"
+      className="w-full max-w-5xl mx-auto px-4 pt-1.5 pb-2.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs select-none"
     >
       {/* 1. 访客可用：纯图标+文字独立氛围开关（无任何外框包裹） */}
       {ambienceItems.map((item) => {
@@ -277,10 +287,10 @@ export function TopAtelierRibbon() {
             onClick={() => handleToggleAmbience(item.id)}
             aria-pressed={active}
             title={active ? `关闭${item.label}氛围` : `开启${item.label}氛围`}
-            className={`inline-flex items-center gap-1 py-0.5 text-xs transition-colors cursor-pointer ${
+            className={`inline-flex items-center gap-1 py-0.5 text-xs transition-all duration-200 cursor-pointer ${
               active
-                ? "text-theme font-semibold"
-                : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
+                ? "text-theme font-semibold glow-theme"
+                : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
             }`}
           >
             {item.icon}
@@ -292,13 +302,13 @@ export function TopAtelierRibbon() {
       {/* 2. 管理员登录态专属：无外框纯图标+文字快捷区 */}
       {isAdmin ? (
         <>
-          <span className="h-3 w-px bg-black/15 dark:bg-white/15" aria-hidden="true" />
+          <span className="h-3.5 w-px bg-neutral-300/50 dark:bg-white/10 rounded-full" aria-hidden="true" />
 
           <button
             type="button"
             onClick={handleCycleVariant}
             title={`切换文章版式（当前：${currentVariantMeta.label}）`}
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
           >
             <IconLayout />
             <span>{currentVariantMeta.label}</span>
@@ -308,10 +318,10 @@ export function TopAtelierRibbon() {
             type="button"
             onClick={handleCyclePalette}
             title={`切换明快主题色（当前：${currentPalette.name}）`}
-            className="inline-flex items-center gap-1.5 py-0.5 text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
           >
             <span
-              className="h-2.5 w-2.5 rounded-full shrink-0"
+              className="h-2.5 w-2.5 rounded-full shrink-0 ring-1 ring-black/10 dark:ring-white/15"
               style={{ backgroundColor: liveColorHex }}
               aria-hidden="true"
             />
@@ -320,7 +330,7 @@ export function TopAtelierRibbon() {
 
           <label
             title="打开调色盘自由选色"
-            className="relative inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-colors cursor-pointer"
+            className="relative inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
           >
             <span
               className="h-3 w-3 rounded-full bg-gradient-to-tr from-rose-500 via-amber-400 via-emerald-400 to-sky-500 shrink-0"
@@ -342,13 +352,13 @@ export function TopAtelierRibbon() {
             />
           </label>
 
-          <span className="h-3 w-px bg-black/15 dark:bg-white/15" aria-hidden="true" />
+          <span className="h-3.5 w-px bg-neutral-300/50 dark:bg-white/10 rounded-full" aria-hidden="true" />
 
           <button
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent("rin:open-writing-drawer"))}
             title="写新文章"
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-theme hover:opacity-80 transition-opacity cursor-pointer font-medium"
+            className="inline-flex items-center gap-1 py-0.5 text-xs text-theme hover:brightness-110 hover:glow-theme-sm transition-all duration-200 cursor-pointer font-semibold"
           >
             <IconQuill />
             <span>撰写</span>
@@ -358,29 +368,39 @@ export function TopAtelierRibbon() {
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent("rin:open-media-drawer"))}
             title="图床与媒体库"
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-all duration-200 cursor-pointer"
           >
             <IconGallery />
             <span className="hidden md:inline">图床</span>
           </button>
 
-          <a
-            href="/admin/music"
-            title="音廊曲库"
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors cursor-pointer"
+          <Link
+            href="/music"
+            title="微光音廊工作台"
+            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-all duration-200 cursor-pointer"
           >
             <IconMusic />
             <span className="hidden md:inline">音廊</span>
-          </a>
+          </Link>
 
-          <a
-            href="/admin/settings?tab=theme"
-            title="后台外观与系统设置"
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-colors cursor-pointer"
+          <Link
+            href="/hashtags"
+            title="标签体系前台管理"
+            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-all duration-200 cursor-pointer"
+          >
+            <IconTag />
+            <span className="hidden md:inline">标签</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("rin:open-appearance-drawer"))}
+            title="前台排版与导航外观工坊（实时调节字号、间距与排布）"
+            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-400 dark:text-neutral-500 hover:text-theme transition-all duration-200 cursor-pointer"
           >
             <IconSliders />
-            <span className="hidden md:inline">设置</span>
-          </a>
+            <span className="hidden md:inline">排版</span>
+          </button>
         </>
       ) : null}
     </div>

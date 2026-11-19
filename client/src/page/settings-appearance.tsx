@@ -8,6 +8,7 @@ import {
   applyThemeColor,
   applyThemeCustomCursor,
   applyThemeFontFamily,
+  applyThemeFontSize,
   applyThemeOpacity,
   applyThemeWallpaper,
   normalizeThemeColor,
@@ -137,6 +138,10 @@ export function SettingsAppearancePanel({
   const tiltDegree = Number.parseFloat(String(clientConfig.get("gallery.tilt_degree") ?? 1.8));
   const safeTilt = Number.isNaN(tiltDegree) ? 1.8 : tiltDegree;
   const fontFamily = String(clientConfig.get("theme.font_family") ?? "sans");
+  const themeFontSize = Number.parseInt(String(clientConfig.get("theme.font_size") ?? 16), 10) || 16;
+  const navFontSize = Number.parseInt(String(clientConfig.get("header.nav_font_size") ?? 15), 10) || 15;
+  const navGap = Number.parseInt(String(clientConfig.get("header.nav_gap") ?? 12), 10) || 12;
+  const navOrganicTilt = clientConfig.get("header.nav_organic_tilt") !== false && clientConfig.get("header.nav_organic_tilt") !== "false";
   const customCursor = clientConfig.get("theme.custom_cursor") !== false && clientConfig.get("theme.custom_cursor") !== "false";
   const readingProgress = clientConfig.get("theme.reading_progress") !== false && clientConfig.get("theme.reading_progress") !== "false";
   const matchedPresetObj = THEME_PRESETS.find((p) => p.id === activePreset);
@@ -606,6 +611,66 @@ export function SettingsAppearancePanel({
           </div>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-black/5 dark:border-white/5 text-xs">
+          <div className="space-y-1.5">
+            <div className="flex justify-between">
+              <span className="font-semibold t-primary">全站基础字号</span>
+              <span className="font-mono text-theme font-bold">{themeFontSize}px</span>
+            </div>
+            <input
+              type="range"
+              min={13}
+              max={22}
+              step={1}
+              value={themeFontSize}
+              onChange={(e) => {
+                const val = Number.parseInt(e.target.value, 10);
+                applyThemeFontSize(val);
+                setConfigValue("client", "theme.font_size", val);
+              }}
+              className="w-full accent-theme cursor-pointer"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex justify-between">
+              <span className="font-semibold t-primary">顶栏导航字号</span>
+              <span className="font-mono text-theme font-bold">{navFontSize}px</span>
+            </div>
+            <input
+              type="range"
+              min={12}
+              max={20}
+              step={1}
+              value={navFontSize}
+              onChange={(e) => {
+                const val = Number.parseInt(e.target.value, 10);
+                setConfigValue("client", "header.nav_font_size", val);
+              }}
+              className="w-full accent-theme cursor-pointer"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex justify-between">
+              <span className="font-semibold t-primary">顶栏导航间距</span>
+              <span className="font-mono text-theme font-bold">{navGap}px</span>
+            </div>
+            <input
+              type="range"
+              min={4}
+              max={28}
+              step={2}
+              value={navGap}
+              onChange={(e) => {
+                const val = Number.parseInt(e.target.value, 10);
+                setConfigValue("client", "header.nav_gap", val);
+              }}
+              className="w-full accent-theme cursor-pointer"
+            />
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-black/5 dark:border-white/5 text-xs">
           <div className="space-y-1.5">
             <div className="flex justify-between">
@@ -645,6 +710,15 @@ export function SettingsAppearancePanel({
         </div>
 
         <div className="flex flex-wrap items-center gap-6 pt-3 border-t border-black/5 dark:border-white/5 text-xs">
+          <label className="inline-flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={navOrganicTilt}
+              onChange={(e) => setConfigValue("client", "header.nav_organic_tilt", e.target.checked)}
+              className="accent-theme rounded"
+            />
+            <span className="font-semibold t-primary">导航手账灵动微倾角</span>
+          </label>
           <label className="inline-flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"

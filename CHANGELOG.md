@@ -1,192 +1,120 @@
-# Changelog
+# 🌸 画廊随想 Gallery Blog · 更新日志 (Changelog)
 
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+> **项目定位**：边缘原生全栈二次元画廊博客系统。以“一页一世界”为美学准则，融合拍立得便签墙、时光长河刻度轴、Mac 终端代码块与高密单屏超级数据表格 (Dense DataGrid)。全栈所有版本演进、架构跃升、美学注入与安全加固均记录于此。
 
 ---
 
-## [v1.0.7] - 2026-11-18
+## 🧭 时光长河导读目录 (Timeline Navigation)
 
-### Added
-- **Frontend Aesthetic & UX Governance Charter (`docs/AESTHETIC_CHARTER.md`)**: Codified non-negotiable UI/UX boundaries in `docs/AESTHETIC_CHARTER.md` and bound them to `AGENTS.md` (single entrypoint, zero duplicate day/night buttons, uncropped artwork integrity, subtle sticky notes with hover-only cover text, luminous color system, deterministic ambience effects, unified comment primitives).
-- **Borderless Top-Center Embedded Atelier Ribbon (`TopAtelierRibbon`)**: Removed the bulky floating bottom-right pill and 9-tab side drawer completely; embedded a clean, borderless icon+text ribbon centered below the header with independent visitor toggles for **樱花 (Sakura)**, **细雨 (Rain)**, and **萤火 (Fireflies)**, plus admin 1-click variant/palette/color-picker & quick-create shortcuts.
-- **Unified Gallery Comment System Across Articles & Moments (`UnifiedCommentComposer` / `UnifiedCommentItem`)**: Refactored `gallery-comments.tsx` into reusable primitives and wired `moment_item.tsx` directly to them — logged-in users inherit identity automatically, guests receive randomized anime nicknames/avatars, with spacious multi-line Markdown composer and unified moderation.
-- **Sticky Note Cover Text Strategy (`atelier.<note>_text_mode`)**: Added `hover` (default — 100% unobstructed cover art until hovered), `hidden`, and `always` modes for all sticky notes and gallery deck card, paired with compact note sizing.
-- **Modular Appearance Settings Panel (`settings-appearance.tsx`)**: Restored a clean, block-based `/admin/settings?tab=theme` dashboard featuring 18 bright theme presets, 16-color circular accent palette, native rainbow color picker, HEX input, card opacity slider, wallpaper presets, ambience selector, and waterfall layout controls.
-
-### Performance & Bug Fixes
-- **Eliminated 60fps Color-Picker Stutter & Full-Tree Re-renders**: Switched live color picker dragging to `requestAnimationFrame` pure CSS variable updates (`applyThemeColor`) with debounced persistence (`350ms`/`250ms`), eliminating 60/sec full-app React re-renders and Cloudflare Worker POST storms.
-- **Removed Render-Blocking Google Fonts `@import`**: Eliminated 7 deprecated external Google Fonts stylesheets from `client/src/index.css` that previously blocked initial page paint.
-- **GPU-Accelerated Reading Progress Bar (`GlobalReadingProgress`)**: Replaced scroll `setState` + CSS `width` layout thrashing with `requestAnimationFrame` + GPU `transform: scaleX()` (0 React re-renders and 0 reflows while scrolling) and fixed theme variable binding.
-- **Incremental DOM Config Diffing (`useAppBootstrap`) & Memoized `useSiteConfig`**: Added field-level dirty checking before mutating global DOM/CSS properties and memoized `useSiteConfig()` per `ConfigWrapper` instance, eliminating 50+ redundant `JSON.parse` allocations per render.
-- **Throttled & Memoized `MusicPlayerProvider`**: Memoized context value and throttled `timeupdate` state ticks to prevent unnecessary top-level context churn during playback.
-- **Cached Auth Storage Probe & Silent Dark-Mode Timer Guard**: Cached `isLocalStorageAvailable()` in `auth.ts` instead of writing/deleting test keys on every API call, and guarded `darkModeUtils.ts` 60-second timer against redundant `colorSchemeChange` broadcasts.
-- **Pure Crisp White Canvas & Luminous Bookmark Tags**: Set light-mode canvas to pure `#ffffff` across all themes, capped historical CSS gradient wallpaper wash opacity, redesigned `/hashtags` into compact scattered crystal-clear bookmarks, removed stray arrows on homepage tags, uncropped `poster` gallery covers (`w-full h-auto`), fixed Moments danmaku off-label (`弹幕 / 已关弹幕`), and corrected Friends sort order to ascending (`1, 2, 3...` with `0` defaults last).
-- **Integrated Natural Header Flow (`header.position: "top"`)**: Unified all master presets to default to the natural top header layout that directly integrates with page text, eliminating awkward floating pill widgets hovering over the stream title and preventing vertical title collision.
-- **Server-Side Client Config Bootstrapping (`useAppBootstrap`)**: Asynchronously syncs client config from `/api/config/client` on initial load, preventing site name from erroneously falling back to default "Rin" on clean sessions or page reload.
-- **Tighter Editorial Layout & Eliminated Blank Spacers**: Removed intrusive stacked paddings and floated admin action buttons over the image top-right, eliminating empty white gaps across editorial article cards.
-- **Harmonious Multi-Color Swatch Combinations**: Upgraded the color palette in Aesthetic Studio to display rich 3-color designer combinations (primary, soft background tint, accent spark).
-- **Renamed Storage Gallery to Natural "图库相册"**: Replaced cloud jargon "R2 媒体资产相册" with clean, human "图库相册".
-- **Three Master Gallery Design Presets**: Integrated 1-click curated design systems (🌸 和风手账, 📝 京都社论, 💻 极客墨影) in `InSituAestheticStudio`, unifying card variant, typography, palette, columns, and header mode in one click.
-- **Landscape Photography Restoration (`aspect-[16/10]`)**: Replaced cramped 3:4 portrait ratios in `poster` and `editorial` card variants with widescreen 16:10 / 16:9 landscape ratios, ensuring blog banner images are completely uncropped and enjoyable.
-- **Terminal Single-Row Sticky Notes in Compact Mode**: Adapted sticky notes and deck flip card in `feeds.tsx` into dense single-row terminal commands when `compact` variant is active, eliminating aesthetic clashes between notes and single-line articles.
-- **Pure Editorial Minimalist Navbar (`headerLayout: "compact"`)**: Wired real differential rendering for `headerLayout: "compact"`, providing a tranquil, borderless, text-first Japanese editorial header with clean typography.
-- **Navidrome & MHub Dual-Column Music Studio (`admin-music.tsx`)**: Rebuilt the music gallery into a dual-column music app with a dedicated vertical music sidebar (Discovery: Explore & Shuffle, Library: R2 Assets, Queue, 5T Sync, Operations: Upload, Folder Import, Radio Settings), completely replacing primitive stacked CMS cards with an authentic music station.
-- **Dynamic Remote AI Models Fetching (`/api/config/ai/models`)**: Added one-click `🔄 拉取模型` capability across the AI Copilot drawer and backend AI settings, querying the provider's standard OpenAI-compatible `/models` endpoint to dynamically populate all available model IDs into an instant dropdown, eliminating preset model limitations and manual typing.
-- **MHub & Navidrome Persistent Bottom Player Dock (`BottomPlayerDock`)**: Built a persistent bottom music player dock inspired by MHub (`jizizr/mhub`) and Navidrome, featuring left-aligned artwork with live animated audio waves, center transport controls with precision time scrubber (`00:00 / 03:48`), volume slider, and instant lyrics/queue popovers.
-- **Navidrome Live Audio Visualizer Waves**: Added a jumping 3-bar audio visualizer animation on playing album cards in the gallery view.
-- **Live Database Sync & Complete Layout Controls in Aesthetic Studio**: Synced site title and bio reactively with Cloudflare D1 database values (eliminating fallback defaults), and integrated full gallery padding (0px to 80px), layout alignment (Center/Fluid), and header layout styles (Classic/Compact).
-- **In-Situ AI Configuration Inside Assistant Drawer (`WritingAICopilotDrawer`)**: Embedded an on-the-fly AI provider, model, API key, and reverse-proxy URL settings panel right inside the assistant drawer with one-click connectivity testing and direct persistence, completely removing the need to visit `/admin/settings` to configure AI.
-- **Full In-Situ Aesthetic Studio Repatriation**: Expanded `InSituAestheticStudio` with live site name & description editing, font family selector (Sans, Serif, Mono), and header layout styles (Float, Top, Bottom).
-- **Deep DataGrid In-Place Actions & Dual Pagination**: Overhauled `/admin/dashboard` into a true interactive DataGrid: clickable header column sorting (Time Newest/Oldest, ID, Title A-Z), in-place one-click status flipping between Public and Draft, interactive AI summary badge with one-click re-generation, in-place title quick rename, and dual top & bottom pagination controls.
-- **Slide-Over Permission Drawer & Lock Filter Tab**: Upgraded dashboard article permissions from a center dialog to an elegant right-side slide-over drawer; added a dedicated `🔒 已加锁` filter tab and interactive `访问权限` column badge in the data table.
-- **Music Preview Decoupling (`playTemporaryTrack`)**: Previews in explore view now only stream audio for temporary listening, strictly prohibiting unwanted R2 uploads or permanent playlist insertion.
-- **Auto-Persist R2 Immediate Memory**: "收录时自动转存音廊" setting now persists immediately to localStorage on toggle without requiring manual config save.
-- **Integrated Admin Music Header**: Merged status card and tab switcher into a single dense row, eliminating large horizontal and vertical whitespace voids.
-- **Relocated Music Refresh Button**: Moved refresh button down into the list/grid toolbar right next to search and filters.
-- **Grid View In-Place Song Rename**: Fixed non-responsive edit button in album grid view by rendering inline edit input upon click.
-- **Smart Missing Cover Autofetch**: Displays missing cover count dynamically and 100% skips tracks that already have covers.
-- **Playlist Up/Down Reordering**: Added micro up/down reorder buttons to playlist rows for easy manual sorting.
-- **Tags Icon Correction (`admin-tags.tsx`)**: Replaced inappropriate green play icon with clean price tag icon.
-- **Dashboard Article Lock Badges & Integration**: Added password/token lock status badges in dashboard table rows and integrated direct password management into the quick-edit modal.
-- **In-Situ Aesthetic Studio (`InSituAestheticStudio`)**: Added on-the-fly front-of-house styling drawer mounted via `React.lazy` and `profile` gate (0 visitor bundle overhead). Enables instant live switching between 4 card layout variants, 8 curated atmospheric theme presets, waterfall columns (auto/2/3/4), spacing gaps (16/24/32px), card opacity steps, and day/night mode.
-- **Dark-Mode Contrast Guard (`applyThemeColor`)**: Added luminance detection to prevent black-on-black UI when selecting dark accents (e.g. Paper Ink `#27272a`) in dark mode, dynamically compensating to high-contrast silver white (`#e4e4e7`).
-- **Wired 4 Layout Variants to Homepage Feed Waterfall (`feeds.tsx`)**: Connected `siteConfig.feedCardVariant` directly into `feeds.tsx`, enabling real-time live morphing between Compact, Poster, Editorial, and Polaroid variants on the home stream.
-- **Reactive Configuration Synchronization**: Added `rin:config-updated` window event pipeline across `useAppBootstrap` and client components to ensure multi-device config reactivity without full page reload.
-
-### Changed
-- **Repositioned Writing Assistant & Admin Studio Hiding**: Moved the Writing AI Copilot button directly onto the article writing toolbar (`/admin/writing`) while removing the unresponsive trigger from the global admin sidebar; hid the In-Situ Aesthetic Studio completely when browsing `/admin/*` backend pages, and refined the front-of-house toggle into a sleek 40×40 circular frosted glass icon button.
-- **Tri-Mode Header Architecture Overhaul**: Rebuilt `header.tsx` and `nav-bar.tsx` with three bespoke, uncompromised layouts:
-  - `bottom`: MHub / macOS-inspired floating frosted glass dock anchored at bottom center with upward popovers (`popoverUp`).
-  - `float`: Dynamic Island floating top pill with delicate dividers, compact avatar, and smooth pill hover effects.
-  - `top`: Edge-to-edge classic top navigation bar with full-width backdrop blur.
-  - Eliminated the broken `w-screen` nesting that previously caused horizontal distortion and ugly stretching.
-- **Replaced 4 Fake Card Variants with Bone-Deep Structural Layouts**: Completely redesigned `client/src/components/feed_card.tsx` so each variant has a distinct DOM structure:
-  - `compact`: Single dense datarow displaying date, title, tags, and reading time for fast scanning.
-  - `poster`: Full-bleed 3:4 aspect-ratio hero photo with title and summary overlaid on frosted glass gradient.
-  - `editorial`: Text-first layout featuring prominent serif headline, generous summary line-height, and right-aligned thumbnail.
-  - `default`: Polaroid photo card with classic white border, top-pinned photo, and organic hover warmth.
-- **Refined Typography System**: Replaced 12 tacky WordArt `.art-title-*` styles (gradients and text-shadows) with clean, high-contrast modern typography adhering to font family and kerning rules.
-- **Pure Micro-Blogging for Moments**: Removed mandatory blockquote status prefix (`> **状态：...**\n\n`) from `moments.tsx`, replacing it with optional mood tags and free-form Markdown.
-- **Purified Settings Header & Navigation**: Removed fake status capsules (`Worker 边缘就绪`, `R2 存储桶已连接`) and verbose corporate blurbs from `settings.tsx`; removed `/admin/ops` and ghost `/friends` jump entry from primary sidebar navigation (`admin-layout.tsx`).
-- **Streamlined Friends Refresh Button**: Replaced long verbose text button in `friends.tsx` with a clean 36×36 square icon button.
-- **Consistent Tag Badges**: Restored uniform `🏷️` icon across all homepage tag pills, removing arbitrary book emoji replacements.
-
-### Removed
-- **Excised Redundant Theme and Atelier Tabs in Backend Settings**: Completely excised the duplicate "主题与布局" (Tab 2) and "进阶设置" (Tab 3) from `/admin/settings`, reducing the settings console to purely General & Services, ensuring visual presentation is exclusively governed in-situ by the front-of-house Aesthetic Studio.
-- **Removed Redundant 15-Item Shortcut Card Grid in Dashboard**: Completely removed the clumsy 15-card shortcut matrix (`快捷功能调度`) in `/admin/dashboard`, eliminating redundant URL links and promoting the Article Management Dense DataGrid to the top of the viewport.
-- **Physical Removal of JeikCode Copilot**: Completely deleted `client/src/components/jeikcode-copilot.tsx` (834 lines) and unmounted from `App.tsx`, eliminating hardcoded LAN IP, token leak risk, and floating widget, instantly cutting 24.5 kB from the entry chunk.
-- **Severed External Proxy Scrapers in Friends**: Removed brittle 3rd-party CORS proxy chains (`corsproxy.io`, `microlink.io`, FileReader base64) from `friends.tsx`, standardizing on native URL fields and Cloudflare Worker edge inspection.
-
-### Fixed
-- **Minified React Error #310 & #300 Elimination**: Moved all React hooks (`useLocation`, `useSiteConfig`, `useState`, `useEffect`) unconditionally to the top of `InSituAestheticStudio` (`aesthetic-studio.tsx`) before the `/admin` route guard early return, completely eliminating hook count mismatches when navigating between frontend pages and backend admin views.
-- **Friend Link Creation & Silent Failures Resolved**:
-  - Removed obsolete 20-character limitation (`name.length > 20`) in `POST /friend`, expanding site name allowance to 100 characters, avatar allowance to 2000 characters, and description allowance to 5000 characters.
-  - Allowed optional empty descriptions in friend creation, preventing 400 rejection when a site has no description.
-  - Permitted safe `data:image/` base64 URIs in `isValidSafeMediaUrl` and auto-prefixed protocol-relative `//` URLs to `https:`.
-  - Added strict error-response checks across `client.friend.create`, `client.friend.update`, `client.friend.delete`, `client.config.updateAll`, and `client.config.update`, ensuring server-side errors are caught and surfaced instead of silently closing modals and giving a false impression of success.
-- **AI Summary Pipeline Scoping & Region Error Diagnostics**: Explicitly scoped dashboard AI summary calls to the `summary` stage (preventing unnecessary tech/format pipeline passes), caught pipeline exceptions with `processAIError`, and provided actionable resolution instructions when Google Gemini returns 400 region restrictions (`User location is not supported`).
+* 🌿 **[v1.0.7] - 2026-11-19**：立项前端美化章程 · 顶部居中无框氛围栏 · 抽屉式前台交互全面升级 · Monaco 高度链断裂 P0 级根治与回归测试 · 18 套明快色盘与自由调色盘 · 全栈 6 大性能瓶颈根治
+* 🌸 **[v1.0.6] - 2026-11-14**：星标友链 NodeSeek 原生直连与矢量 SVG 兼容 · 历史受损链接自动脱壳自愈 · 拍立得手账高密微光美学 · AI 智能精炼与自定义简介保护
+* 🎀 **[v1.0.5] - 2026-11-07**：日系二次元可爱悬浮音符播放器 · 音廊全宽画册网格 · R2 元数据持久化 · 概览页超级表单升维 · 数字跳位排序 · SEO 底部与 Favicon 定制
+* 💎 **[v1.0.4] - 2026-11-05**：文章管理超级 DataGrid · 封面缩略与快捷置换 · 置顶优先机制 · 标准底部分页栏 · 任务中止控制
+* 🛰️ **[v1.0.3] - 2026-11-04**：友链罗盘画廊 SPA 重构 · URL 元数据 AI 自动嗅探 · 高可用 Favicon 代理兜底 · 游客免登录申请流
+* 🚀 **[v1.0.2] - 2026-11-03**：多语言语法高亮 · 三区隔离海报飞跃弹幕 · SEO 全景控制中心 · 提示词多版本工坊 · 留言安全审核
+* 🌟 **[v1.0.1] - 2026-11-02**：便签阵列高密超级表格 · 首页便签自由拖拽摆放 · 便签三大视觉形态补齐
+* ⚡ **[v1.0.0] - 2026-11-01**：首屏断崖式瘦身 97.7% · 12 种 Web 现代排印字族 · 极简迷你侧边栏 · 边缘全栈正式奠基
 
 ---
 
-### Added
-- **AI Description Refinement in Edit Modal**: Added "☆ AI 智能精炼" button to `EditFriendModal`, aligned with the add-link modal for quick one-click synthesis.
-- **Upgraded AI Refinement System Prompt**: Restructured prompt guidelines to generate concise, professional 8-24 character descriptions without conversational fluff or extraneous punctuation.
-- **Full NodeSeek Badge Row in Polaroid View**: Restored missing UID link, Diamond Rank Lv badge, chicken leg count, and registration days badge in polaroid notes.
-- **SVG Image Recognition (`isValidImageBuffer`)**: Added SVG XML recognition in image buffering to safely store NodeSeek vector avatars into R2 as `.svg` assets.
-- **Historic Corrupted Avatar Auto-Unwrap (`sanitizeAvatarUrl`)**: Automatically strips defunct `images.weserv.nl` wrappers across views, modals, and updates, reverting to native official avatars.
+## 🌿 [v1.0.7] - 2026-11-19
 
-### Changed
-- **Preserved User-Customized Descriptions**: Protected custom site descriptions and titles from being overwritten during batch or single NodeSeek asset updates.
-- **Polaroid Photo Viewport Tightening**: Replaced large `aspect-video` container with compact `h-28 sm:h-32` frame and tightened grid gaps to `gap-4 sm:gap-5`, cutting empty white space by 35%.
-- **Sub-3.5s Sniffing & Update Timeouts**: Trimmed frontend and backend proxy cascade timeouts to strictly under 3.5 seconds for instant feedback.
+> **版本主题：前端美化章程落地 · 顶部居中无框氛围栏 · 前台写作与媒体抽屉全面重构 · Monaco 编辑器高度塌陷 P0 级根治 · 18 套明快色盘与纯白清亮画布 · 全栈性能与回归测试加固**
 
-### Fixed
-- **403 Forbidden on Weserv Proxy**: Completely removed defunct `images.weserv.nl` references blocked by NodeSeek's anti-hotlinking protections.
-
----
-
-## [v1.0.5] - 2026-11-07
-
-### Added
-- **Kawaii Floating Music Note Player**: Replaced pixelated system emojis with handcrafted anime vector dual-note SVG in soft coral-pink gradient (`#FF7E95` to `#FFA6B7`). Features a 100% transparent floating background, 8-second slow clockwise rotation during playback, breathing micro-glow, and click-to-expand/collapse control bar.
-- **Floating Upper Lyrics & No-BG Control Buttons**: Floating song title and synced LRC lyrics displayed without background boxes (`#503E42` warm brown and `#FF7E95` pink). Control buttons are stripped of solid background cards, with an embedded 2px delicate pink progress bar and Click-outside auto-closing playlist drawer.
-- **R2 Music Metadata Persistence (`music/metadata.json`)**: Solved cover loss when updating large 40MB audio files by establishing a dedicated 10KB metadata index. Changing covers and titles takes 15ms without re-uploading large audio binaries, surviving every `Ctrl + F5` force refresh.
-- **Audio Quality Auto-Detection**: Integrated automatic audio stream detection labeling FLAC lossless, 320K high quality, WAV master, and Hi-Res badges.
-- **Navidrome Album Grid 4-Corner Interactions & Column Density Switcher**: Album artwork cards feature top-left cover replacement, top-right physical deletion, center play/pause, bottom-left playlist status, and bottom-right audio quality badge. Added seamless 6-col / 8-col / 10-col layout switching.
-- **Direct Numeric Sorting for Tables**: Replaced cumbersome drag-and-drop with direct numeric input on row numbers in both Music Playlist and Tag Management (`/admin/tags`). Typing `3` on item 14 immediately moves it to position 3 while subsequent rows smoothly shift down by 1.
-- **Dashboard Full-Spectrum Super Table Overhaul**: Upgraded `/admin/dashboard` table to match `/admin/queue-status` with 44×44 cover preview, hover replacement dialog, in-place quick editing modal, permission lock dialog, pin/unpin buttons, and standard pagination.
-- **SEO Enhancements**: Added custom `footer.by_text` and `footer.by_url` configuration, plus blog favicon upload card with official 512×512 PNG/SVG specification advice.
-
-### Changed
-- **Unified Navigation & Terminology**: Renamed all occurrences of "音乐" (Music) to "音廊" (Music Gallery), "播放队列" to "播放列表", and streamlined button labels to concise 2-6 Chinese characters.
-- **Typography Standardization**: Cleaned micro text (`text-[10px]`, `scale-90`) across admin layout, dashboard, and ops diagnostic tables to legible `text-xs sm:text-sm` (13px/14px).
+### ✨ 核心亮点与工程修复
+- **立章程与单一入口治理**：正式落盘 `docs/AESTHETIC_CHARTER.md` 并写入 `AGENTS.md` 强制门禁；废除 420px 臃肿 9-Tab 侧滑抽屉与悬浮胶囊，前台与后台视口严格保留唯一 1 处日夜切换。
+- **前台抽屉交互与动效重塑**：
+  - 写作抽屉与图库抽屉全面切入丝滑右侧滑入动效 `.ani-drawer-in`（基于 `translateX` 与弹性贝塞尔曲线，结束态归一化为 `transform: none` 杜绝层叠上下文干扰）；
+  - 遮罩层接入平滑渐入 `.ani-overlay-in`，暗色背景升级为语义中性色（`dark:bg-neutral-900`），顶部操作栏增添微渐变与精工外环。
+- **Monaco 编辑器高度塌陷 P0 级根治与布局加固**：
+  - 根治「写作抽屉对比模式下编辑区高度塌陷为细缝」的严重 Bug；
+  - 为 `MarkdownEditor` 在 `height="100%"` 模式下全链路打通 `h-full min-h-0`，Monaco 宿主使用 `absolute inset-0` 精确锚定；
+  - 开启 Monaco `automaticLayout: true` 并增加分栏模式切换自动 `layout()` 布局重绘；
+  - 新增 `markdown_editor.test.tsx` 自动化回归测试，真实无头浏览器实测（422×489px 完整铺满，展开属性面板联动平滑自适应）。
+- **顶部居中无框纯图标+文字微工具栏**：向所有访客开放独立的 **樱花 / 细雨 / 萤火** 直按开关（激活态融入柔和主题色辉光 `glow-theme`）；管理员登录态同步衔接卡片版式切、明快主题色切、自由调色盘与撰写/图床/音廊/设置直达。
+- **纯白清亮画布 + 18 套明快色盘 + 完整自由调色盘**：浅色画布统一回归纯白 `#ffffff`，后台 `/admin/settings?tab=theme` 恢复 18 套明快主题色珠 + 16 色高亮圆珠调色盘 + 彩虹原生自由取色器 + 卡片通透度滑块。
+- **日常随想联动全站统一留言板**：`moment_item.tsx` 复用 `UnifiedCommentComposer` / `UnifiedCommentItem`，登录自动继承身份头像、访客随机二次元昵称头像、宽敞多行 Markdown 输入框与统一风控审核。
+- **全栈性能瓶颈根治**：
+  1. 移除 `index.css` 残留的 7 套废弃外部 Google Fonts 阻塞 `@import`；
+  2. 调色盘拖动改为 `requestAnimationFrame` 纯 CSS 变量实时预览 + 停顿防抖单次持久化，消除每秒 60 次整树重渲染；
+  3. `GlobalReadingProgress` 升级为 `rAF + GPU transform: scaleX()`，滚动 0 React 重渲染、0 Layout 重排；
+  4. `useSiteConfig()` 全量 `useMemo` 缓存，消除单次渲染 50+ 次重复 `JSON.parse`；`useAppBootstrap` 引入增量 DOM 脏检查；
+  5. `MusicPlayerProvider` 上下文 `useMemo` 化并节流 `timeupdate`；
+  6. 全自动化测试套件扩充至 505 项，保持 100% 绿灯全通。
 
 ---
 
-## [v1.0.4] - 2026-11-05
+## 🌸 [v1.0.6] - 2026-11-14
 
-### Added
-- **Dense DataGrid for Article Management**: Overhauled article queue table into a high-density single-screen grid with 44×44 cover preview thumbnails, hover edit overlay, and React Portal lightbox zoom.
-- **In-Place Cover Replacement**: Integrated cover change dialog supporting direct external image URLs or one-click local uploads via R2 storage bucket API (`POST /api/feed/cover/:id`).
-- **Pin / Sticky Article Management**: Integrated data model `top` field; pinned articles permanently rank first with an amber glow `📌 置顶` badge and in-place toggle button (`ri-pushpin-2-fill`).
-- **Standard Pagination Controls**: Complete footer pagination bar featuring total count (`共 X 条`), page size dropdown (10/20/50 per page, default 20), dynamic page numbers with ellipsis (`...`), and quick jump input (`前往 [ ] 页`).
-- **Queue Task Cancellation Control**: Added cancel button for pending and processing tasks (`POST /api/config/queue-status/:id/cancel`) to immediately reset state to idle and release queue blocks.
-- **Card-to-Tab Bidirectional Sync**: Top metric cards (Pending, Running, Done, Failed) are fully bidirectional-synced with bottom category tabs; added `[List]` dialog drawer for instant task inspection.
+> **版本主题：星标友链 NodeSeek 原生直连与矢量 SVG 兼容 · 历史受损链接自动脱壳自愈 · 拍立得手账高密微光美学 · AI 智能精炼与自定义简介保护**
 
-### Changed
-- **Typography & Visual Contrast**: Increased article title font size to 15px (`text-[15px] font-medium`) and last-updated timestamp to 13px (`text-[13px] font-mono text-neutral-600 dark:text-neutral-300`) for enhanced readability.
-- **Relocated Columns**: Moved the "Last Updated" column directly after the "Article Title" column for streamlined browsing.
-
-### Fixed
-- **Cleaned Extraneous Numbers**: Removed unwanted `0 ` prefixes and rogue red `1` badge by enforcing strict boolean JSX conditionals and clean title trimming.
+- **编辑友链 AI 智能精炼与 Prompt 调优**：编辑友链弹窗补齐「☆ AI 智能精炼」，严格控制字数在 8~24 字之间，去除口水客套话，一行说清核心业务与博主调性。
+- **彻底清除失效 weserv 与原生 SVG 头像兼容**：拔除被 NodeSeek 403 拦截的 `images.weserv.nl` 代理依赖，实装 `isValidImageBuffer` 支持常见二进制图片魔数与 NodeSeek 原生 `<svg>` 矢量图形。
+- **自定义站点简介无损防篡改保护**：一键批量更正与单项更正时，自动识别并优先保留用户手动编辑的专属简介与站名。
+- **拍立得卡片留白收拢与全量资产勋章补齐**：照片视窗优化为高度适中的微光视窗（`h-28 sm:h-32`），补齐 NodeSeek 勋章（`UID`、`Lv.等级`、`🍗 鸡腿数量`、`🕒 加入天数`）。
+- **历史受损链接无感自动脱壳自愈**：新增 `sanitizeAvatarUrl` 运行时脱壳过滤，自动将历史写入的第三方代理还原为官方真实直链。
 
 ---
 
-## [v1.0.3] - 2026-11-04
+## 🎀 [v1.0.5] - 2026-11-07
 
-### Added
-- **Friends Gallery SPA Redesign**: Replaced the bulky static submission form with an elegant `[+ Recommend Site / Apply Link]` modal dialog adhering to the soft pink-white theme (`#ff4d79`).
-- **URL Metadata AI Inspection**: Built `/api/friend/inspect` pipeline to sniff HTML `<title>`, `<meta description>`, and icons under 4-second timeout protection, enhanced by Worker AI for 40-word summaries and automatic tag classification.
-- **Guest Application Workflow**: Added public `/api/friend/apply` endpoint allowing visitor submissions with pending status (`accepted = 0`) and webhook alerts.
-- **Robust Favicon Fallback**: Upgraded favicon resolution with Google Favicon API fallback and pink initial letter badge on image load error.
+> **版本主题：日系二次元可爱悬浮音符播放器 · 音廊全宽画册网格与大文件 R2 元数据持久化 · 概览页超级表单全功能升维 · 数字跳位排序 · SEO 底部与 Favicon 定制**
 
----
-
-## [v1.0.2] - 2026-11-03
-
-### Added
-- **Multi-language Syntax Highlighting**: One Dark & One Light theme with Prism engine; supports 30+ languages with line numbers and one-click copy in Mac traffic light terminal containers.
-- **Poster Danmaku Stream**: Video-style floating text danmaku with tri-zone spatial isolation, leaving the center artwork completely clear, with hover-to-pause reading support.
-- **Dedicated SEO Engine Navigation (`/admin/seo`)**: Integrated Google, Bing, and Baidu webmaster links, automatic Sitemap/Robots/IndexNow checks, and Cloudflare Crawler Hints guidelines.
-- **Multi-Version AI Prompt Workshop**: Dense DataGrid in `/admin/ai` supporting multiple prompt versions with dynamic creation, in-place editing, and custom selection.
-- **Comment Spam Security Gateway**: Automatically flags comments containing URLs as pending (`approved = 0`) with in-place admin approval tools.
-
-### Fixed
-- **Timezone Month Offset**: Fixed SQLite timezone issue where November moments were swallowed into October.
-- **Dropdown Clipping**: Elevated frosted dropdown menus to `z-[999]` with overflow-visible card containers to prevent clipping.
+- **超迷你悬浮音符播放器 (Kawaii Mini Player)**：手绘日系双音符纯矢量 SVG（蜜桃珊瑚粉渐变），透明背景，播放时 8s 缓慢顺时针旋转伴随呼吸粉光，单击展开毛玻璃控制栏，浮空歌词无实体底框。
+- **R2 云端音廊元数据持久化架构 (`music/metadata.json`)**：根治大音频文件修改封面导致 Worker 超时丢失的问题，引入独立 10KB 轻量元数据索引，修改封面 15ms 完成。
+- **音质自动识别与四角交互画册网格**：自动识别 FLAC、320K、WAV、Hi-Res 规格徽标；画册卡片四角悬浮交互，支持 6 列 / 8 列 / 10 列排布切换。
+- **全站超级表单数字序号直接调序 (Direct Number Sorting)**：音廊播放列表与标签页序号列支持直接输入数字回车跳位顺延。
+- **概览中枢 (`/admin/dashboard`) 对齐超级表单全套交互**：文章表格升维封面缩略图与快捷更换、就地快速编辑 Modal、权限锁定联动、置顶按钮与标准底部分页控制器。
 
 ---
 
-## [v1.0.1] - 2026-11-02
+## 💎 [v1.0.4] - 2026-11-05
 
-### Added
-- **Dense DataGrid for Sticky Notes**: Replaced bulky accordion cards with a unified dense table for full control over styles, links, emojis, and covers.
-- **Draggable Homepage Notes**: Admin drag-and-drop handles for reordering notes on the homepage gallery with localStorage persistence.
-- **All-Notes Widget Styles**: Completed circle and capsule widget variants for Timeline, Moments, Friends, and Search notes.
+> **版本主题：文章管理高密超级数据表格 · 封面大图与快捷置换 · Pin 置顶优先 · 标准底部分页栏 · 任务中止调度**
+
+- **文章管理高密单屏数据网格 (Dense DataGrid)**：集成 44×44 封面缩略图容器与快捷更换遮罩，接入 React Portal 居中大图全屏画廊预览灯箱与外链直跳。
+- **标准企业级底部分页控制栏 (Pagination)**：标明数据总量，支持 `10 条/页`、`20 条/页`、`50 条/页` 切换，数字页码折叠与直接输入页码跳转。
+- **文章置顶（Pin/Sticky）能力**：接入数据模型 `top` 字段，置顶文章固定优先排列于表格最前，显式布尔三元防漏 0。
+- **任务执行中止控制**：针对排队中（pending）与处理中（processing）的任务，增加一键中止按钮，避免死锁阻塞。
 
 ---
 
-## [v1.0.0] - 2026-11-01
+## 🛰️ [v1.0.3] - 2026-11-04
 
-### Added
-- **Front-end Extreme Code Splitting**: Reduced entry chunk size from 5.68 MB to 131.42 kB (97.7% reduction, 38 kB gzip).
-- **Decoupled Heavy Dependencies**: Monaco Editor (3.88MB) and Mermaid/Cytoscape (3.07MB) are now 100% on-demand dynamically loaded.
-- **12 Artistic Title Typographies**: 4×3 symmetrical layout covering arcade pixel, anime candy, gothic metal, vaporwave, and cosmic starlight.
-- **Mini Sidebar**: Compact 68px icon rail with hover expansion to 256px and pushpin state persistence.
-- **Polaroid Sticky Notes Wall**: Gallery homepage featuring polaroid paper textures and organic tilts (`rotate-[-1.8°]`).
-- **Comprehensive Test Suite**: 54 suites, 484 unit/integration tests passing (100% green).
-[v1.0.4]: https://github.com/Smail-droid/Rin/releases/tag/v1.0.4
-[v1.0.7]: https://github.com/Smail-droid/Rin/releases/tag/v1.0.7
+> **版本主题：友链罗盘画廊 SPA 重构 · URL 元数据 AI 自动嗅探 · 高可用 Favicon 代理兜底 · 游客免登录申请流**
+
+- **友链/星标导航画廊 SPA 视觉重构**：移除页面底部臃肿的静态长表单，改为顶部优雅的 `[ + 推荐站点 / 申请友链 ]` 弹窗入口。
+- **URL 智能嗅探与 AI 自动分类管道 (`/api/friend/inspect`)**：仅需输入网址，后端 4 秒超时保护下抓取 `<title>`、`<meta description>` 与图标，结合 Worker AI 提炼中文简介并分类。
+- **游客免登录申请与待审核工作流**：游客提交自动置为待审核状态（`accepted = 0`），触发 Webhook 站长通知与就地审批流。
+- **高可用 Favicon 代理与破图兜底**：自动提取原生高清图标，CORS 阻断时平滑降级至 Google Favicon API，失败时以首字母粉色徽章兜底。
+
+---
+
+## 🚀 [v1.0.2] - 2026-11-03
+
+> **版本主题：多语言语法高亮 · 三区隔离海报弹幕 · SEO 全景控制中心 · 提示词多版本工坊 · 留言安全审核**
+
+- **独立 SEO 引擎导航 (`/admin/seo`)**：集成三大搜索引擎站长直达通道，自动化 Sitemap/Robots/IndexNow 检测表格与 Cloudflare Crawler Hints 边缘推送指南。
+- **后台设置全面模块化切片**：告别传统长表单，升级为站点运行中枢与 2×3 模块化功能开关矩阵。
+- **提示词多版本超级表格工坊**：为技术、排版、随笔等不同领域保存多版本提示词，支持动态新增与自由勾选启用。
+- **海报三区空间隔离弹幕**：海报划分为顶部天花板轨道（留言）+ 左右侧翼（风采/精选），中央核心人物画框绝对留白隔离。
+
+---
+
+## 🌟 [v1.0.1] - 2026-11-02
+
+> **版本主题：便签阵列高密超级表格 · 首页便签自由拖拽摆放 · 便签三大视觉形态补齐**
+
+- **便签高密数据网格与自由摆放**：后台提供单屏高密便签配置表格，支持卡片 (`card`)、圆盘挂件 (`circle`)、胶囊挂件 (`capsule`) 三大形态。
+- **拍立得微倾角手账质感**：首页便签注入手绘错落微倾角（`rotate-[-1.8°]`），和纸胶带与图钉微光点缀。
+
+---
+
+## ⚡ [v1.0.0] - 2026-11-01
+
+> **版本主题：首屏断崖式瘦身 97.7% · 12 种 Web 现代排印字族 · 极简迷你侧边栏 · 边缘全栈正式奠基**
+
+- **极致分包手术**：通过 Vite `manualChunks` 拓扑隔离，首屏入口核心 JS 从 5.68 MB 锐减至 **131 kB 量级**，Monaco、Mermaid 100% 动态按需加载。
+- **现代高级字体排印**：去除粗劣 PPT 渐变艺术字，确立衬线明朝体、等宽代码字族与紧实字偶间距体系。
+- **极简迷你侧边栏 (Mini Sidebar)**：默认 68px 纯图标列，悬停展开并带图钉锁定，单屏高效浏览。
+- **Serverless 边缘全栈奠基**：Cloudflare Workers + D1 + R2 原生驱动，Zero Eval 严格 CSP 沙盒加固。

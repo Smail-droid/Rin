@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useLocation, useSearch } from "wouter";
 import { Modal } from "@rin/ui";
@@ -10,6 +10,10 @@ import { useTranslation } from "react-i18next";
 import { useAlert } from "../components/dialog";
 import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
 import { VectorIcon } from "../components/vector-icon";
+
+const ArticleAccessModal = lazy(() =>
+    import("../components/article-access-modal").then((m) => ({ default: m.ArticleAccessModal }))
+);
 
 type FeedsData = {
     size: number;
@@ -84,8 +88,10 @@ function AtelierPhotoCard({
     onDragOver,
     onDrop,
     onDragEnd,
+    onMoveStep,
     onToggleTop,
     onEditCover,
+    onOpenAccessModal,
 }: {
     feed: any;
     index: number;
@@ -98,8 +104,10 @@ function AtelierPhotoCard({
     onDragOver?: (e: React.DragEvent) => void;
     onDrop?: (e: React.DragEvent) => void;
     onDragEnd?: () => void;
+    onMoveStep?: (key: string, direction: "prev" | "next") => void;
     onToggleTop?: (feedId: number, top: number) => void;
     onEditCover?: (feed: any) => void;
+    onOpenAccessModal?: (feed: any) => void;
 }) {
     const { t } = useTranslation();
     const siteConfig = useSiteConfig();
@@ -163,6 +171,46 @@ function AtelierPhotoCard({
                                     onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
+                                        onMoveStep?.(`feed:${feed.id}`, "prev");
+                                    }}
+                                    title="向前移动一格"
+                                    className="h-6 w-6 rounded-md flex items-center justify-center text-xs bg-neutral-100 dark:bg-white/10 hover:text-theme transition cursor-pointer"
+                                >
+                                    <i className="ri-arrow-left-s-line" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onMoveStep?.(`feed:${feed.id}`, "next");
+                                    }}
+                                    title="向后移动一格"
+                                    className="h-6 w-6 rounded-md flex items-center justify-center text-xs bg-neutral-100 dark:bg-white/10 hover:text-theme transition cursor-pointer"
+                                >
+                                    <i className="ri-arrow-right-s-line" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onOpenAccessModal?.(feed);
+                                    }}
+                                    title={feed.isLocked ? "此文章受密码保护，点击配置权限" : "设置文章权限与密码锁"}
+                                    className={`h-6 w-6 rounded-md flex items-center justify-center text-xs transition cursor-pointer ${
+                                        feed.isLocked
+                                            ? "bg-amber-500 text-white"
+                                            : "bg-neutral-100 dark:bg-white/10 hover:text-theme"
+                                    }`}
+                                >
+                                    <i className={feed.isLocked ? "ri-lock-2-fill" : "ri-lock-unlock-line"} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                         onToggleTop?.(feed.id, feed.top === 1 ? 0 : 1);
                                     }}
                                     title={feed.top === 1 ? "取消置顶" : "置顶"}
@@ -211,6 +259,56 @@ function AtelierPhotoCard({
                 >
                     {canManage ? (
                         <div className="absolute right-2.5 top-2.5 z-20 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onMoveStep?.(`feed:${feed.id}`, "prev");
+                                }}
+                                title="向前移动一个槽位"
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-md border border-white/15 transition hover:bg-theme"
+                            >
+                                <i className="ri-arrow-left-s-line text-xs" />
+                            </button>
+                            {draggable && (
+                                <div
+                                    title="按住拖拽调整位置"
+                                    draggable
+                                    onDragStart={onDragStart}
+                                    className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-md border border-white/15 transition hover:bg-theme cursor-grab active:cursor-grabbing select-none"
+                                >
+                                    <i className="ri-drag-move-2-line text-xs" />
+                                </div>
+                            )}
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onMoveStep?.(`feed:${feed.id}`, "next");
+                                }}
+                                title="向后移动一个槽位"
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-md border border-white/15 transition hover:bg-theme"
+                            >
+                                <i className="ri-arrow-right-s-line text-xs" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onOpenAccessModal?.(feed);
+                                }}
+                                title={feed.isLocked ? "此文章受密码保护，点击配置权限" : "设置文章权限与密码锁"}
+                                className={`flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-md border border-white/15 transition cursor-pointer ${
+                                    feed.isLocked
+                                        ? "bg-amber-500 text-white"
+                                        : "bg-black/55 text-white hover:bg-theme"
+                                }`}
+                            >
+                                <i className={feed.isLocked ? "ri-lock-2-fill text-xs" : "ri-lock-unlock-line text-xs"} />
+                            </button>
                             <button
                                 type="button"
                                 onClick={(e) => {
@@ -390,18 +488,66 @@ function AtelierPhotoCard({
                 className={`absolute -top-2.5 left-1/2 -translate-x-1/2 w-14 h-4 ${tapeColor} rounded-xs shadow-2xs rotate-[-2deg] pointer-events-none z-10 opacity-90`}
             />
 
-            {canManage && draggable && (
+            {canManage && (
                 <div
                     onClick={(e) => e.stopPropagation()}
-                    title="按住拖拽调整此文章在画廊中的摆放位置"
-                    className="absolute left-4 top-4 z-20 hidden sm:flex h-7 w-7 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme cursor-grab active:cursor-grabbing"
+                    className="absolute left-3.5 top-3.5 z-20 hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                    <i className="ri-drag-move-2-line text-xs" />
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onMoveStep?.(`feed:${feed.id}`, "prev");
+                        }}
+                        title="向前移动此文章一个槽位"
+                        className="flex h-6 w-6 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-xs hover:text-theme transition hover:scale-110 select-none cursor-pointer"
+                    >
+                        <i className="ri-arrow-left-s-line text-xs" />
+                    </button>
+                    {draggable && (
+                        <div
+                            title="按住拖拽调整此文章摆放位置"
+                            draggable
+                            onDragStart={onDragStart}
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-xs hover:text-theme cursor-grab active:cursor-grabbing transition hover:scale-110 select-none"
+                        >
+                            <i className="ri-drag-move-2-line text-xs" />
+                        </div>
+                    )}
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onMoveStep?.(`feed:${feed.id}`, "next");
+                        }}
+                        title="向后移动此文章一个槽位"
+                        className="flex h-6 w-6 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-xs hover:text-theme transition hover:scale-110 select-none cursor-pointer"
+                    >
+                        <i className="ri-arrow-right-s-line text-xs" />
+                    </button>
                 </div>
             )}
 
             {canManage && (
                 <div className="absolute right-4 top-4 z-20 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onOpenAccessModal?.(feed);
+                        }}
+                        title={feed.isLocked ? "此文章受密码保护，点击配置权限" : "设置文章权限与密码锁"}
+                        className={`flex h-7 w-7 items-center justify-center rounded-full shadow-md backdrop-blur-xs transition hover:scale-110 active:scale-95 cursor-pointer ${
+                            feed.isLocked
+                                ? "bg-amber-500 text-white"
+                                : "bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 hover:text-theme"
+                        }`}
+                    >
+                        <i className={feed.isLocked ? "ri-lock-2-fill text-xs" : "ri-lock-unlock-line text-xs"} />
+                    </button>
                     <button
                         type="button"
                         onClick={(e) => {
@@ -590,32 +736,33 @@ function StickyNoteItem({
     if (siteConfig?.feedCardVariant === "compact" || siteConfig?.feedCardVariant === "editorial") {
         const isEditorial = siteConfig?.feedCardVariant === "editorial";
         const meta = {
-            about: { icon: "ri-user-smile-line", title: "关于我", url: siteConfig.atelierAboutUrl || "/about", desc: siteConfig.atelierAboutDesc || "记忆工坊与随笔空间" },
-            timeline: { icon: "ri-time-line", title: "岁月轨迹", url: siteConfig.atelierTimelineUrl || "/timeline", desc: siteConfig.atelierTimelineDesc || "时间轴历程与脚印" },
-            moments: { icon: "ri-chat-smile-2-line", title: "日常随想", url: siteConfig.atelierMomentsUrl || "/moments", desc: siteConfig.atelierMomentsDesc || "日常随笔与动态" },
-            friends: { icon: "ri-links-line", title: "星廊友链", url: siteConfig.atelierFriendsUrl || "/friends", desc: siteConfig.atelierFriendsDesc || "友情链接与同行空间" },
-            search: { icon: "ri-search-line", title: "站内检索", url: siteConfig.atelierSearchUrl || "/search", desc: siteConfig.atelierSearchDesc || "输入关键词快速检索" },
+            about: { icon: siteConfig.atelierAboutIcon || "ri-user-smile-line", title: siteConfig.name || "关于我", url: siteConfig.atelierAboutUrl || "/about", desc: siteConfig.atelierAboutDesc || "记忆工坊与随笔空间" },
+            timeline: { icon: siteConfig.atelierTimelineIcon || "ri-time-line", title: "岁月轨迹", url: siteConfig.atelierTimelineUrl || "/timeline", desc: siteConfig.atelierTimelineDesc || "时间轴历程与脚印" },
+            moments: { icon: siteConfig.atelierMomentsIcon || "ri-chat-heart-line", title: "日常随想", url: siteConfig.atelierMomentsUrl || "/moments", desc: siteConfig.atelierMomentsDesc || "日常随笔与动态" },
+            friends: { icon: siteConfig.atelierFriendsIcon || "ri-planet-line", title: "星廊友链", url: siteConfig.atelierFriendsUrl || "/friends", desc: siteConfig.atelierFriendsDesc || "友情链接与同行空间" },
+            search: { icon: siteConfig.atelierSearchIcon || "ri-search-line", title: "站内检索", url: siteConfig.atelierSearchUrl || "/search", desc: siteConfig.atelierSearchDesc || "输入关键词快速检索" },
         }[type];
 
         return (
             <div
-                className={`group flex items-center justify-between gap-3 transition-colors text-xs ${
+                className={`group relative flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border transition-all duration-300 text-xs ${
                     isEditorial
-                        ? "py-3.5 pl-4 border-l-2 border-theme/60 bg-theme/[0.025] hover:bg-theme/[0.05] pr-3 my-2 rounded-r-xl"
-                        : "px-4 py-2.5 bg-neutral-50/70 dark:bg-white/[0.02] hover:bg-theme/[0.04]"
+                        ? "py-3 pl-4 border-l-3 border-theme/70 bg-gradient-to-r from-theme/[0.04] via-theme/[0.015] to-transparent hover:from-theme/[0.07] dark:from-theme/[0.07] dark:to-transparent pr-3 my-2 rounded-r-xl border-y-transparent border-r-transparent"
+                        : "border-neutral-200/80 dark:border-white/10 bg-white/70 dark:bg-neutral-900/60 backdrop-blur-md hover:border-theme/40 hover:bg-theme/[0.03] hover:shadow-2xs"
                 } ${dragStyleClasses}`}
                 {...dragHandlers}
             >
                 <Link href={meta.url} className="flex items-center gap-3 min-w-0 flex-1">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-theme/10 text-theme shrink-0">
-                        <i className={meta.icon} />
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-theme/10 text-theme text-sm shrink-0 shadow-2xs ring-1 ring-theme/20 group-hover:scale-105 transition-transform">
+                        <VectorIcon name={meta.icon} fallback="ri-bookmark-3-line" />
                     </span>
-                    <span className="font-semibold text-neutral-800 dark:text-neutral-100 shrink-0">{meta.title}</span>
-                    <span className="truncate text-neutral-500 dark:text-neutral-400">{meta.desc}</span>
+                    <span className="font-bold text-neutral-800 dark:text-neutral-100 group-hover:text-theme transition-colors shrink-0">{meta.title}</span>
+                    <span className="truncate text-neutral-500 dark:text-neutral-400 text-[11px]">{meta.desc}</span>
                 </Link>
                 <div className="flex items-center gap-2 shrink-0">
-                    <Link href={meta.url} className="text-[11px] font-medium text-theme hover:underline">
-                        进入 &rarr;
+                    <Link href={meta.url} className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-theme hover:underline group-hover:translate-x-0.5 transition-transform">
+                        <span>进入</span>
+                        <i className="ri-arrow-right-s-line text-xs" />
                     </Link>
                     {canManage ? (
                         <button
@@ -625,8 +772,8 @@ function StickyNoteItem({
                                 e.stopPropagation();
                                 onEditNote?.(type);
                             }}
-                            className="text-neutral-400 hover:text-theme p-1 cursor-pointer"
-                            title="编辑此导览卡片"
+                            className="text-neutral-400 hover:text-theme hover:bg-theme/10 rounded-md p-1 transition cursor-pointer"
+                            title="就地配置此便签"
                         >
                             <i className="ri-settings-4-line text-xs" />
                         </button>
@@ -752,40 +899,53 @@ function StickyNoteItem({
         );
     }
 
-    // 2. 极简小胶囊样式（轻巧单行条，不臃肿）
+    // 2. 极简小胶囊样式（高质感晶透双色胶囊，微动效渐变微光，杜绝粗糙 Emoji）
     if (spec.style === "capsule") {
         return (
             <div
                 {...dragHandlers}
                 onClick={() => setLocation(spec.url)}
-                className={`group relative break-inside-avoid mb-4 flex items-center justify-between px-4 py-2.5 rounded-full shadow-2xs hover:shadow-md transition-all duration-200 hover:scale-[1.01] cursor-pointer select-none overflow-hidden border border-neutral-200/80 dark:border-white/10 ${
-                    hasBg ? "bg-neutral-900 min-h-[48px]" : "bg-w"
+                className={`group relative break-inside-avoid mb-4 flex items-center justify-between px-3.5 py-2 rounded-full shadow-2xs hover:shadow-md transition-all duration-300 hover:scale-[1.01] cursor-pointer select-none overflow-hidden border border-neutral-200/80 dark:border-white/10 ${
+                    hasBg ? "bg-neutral-900 min-h-[50px]" : "bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md hover:border-theme/40"
                 } ${dragStyleClasses}`}
             >
                 {hasBg ? (
-                    <img
-                        src={spec.bgImage}
-                        alt={spec.title}
-                        className="absolute inset-0 h-full w-full object-cover"
-                    />
-                ) : null}
+                    <>
+                        <img
+                            src={spec.bgImage}
+                            alt={spec.title}
+                            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/25 backdrop-blur-[1px]" />
+                    </>
+                ) : (
+                    <div className="absolute inset-0 bg-gradient-to-r from-theme/[0.04] to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
+                )}
                 {renderAdminControls(type)}
                 {showTextOverlay ? (
-                    <div
-                        className={`relative z-10 flex w-full items-center justify-between gap-2 ${
-                            hasBg ? `bg-black/45 -mx-4 -my-2.5 px-4 py-2.5 text-white ${overlayVisibilityClass}` : ""
-                        }`}
-                    >
-                        <div className="flex items-center gap-2 min-w-0">
-                            <span className={`text-base shrink-0 ${hasBg ? "text-white" : "text-theme"}`}>
+                    <div className="relative z-10 flex w-full items-center justify-between gap-3 min-w-0">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <span className={`flex h-7 w-7 items-center justify-center rounded-full shrink-0 shadow-2xs transition-transform group-hover:scale-105 ${
+                                hasBg ? "bg-white/20 text-white backdrop-blur-md" : "bg-theme/10 text-theme ring-1 ring-theme/20"
+                            }`}>
                                 <VectorIcon name={spec.icon} fallback={spec.fallbackIcon} />
                             </span>
-                            <div className="min-w-0 truncate">
-                                <p className={`font-bold text-xs truncate ${hasBg ? "text-white" : "t-primary"}`}>{spec.title}</p>
-                                <p className={`text-[10px] truncate ${hasBg ? "text-white/75" : "text-neutral-400"}`}>{spec.shortSub}</p>
+                            <div className="min-w-0 flex flex-col">
+                                <span className={`font-bold text-xs truncate ${hasBg ? "text-white" : "t-primary"}`}>
+                                    {spec.title}
+                                </span>
+                                {spec.shortSub && (
+                                    <span className={`text-[10px] truncate ${hasBg ? "text-white/70" : "text-neutral-400"}`}>
+                                        {spec.shortSub}
+                                    </span>
+                                )}
                             </div>
                         </div>
-                        <span className={`text-xs shrink-0 font-bold ${hasBg ? "text-white/90" : "text-theme"}`}>&rarr;</span>
+                        <span className={`flex h-5 w-5 items-center justify-center rounded-full shrink-0 transition-transform group-hover:translate-x-1 ${
+                            hasBg ? "text-white/80" : "text-theme"
+                        }`}>
+                            <i className="ri-arrow-right-line text-xs" />
+                        </span>
                     </div>
                 ) : null}
             </div>
@@ -1135,8 +1295,9 @@ export function FeedsPage() {
         normal: { size: 0, data: [], hasNext: false },
     });
 
-    // 1. 文章快捷更换封面状态与弹窗
+    // 1. 文章快捷更换封面与权限状态
     const [editingCoverFeed, setEditingCoverFeed] = useState<any | null>(null);
+    const [accessModalFeed, setAccessModalFeed] = useState<{ id: number; title: string } | null>(null);
     const [feedCoverUrl, setFeedCoverUrl] = useState("");
     const [isUploadingFeedCover, setIsUploadingFeedCover] = useState(false);
     const [isR2CoverPickerOpen, setIsR2CoverPickerOpen] = useState(false);
@@ -1146,6 +1307,7 @@ export function FeedsPage() {
     const [editingNoteType, setEditingNoteType] = useState<string | null>(null);
     const [noteTitle, setNoteTitle] = useState("");
     const [noteDesc, setNoteDesc] = useState("");
+    const [noteIcon, setNoteIcon] = useState("");
     const [noteStyle, setNoteStyle] = useState("card");
     const [noteTextMode, setNoteTextMode] = useState<"hover" | "hidden" | "always">("hover");
     const [noteBg, setNoteBg] = useState("");
@@ -1323,7 +1485,9 @@ export function FeedsPage() {
     };
 
     const moveNoteStep = (targetType: string, direction: "prev" | "next", currentKeys: string[]) => {
-        const targetKey = `note:${targetType}`;
+        const targetKey = targetType.startsWith("note:") || targetType.startsWith("feed:") || targetType === "deck"
+            ? targetType
+            : `note:${targetType}`;
         const idx = currentKeys.indexOf(targetKey);
         if (idx === -1) return;
         const targetIdx = direction === "prev" ? Math.max(0, idx - 1) : Math.min(currentKeys.length - 1, idx + 1);
@@ -1403,6 +1567,7 @@ export function FeedsPage() {
         if (type === "about") {
             setNoteTitle(siteConfig.name || "80hou");
             setNoteDesc(siteConfig.atelierAboutDesc || "");
+            setNoteIcon(siteConfig.atelierAboutIcon || "ri-user-smile-line");
             setNoteStyle(siteConfig.atelierAboutStyle || "card");
             setNoteTextMode(siteConfig.atelierAboutTextMode || "hover");
             setNoteBg(siteConfig.atelierAboutBg || "");
@@ -1411,6 +1576,7 @@ export function FeedsPage() {
         } else if (type === "timeline") {
             setNoteTitle("岁月轨迹");
             setNoteDesc(siteConfig.atelierTimelineDesc || "");
+            setNoteIcon(siteConfig.atelierTimelineIcon || "ri-time-line");
             setNoteStyle(siteConfig.atelierTimelineStyle || "card");
             setNoteTextMode(siteConfig.atelierTimelineTextMode || "hover");
             setNoteBg(siteConfig.atelierTimelineBg || "");
@@ -1419,6 +1585,7 @@ export function FeedsPage() {
         } else if (type === "moments") {
             setNoteTitle("朋友圈动态");
             setNoteDesc(siteConfig.atelierMomentsDesc || "");
+            setNoteIcon(siteConfig.atelierMomentsIcon || "ri-chat-heart-line");
             setNoteStyle(siteConfig.atelierMomentsStyle || "card");
             setNoteTextMode(siteConfig.atelierMomentsTextMode || "hover");
             setNoteBg(siteConfig.atelierMomentsBg || "");
@@ -1427,6 +1594,7 @@ export function FeedsPage() {
         } else if (type === "friends") {
             setNoteTitle("星廊");
             setNoteDesc(siteConfig.atelierFriendsDesc || "");
+            setNoteIcon(siteConfig.atelierFriendsIcon || "ri-planet-line");
             setNoteStyle(siteConfig.atelierFriendsStyle || "card");
             setNoteTextMode(siteConfig.atelierFriendsTextMode || "hover");
             setNoteBg(siteConfig.atelierFriendsBg || "");
@@ -1435,6 +1603,7 @@ export function FeedsPage() {
         } else if (type === "search") {
             setNoteTitle("随心探索");
             setNoteDesc(siteConfig.atelierSearchDesc || "");
+            setNoteIcon(siteConfig.atelierSearchIcon || "ri-search-line");
             setNoteStyle(siteConfig.atelierSearchStyle || "card");
             setNoteTextMode(siteConfig.atelierSearchTextMode || "hover");
             setNoteBg(siteConfig.atelierSearchBg || "");
@@ -1443,6 +1612,7 @@ export function FeedsPage() {
         } else if (type === "deck") {
             setNoteTitle("图库相册");
             setNoteDesc(siteConfig.atelierDeckDesc || "");
+            setNoteIcon(siteConfig.atelierDeckIcon || "ri-camera-lens-line");
             setNoteStyle("card");
             setNoteTextMode(siteConfig.atelierDeckTextMode || "hover");
             setNoteBg(siteConfig.atelierDeckBg || "");
@@ -1481,6 +1651,7 @@ export function FeedsPage() {
 
         if (editingNoteType === "about") {
             updates["atelier.about_desc"] = noteDesc;
+            updates["atelier.about_icon"] = noteIcon;
             updates["atelier.about_style"] = noteStyle;
             updates["atelier.about_text_mode"] = noteTextMode;
             updates["atelier.about_bg"] = noteBg;
@@ -1488,6 +1659,7 @@ export function FeedsPage() {
             updates["atelier.about_show"] = noteShow;
         } else if (editingNoteType === "timeline") {
             updates["atelier.timeline_desc"] = noteDesc;
+            updates["atelier.timeline_icon"] = noteIcon;
             updates["atelier.timeline_style"] = noteStyle;
             updates["atelier.timeline_text_mode"] = noteTextMode;
             updates["atelier.timeline_bg"] = noteBg;
@@ -1495,6 +1667,7 @@ export function FeedsPage() {
             updates["atelier.timeline_show"] = noteShow;
         } else if (editingNoteType === "moments") {
             updates["atelier.moments_desc"] = noteDesc;
+            updates["atelier.moments_icon"] = noteIcon;
             updates["atelier.moments_style"] = noteStyle;
             updates["atelier.moments_text_mode"] = noteTextMode;
             updates["atelier.moments_bg"] = noteBg;
@@ -1502,6 +1675,7 @@ export function FeedsPage() {
             updates["atelier.moments_show"] = noteShow;
         } else if (editingNoteType === "friends") {
             updates["atelier.friends_desc"] = noteDesc;
+            updates["atelier.friends_icon"] = noteIcon;
             updates["atelier.friends_style"] = noteStyle;
             updates["atelier.friends_text_mode"] = noteTextMode;
             updates["atelier.friends_bg"] = noteBg;
@@ -1509,6 +1683,7 @@ export function FeedsPage() {
             updates["atelier.friends_show"] = noteShow;
         } else if (editingNoteType === "search") {
             updates["atelier.search_desc"] = noteDesc;
+            updates["atelier.search_icon"] = noteIcon;
             updates["atelier.search_style"] = noteStyle;
             updates["atelier.search_text_mode"] = noteTextMode;
             updates["atelier.search_bg"] = noteBg;
@@ -1516,6 +1691,7 @@ export function FeedsPage() {
             updates["atelier.search_show"] = noteShow;
         } else if (editingNoteType === "deck") {
             updates["atelier.deck_desc"] = noteDesc;
+            updates["atelier.deck_icon"] = noteIcon;
             updates["atelier.deck_text_mode"] = noteTextMode;
             updates["atelier.deck_bg"] = noteBg;
             updates["atelier.deck_url"] = noteUrl;
@@ -2045,6 +2221,8 @@ export function FeedsPage() {
                                         }}
                                         onToggleTop={handleToggleTop}
                                         onEditCover={openCoverModal}
+                                        onMoveStep={(k, dir) => moveNoteStep(k, dir, currentFirstPageKeys)}
+                                        onOpenAccessModal={(f) => setAccessModalFeed({ id: f.id, title: f.title })}
                                     />
                                 );
                             }
@@ -2305,6 +2483,100 @@ export function FeedsPage() {
                                 </div>
                             </div>
                         )}
+
+                        {/* 在全流中的排列位置（支持跨文章自由位移） */}
+                        <div className="p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                                <span className="font-bold text-xs t-primary block">在画廊相纸流中的槽位次序</span>
+                                <span className="text-[11px] text-neutral-400 block truncate">
+                                    {(() => {
+                                        const targetKey = editingNoteType === "deck" ? "deck" : `note:${editingNoteType}`;
+                                        const allKeys = interleavedItems.map(getItemKey);
+                                        const pos = allKeys.indexOf(targetKey);
+                                        if (pos === -1) return "尚未加入当前首屏流";
+                                        return `当前位于第 ${pos + 1} 槽位（与文章混排共 ${allKeys.length} 项）`;
+                                    })()}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const targetKey = editingNoteType === "deck" ? "deck" : `note:${editingNoteType}`;
+                                        const allKeys = interleavedItems.map(getItemKey);
+                                        moveNoteStep(targetKey, "prev", allKeys);
+                                    }}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme/40 text-neutral-600 dark:text-neutral-300 hover:text-theme text-xs font-medium transition cursor-pointer select-none active:scale-95"
+                                    title="向前移动一个槽位（可越过相邻文章）"
+                                >
+                                    <i className="ri-arrow-left-s-line" />
+                                    <span>前移一位</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const targetKey = editingNoteType === "deck" ? "deck" : `note:${editingNoteType}`;
+                                        const allKeys = interleavedItems.map(getItemKey);
+                                        moveNoteStep(targetKey, "next", allKeys);
+                                    }}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme/40 text-neutral-600 dark:text-neutral-300 hover:text-theme text-xs font-medium transition cursor-pointer select-none active:scale-95"
+                                    title="向后移动一个槽位（可越过相邻文章）"
+                                >
+                                    <span>后移一位</span>
+                                    <i className="ri-arrow-right-s-line" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 矢量图标定制（杜绝粗糙 Emoji，采用微光线性质感） */}
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300 flex items-center justify-between">
+                                <span>便签专属矢量图标（杜绝 Emoji，纯粹微光线性质感）</span>
+                                {noteIcon && (
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-theme font-mono">
+                                        <VectorIcon name={noteIcon} />
+                                        <span>{noteIcon}</span>
+                                    </span>
+                                )}
+                            </label>
+                            <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+                                {[
+                                    "ri-user-smile-line",
+                                    "ri-time-line",
+                                    "ri-chat-heart-line",
+                                    "ri-planet-line",
+                                    "ri-search-line",
+                                    "ri-camera-lens-line",
+                                    "ri-bookmark-3-line",
+                                    "ri-cup-line",
+                                    "ri-book-open-line",
+                                    "ri-sparkling-2-line",
+                                    "ri-leaf-line",
+                                    "ri-music-2-line",
+                                ].map((ico) => (
+                                    <button
+                                        key={ico}
+                                        type="button"
+                                        onClick={() => setNoteIcon(ico)}
+                                        className={`h-8 rounded-lg flex items-center justify-center text-sm transition cursor-pointer ${
+                                            noteIcon === ico
+                                                ? "bg-theme text-white shadow-2xs scale-105"
+                                                : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-theme/10"
+                                        }`}
+                                        title={ico}
+                                    >
+                                        <i className={ico} />
+                                    </button>
+                                ))}
+                            </div>
+                            <input
+                                type="text"
+                                value={noteIcon}
+                                onChange={(e) => setNoteIcon(e.target.value.trim())}
+                                placeholder="输入 Remix Icon 类名（如 ri-compass-3-line）"
+                                className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.015] dark:bg-white/[0.02] px-3 py-1.5 text-xs t-primary outline-hidden focus:border-theme font-mono mt-1"
+                            />
+                        </div>
 
                         {/* 描述文案 */}
                         <div className="space-y-1">
@@ -2801,6 +3073,30 @@ export function FeedsPage() {
                 onSelect={(url) => setNoteBg(url)}
                 title="选择便签背景图片"
             />
+            {accessModalFeed && (
+                <Suspense fallback={null}>
+                    <ArticleAccessModal
+                        isOpen={Boolean(accessModalFeed)}
+                        feedId={accessModalFeed.id}
+                        feedTitle={accessModalFeed.title}
+                        onClose={() => setAccessModalFeed(null)}
+                        onPermissionUpdated={(feedId, isLocked) => {
+                            setFeeds((prev) => {
+                                const next = { ...prev };
+                                (Object.keys(next) as FeedType[]).forEach((k) => {
+                                    next[k] = {
+                                        ...next[k],
+                                        data: next[k].data.map((f: any) =>
+                                            f.id === feedId ? { ...f, isLocked } : f
+                                        ),
+                                    };
+                                });
+                                return next;
+                            });
+                        }}
+                    />
+                </Suspense>
+            )}
             <AlertUI />
         </>
     );

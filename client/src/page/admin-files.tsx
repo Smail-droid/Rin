@@ -51,6 +51,7 @@ type CopyFormat = "url" | "html" | "markdown" | "bbcode";
 export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}) {
     const { t } = useTranslation();
     const siteConfig = useSiteConfig() as any;
+    const canUpload = !readOnly || Boolean(siteConfig.storageAllowPublicUpload);
     const [files, setFiles] = useState<StorageFileItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -447,7 +448,7 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
             )}
 
             {/* Hidden file input (允许任意非危险扩展名上传) */}
-            {!readOnly && (
+            {canUpload && (
                 <input
                     ref={fileInputRef}
                     type="file"
@@ -534,7 +535,7 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                 <span>直传API & 随机图</span>
                             </button>
                         )}
-                        {!readOnly && (
+                        {canUpload && (
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
@@ -681,7 +682,7 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5">
                     {/* 首格虚线内嵌上传卡片 (跟图片等高，点击或拖拽直接上传，彻底消灭巨型占位框) */}
-                    {!readOnly && (
+                    {canUpload && (
                         <div
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}

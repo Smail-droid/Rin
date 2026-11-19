@@ -103,7 +103,10 @@ export function Header({ children }: { children?: React.ReactNode }) {
               showDescription={false}
             />
             <span className="hidden md:block h-4 w-px bg-neutral-200 dark:bg-white/15 shrink-0" />
-            <nav className="hidden md:flex items-center gap-1 text-xs sm:text-sm">
+            <nav
+              className="hidden md:flex items-center text-xs sm:text-sm"
+              style={{ gap: `${siteConfig.headerNavGap || 12}px` }}
+            >
               <NavBar
                 menu={false}
                 itemClassName="px-2.5 py-1 text-neutral-600 dark:text-neutral-300 hover:text-theme transition-colors font-medium text-[13px] whitespace-nowrap shrink-0"
@@ -143,7 +146,10 @@ export function Header({ children }: { children?: React.ReactNode }) {
           />
 
           <div className="hidden md:flex flex-1 items-center justify-center">
-            <nav className="flex items-center gap-1 rounded-full border border-neutral-200/80 dark:border-white/15 bg-white/85 dark:bg-[#141824]/85 backdrop-blur-md px-2 py-1 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.12)]">
+            <nav
+              className="flex items-center rounded-full border border-neutral-200/80 dark:border-white/15 bg-white/85 dark:bg-[#141824]/85 backdrop-blur-md px-2 py-1 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.12)]"
+              style={{ gap: `${siteConfig.headerNavGap || 8}px` }}
+            >
               <NavBar
                 menu={false}
                 itemClassName="px-3 py-1 text-xs font-medium rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-theme/10 hover:text-theme transition-colors whitespace-nowrap shrink-0"
@@ -185,7 +191,10 @@ export function Header({ children }: { children?: React.ReactNode }) {
 
         {/* 中间：去容器化纯文本菜单 (直接嵌在网页画布上，两侧跃动星芒) */}
         <div className="hidden md:flex flex-1 items-center justify-center">
-          <nav className="flex items-center gap-2 lg:gap-3">
+          <nav
+            className="flex items-center"
+            style={{ gap: `${siteConfig.headerNavGap || 12}px` }}
+          >
             <NavBar
               menu={false}
               itemClassName="px-2 py-1 text-sm font-medium tracking-wide whitespace-nowrap shrink-0 transition-colors"

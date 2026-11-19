@@ -127,11 +127,14 @@ function NavItem({
   itemClassName?: string;
   tiltIndex?: number;
 }) {
-  const tilt = ORGANIC_TILTS[tiltIndex % ORGANIC_TILTS.length];
+  const siteConfig = useSiteConfig();
+  const tilt = !menu && siteConfig.headerNavOrganicTilt ? ORGANIC_TILTS[tiltIndex % ORGANIC_TILTS.length] : "";
+  const navFontSize = siteConfig.headerNavFontSize || 15;
 
   return when ? (
     <Link
       href={href}
+      style={!menu ? { fontSize: `${navFontSize}px` } : undefined}
       className={`${
         menu
           ? `flex items-center w-full px-4 py-2.5 text-sm font-medium rounded-xl transition-colors ${
@@ -139,7 +142,7 @@ function NavItem({
                 ? "text-theme font-bold bg-theme/10"
                 : "text-neutral-700 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5"
             }`
-          : `group relative inline-flex items-center gap-1.5 cursor-pointer text-sm sm:text-[15px] tracking-wider whitespace-nowrap shrink-0 transition-all duration-200 select-none ${tilt} hover:rotate-0 hover:scale-105 ${
+          : `group relative inline-flex items-center gap-1.5 cursor-pointer tracking-wider whitespace-nowrap shrink-0 transition-all duration-200 select-none ${tilt} hover:rotate-0 hover:scale-105 ${
               selected
                 ? "text-theme font-bold drop-shadow-xs"
                 : "font-medium text-neutral-700 dark:text-neutral-200 hover:text-theme"

@@ -168,19 +168,19 @@ export function InSituMediaDrawer({
   return createPortal(
     <>
       <div
-        className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px] transition-opacity"
+        className="fixed inset-0 z-50 bg-black/25 dark:bg-black/40 ani-overlay-in"
         onClick={onClose}
       />
 
-      <div className="fixed top-0 bottom-0 right-0 z-50 w-full sm:w-[86vw] md:w-[760px] lg:w-[860px] bg-white dark:bg-[#111520] shadow-[-12px_0_40px_-16px_rgba(15,23,42,0.22)] border-l border-neutral-200/80 dark:border-white/10 flex flex-col select-none ani-show-fast">
+      <div className="fixed top-0 bottom-0 right-0 z-50 w-full max-w-full sm:w-[86vw] md:w-[760px] lg:w-[860px] bg-white dark:bg-neutral-900 shadow-[-8px_0_32px_-8px_rgba(15,23,42,0.18)] dark:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.5)] border-l border-neutral-200/70 dark:border-white/[0.06] flex flex-col select-none ani-drawer-in">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-200/75 dark:border-white/[0.08] bg-neutral-50/70 dark:bg-white/[0.02] shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-200/60 dark:border-white/[0.06] bg-gradient-to-r from-neutral-50/80 to-neutral-100/50 dark:from-white/[0.03] dark:to-white/[0.015] shrink-0">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-base">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/8 text-theme text-base ring-1 ring-theme/10">
               <i className="ri-folder-image-line" />
             </span>
             <div>
-              <h2 className="text-[13px] font-bold text-neutral-900 dark:text-neutral-100">图床与媒体库</h2>
+              <h2 className="text-[13px] font-semibold tracking-wide text-neutral-800 dark:text-neutral-100">图床与媒体库</h2>
               <p className="text-[11px] text-neutral-400">
                 图片、音频与附件统一管理，支持拖拽上传与复制外链
               </p>
@@ -192,7 +192,7 @@ export function InSituMediaDrawer({
               href="/admin/files"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border border-black/10 dark:border-white/10 hover:border-theme text-xs font-semibold t-primary transition"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border border-neutral-200/80 dark:border-white/[0.08] hover:border-theme/60 hover:bg-theme/5 text-xs font-medium t-primary transition-all duration-200"
               title="进入独立大屏全功能图床相册"
             >
               <i className="ri-external-link-line text-theme" />
@@ -202,7 +202,7 @@ export function InSituMediaDrawer({
               href="/admin/music"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-600 hover:brightness-110 text-white text-xs font-bold transition-all duration-200 shadow-sm shadow-emerald-600/20"
               title="进入全功能黑胶音廊工作台 (搜索/封面/播放列表/源配置)"
             >
               <i className="ri-music-2-line" />
@@ -211,7 +211,7 @@ export function InSituMediaDrawer({
             <button
               type="button"
               onClick={fetchFiles}
-              className="p-1.5 rounded-lg border border-black/10 dark:border-white/10 text-neutral-500 hover:text-theme hover:border-theme transition"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-neutral-200/80 dark:border-white/[0.08] text-neutral-500 hover:text-theme hover:border-theme/60 hover:bg-theme/5 transition-all duration-200"
               title="刷新媒体"
             >
               <i className={`ri-refresh-line text-sm ${loading ? "animate-spin text-theme" : ""}`} />
@@ -228,7 +228,7 @@ export function InSituMediaDrawer({
 
         {/* Storage stats banner */}
         {storageStats && (
-          <div className="px-5 py-2.5 bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0 font-mono">
+          <div className="px-5 py-2 bg-neutral-50/50 dark:bg-white/[0.015] border-b border-neutral-200/40 dark:border-white/[0.04] flex flex-wrap items-center justify-between gap-3 text-xs shrink-0 font-mono">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300">
                 <i className="ri-image-line text-theme" />
@@ -246,8 +246,8 @@ export function InSituMediaDrawer({
         )}
 
         {/* Tab switcher */}
-        <div className="px-5 py-2.5 border-b border-black/5 dark:border-white/5 flex items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-1 bg-black/[0.03] dark:bg-white/[0.04] p-1 rounded-xl">
+        <div className="px-5 py-2.5 border-b border-neutral-200/40 dark:border-white/[0.04] flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-1 bg-neutral-100/70 dark:bg-white/[0.04] p-1 rounded-xl">
             <button
               type="button"
               onClick={() => setActiveTab("image")}
@@ -305,7 +305,7 @@ export function InSituMediaDrawer({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="px-3 py-1 rounded-xl bg-theme hover:bg-theme-hover text-white text-xs font-bold transition flex items-center gap-1 shrink-0"
+                className="px-3 py-1 rounded-xl bg-theme hover:brightness-110 text-white text-xs font-bold shadow-sm shadow-theme/20 transition-all duration-200 flex items-center gap-1 shrink-0"
               >
                 <i className="ri-upload-cloud-line" />
                 <span>上传文件</span>
@@ -355,8 +355,8 @@ export function InSituMediaDrawer({
               }
             }
           }}
-          className={`flex-1 overflow-y-auto p-4 sm:p-5 transition-all ${
-            isDragging ? "bg-theme/5 ring-2 ring-theme/40 ring-inset" : ""
+          className={`flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 transition-all ${
+            isDragging ? "bg-theme/[0.04] ring-2 ring-theme/30 ring-inset" : ""
           }`}
         >
           {loading ? (
@@ -378,7 +378,7 @@ export function InSituMediaDrawer({
                   return (
                     <div
                       key={file.key}
-                      className="group relative flex flex-col justify-between rounded-2xl border border-black/10 dark:border-white/10 bg-white/90 dark:bg-neutral-900 p-2.5 shadow-2xs hover:shadow-md transition"
+                      className="group relative flex flex-col justify-between rounded-2xl border border-neutral-200/70 dark:border-white/[0.06] bg-white dark:bg-neutral-800/60 p-2.5 shadow-sm shadow-neutral-200/40 dark:shadow-none hover:shadow-lg hover:shadow-neutral-300/30 dark:hover:shadow-black/20 hover:-translate-y-0.5 transition-all duration-250"
                     >
                       <button
                         type="button"

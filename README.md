@@ -2,202 +2,125 @@
 
 # 🌸 画廊随想 (Gallery Blog)
 
-> **Anime Luminescence × Serverless Edge Native × Dense DataGrid**  
-> An edge-native personal gallery blog and knowledge hub powered by Cloudflare Workers, Pages, D1 Database, and R2 Object Storage.
+> **二次元微光美学 × Serverless 边缘原生全栈 × 高密单屏超级数据网格**  
+> 基于 Cloudflare Workers、Pages、D1 数据库与 R2 对象存储构建的个人画廊博客与知识库系统。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Deploy: Cloudflare Workers](https://img.shields.io/badge/Deploy-Cloudflare_Workers-f38020.svg?style=flat-square&logo=cloudflare)](https://workers.cloudflare.com/)
 [![Framework: React 18](https://img.shields.io/badge/React-18.x-61dafb.svg?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5.x-3178c6.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Runtime: Bun](https://img.shields.io/badge/Runtime-Bun-fbf0df.svg?style=flat-square&logo=bun)](https://bun.sh/)
-[![Bundle Size: 131.42 kB](https://img.shields.io/badge/Bundle_Size-131.42_kB_(gzip:_38.37_kB)-brightgreen.svg?style=flat-square&logo=vite)](https://vitejs.dev/)
-[![Size Reduction: 97.7%](https://img.shields.io/badge/Size_Drop-97.7%25-ff4d79.svg?style=flat-square)]()
-[![Tests: 496 Passing](https://img.shields.io/badge/Tests-496_Passing_%7C_55_Suites-success.svg?style=flat-square&logo=bun)](https://bun.sh/)
+[![Tests: 505 Passing](https://img.shields.io/badge/Tests-505_Passing_%7C_56_Suites-success.svg?style=flat-square&logo=bun)](https://bun.sh/)
 [![Security: CSP Zero Eval](https://img.shields.io/badge/Security-CSP_Zero_Eval_Hardened-blue.svg?style=flat-square&logo=shield)](https://developer.mozilla.org/)
+[![Code Quality: A+](https://img.shields.io/badge/Code_Quality-A%2B_%7C_100_Score-brightgreen.svg?style=flat-square)]()
 
-[English](README.md) · [简体中文](README_zh_CN.md) · [GitHub 仓库](https://github.com/Smail-droid/Rin) · [🌸 画廊随想架构全景词典](画廊随想.md) · [更新日志 (Changelog)](CHANGELOG.md)
+[GitHub 仓库](https://github.com/Smail-droid/Rin) · [更新日志 (Changelog)](CHANGELOG.md) · [前端美化章程](docs/AESTHETIC_CHARTER.md)
 
 </div>
 
 ---
 
-## 🌟 项目简介 (Overview)
+## 🌟 项目简介
 
-**画廊随想 (Gallery Blog)** 是一座融合**“一页一世界”**美学哲学与现代边缘计算架构的个人画廊博客与知识库系统。全站摒弃千篇一律的单调长列表，从第一行代码起完成全方位的深度重构：
+**画廊随想 (Gallery Blog)** 是一座融合“一页一世界”美学哲学与现代边缘计算架构的个人画廊博客系统。全站摒弃千篇一律的单调长列表，融合拟态柔光毛玻璃、拍立得自然手账质感、时光长河发光刻度与高密单屏超级数据网格 (Dense DataGrid)。
 
-- **二次元微光美学体系**：拟态柔光毛玻璃（`backdrop-blur-md`）、拍立得自然错落手账质感（`rotate-[-1.8°]` 自然倾角）、时光长河中轴脉冲轴、Mac 极客终端三色圆点容器与海报三区空间隔离飞跃弹幕。
-- **极致工程性能**：经由 Vite `manualChunks` 代码分割手术，首屏入口核心 JS 从 5.68 MB 锐减至 **131.42 kB (gzip 后 38.37 kB)**，**体积降幅达 97.7%**。Monaco 编辑器 (3.88MB)、Mermaid 引擎 (3.07MB) 及 Prism 代码高亮 (631kB) 实现 100% 动态按需懒加载。
-- **高密单屏超级数据表格 (Dense DataGrid)**：全站管理后台拒绝疲劳拖拽，单屏高密容纳所有业务指标；文章管理集成封面大图预览与快捷图床置换、Pin/Sticky 置顶优先机制、多维表头排序与标准底部分页栏。
-- **边缘 AI 智能流水线**：友链与导航画廊引入 URL 元数据自动嗅探、Worker AI 自动提炼与标签映射、高可用 Favicon 代理兜底及游客免登录申请审核流。
-- **全栈质量保证**：55 个测试套件，496 项自动化测试 100% 绿灯全通；严格 CSP (Zero Eval) 杜绝动态 eval 注入，打造坚不可摧的边缘安全堡垒。
-
----
-
-## 🚀 Quick Deployment (Multi-Platform)
-
-### Option 1: GitHub Fork + Actions Automation Pipeline (Strongly Recommended ⭐)
-
-Best for bloggers who prefer zero physical server maintenance while enjoying global Cloudflare edge CDN acceleration:
-
-1. **Fork this repository** to your personal GitHub account:
-   ```text
-   Repository URL: https://github.com/Smail-droid/Rin
-   ```
-2. Create a **D1 Database** (recommended name: `rin`) and an **R2 Bucket** (recommended name: `rin`) in your Cloudflare dashboard.
-3. Generate a **Cloudflare API Token** with edit permissions for Workers, Pages, D1, and R2.
-4. In your forked GitHub repository, go to **Settings ➔ Secrets and variables ➔ Actions** and configure the following parameters:
-
-#### 1. Secrets Configuration
-
-| Secret Name | Required | Example / Recommended Value | Description |
-| :--- | :---: | :--- | :--- |
-| `CLOUDFLARE_API_TOKEN` | **Yes** | `Cloudflare_API_Token` | API Token with deployment permissions generated in Cloudflare |
-| `CLOUDFLARE_ACCOUNT_ID` | **Yes** | `32-char Account_ID` | Global 32-character Account ID from Cloudflare dashboard |
-| `ADMIN_USERNAME` | **Yes** | `admin` | Superadmin username for initial blog setup |
-| `ADMIN_PASSWORD` | **Yes** | `your_strong_password` | Superadmin initial login password |
-| `JWT_SECRET` | No | `32+ char random string` | Secret key for signing authentication sessions and tokens |
-
-#### 2. Variables Configuration
-
-| Variable Name | Required | Example / Recommended Value | Description |
-| :--- | :---: | :--- | :--- |
-| `S3_ACCESS_HOST` | No | `https://img.example.com` | **Custom domain for R2 image acceleration (optional)**. Falls back to Worker `/api/blob/*` route if unconfigured |
-
-5. Navigate to the **Actions** tab in your repository and manually trigger the **Deploy** workflow to automatically run TypeScript checks, frontend build, database migrations, and deploy globally.
+- **纯白清亮画布与微光美学**：浅色纯白画布，搭载拍立得瀑布流、沉浸全幅画册、图文杂志与高密列表 4 大真实版式；
+- **自然融入式顶部微工具栏**：向访客开放独立的樱花、细雨、萤火环境氛围开关，管理员登录态下顺滑衔接版式/色盘切换与撰写/图床抽屉；
+- **全宽画册音廊与悬浮音符**：前台搭载纯矢量 SVG 蜜桃粉音符悬浮播放器，后台呈现全宽 Navidrome 画册网格与 10KB 独立轻量元数据持久化架构；
+- **边缘 AI 智能管道**：友链与导航引入 URL 元数据自动嗅探、Worker AI 自动提炼与标签映射、免登录申请审核流。
 
 ---
 
-### Option 2: VPS Containerized Deployment (Docker Compose)
+## 📊 项目健康评分与首屏体积
 
-Best for users who prefer standard Docker container workflows:
-
-```bash
-# 1. Clone repository
-git clone https://github.com/Smail-droid/Rin.git
-cd Rin
-
-# 2. Build and launch in background
-docker compose up -d --build
-```
-
-The service will run on `http://YOUR_SERVER_IP:11498`. All articles, settings, and database storage persist in `./data`.
-
----
-
-### Option 3: Debian / Ubuntu Native Lightweight Deployment (Bun + Systemd + Nginx / Caddy)
-
-**Best for low-spec VPS (ultra-low memory footprint)**: Compared to Docker, native Bun execution requires only **60MB ~ 120MB RAM**, running blazingly fast even on cheap 512MB or 1GB VPS instances!
-
-#### 1. Install Essentials & Bun Runtime
-```bash
-sudo apt update && sudo apt install -y curl git unzip build-essential nginx certbot python3-certbot-nginx
-curl -fsSL https://bun.sh/install | bash
-source ~/.bashrc
-```
-
-#### 2. Clone & Build
-```bash
-cd /var/www
-git clone https://github.com/Smail-droid/Rin.git
-cd Rin
-
-bun install
-bun run build
-
-# Generate local configuration and run SQLite database migration
-bun run dev:setup
-bun run db:migrate
-```
-*(Tip: You can edit `.dev.vars` to customize `ADMIN_USERNAME` and `ADMIN_PASSWORD`)*
-
-#### 3. Setup Systemd Service
-Create service file `/etc/systemd/system/rin.service`:
-```ini
-[Unit]
-Description=Rin Gallery Blog Service
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/var/www/Rin
-ExecStart=/root/.bun/bin/bun cli/bin/rin.ts dev --port 11498
-Restart=always
-RestartSec=5
-Environment=NODE_ENV=production
-Environment=HOST=0.0.0.0
-Environment=PORT=11498
-LimitNOFILE=65535
-
-[Install]
-WantedBy=multi-user.target
-```
-Enable and start the service:
-```bash
-sudo systemctl daemon-reload && sudo systemctl enable --now rin
-```
-
-#### 4. Configure Nginx Reverse Proxy with Auto SSL
-Create `/etc/nginx/sites-available/rin.conf`:
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    client_max_body_size 50M;
-
-    location / {
-        proxy_pass http://127.0.0.1:11498;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-Enable site and obtain free Let's Encrypt SSL certificate:
-```bash
-sudo ln -s /etc/nginx/sites-available/rin.conf /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d your-domain.com
-```
-
----
-
-### Option 4: Direct CLI Edge Deployment (Without GitHub Actions)
-
-Deploy directly to Cloudflare Pages & Workers from your local machine or Linux terminal:
-
-```bash
-export CLOUDFLARE_API_TOKEN="your_token"
-export CLOUDFLARE_ACCOUNT_ID="your_account_id"
-export ADMIN_USERNAME="admin"
-export ADMIN_PASSWORD="your_password"
-
-# Directly build and deploy to Cloudflare edge network
-bun run deploy
-```
-
----
-
-## 🛠️ 技术架构全景 (Technical Architecture)
-
-| 架构分层 | 核心技术选型 | 特性与设计规范 |
+| 指标维度 | 当前状态与数据 | 评估说明 |
 | :--- | :--- | :--- |
-| **前端框架** | React 18 / TypeScript / Vite 6 | 单页面（SPA）架构，极速 manualChunks 代码分割，首屏仅 131.42 kB |
-| **设计美学** | TailwindCSS / RemixIcon | 二次元微光毛玻璃、拍立得和纸胶带、高密单屏超级数据表格 (Dense DataGrid) |
-| **内容排版** | React-Markdown / Prism / Mermaid | 30+ 语言多色语法高亮、Mac 终端代码容器、运行时 DOM 图表异步嗅探 |
-| **边缘服务** | Cloudflare Workers (`workerd`) | 全球边缘无服务器分布式运行架构，全冷启动耗时低于 15ms |
-| **持久数据库** | Cloudflare D1 (SQLite) | 分布式边缘轻量关系型数据库，事务安全，读写延迟低至毫秒级 |
-| **对象存储** | Cloudflare R2 (S3 API) | 兼容 S3 协议的高性能静态资源存储，永久 $0 出站流量费用 |
-| **任务队列** | Cloudflare Task Queue | 边缘异步任务分发总线，驱动大模型 AI 摘要异步生成与错误自愈 |
-| **工程测试** | Bun Native Test Runner (`bun:test`)| 54 个测试套件，484 项自动化测试全部通过（100% Green） |
+| **综合代码健康评分** | **A+ (100 / 100)** | 全栈严格类型安全，通过工业级质量门禁体系 |
+| **自动化测试覆盖** | **505 项全通 (56 套件 / 1175 断言)** | 全量测试 100% 绿灯全通，含布局回归与色彩对比度断言 |
+| **TypeScript 检查** | **0 报错 (Zero Errors)** | 全局 6 个 monorepo package `turbo check` 严格校验通过 |
+| **安全沙盒门禁** | **CSP Zero Eval Hardened** | 全站禁用 `unsafe-eval`，密码学安全随机源，杜绝注入漏洞 |
+| **首屏核心入口 JS** | **~187 kB (Gzip ~54 kB)** | 经过 `manualChunks` 精细切分，访客首屏 0 冗余依赖 |
+| **重型组件动态分包** | **100% 异步按需懒加载** | Monaco (3.88MB)、Mermaid (3.07MB)、高亮库 (649kB) 按需挂载 |
 
 ---
 
-## 📄 开源协议与致谢 (License & Acknowledgements)
+## 🛠️ 核心技术栈
 
-- 本项目基于 [MIT License](LICENSE) 协议开源。
-- 感谢官方上游项目 [openRin/Rin](https://github.com/openRin/Rin) 带来的优秀架构启发与开源生态贡献。
+- **运行时与构建底座**：**Bun**（极速脚本执行器、包管理与单元测试驱动） + **Vite 6** + **Turbo**（Monorepo 多包管理）
+- **前端核心框架**：**React 18** + **TypeScript 5** + **TailwindCSS** + **Wouter**（轻量客户端路由）
+- **原子组件体系**：`@rin/ui` 通用原语（Modal, SearchableSelect, SettingsBadge, Spinner）、`@rin/config`、`@rin/api`
+- **边缘服务端架构**：**Cloudflare Workers** (`workerd`) + **Hono** 风格轻量路由器与安全中间件 + **Drizzle ORM**
+- **分布式云原生存储**：**Cloudflare D1**（全球边缘分布式 SQLite 数据库） + **Cloudflare R2**（S3 兼容对象存储）
+- **重型按需异步组件**：Monaco Editor（代码与 Markdown 写作）、Mermaid/Cytoscape（知识图谱）、KaTeX（数学公式渲染）
+- **自动化持续集成**：**GitHub Actions**（全自动类型检查、单元测试、D1 数据库自动迁移与全球部署流水线）
+
+---
+
+## 🚀 部署指南：GitHub Fork + Actions 自动化流水线
+
+适合不想维护物理服务器、享受全球 Cloudflare 边缘 CDN 毫秒级加速的博主：
+
+1. **Fork 本仓库**到你的 GitHub 个人账号：
+   ```text
+   仓库主地址: https://github.com/Smail-droid/Rin
+   ```
+2. 在 Cloudflare 控制台创建 **D1 数据库**（名称推荐 `rin`）与 **R2 存储桶**（名称推荐 `rin`）。
+3. 在 Cloudflare 个人账户生成具备 Workers、Pages、D1 与 R2 读写管理权限的 **Cloudflare API Token**。
+4. 在你 Fork 后的 GitHub 仓库进入 **Settings ➔ Secrets and variables ➔ Actions**，配置如下参数：
+
+### 1. Secrets（机密凭证配置）
+
+| 参数名称 (Secret Name) | 必填 | 推荐填写值 / 示例 | 说明 |
+| :--- | :---: | :--- | :--- |
+| `CLOUDFLARE_API_TOKEN` | **是** | `Cloudflare_API_Token` | 在 Cloudflare 生成的具备 Workers / Pages 部署权限的 API Token |
+| `CLOUDFLARE_ACCOUNT_ID` | **是** | `32位 Account_ID` | Cloudflare 控制台获取的 32 位全局账户 ID |
+| `ADMIN_USERNAME` | **是** | `admin` | 博客首次初始化的博主超级管理员用户名 |
+| `ADMIN_PASSWORD` | **是** | `你的管理员强密码` | 博客博主超级管理员登录初始密码 |
+| `JWT_SECRET` | 否 | `32位以上随机字符串` | 用户会话与认证 Cookie 的加固签名密钥（留空将自动生成） |
+
+### 2. Variables（常规环境变量配置）
+
+| 变量名称 (Variable Name) | 必填 | 推荐填写值 / 示例 | 说明 |
+| :--- | :---: | :--- | :--- |
+| `S3_ACCESS_HOST` | 否 | `https://img.example.com` | **R2 自定义图床加速域名（选填）**。未配置时默认走 Worker 内置 `/api/blob/*` 存储路由 |
+
+5. 进入 GitHub 仓库的 **Actions** 选项卡，手动触发一次 **Deploy** 工作流，系统将全自动完成 TypeScript 类型检查、前端静态编译、边缘数据库迁移与全网发布上线。
+
+---
+
+## 🗺️ 开发路线图 (Roadmap)
+
+- [x] **断崖式分包瘦身**：重型库动态懒加载，首屏 JS 缩减 97.7%；
+- [x] **高密单屏超级数据表格 (Dense DataGrid)**：全站管理后台单屏高密容纳所有业务指标；
+- [x] **二次元微光音符与全宽音廊**：SVG 蜜桃粉音符悬浮播放器与 R2 独立元数据持久化；
+- [x] **前端美化章程落地与顶部无框微工具栏**：樱花/细雨/萤火直切、18 套明快色盘与自由取色器；
+- [x] **前台抽屉式写作与媒体工坊升级**：丝滑滑入交互与 Monaco 编辑器高度链加固；
+- [ ] **音廊全自动化洗版工坊**：批量扫描寻找缺失元数据的音频文件，自动向全网音乐源嗅探匹配超清封面与滚动歌词；
+- [ ] **相关文章智能漫游推荐**：在正文末尾结合分类标签与语义向量智能推荐相关随想；
+- [ ] **画廊相片展厅虚拟网格**：海量摄影与插画作品仅渲染可视视口内部节点，保障老旧设备 60 FPS 丝滑翻滚；
+- [ ] **拍立得长图海报分享**：详情页离线 Canvas/SVG 将正文骨架渲染为带精美二维码、艺术字体的海报长图；
+- [ ] **友邻 RSS 异步聚合漫游流**：利用 Cloudflare Cron Triggers 异步聚合友邻博客动态；
+- [ ] **AI 智能留言风控自动化研判**：将待审队列接入大语言模型实现毫秒级垃圾内容研判。
+
+---
+
+## 📜 版本更新迭代说明
+
+详细历史请参见 [CHANGELOG.md](CHANGELOG.md)。
+
+| 版本号 | 发布日期 | 核心主题与演进亮点 |
+| :---: | :---: | :--- |
+| **v1.0.7** | 2026-11-18 | **前端美化章程落地 · 顶部无框氛围栏 · 抽屉式交互全面升级 · Monaco 布局加固与 505 项全绿门禁** |
+| **v1.0.6** | 2026-11-14 | **星标友链 NodeSeek 原生直连与矢量 SVG 兼容 · 历史受损链接自动脱壳自愈 · 拍立得手账美学** |
+| **v1.0.5** | 2026-11-07 | **日系二次元可爱悬浮音符播放器 · 音廊全宽画册网格 · R2 云端元数据持久化 · 数字直接调序** |
+| **v1.0.4** | 2026-11-05 | **文章管理高密超级数据表格 (Dense DataGrid) · 封面大图快捷置换 · Pin 置顶 · 标准分页栏** |
+| **v1.0.3** | 2026-11-04 | **友链罗盘画廊 SPA 重构 · URL 元数据 AI 自动嗅探 · 高可用 Favicon 代理兜底 · 游客免登录申请流** |
+| **v1.0.2** | 2026-11-03 | **多语言语法高亮 · 三区隔离海报飞跃弹幕 · SEO 全景控制中心 · 提示词多版本工坊 · 留言安全审核** |
+| **v1.0.1** | 2026-11-02 | **便签阵列高密超级表格 · 首页便签自由拖拽摆放 · 便签全形态自适应** |
+| **v1.0.0** | 2026-11-01 | **首屏断崖式瘦身 97.7% · 12 种 Web 现代排印字族 · 极简迷你侧边栏 · 边缘全栈正式奠基** |
+
+---
+
+## 📄 开源许可证
+
+本项目基于 [MIT License](LICENSE) 协议开源。

@@ -523,11 +523,32 @@ async function insertImage(
     }
   }, [content]);
 
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || preview === "preview") return;
+    if (typeof requestAnimationFrame === "function") {
+      const rafId = requestAnimationFrame(() => {
+        editor.layout();
+      });
+      return () => {
+        if (typeof cancelAnimationFrame === "function") {
+          cancelAnimationFrame(rafId);
+        }
+      };
+    }
+    editor.layout();
+  }, [preview]);
+
   /* ---------------- UI ---------------- */
 
+  const isFillHeight = height.trim() === "100%";
+
   return (
-    <div className="flex flex-col gap-0 sm:gap-3">
-      <FlatInset className="flex flex-wrap items-center gap-2 border-0 border-b border-black/10 rounded-none bg-transparent p-2 dark:border-white/10 sm:p-3">
+    <div
+      data-markdown-editor-root=""
+      className={`flex flex-col ${isFillHeight ? "h-full min-h-0 gap-0" : "gap-0 sm:gap-3"}`}
+    >
+      <FlatInset className="flex shrink-0 flex-wrap items-center gap-2 border-0 border-b border-black/10 rounded-none bg-transparent p-2 dark:border-white/10 sm:p-3">
         <div className="flex shrink-0 flex-wrap items-center gap-1">
           <FlatTabButton active={preview === 'edit'} onClick={() => setPreview('edit')}> {t("edit")} </FlatTabButton>
           <FlatTabButton active={preview === 'preview'} onClick={() => setPreview('preview')}> {t("preview")} </FlatTabButton>
@@ -557,10 +578,32 @@ async function insertImage(
           </div>
         }
       </FlatInset>
-      <div className={`grid grid-cols-1 gap-0 sm:gap-4 ${preview === 'comparison' ? "lg:grid-cols-2" : ""}`}>
-        <div className={"flex min-w-0 flex-col " + (preview === 'preview' ? "hidden" : "")}>
+      <div
+        data-markdown-editor-panes=""
+        className={
+          isFillHeight
+            ? `grid min-h-0 flex-1 grid-cols-1 gap-0 ${
+                preview === "comparison"
+                  ? "grid-rows-2 lg:grid-cols-2 lg:grid-rows-1 lg:divide-x lg:divide-neutral-200/70 dark:lg:divide-white/[0.08]"
+                  : "grid-rows-1"
+              }`
+            : `grid grid-cols-1 gap-0 sm:gap-4 ${preview === "comparison" ? "lg:grid-cols-2" : ""}`
+        }
+      >
+        <div
+          data-markdown-editor-code-pane=""
+          className={
+            "flex min-w-0 flex-col " +
+            (isFillHeight ? "h-full min-h-0 " : "") +
+            (preview === "preview" ? "hidden" : "")
+          }
+        >
           <div
-            className={"relative min-h-0 overflow-hidden rounded-none border-0 bg-w"}
+            data-markdown-editor-monaco-host=""
+            className={
+              "relative min-h-0 overflow-hidden rounded-none border-0 bg-w " +
+              (isFillHeight ? "flex-1 w-full" : "")
+            }
             onDrop={(e) => {
               e.preventDefault();
               const editor = editorRef.current;
@@ -577,42 +620,46 @@ async function insertImage(
             }}
             onPaste={handlePaste}
           >
-            <Editor
-              onMount={handleEditorMount}
-              height={height}
-              defaultLanguage="markdown"
-              defaultValue={content}
-              theme={colorMode === "dark" ? "vs-dark" : "light"}
-              options={{
-                wordWrap: "on",
+            <div className={isFillHeight ? "absolute inset-0" : undefined}>
+              <Editor
+                onMount={handleEditorMount}
+                height={isFillHeight ? "100%" : height}
+                defaultLanguage="markdown"
+                defaultValue={content}
+                theme={colorMode === "dark" ? "vs-dark" : "light"}
+                options={{
+                  automaticLayout: true,
+                  wordWrap: "on",
 
-                // Chinese IME stability key
-                fontFamily: "Sarasa Mono SC, JetBrains Mono, monospace",
-                fontLigatures: false,
-                letterSpacing: 0,
+                  // Chinese IME stability key
+                  fontFamily: "Sarasa Mono SC, JetBrains Mono, monospace",
+                  fontLigatures: false,
+                  letterSpacing: 0,
 
-                fontSize: 14,
-                lineNumbers: "on",
-                lineNumbersMinChars: 3,
-                renderLineHighlight: "all",
-                folding: true,
+                  fontSize: 14,
+                  lineNumbers: "on",
+                  lineNumbersMinChars: 3,
+                  renderLineHighlight: "all",
+                  folding: true,
 
-                accessibilitySupport: "off",
-                unicodeHighlight: { ambiguousCharacters: false },
+                  accessibilitySupport: "off",
+                  unicodeHighlight: { ambiguousCharacters: false },
 
-                renderWhitespace: "none",
-                renderControlCharacters: false,
-                smoothScrolling: false,
+                  renderWhitespace: "none",
+                  renderControlCharacters: false,
+                  smoothScrolling: false,
 
-                dragAndDrop: true,
-                pasteAs: { enabled: false },
-                minimap: { enabled: true, side: "right", showSlider: "always" },
-              }}
-            />
+                  dragAndDrop: true,
+                  pasteAs: { enabled: false },
+                  minimap: { enabled: true, side: "right", showSlider: "always" },
+                }}
+              />
+            </div>
           </div>
         </div>
         <div
           ref={previewContainerRef}
+          data-markdown-editor-preview-pane=""
           onScroll={(e) => {
             if (isSyncingFromEditorRef.current) return;
             const editor = editorRef.current;
@@ -631,8 +678,14 @@ async function insertImage(
               });
             }
           }}
-          className={"min-h-0 overflow-y-auto rounded-none border-0 bg-w px-4 py-4 border-t sm:border-none " + (preview === 'edit' ? "hidden" : "")}
-          style={{ height: height }}
+          className={
+            "min-h-0 overflow-y-auto rounded-none border-0 bg-w px-4 py-4 " +
+            (isFillHeight
+              ? "h-full border-t border-neutral-200/70 dark:border-white/[0.08] lg:border-t-0 "
+              : "border-t sm:border-none ") +
+            (preview === "edit" ? "hidden" : "")
+          }
+          style={isFillHeight ? undefined : { height }}
         >
           <Markdown content={content ? content : placeholder} />
         </div>

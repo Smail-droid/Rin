@@ -1,9 +1,17 @@
-import { useContext, useEffect, useState } from "react";
+import { Suspense, lazy, useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { ProfileContext } from "../../state/profile";
-import { InSituWritingDrawer } from "./in-situ-writing-drawer";
-import { InSituMediaDrawer } from "./in-situ-media-drawer";
+
+const InSituWritingDrawer = lazy(() =>
+  import("./in-situ-writing-drawer").then((m) => ({ default: m.InSituWritingDrawer }))
+);
+const InSituMediaDrawer = lazy(() =>
+  import("./in-situ-media-drawer").then((m) => ({ default: m.InSituMediaDrawer }))
+);
+const InSituAppearanceDrawer = lazy(() =>
+  import("./in-situ-appearance-drawer").then((m) => ({ default: m.InSituAppearanceDrawer }))
+);
 
 /**
  * 管理员前台在场撰写与媒体抽屉宿主（零悬浮胶囊）：
@@ -16,6 +24,7 @@ export function InSituDeskDock() {
   const [writingOpen, setWritingOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [mediaOpen, setMediaOpen] = useState(false);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
 
   useEffect(() => {
     const handleOpenWriting = (e: Event) => {
@@ -24,13 +33,16 @@ export function InSituDeskDock() {
       setWritingOpen(true);
     };
     const handleOpenMedia = () => setMediaOpen(true);
+    const handleOpenAppearance = () => setAppearanceOpen(true);
 
     window.addEventListener("rin:open-writing-drawer", handleOpenWriting);
     window.addEventListener("rin:open-media-drawer", handleOpenMedia);
+    window.addEventListener("rin:open-appearance-drawer", handleOpenAppearance);
 
     return () => {
       window.removeEventListener("rin:open-writing-drawer", handleOpenWriting);
       window.removeEventListener("rin:open-media-drawer", handleOpenMedia);
+      window.removeEventListener("rin:open-appearance-drawer", handleOpenAppearance);
     };
   }, []);
 
@@ -39,21 +51,32 @@ export function InSituDeskDock() {
   }
 
   return createPortal(
-    <>
-      <InSituWritingDrawer
-        isOpen={writingOpen}
-        onClose={() => {
-          setWritingOpen(false);
-          setEditId(null);
-        }}
-        editId={editId}
-      />
+    <Suspense fallback={null}>
+      {writingOpen && (
+        <InSituWritingDrawer
+          isOpen={writingOpen}
+          onClose={() => {
+            setWritingOpen(false);
+            setEditId(null);
+          }}
+          editId={editId}
+        />
+      )}
 
-      <InSituMediaDrawer
-        isOpen={mediaOpen}
-        onClose={() => setMediaOpen(false)}
-      />
-    </>,
+      {mediaOpen && (
+        <InSituMediaDrawer
+          isOpen={mediaOpen}
+          onClose={() => setMediaOpen(false)}
+        />
+      )}
+
+      {appearanceOpen && (
+        <InSituAppearanceDrawer
+          isOpen={appearanceOpen}
+          onClose={() => setAppearanceOpen(false)}
+        />
+      )}
+    </Suspense>,
     document.body
   );
 }

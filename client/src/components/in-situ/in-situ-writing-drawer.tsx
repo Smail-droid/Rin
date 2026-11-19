@@ -215,20 +215,20 @@ export function InSituWritingDrawer({
     <>
       {/* 遮罩 */}
       <div
-        className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px] transition-opacity"
+        className="fixed inset-0 z-50 bg-black/25 dark:bg-black/40 ani-overlay-in"
         onClick={onClose}
       />
 
       {/* 右侧滑出写作抽屉（与全站统一设计语言对齐） */}
-      <div className="fixed top-0 bottom-0 right-0 z-50 w-full sm:w-[86vw] md:w-[760px] lg:w-[880px] bg-white dark:bg-[#111520] shadow-[-12px_0_40px_-16px_rgba(15,23,42,0.22)] border-l border-neutral-200/80 dark:border-white/10 flex flex-col select-none ani-show-fast">
+      <div className="fixed top-0 bottom-0 right-0 z-50 w-full max-w-full sm:w-[86vw] md:w-[760px] lg:w-[880px] bg-white dark:bg-neutral-900 shadow-[-8px_0_32px_-8px_rgba(15,23,42,0.18)] dark:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.5)] border-l border-neutral-200/70 dark:border-white/[0.06] flex flex-col ani-drawer-in">
         {/* 1. 顶部操作栏 */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-200/75 dark:border-white/[0.08] bg-neutral-50/70 dark:bg-white/[0.02] shrink-0">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-base">
+        <div className="flex items-center justify-between gap-2 px-5 py-3 border-b border-neutral-200/60 dark:border-white/[0.06] bg-gradient-to-r from-neutral-50/80 to-neutral-100/50 dark:from-white/[0.03] dark:to-white/[0.015] shrink-0 select-none">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/8 text-theme text-base ring-1 ring-theme/10">
               <i className="ri-quill-pen-line" />
             </span>
             <div>
-              <h2 className="text-[13px] font-bold text-neutral-900 dark:text-neutral-100">
+              <h2 className="text-[13px] font-semibold tracking-wide text-neutral-800 dark:text-neutral-100">
                 {editId ? `编辑文章 #${editId}` : "撰写新文章"}
               </h2>
               <p className="text-[11px] text-neutral-400">
@@ -244,7 +244,7 @@ export function InSituWritingDrawer({
                 setImagePickerOpen(true);
                 loadMediaLibrary();
               }}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:border-theme hover:text-theme text-xs font-semibold transition"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-neutral-200/80 dark:border-white/[0.08] text-neutral-600 dark:text-neutral-300 hover:border-theme/60 hover:text-theme hover:bg-theme/5 text-xs font-medium transition-all duration-200"
               title="从图床中挑选照片或上传插入"
             >
               <i className="ri-image-add-line text-theme" />
@@ -255,7 +255,7 @@ export function InSituWritingDrawer({
               type="button"
               onClick={handlePublish}
               disabled={publishing || loading}
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover active:scale-95 transition disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-sm shadow-theme/20 hover:brightness-110 active:scale-[0.97] transition-all duration-200 disabled:opacity-50"
             >
               <i className={publishing ? "ri-loader-4-line animate-spin" : "ri-send-plane-fill"} />
               <span>{publishing ? "提交中..." : editId ? "更新保存" : "即刻发布"}</span>
@@ -272,14 +272,14 @@ export function InSituWritingDrawer({
         </div>
 
         {/* 2. 标题与属性折叠区 */}
-        <div className="p-4 sm:p-5 border-b border-neutral-200/75 dark:border-white/[0.08] space-y-3 shrink-0 bg-white dark:bg-[#111520]">
+        <div className="p-4 sm:p-5 border-b border-neutral-200/60 dark:border-white/[0.06] space-y-3 shrink-0 bg-white dark:bg-neutral-900">
           <div className="flex items-center gap-2">
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="文章标题..."
-              className="flex-1 px-3.5 py-2 rounded-xl border border-neutral-200/90 dark:border-white/10 bg-white dark:bg-white/[0.04] text-sm sm:text-base font-bold text-neutral-900 dark:text-neutral-100 outline-none focus:border-theme focus:ring-2 focus:ring-theme/15 transition"
+              className="flex-1 min-w-0 px-3.5 py-2 rounded-xl border border-neutral-200/90 dark:border-white/10 bg-white dark:bg-white/[0.04] text-sm sm:text-base font-bold text-neutral-900 dark:text-neutral-100 outline-none focus:border-theme focus:ring-2 focus:ring-theme/15 transition"
             />
             <button
               type="button"
@@ -299,7 +299,7 @@ export function InSituWritingDrawer({
 
           {/* 折叠属性面板 */}
           {isMetaExpanded && (
-            <div className="p-3.5 rounded-2xl border border-black/10 bg-neutral-50/60 dark:border-white/10 dark:bg-[#161b26] space-y-3 ani-show">
+            <div className="p-3.5 rounded-2xl border border-black/[0.06] bg-neutral-50/50 dark:border-white/[0.06] dark:bg-white/[0.02] space-y-3 ani-show">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <Input
                   id={editId ?? 0}
@@ -394,8 +394,8 @@ export function InSituWritingDrawer({
         </div>
 
         {/* 3. Markdown 编辑器主体 */}
-        <div className="flex-1 overflow-hidden p-3 sm:p-4">
-          <div className="h-full rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 shadow-inner">
+        <div className="flex-1 min-h-0 overflow-hidden p-3 sm:p-4">
+          <div className="h-full min-h-0 rounded-2xl overflow-hidden border border-neutral-200/70 dark:border-white/[0.06] shadow-[inset_0_1px_3px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)]">
             <MarkdownEditor
               content={content}
               setContent={setContent}

@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
+import { Link } from "wouter";
 import { client } from "../app/runtime";
+import { ProfileContext } from "../state/profile";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { useMusicPlayer } from "../components/music-player/music-player-context";
 import { BottomPlayerDock } from "../components/music-player/bottom-player-dock";
@@ -36,9 +38,13 @@ import {
 export function AdminMusicPage() {
   const siteConfig = useSiteConfig();
   const player = useMusicPlayer();
+  const profile = useContext(ProfileContext);
+  const isAdmin = Boolean(profile?.permission);
 
   // 核心三大视界：音廊 (R2云端资产) | 播放列表 (前台歌单) | 曲库探索 (全网检索)
-  const [activeTab, setActiveTab] = useState<"gallery" | "playlist" | "explore">("gallery");
+  const [activeTab, setActiveTab] = useState<"gallery" | "playlist" | "explore">(() =>
+    isAdmin ? "gallery" : "playlist"
+  );
 
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [batchStatus, setBatchStatus] = useState<"idle" | "batching" | "done">("idle");
@@ -758,25 +764,27 @@ export function AdminMusicPage() {
           {/* 分组 2: 音乐资料库 (Library) */}
           <div className="space-y-1">
             <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider px-2">我的资料库</span>
-            <button
-              type="button"
-              onClick={() => setActiveTab("gallery")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                activeTab === "gallery"
-                  ? "bg-theme text-white shadow-2xs font-bold"
-                  : "text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <i className="ri-archive-line text-sm" />
-                <span>音廊资产 (R2)</span>
-              </div>
-              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
-                activeTab === "gallery" ? "bg-white/20 text-white" : "bg-black/5 dark:bg-white/5 text-neutral-400"
-              }`}>
-                {r2Files.length}
-              </span>
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("gallery")}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                  activeTab === "gallery"
+                    ? "bg-theme text-white shadow-2xs font-bold"
+                    : "text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <i className="ri-archive-line text-sm" />
+                  <span>音廊资产 (R2)</span>
+                </div>
+                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                  activeTab === "gallery" ? "bg-white/20 text-white" : "bg-black/5 dark:bg-white/5 text-neutral-400"
+                }`}>
+                  {r2Files.length}
+                </span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -798,7 +806,7 @@ export function AdminMusicPage() {
               </span>
             </button>
 
-            {Boolean(openlistMusicUrl) && (
+            {isAdmin && Boolean(openlistMusicUrl) && (
               <button
                 type="button"
                 onClick={handleSyncOpenList}
@@ -814,49 +822,60 @@ export function AdminMusicPage() {
             )}
           </div>
 
-          {/* 分组 3: 资产与管理 (Operations) */}
-          <div className="space-y-1.5 pt-2.5 border-t border-black/5 dark:border-white/5">
-            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider px-2">资产管理</span>
-            <button
-              type="button"
-              onClick={() => uploadQueue.audioFilesInputRef.current?.click()}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-200 transition cursor-pointer"
-            >
-              <i className="ri-upload-cloud-line text-theme text-sm" />
-              <span>上传本地音频</span>
-            </button>
+          {/* 分组 3: 资产与管理 (Operations - 仅管理员可见) */}
+          {isAdmin ? (
+            <div className="space-y-1.5 pt-2.5 border-t border-black/5 dark:border-white/5">
+              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider px-2">资产管理</span>
+              <button
+                type="button"
+                onClick={() => uploadQueue.audioFilesInputRef.current?.click()}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-theme/10 hover:bg-theme/20 text-theme transition cursor-pointer"
+              >
+                <i className="ri-upload-cloud-2-line text-sm" />
+                <span>上传音频到 R2</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => uploadQueue.audioFolderInputRef.current?.click()}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-200 transition cursor-pointer"
-            >
-              <i className="ri-folder-upload-line text-sm text-amber-500" />
-              <span>导入文件夹</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => uploadQueue.audioFolderInputRef.current?.click()}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-200 transition cursor-pointer"
+              >
+                <i className="ri-folder-upload-line text-sm text-amber-500" />
+                <span>导入文件夹</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setSettingsExpanded(!settingsExpanded)}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold border border-black/5 dark:border-white/5 hover:border-theme/40 text-neutral-600 dark:text-neutral-300 transition cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <i className="ri-settings-4-line text-xs" />
-                <span>电台参数设置</span>
-              </div>
-              <i className={`ri-arrow-${settingsExpanded ? "up" : "down"}-s-line text-xs`} />
-            </button>
+              <button
+                type="button"
+                onClick={() => setSettingsExpanded(!settingsExpanded)}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold border border-black/5 dark:border-white/5 hover:border-theme/40 text-neutral-600 dark:text-neutral-300 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <i className="ri-settings-4-line text-xs" />
+                  <span>电台参数设置</span>
+                </div>
+                <i className={`ri-arrow-${settingsExpanded ? "up" : "down"}-s-line text-xs`} />
+              </button>
 
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saveStatus === "saving"}
-              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-theme hover:bg-theme-hover shadow-xs active:scale-95 transition cursor-pointer"
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saveStatus === "saving"}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-theme hover:bg-theme-hover shadow-xs active:scale-95 transition cursor-pointer"
+              >
+                {saveStatus === "saving" && <i className="ri-loader-4-line animate-spin text-xs" />}
+                {saveStatus === "saved" && <i className="ri-check-line text-xs" />}
+                <span>{saveStatus === "saving" ? "保存中..." : saveStatus === "saved" ? "已保存" : "保存电台配置"}</span>
+              </button>
+            </div>
+          ) : null}
+          <div className="pt-2 border-t border-black/5 dark:border-white/5">
+            <Link
+              href="/"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-theme/5 transition cursor-pointer"
             >
-              {saveStatus === "saving" && <i className="ri-loader-4-line animate-spin text-xs" />}
-              {saveStatus === "saved" && <i className="ri-check-line text-xs" />}
-              <span>{saveStatus === "saving" ? "保存中..." : saveStatus === "saved" ? "已保存" : "保存电台配置"}</span>
-            </button>
+              <i className="ri-arrow-left-line" />
+              <span>返回画廊首页</span>
+            </Link>
           </div>
         </aside>
 

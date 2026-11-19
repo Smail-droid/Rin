@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { lazy, Suspense, useContext } from "react";
 import type { DefaultParams, PathPattern } from "wouter";
-import { Route, Switch } from "wouter";
+import { Redirect, Route, Switch } from "wouter";
 import { AdminLayout } from "../components/admin-layout";
 import Footer from "../components/footer";
 import { Header } from "../components/header";
@@ -31,7 +31,6 @@ const CallbackPage = lazy(() => import("../page/callback").then((m) => ({ defaul
 
 // Admin routes lazy loading (monaco editor, charts & management utilities decoupled)
 const Settings = lazy(() => import("../page/settings").then((m) => ({ default: m.Settings })));
-const AdminTagsPage = lazy(() => import("../page/admin-tags").then((m) => ({ default: m.AdminTagsPage })));
 const AdminOpsHubPage = lazy(() => import("../page/admin-ops").then((m) => ({ default: m.AdminOpsHubPage })));
 const AdminAIPage = lazy(() => import("../page/admin-ai").then((m) => ({ default: m.AdminAIPage })));
 const QueueStatusPage = lazy(() => import("../page/queue-status").then((m) => ({ default: m.QueueStatusPage })));
@@ -49,6 +48,11 @@ function RouteLoadingFallback() {
       <i className="ri-loader-4-line animate-spin text-3xl text-theme mb-3" />
     </div>
   );
+}
+
+function GalleryPageWithAuth() {
+  const profile = useContext(ProfileContext);
+  return <AdminFilesPage readOnly={!profile?.permission} />;
 }
 
 export function AppRoutes() {
@@ -96,8 +100,8 @@ export function AppRoutes() {
         <AdminOpenListPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/music" requirePermission title="音廊" description="全站沉浸式微光音乐电台与 R2 云端资产中枢 · 对接全网聚合曲库与 OpenList 5T 音频">
-        <AdminMusicPage />
+      <AdminRoute path="/admin/music" requirePermission title="音廊" description="全站沉浸式微光音乐电台与 R2 云端资产中枢">
+        <Redirect to="/music" />
       </AdminRoute>
 
       <AdminRoute path="/admin/access" requirePermission title="权限" description="文章隐私与特定内容保护 · 一键加锁与授权验证">
@@ -113,7 +117,7 @@ export function AppRoutes() {
       </AdminRoute>
 
       <AdminRoute path="/admin/tags" requirePermission title="标签" description="管理与重命名全站标签体系">
-        <AdminTagsPage />
+        <Redirect to="/hashtags" />
       </AdminRoute>
 
       {/* 运维中心 (三合一：健康诊断 + 增量回填 + SEO引擎 左右双拼同屏展示) */}
@@ -150,11 +154,15 @@ export function AppRoutes() {
       </AdminRoute>
 
       <AdminRoute path="/admin/files" requirePermission title="图床" description={t("admin_files.description")}>
-        <AdminFilesPage />
+        <Redirect to="/gallery" />
       </AdminRoute>
 
       <AppRoute path="/gallery" paddingClassName="mx-3 sm:mx-6">
-        <AdminFilesPage readOnly />
+        <GalleryPageWithAuth />
+      </AppRoute>
+
+      <AppRoute path="/music" paddingClassName="mx-3 sm:mx-6">
+        <AdminMusicPage />
       </AppRoute>
 
       <AppRoute path="/callback">

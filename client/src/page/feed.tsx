@@ -1,5 +1,5 @@
 import type { Feed } from "@rin/api";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
@@ -21,6 +21,10 @@ import { AdjacentSection } from "../components/adjacent_feed.tsx";
 import { stripImageUrlMetadata } from "../utils/image-upload";
 import { GalleryComments } from "../components/gallery-comments";
 import { Modal } from "@rin/ui";
+
+const ArticleAccessModal = lazy(() =>
+  import("../components/article-access-modal").then((m) => ({ default: m.ArticleAccessModal }))
+);
 
 function extractFirstMarkdownImageUrl(content: string) {
   const match = /!\[.*?\]\((\S+?)(?:\s+"[^"]*")?\)/.exec(content);
@@ -55,6 +59,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
 
   // 就地极简文章快速编辑状态 (无需跳回后台，零额外重型分包开销)
   const [isQuickEditOpen, setIsQuickEditOpen] = useState(false);
+  const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -651,6 +656,18 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         {profile?.permission && (
                           <div className="flex gap-1.5 ml-1">
                             <button
+                              type="button"
+                              onClick={() => setIsAccessModalOpen(true)}
+                              title={(feed as any)?.isLocked ? "此文章受密码保护，点击配置权限" : "设置文章权限与密码锁"}
+                              className={`flex h-8 w-8 items-center justify-center rounded-full transition cursor-pointer ${
+                                (feed as any)?.isLocked
+                                  ? "bg-amber-500 text-white shadow-xs"
+                                  : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:text-theme"
+                              }`}
+                            >
+                              <i className={(feed as any)?.isLocked ? "ri-lock-2-fill text-sm" : "ri-lock-unlock-line text-sm"} />
+                            </button>
+                            <button
                               aria-label={top > 0 ? t("untop.title") : t("top.title")}
                               onClick={topFeed}
                               title={top > 0 ? "取消置顶" : "置顶文章"}
@@ -1002,6 +1019,20 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
             </div>
           </div>
         </Modal>
+      )}
+
+      {isAccessModalOpen && feed && (
+        <Suspense fallback={null}>
+          <ArticleAccessModal
+            isOpen={isAccessModalOpen}
+            feedId={feed.id}
+            feedTitle={feed.title || ""}
+            onClose={() => setIsAccessModalOpen(false)}
+            onPermissionUpdated={(_feedId, isLocked) => {
+              setFeed((prev: any) => (prev ? { ...prev, isLocked } : prev));
+            }}
+          />
+        </Suspense>
       )}
 
       <AlertUI />

@@ -484,7 +484,7 @@ export function UserAvatar({
                 <button
                   onClick={() => {
                     setIsOpen(false);
-                    setLocation("/admin/writing");
+                    window.dispatchEvent(new CustomEvent("rin:open-writing-drawer"));
                   }}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
@@ -494,22 +494,32 @@ export function UserAvatar({
                 <button
                   onClick={() => {
                     setIsOpen(false);
-                    setLocation("/admin/music");
+                    setLocation("/music");
                   }}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
-                  <i className="ri-music-2-line text-emerald-500" />
-                  <span>黑胶音廊工作台</span>
+                  <i className="ri-disc-line text-emerald-500" />
+                  <span>微光音廊工作台</span>
                 </button>
                 <button
                   onClick={() => {
                     setIsOpen(false);
-                    setLocation("/admin/files");
+                    setLocation("/gallery");
                   }}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   <i className="ri-folder-image-line text-sky-500" />
-                  <span>R2 图床全屏画廊</span>
+                  <span>R2 图床媒体工坊</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setLocation("/hashtags");
+                  }}
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  <i className="ri-price-tag-3-line text-amber-500" />
+                  <span>标签体系管理</span>
                 </button>
                 <button
                   onClick={() => {
