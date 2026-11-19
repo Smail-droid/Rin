@@ -103,7 +103,11 @@ async function checkGitStatus() {
 async function checkChangelog(version: string) {
   if (!existsSync("CHANGELOG.md")) return false;
   const changelog = await readFile("CHANGELOG.md", "utf-8");
-  return changelog.includes(`## [v${version}]`) || changelog.includes(`## [${version}]`);
+  return (
+    changelog.includes(`## [v${version}]`) ||
+    changelog.includes(`## [${version}]`) ||
+    new RegExp(`##\\s+.*?\\[v?${version}\\]`).test(changelog)
+  );
 }
 
 async function runPreReleaseChecks(version: string, options: ReleaseOptions) {
