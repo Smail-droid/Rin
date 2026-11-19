@@ -79,7 +79,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
   // 彻底废除悬浮遮挡，统一回归自然嵌入网页的 3 套深度融入式顶栏
   const isStatic = headerBehavior === "static";
 
-  // 1. 杂志左对齐导航 (Editorial Left-Aligned - 报刊式底细线、品牌与菜单紧邻左对齐)
+  // 1. 日系轻透书签导航 (Atelier Minimal Bar - 柔和微透底栏、品牌与书签菜单左对齐流畅连结)
   if (headerLayout === "compact") {
     return (
       <header
@@ -90,26 +90,26 @@ export function Header({ children }: { children?: React.ReactNode }) {
             : `sticky top-0 transition-transform duration-300 ${
                 headerBehavior === "reveal" && !isRevealed ? "-translate-y-full" : "translate-y-0"
               }`
-        } z-30 w-full border-b border-neutral-200/75 dark:border-white/[0.08] bg-white/80 dark:bg-[#111520]/80 backdrop-blur-md select-none`}
+        } z-30 w-full border-b border-theme/15 dark:border-white/[0.08] bg-white/75 dark:bg-[#121622]/75 backdrop-blur-xl shadow-[0_2px_16px_rgba(var(--theme-rgb),0.05)] select-none`}
       >
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-5 min-w-0">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 sm:gap-6 min-w-0">
             <BrandLink
               siteConfig={siteConfig}
               compact
               className="flex items-center gap-2.5 group shrink-0"
-              avatarClassName="h-7 w-7 sm:h-8 sm:w-8 rounded-lg shrink-0"
-              titleClassName="text-base sm:text-lg font-serif font-bold tracking-wide text-neutral-900 dark:text-neutral-100 group-hover:text-theme transition-colors"
+              avatarClassName="h-7 w-7 sm:h-8 sm:w-8 rounded-xl shadow-2xs shrink-0 group-hover:scale-105 transition-transform"
+              titleClassName="text-base sm:text-lg font-bold tracking-tight text-neutral-800 dark:text-neutral-100 group-hover:text-theme transition-colors"
               showDescription={false}
             />
-            <span className="hidden md:block h-4 w-px bg-neutral-200 dark:bg-white/15 shrink-0" />
+            <span className="hidden md:inline-block h-1.5 w-1.5 rounded-full bg-theme/30 shrink-0" />
             <nav
               className="hidden md:flex items-center text-xs sm:text-sm"
-              style={{ gap: `${siteConfig.headerNavGap || 12}px` }}
+              style={{ gap: `${siteConfig.headerNavGap || 10}px` }}
             >
               <NavBar
                 menu={false}
-                itemClassName="px-2.5 py-1 text-neutral-600 dark:text-neutral-300 hover:text-theme transition-colors font-medium text-[13px] whitespace-nowrap shrink-0"
+                itemClassName="px-3 py-1.5 rounded-xl text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-theme/10 transition-all font-medium text-[13px] whitespace-nowrap shrink-0"
               />
             </nav>
           </div>
@@ -122,7 +122,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
     );
   }
 
-  // 2. 居中胶囊托盘导航 (Centered Pill Dock - 清晰悬浮轻磨砂居中托盘)
+  // 2. 二次元悬浮微光手账托盘 (Floating Shimmer Dock - 三岛式悬浮轻磨砂气泡托盘)
   if (headerLayout === "dock") {
     return (
       <header
@@ -133,33 +133,38 @@ export function Header({ children }: { children?: React.ReactNode }) {
             : `sticky top-0 transition-transform duration-300 ${
                 headerBehavior === "reveal" && !isRevealed ? "-translate-y-full" : "translate-y-0"
               }`
-        } z-30 w-full bg-transparent border-0 shadow-none select-none`}
+        } z-30 w-full bg-transparent border-0 shadow-none select-none pt-2 sm:pt-3`}
       >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 sm:h-18 flex items-center justify-between gap-4">
-          <BrandLink
-            siteConfig={siteConfig}
-            compact
-            className="flex items-center gap-2.5 shrink-0"
-            avatarClassName="h-8 w-8 rounded-xl shadow-xs shrink-0"
-            titleClassName="text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100"
-            showDescription={false}
-          />
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3">
+          {/* 左岛：Logo 与站点品牌 */}
+          <div className="flex items-center px-3.5 py-1.5 rounded-full border border-theme/20 dark:border-white/10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl shadow-[0_4px_20px_-4px_rgba(var(--theme-rgb),0.12)] shrink-0">
+            <BrandLink
+              siteConfig={siteConfig}
+              compact
+              className="flex items-center gap-2.5 shrink-0"
+              avatarClassName="h-7 w-7 rounded-xl shadow-xs shrink-0"
+              titleClassName="text-sm sm:text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100"
+              showDescription={false}
+            />
+          </div>
 
+          {/* 中岛：悬浮微光手账导航核心 */}
           <div className="hidden md:flex flex-1 items-center justify-center">
             <nav
-              className="flex items-center rounded-full border border-neutral-200/80 dark:border-white/15 bg-white/85 dark:bg-[#141824]/85 backdrop-blur-md px-2 py-1 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.12)]"
-              style={{ gap: `${siteConfig.headerNavGap || 8}px` }}
+              className="flex items-center rounded-full border border-theme/25 dark:border-white/15 bg-white/85 dark:bg-neutral-900/85 backdrop-blur-xl px-2.5 py-1.5 shadow-[0_8px_30px_-6px_rgba(var(--theme-rgb),0.2)]"
+              style={{ gap: `${siteConfig.headerNavGap || 6}px` }}
             >
               <NavBar
                 menu={false}
-                itemClassName="px-3 py-1 text-xs font-medium rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-theme/10 hover:text-theme transition-colors whitespace-nowrap shrink-0"
+                itemClassName="px-3 py-1 rounded-full text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-theme/10 hover:text-theme transition-all whitespace-nowrap shrink-0"
               />
             </nav>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          {/* 右岛：功能按钮与控制微胶囊 */}
+          <div className="flex items-center px-2.5 py-1.5 rounded-full border border-theme/20 dark:border-white/10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl shadow-[0_4px_20px_-4px_rgba(var(--theme-rgb),0.12)] gap-1.5 shrink-0">
             {children}
-            <HeaderActions profile={profile} plain className="flex items-center gap-2" />
+            <HeaderActions profile={profile} plain className="flex items-center gap-1.5" />
           </div>
         </div>
       </header>

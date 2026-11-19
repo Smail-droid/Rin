@@ -2094,65 +2094,159 @@ export function FeedsPage() {
                 }}
                 className="w-full mx-auto py-4 sm:py-6 mb-16 transition-all duration-300"
             >
-                {/* Atelier Mood Bar (Clean Title with Admin Tabs, NO standalone shuffle button) */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-2 border-b border-black/5 dark:border-white/5">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight t-primary flex items-center gap-2">
-                            <span className={`transition-all duration-300 art-title-${siteConfig.atelierTitleStyle || "aurora_flow"}`}>
-                                {listState === "draft" ? t("draft_bin") : listState === "unlisted" ? t("unlisted") : siteConfig.atelierTitle || "画廊随想"}
-                            </span>
-                            <span className="text-base font-normal text-neutral-400 dark:text-neutral-500 font-mono">
-                                ({currentFeeds.size})
-                            </span>
-                        </h1>
-                        {Boolean(profile?.permission) && streamOrder.length > 0 && (
-                            <button
-                                type="button"
-                                onClick={resetStreamOrder}
-                                title="恢复文章与便签为默认排布次序"
-                                className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 shadow-2xs border border-amber-500/20 transition select-none active:scale-95"
-                            >
-                                <i className="ri-restart-line text-xs" />
-                                <span>已启用画廊自定义混排顺序 · 点击恢复默认</span>
-                            </button>
+                {/* Atelier Mood Bar & Page Header */}
+                {siteConfig.pageHeaderMode === "banner" ? (
+                    <div className="relative w-full rounded-3xl overflow-hidden mb-6 p-6 sm:p-8 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 dark:via-purple-900/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ani-show">
+                        <div className="flex items-center gap-4">
+                            {siteConfig.avatar && (
+                                <img
+                                    src={siteConfig.avatar}
+                                    alt=""
+                                    className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover border-2 border-white dark:border-neutral-800 shadow-sm shrink-0"
+                                />
+                            )}
+                            <div>
+                                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary flex items-center gap-2">
+                                    <span>{siteConfig.atelierTitle || siteConfig.name || "画廊随想"}</span>
+                                    <span className="text-xs font-normal text-neutral-400 font-mono">({currentFeeds.size})</span>
+                                </h1>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 max-w-lg">
+                                    {siteConfig.description || "记录生活闪光与技术沉淀，让每一次漫步都有迹可循。"}
+                                </p>
+                            </div>
+                        </div>
+                        {profile?.permission && (
+                            <div className="flex items-center gap-1 rounded-full bg-white/70 dark:bg-neutral-800/70 p-1 border border-black/5 dark:border-white/10 text-xs self-start sm:self-auto backdrop-blur-md shrink-0">
+                                <Link
+                                    href="/?type=normal"
+                                    className={`rounded-full px-3 py-1 transition ${
+                                        listState === "normal"
+                                            ? "bg-theme text-white shadow-2xs font-bold"
+                                            : "text-neutral-600 dark:text-neutral-300 hover:text-theme"
+                                    }`}
+                                >
+                                    {t("article.title")}
+                                </Link>
+                                <Link
+                                    href="/?type=draft"
+                                    className={`rounded-full px-3 py-1 transition ${
+                                        listState === "draft"
+                                            ? "bg-theme text-white shadow-2xs font-bold"
+                                            : "text-neutral-600 dark:text-neutral-300 hover:text-theme"
+                                    }`}
+                                >
+                                    {t("draft_bin")}
+                                </Link>
+                                <Link
+                                    href="/?type=unlisted"
+                                    className={`rounded-full px-3 py-1 transition ${
+                                        listState === "unlisted"
+                                            ? "bg-theme text-white shadow-2xs font-bold"
+                                            : "text-neutral-600 dark:text-neutral-300 hover:text-theme"
+                                    }`}
+                                >
+                                    {t("unlisted")}
+                                </Link>
+                            </div>
                         )}
                     </div>
-
-                    {profile?.permission && (
-                        <div className="flex items-center gap-1 rounded-full bg-neutral-100 p-1 dark:bg-white/5 text-xs self-start sm:self-auto">
-                            <Link
-                                href="/?type=normal"
-                                className={`rounded-full px-3 py-1 transition ${
-                                    listState === "normal"
-                                        ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
-                                        : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
-                                }`}
-                            >
-                                {t("article.title")}
-                            </Link>
-                            <Link
-                                href="/?type=draft"
-                                className={`rounded-full px-3 py-1 transition ${
-                                    listState === "draft"
-                                        ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
-                                        : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
-                                }`}
-                            >
-                                {t("draft_bin")}
-                            </Link>
-                            <Link
-                                href="/?type=unlisted"
-                                className={`rounded-full px-3 py-1 transition ${
-                                    listState === "unlisted"
-                                        ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
-                                        : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
-                                }`}
-                            >
-                                {t("unlisted")}
-                            </Link>
+                ) : siteConfig.pageHeaderMode === "hidden" ? (
+                    profile?.permission ? (
+                        <div className="flex justify-end mb-3">
+                            <div className="inline-flex items-center gap-1 rounded-full bg-neutral-100 p-1 dark:bg-white/5 text-xs border border-black/5 dark:border-white/5 shadow-2xs">
+                                <Link
+                                    href="/?type=normal"
+                                    className={`rounded-full px-2.5 py-0.5 transition ${
+                                        listState === "normal"
+                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
+                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
+                                    }`}
+                                >
+                                    {t("article.title")}
+                                </Link>
+                                <Link
+                                    href="/?type=draft"
+                                    className={`rounded-full px-2.5 py-0.5 transition ${
+                                        listState === "draft"
+                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
+                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
+                                    }`}
+                                >
+                                    {t("draft_bin")}
+                                </Link>
+                                <Link
+                                    href="/?type=unlisted"
+                                    className={`rounded-full px-2.5 py-0.5 transition ${
+                                        listState === "unlisted"
+                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
+                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
+                                    }`}
+                                >
+                                    {t("unlisted")}
+                                </Link>
+                            </div>
                         </div>
-                    )}
-                </div>
+                    ) : null
+                ) : (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-2 border-b border-black/5 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary flex items-center gap-2">
+                                <span className={`transition-all duration-300 art-title-${siteConfig.atelierTitleStyle || "aurora_flow"}`}>
+                                    {listState === "draft" ? t("draft_bin") : listState === "unlisted" ? t("unlisted") : siteConfig.atelierTitle || "画廊随想"}
+                                </span>
+                                <span className="text-sm font-normal text-neutral-400 dark:text-neutral-500 font-mono">
+                                    ({currentFeeds.size})
+                                </span>
+                            </h1>
+                            {Boolean(profile?.permission) && streamOrder.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={resetStreamOrder}
+                                    title="恢复文章与便签为默认排布次序"
+                                    className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 shadow-2xs border border-amber-500/20 transition select-none active:scale-95"
+                                >
+                                    <i className="ri-restart-line text-xs" />
+                                    <span>恢复默认排序</span>
+                                </button>
+                            )}
+                        </div>
+
+                        {profile?.permission && (
+                            <div className="flex items-center gap-1 rounded-full bg-neutral-100 p-1 dark:bg-white/5 text-xs self-start sm:self-auto">
+                                <Link
+                                    href="/?type=normal"
+                                    className={`rounded-full px-3 py-1 transition ${
+                                        listState === "normal"
+                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
+                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
+                                    }`}
+                                >
+                                    {t("article.title")}
+                                </Link>
+                                <Link
+                                    href="/?type=draft"
+                                    className={`rounded-full px-3 py-1 transition ${
+                                        listState === "draft"
+                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
+                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
+                                    }`}
+                                >
+                                    {t("draft_bin")}
+                                </Link>
+                                <Link
+                                    href="/?type=unlisted"
+                                    className={`rounded-full px-3 py-1 transition ${
+                                        listState === "unlisted"
+                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
+                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
+                                    }`}
+                                >
+                                    {t("unlisted")}
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* 🏷️ Floating Washi Tape Charms (Scattered delicately around the whitespace) */}
                 {displayTags.length > 0 && listState === "normal" ? (

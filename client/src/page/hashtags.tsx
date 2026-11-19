@@ -76,6 +76,22 @@ export function HashtagsPage() {
   // 视图模式：书签星云 (cloud) / 高密单屏超级数据表格 (datagrid)
   const [viewMode, setViewMode] = useState<"cloud" | "datagrid">("cloud");
 
+  // 星云流展示风格：微光胶囊 (pill) / 晶透书签 (washi) / 极简排印 (minimal)
+  const [cloudStyle, setCloudStyle] = useState<"pill" | "washi" | "minimal">(() => {
+    try {
+      return (localStorage.getItem("rin_tag_cloud_style") as any) || "pill";
+    } catch {
+      return "pill";
+    }
+  });
+
+  const handleCloudStyleChange = (st: "pill" | "washi" | "minimal") => {
+    setCloudStyle(st);
+    try {
+      localStorage.setItem("rin_tag_cloud_style", st);
+    } catch {}
+  };
+
   // 排序与筛选状态
   const [sortBy, setSortBy] = useState<"latest" | "popular" | "custom">("latest");
   const [showEmptyTags, setShowEmptyTags] = useState(false);
@@ -105,15 +121,6 @@ export function HashtagsPage() {
   const [loadingFeeds, setLoadingFeeds] = useState(false);
   const [savingAssociation, setSavingAssociation] = useState(false);
   const [feedSearchQuery, setFeedSearchQuery] = useState("");
-
-  // 文章正文页附加标签栏按钮配置
-  const [feedTagActions, setFeedTagActions] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem("rin_feed_tag_actions");
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return ["prev", "next", "random"];
-  });
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -147,17 +154,6 @@ export function HashtagsPage() {
   useEffect(() => {
     void loadTags();
   }, [loadTags]);
-
-  const toggleTagAction = (action: string) => {
-    const next = feedTagActions.includes(action)
-      ? feedTagActions.filter((a) => a !== action)
-      : [...feedTagActions, action];
-    setFeedTagActions(next);
-    try {
-      localStorage.setItem("rin_feed_tag_actions", JSON.stringify(next));
-    } catch {}
-    showToast("✓ 文章页附加按钮标签配置已保存！");
-  };
 
   // 统计数据
   const unlinkedCount = useMemo(() => {
@@ -483,280 +479,311 @@ export function HashtagsPage() {
       <Waiting for={hashtags}>
         <main className="w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col justify-center items-center mb-10 ani-show">
           {/* 顶栏信息、统计与视图模式切换 */}
-          <div className="w-full text-start py-5 border-b border-black/10 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3">
+          {siteConfig.pageHeaderMode === "hidden" ? null : siteConfig.pageHeaderMode === "banner" ? (
+            <div className="w-full relative rounded-3xl overflow-hidden mb-6 p-6 sm:p-7 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ani-show">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary">标签索引</h1>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">万象归卷，随引而遇。共 {hashtags?.length || 0} 个话题 · 关联 {totalFeedsCount} 篇次</p>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                {isAdmin && (
+                  <div className="flex items-center gap-1 rounded-full bg-white/80 dark:bg-neutral-800/80 p-1 border border-black/5 dark:border-white/10 text-xs shadow-2xs backdrop-blur-md">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("cloud")}
+                      className={`rounded-full px-3 py-1 transition select-none cursor-pointer flex items-center gap-1.5 ${
+                        viewMode === "cloud"
+                          ? "bg-theme text-white shadow-2xs font-bold"
+                          : "text-neutral-600 dark:text-neutral-300 hover:text-theme"
+                      }`}
+                    >
+                      <i className="ri-bookmark-3-line" />
+                      <span>星云流</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("datagrid")}
+                      className={`rounded-full px-3 py-1 transition select-none cursor-pointer flex items-center gap-1.5 ${
+                        viewMode === "datagrid"
+                          ? "bg-theme text-white shadow-2xs font-bold"
+                          : "text-neutral-600 dark:text-neutral-300 hover:text-theme"
+                      }`}
+                    >
+                      <i className="ri-table-line" />
+                      <span>超级数据盘</span>
+                    </button>
+                  </div>
+                )}
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 dark:bg-neutral-800/80 px-3.5 py-1.5 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 backdrop-blur-md"
+                >
+                  <i className="ri-arrow-left-line" />
+                  <span>返回画廊</span>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full text-start py-4 border-b border-black/10 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
                 <h1
-                  className={`text-3xl sm:text-4xl font-extrabold tracking-tight art-title-${
+                  className={`text-2xl sm:text-3xl font-bold tracking-tight t-primary art-title-${
                     siteConfig.hashtagsTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"
                   }`}
                 >
                   {t("hashtags")}
                 </h1>
-                {isAdmin ? (
-                  <span className="px-2.5 py-0.5 rounded-full bg-theme/10 text-theme text-xs font-bold border border-theme/20 shadow-2xs">
-                    前台管理中枢
-                  </span>
-                ) : null}
-              </div>
-              <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1 flex items-center gap-2 flex-wrap font-mono">
-                <span>共 {hashtags?.length || 0} 个标签</span>
-                <span>·</span>
-                <span>总关联 {totalFeedsCount} 篇次文章</span>
-                {unlinkedCount > 0 ? (
-                  <>
-                    <span>·</span>
-                    <span className="text-amber-600 dark:text-amber-400 font-semibold">
-                      含 {unlinkedCount} 个空标签
-                    </span>
-                  </>
-                ) : null}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
-              {/* 管理员视图切换：书签星云 vs 数据表格 */}
-              {isAdmin ? (
-                <div className="flex items-center gap-1 rounded-full bg-neutral-100 p-1 dark:bg-white/5 border border-black/5 dark:border-white/5 text-xs shadow-2xs">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("cloud")}
-                    className={`rounded-full px-3 py-1.5 transition select-none cursor-pointer flex items-center gap-1.5 ${
-                      viewMode === "cloud"
-                        ? "bg-white text-theme shadow-xs dark:bg-neutral-800 dark:text-white font-bold scale-105"
-                        : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
-                    }`}
-                  >
-                    <i className="ri-bookmark-3-line" />
-                    <span>晶透书签流</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("datagrid")}
-                    className={`rounded-full px-3 py-1.5 transition select-none cursor-pointer flex items-center gap-1.5 ${
-                      viewMode === "datagrid"
-                        ? "bg-white text-theme shadow-xs dark:bg-neutral-800 dark:text-white font-bold scale-105"
-                        : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
-                    }`}
-                  >
-                    <i className="ri-table-line" />
-                    <span>超级数据盘</span>
-                  </button>
-                </div>
-              ) : (
-                /* 访客排序器 */
-                <div className="flex items-center gap-1 rounded-full bg-neutral-100 p-1 dark:bg-white/5 border border-black/5 dark:border-white/5 text-xs shadow-2xs">
-                  <button
-                    type="button"
-                    onClick={() => setSortBy("latest")}
-                    className={`rounded-full px-3.5 py-1.5 transition select-none cursor-pointer ${
-                      sortBy === "latest"
-                        ? "bg-white text-theme shadow-xs dark:bg-neutral-800 dark:text-white font-bold scale-105"
-                        : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
-                    }`}
-                  >
-                    <i className="ri-time-line mr-1" />
-                    <span>{t("sort_latest")}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSortBy("popular")}
-                    className={`rounded-full px-3.5 py-1.5 transition select-none cursor-pointer ${
-                      sortBy === "popular"
-                        ? "bg-white text-theme shadow-xs dark:bg-neutral-800 dark:text-white font-bold scale-105"
-                        : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
-                    }`}
-                  >
-                    <i className="ri-fire-line mr-1 text-rose-500" />
-                    <span>{t("sort_popular")}</span>
-                  </button>
-                </div>
-              )}
-
-              <Link
-                href="/"
-                className="group inline-flex items-center gap-2 rounded-full border border-black/10 bg-w px-4 py-2 text-xs font-bold t-primary shadow-xs hover:shadow-md hover:border-theme transition transform hover:-translate-y-0.5 active:scale-95"
-              >
-                <i className="ri-arrow-left-line text-theme transition-transform group-hover:-translate-x-1" />
-                <span>返回画廊</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* 管理员前台创作与操作中枢 */}
-          {isAdmin ? (
-            <div className="w-full mt-4 p-4 rounded-2xl bg-white/70 dark:bg-neutral-900/60 border border-theme/20 shadow-xs backdrop-blur-md flex flex-col gap-3.5 text-xs">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                {/* 快速新建标签输入栏 */}
-                <form onSubmit={handleCreateTag} className="flex items-center gap-2 flex-1 max-w-md">
-                  <div className="relative flex-1">
-                    <i className="ri-hashtag absolute left-2.5 top-2 text-neutral-400 text-xs" />
-                    <input
-                      type="text"
-                      value={newTagName}
-                      onChange={(e) => setNewTagName(e.target.value)}
-                      placeholder="创建新标签名称（回车即刻创建）..."
-                      className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.015] dark:bg-white/[0.02] pl-7 pr-3 py-1.5 text-xs t-primary outline-hidden focus:border-theme"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={creating || !newTagName.trim()}
-                    className="px-3.5 py-1.5 rounded-xl bg-theme text-white font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-40 transition cursor-pointer flex items-center gap-1 shrink-0"
-                  >
-                    {creating ? <i className="ri-loader-4-line animate-spin text-xs" /> : <i className="ri-add-line text-xs" />}
-                    <span>新建</span>
-                  </button>
-                </form>
-
-                {/* 快捷批量与清理操作 */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setShowEmptyTags((prev) => !prev)}
-                    className={`px-3 py-1.5 rounded-xl font-medium border transition cursor-pointer select-none flex items-center gap-1.5 ${
-                      showEmptyTags
-                        ? "bg-theme text-white border-theme shadow-2xs font-bold"
-                        : "bg-white dark:bg-neutral-800 border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:border-theme"
-                    }`}
-                  >
-                    <i className={showEmptyTags ? "ri-eye-line" : "ri-eye-off-line"} />
-                    <span>{showEmptyTags ? "已透出空标签" : "透出0篇空标签"}</span>
-                  </button>
-
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex items-center gap-2 flex-wrap font-mono">
+                  <span>万象归卷，随引而遇。</span>
+                  <span>·</span>
+                  <span>共 {hashtags?.length || 0} 个话题</span>
+                  <span>·</span>
+                  <span>关联 {totalFeedsCount} 篇次</span>
                   {unlinkedCount > 0 ? (
-                    <button
-                      type="button"
-                      onClick={handleCleanUnlinkedTags}
-                      disabled={isCleaning}
-                      className="px-3 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold transition shadow-2xs hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-                      title="一键彻底清理未关联任何文章的孤儿标签"
-                    >
-                      <i className={`ri-delete-bin-line ${isCleaning ? "animate-spin" : ""}`} />
-                      <span>{isCleaning ? "清理中..." : `清理空标签 (${unlinkedCount})`}</span>
-                    </button>
+                    <>
+                      <span>·</span>
+                      <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                        含 {unlinkedCount} 个空标签
+                      </span>
+                    </>
                   ) : null}
-
-                  {selectedIds.size > 0 ? (
-                    <button
-                      type="button"
-                      onClick={handleBatchDelete}
-                      className="px-3 py-1.5 rounded-xl bg-rose-600 text-white font-bold shadow-2xs hover:bg-rose-700 active:scale-95 transition cursor-pointer flex items-center gap-1"
-                    >
-                      <i className="ri-delete-bin-6-line" />
-                      <span>批量删除 ({selectedIds.size})</span>
-                    </button>
-                  ) : null}
-                </div>
+                </p>
               </div>
 
-              {/* 标签栏功能性按钮开关 */}
-              <div className="pt-2.5 border-t border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-neutral-500 dark:text-neutral-400">
-                <span className="font-medium text-[11px]">文章正文底部标签栏附加快捷按钮：</span>
-                <div className="flex items-center gap-3.5 flex-wrap text-xs">
-                  <label className="flex items-center gap-1.5 cursor-pointer select-none hover:text-theme transition">
-                    <input
-                      type="checkbox"
-                      checked={feedTagActions.includes("prev")}
-                      onChange={() => toggleTagAction("prev")}
-                      className="accent-theme cursor-pointer"
-                    />
-                    <span>上一篇</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer select-none hover:text-theme transition">
-                    <input
-                      type="checkbox"
-                      checked={feedTagActions.includes("next")}
-                      onChange={() => toggleTagAction("next")}
-                      className="accent-theme cursor-pointer"
-                    />
-                    <span>下一篇</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer select-none hover:text-theme transition">
-                    <input
-                      type="checkbox"
-                      checked={feedTagActions.includes("random")}
-                      onChange={() => toggleTagAction("random")}
-                      className="accent-theme cursor-pointer"
-                    />
-                    <span>随机换篇</span>
-                  </label>
+              <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
+                {/* 视图模式切换 */}
+                {isAdmin ? (
+                  <div className="flex items-center gap-1 rounded-full bg-neutral-100 p-1 dark:bg-white/5 border border-black/5 dark:border-white/5 text-xs shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("cloud")}
+                      className={`rounded-full px-3 py-1 transition select-none cursor-pointer flex items-center gap-1.5 ${
+                        viewMode === "cloud"
+                          ? "bg-white text-theme shadow-xs dark:bg-neutral-800 dark:text-white font-bold scale-105"
+                          : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
+                      }`}
+                    >
+                      <i className="ri-bookmark-3-line" />
+                      <span>星云流</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("datagrid")}
+                      className={`rounded-full px-3 py-1 transition select-none cursor-pointer flex items-center gap-1.5 ${
+                        viewMode === "datagrid"
+                          ? "bg-white text-theme shadow-xs dark:bg-neutral-800 dark:text-white font-bold scale-105"
+                          : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
+                      }`}
+                    >
+                      <i className="ri-table-line" />
+                      <span>超级数据盘</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 rounded-full bg-neutral-100 p-1 dark:bg-white/5 border border-black/5 dark:border-white/5 text-xs shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setSortBy("latest")}
+                      className={`rounded-full px-3 py-1 transition select-none cursor-pointer ${
+                        sortBy === "latest"
+                          ? "bg-white text-theme shadow-xs dark:bg-neutral-800 dark:text-white font-bold scale-105"
+                          : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
+                      }`}
+                    >
+                      <i className="ri-time-line mr-1" />
+                      <span>{t("sort_latest")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSortBy("popular")}
+                      className={`rounded-full px-3 py-1 transition select-none cursor-pointer ${
+                        sortBy === "popular"
+                          ? "bg-white text-theme shadow-xs dark:bg-neutral-800 dark:text-white font-bold scale-105"
+                          : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
+                      }`}
+                    >
+                      <i className="ri-fire-line mr-1 text-rose-500" />
+                      <span>{t("sort_popular")}</span>
+                    </button>
+                  </div>
+                )}
+
+                <Link
+                  href="/"
+                  className="group inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-w px-3.5 py-1.5 text-xs font-bold t-primary shadow-xs hover:border-theme transition active:scale-95"
+                >
+                  <i className="ri-arrow-left-line text-theme transition-transform group-hover:-translate-x-1" />
+                  <span>返回画廊</span>
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* 管理员前台创作与快捷操作栏 */}
+          {isAdmin ? (
+            <div className="w-full mt-4 p-4 rounded-2xl bg-white/70 dark:bg-neutral-900/60 border border-theme/20 shadow-xs backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+              {/* 快速新建标签输入栏 */}
+              <form onSubmit={handleCreateTag} className="flex items-center gap-2 flex-1 max-w-md">
+                <div className="relative flex-1">
+                  <i className="ri-hashtag absolute left-2.5 top-2 text-neutral-400 text-xs" />
+                  <input
+                    type="text"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    placeholder="创建新标签名称（回车即刻创建）..."
+                    className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.015] dark:bg-white/[0.02] pl-7 pr-3 py-1.5 text-xs t-primary outline-hidden focus:border-theme"
+                  />
                 </div>
+                <button
+                  type="submit"
+                  disabled={creating || !newTagName.trim()}
+                  className="px-3.5 py-1.5 rounded-xl bg-theme text-white font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-40 transition cursor-pointer flex items-center gap-1 shrink-0"
+                >
+                  {creating ? <i className="ri-loader-4-line animate-spin text-xs" /> : <i className="ri-add-line text-xs" />}
+                  <span>新建</span>
+                </button>
+              </form>
+
+              {/* 快捷批量与清理操作 */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setShowEmptyTags((prev) => !prev)}
+                  className={`px-3 py-1.5 rounded-xl font-medium border transition cursor-pointer select-none flex items-center gap-1.5 ${
+                    showEmptyTags
+                      ? "bg-theme text-white border-theme shadow-2xs font-bold"
+                      : "bg-white dark:bg-neutral-800 border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:border-theme"
+                  }`}
+                >
+                  <i className={showEmptyTags ? "ri-eye-line" : "ri-eye-off-line"} />
+                  <span>{showEmptyTags ? "已透出空标签" : "透出0篇空标签"}</span>
+                </button>
+
+                {unlinkedCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleCleanUnlinkedTags}
+                    disabled={isCleaning}
+                    className="px-3 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold transition shadow-2xs hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                    title="一键彻底清理未关联任何文章的孤儿标签"
+                  >
+                    <i className={`ri-delete-bin-line ${isCleaning ? "animate-spin" : ""}`} />
+                    <span>{isCleaning ? "清理中..." : `清理空标签 (${unlinkedCount})`}</span>
+                  </button>
+                ) : null}
+
+                {selectedIds.size > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleBatchDelete}
+                    className="px-3 py-1.5 rounded-xl bg-rose-600 text-white font-bold shadow-2xs hover:bg-rose-700 active:scale-95 transition cursor-pointer flex items-center gap-1"
+                  >
+                    <i className="ri-delete-bin-6-line" />
+                    <span>批量删除 ({selectedIds.size})</span>
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : null}
 
-          {/* 视图 1：晶透书签星云流 (Artistic Bookmark Cloud) */}
+          {/* 视图 1：星云流 (Artistic Cloud) */}
           {viewMode === "cloud" ? (
-            <div className="w-full flex flex-wrap items-center justify-center sm:justify-start gap-x-2.5 gap-y-3 mt-6 pb-14">
-              {sortedHashtagsForCloud?.map((hashtag, index) => {
-                const rot = TAG_ROTATIONS[index % TAG_ROTATIONS.length];
-                const feedCount = getTagFeeds(hashtag);
-                const isSingleArticle = feedCount === 1 && Boolean(hashtag.singleFeedId);
-                const isEmptyTag = feedCount === 0;
+            <div className="w-full mt-4 pb-14">
+              {/* 风格切换微托盘 */}
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-black/5 dark:border-white/5">
+                <span className="text-xs text-neutral-400 font-medium">标签呈现风格:</span>
+                <div className="inline-flex items-center gap-1 rounded-full bg-neutral-100 p-0.5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-xs shadow-2xs">
+                  {[
+                    { id: "pill" as const, label: "微光胶囊", icon: "ri-capsule-line" },
+                    { id: "washi" as const, label: "晶透书签", icon: "ri-bookmark-3-line" },
+                    { id: "minimal" as const, label: "极简排印", icon: "ri-text" },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => handleCloudStyleChange(s.id)}
+                      className={`rounded-full px-2.5 py-1 transition select-none cursor-pointer flex items-center gap-1 text-[11px] ${
+                        cloudStyle === s.id
+                          ? "bg-white text-theme shadow-2xs font-bold dark:bg-neutral-800 dark:text-white"
+                          : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
+                      }`}
+                    >
+                      <i className={s.icon} />
+                      <span>{s.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                const bookmarkStyle = isEmptyTag
-                  ? {
-                      card: "bg-neutral-100/80 text-neutral-400 border-dashed border-neutral-300 dark:bg-neutral-800/40 dark:text-neutral-500 dark:border-neutral-700/60",
-                      dot: "bg-neutral-300 dark:bg-neutral-600",
-                    }
-                  : TAG_BOOKMARK_STYLES[index % TAG_BOOKMARK_STYLES.length];
+              {/* 标签流 */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                {sortedHashtagsForCloud?.map((hashtag, index) => {
+                  const rot = TAG_ROTATIONS[index % TAG_ROTATIONS.length];
+                  const feedCount = getTagFeeds(hashtag);
+                  const isSingleArticle = feedCount === 1 && Boolean(hashtag.singleFeedId);
+                  const isEmptyTag = feedCount === 0;
 
-                const targetHref = isSingleArticle
-                  ? `/feed/${hashtag.singleFeedId}`
-                  : `/hashtag/${encodeURIComponent(hashtag.name)}`;
+                  const bookmarkStyle = isEmptyTag
+                    ? {
+                        card: "bg-neutral-100/80 text-neutral-400 border-dashed border-neutral-300 dark:bg-neutral-800/40 dark:text-neutral-500 dark:border-neutral-700/60",
+                        dot: "bg-neutral-300 dark:bg-neutral-600",
+                      }
+                    : TAG_BOOKMARK_STYLES[index % TAG_BOOKMARK_STYLES.length];
 
-                return (
-                  <div
-                    key={hashtag.id || index}
-                    className={`group relative inline-flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 rounded-md rounded-r-2xl border shadow-2xs text-xs font-medium transform ${rot} hover:rotate-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 select-none ${bookmarkStyle.card}`}
-                  >
-                    {/* 书签穿孔小圆点 */}
-                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 opacity-80 ${bookmarkStyle.dot}`} aria-hidden="true" />
+                  const targetHref = isSingleArticle
+                    ? `/feed/${hashtag.singleFeedId}`
+                    : `/hashtag/${encodeURIComponent(hashtag.name)}`;
 
+                  if (cloudStyle === "pill") {
+                    return (
+                      <Link
+                        key={hashtag.id || index}
+                        href={targetHref}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-theme/20 hover:border-theme/40 bg-white/80 dark:bg-neutral-800/80 hover:bg-theme/10 text-neutral-700 dark:text-neutral-200 hover:text-theme shadow-2xs hover:shadow-xs hover:scale-105 active:scale-95 transition-all select-none cursor-pointer group"
+                        title={isSingleArticle ? "包含 1 篇文章，点击直达正文" : `包含 ${feedCount} 篇文章`}
+                      >
+                        <span className="font-bold tracking-tight text-xs">#{hashtag.name}</span>
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-theme/10 text-theme">
+                          {feedCount}
+                        </span>
+                      </Link>
+                    );
+                  }
+
+                  if (cloudStyle === "minimal") {
+                    return (
+                      <Link
+                        key={hashtag.id || index}
+                        href={targetHref}
+                        className="inline-flex items-baseline gap-1 text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:text-theme transition-all select-none cursor-pointer group px-2.5 py-1 hover:bg-theme/5 rounded-lg"
+                        title={isSingleArticle ? "包含 1 篇文章，点击直达正文" : `包含 ${feedCount} 篇文章`}
+                      >
+                        <span className="text-theme font-bold">#</span>
+                        <span className="font-semibold">{hashtag.name}</span>
+                        <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 ml-0.5">
+                          ({feedCount})
+                        </span>
+                      </Link>
+                    );
+                  }
+
+                  return (
                     <Link
+                      key={hashtag.id || index}
                       href={targetHref}
-                      className="inline-flex items-center gap-1.5 cursor-pointer"
+                      className={`inline-flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 rounded-md rounded-r-2xl border shadow-2xs text-xs font-medium transform ${rot} hover:rotate-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 select-none cursor-pointer ${bookmarkStyle.card}`}
                       title={isSingleArticle ? "包含 1 篇文章，点击直达正文" : `包含 ${feedCount} 篇文章`}
                     >
+                      {/* 书签穿孔小圆点 */}
+                      <span className={`h-1.5 w-1.5 rounded-full shrink-0 opacity-80 ${bookmarkStyle.dot}`} aria-hidden="true" />
                       <span className="font-bold tracking-tight">#{hashtag.name}</span>
                       <span className="text-[10px] font-mono font-semibold opacity-70 px-1 py-0.2 rounded-full bg-black/5 dark:bg-white/10">
                         {feedCount}
                       </span>
                     </Link>
-
-                    {/* 管理员就地悬浮操作条 */}
-                    {isAdmin ? (
-                      <div className="flex items-center gap-0.5 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          type="button"
-                          onClick={() => handleStartEdit(hashtag)}
-                          className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/10 transition"
-                          title="重命名标签"
-                        >
-                          <i className="ri-edit-line text-xs" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenAssociation(hashtag)}
-                          className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/10 transition"
-                          title="挂载/解绑关联文章"
-                        >
-                          <i className="ri-link text-xs" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteTag(hashtag.id, hashtag.name)}
-                          className="p-1 rounded-md text-neutral-400 hover:text-rose-500 hover:bg-black/5 dark:hover:bg-white/10 transition"
-                          title={`删除标签 #${hashtag.name}`}
-                        >
-                          <i className="ri-delete-bin-line text-xs" />
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           ) : (
             /* 视图 2：高密单屏超级数据表格 (Dense DataGrid) */

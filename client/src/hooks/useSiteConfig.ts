@@ -33,6 +33,8 @@ export const SITE_CONFIG_KEYS = {
     headerNavFontSize: "header.nav_font_size",
     headerNavGap: "header.nav_gap",
     headerNavOrganicTilt: "header.nav_organic_tilt",
+    pageHeaderMode: "page.header_mode", // "clean" (极简文字) | "banner" (微光横幅) | "hidden" (彻底隐藏)
+    pageHeaderBannerUrl: "page.header_banner_url",
     storageAllowPublicUpload: "storage.allow_public_upload",
     storageGalleryShowInNav: "storage.gallery_show_in_nav",
     openlistWorkerUrl: "openlist.worker_url",
@@ -168,6 +170,8 @@ export function useSiteConfig() {
         headerNavFontSize: Number.parseInt(String(config.get(SITE_CONFIG_KEYS.headerNavFontSize) ?? 15), 10) || 15,
         headerNavGap: Number.parseInt(String(config.get(SITE_CONFIG_KEYS.headerNavGap) ?? 12), 10) || 12,
         headerNavOrganicTilt: config.get(SITE_CONFIG_KEYS.headerNavOrganicTilt) !== false && config.get(SITE_CONFIG_KEYS.headerNavOrganicTilt) !== "false",
+        pageHeaderMode: (config.get<string>(SITE_CONFIG_KEYS.pageHeaderMode) || "clean") as "clean" | "banner" | "hidden",
+        pageHeaderBannerUrl: config.get<string>(SITE_CONFIG_KEYS.pageHeaderBannerUrl) || "",
         storageAllowPublicUpload: config.getBoolean(SITE_CONFIG_KEYS.storageAllowPublicUpload),
         storageGalleryShowInNav: config.getBoolean(SITE_CONFIG_KEYS.storageGalleryShowInNav),
         openlistWorkerUrl: config.get<string>(SITE_CONFIG_KEYS.openlistWorkerUrl) || "",

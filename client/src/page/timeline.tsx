@@ -160,9 +160,9 @@ export function TimelinePage() {
     return (
         <>
             <Helmet>
-                <title>{`时光长河 · 岁月轨迹 - ${siteConfig.name}`}</title>
+                <title>{`时光长河 - ${siteConfig.name}`}</title>
                 <meta property="og:site_name" content={siteName} />
-                <meta property="og:title" content="时光长河 · 岁月轨迹" />
+                <meta property="og:title" content="时光长河" />
                 <meta property="og:image" content={siteConfig.avatar} />
                 <meta property="og:type" content="article" />
                 <meta property="og:url" content={document.URL} />
@@ -171,18 +171,23 @@ export function TimelinePage() {
             <Waiting for={!loading}>
                 <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-2 mb-16 ani-show select-none">
                     {/* Header */}
-                    <div className="mb-6 pb-3 border-b border-black/10 dark:border-white/10">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-theme/10 text-theme text-xs font-bold mb-1.5">
-                            <i className="ri-compass-3-line" />
-                            <span>岁月长河刻度</span>
+                    {siteConfig.pageHeaderMode === "hidden" ? null : siteConfig.pageHeaderMode === "banner" ? (
+                        <div className="relative w-full rounded-3xl overflow-hidden mb-6 p-6 sm:p-7 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 shadow-xs flex items-center justify-between gap-4 ani-show">
+                            <div>
+                                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary">时光长河</h1>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">流年有声，岁序常易。静候每一程漫行与落笔。</p>
+                            </div>
                         </div>
-                        <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight art-title-${siteConfig.timelineTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"}`}>
-                            时光长河 · 岁月轨迹
-                        </h1>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                            岁月不语，惟石能言。每一篇随笔都是长河里静止的浮游微光。
-                        </p>
-                    </div>
+                    ) : (
+                        <div className="mb-6 pb-3 border-b border-black/5 dark:border-white/5">
+                            <h1 className={`text-xl sm:text-2xl font-bold tracking-tight t-primary art-title-${siteConfig.timelineTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"}`}>
+                                时光长河
+                            </h1>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                                流年有声，岁序常易。静候每一程漫行与落笔。
+                            </p>
+                        </div>
+                    )}
 
                     {/* Timeline River Container */}
                     <div className="relative">

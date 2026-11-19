@@ -172,13 +172,13 @@ export function ArticleTagBar({
   nextFeed?: { id: number | string; title?: string } | null;
   className?: string;
 }) {
-  // 从本地配置获取允许附加的功能动作标签 (默认全开: prev, next, random)
+  // 从本地配置获取允许附加的功能动作标签 (默认不强塞附加按钮，保持标签纯粹与文学美感)
   const enabledActions = (() => {
     try {
       const saved = localStorage.getItem("rin_feed_tag_actions");
       if (saved) return JSON.parse(saved) as string[];
     } catch {}
-    return ["prev", "next", "random"];
+    return [];
   })();
 
   return (

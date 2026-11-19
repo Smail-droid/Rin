@@ -223,29 +223,37 @@ export function MomentsPage() {
       <Waiting for={!loading}>
         <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 mb-12 ani-show">
           {/* Moments Top Header */}
-          <div className="w-full text-start py-4 mb-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-black/10 dark:border-white/10">
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-xs font-bold mb-2">
-                  <i className="ri-chat-heart-line text-sm" />
-                  <span>随笔手账 · 生活灵感</span>
-                </div>
-                <h1
-                  className={`text-3xl sm:text-4xl font-extrabold tracking-tight art-title-${
-                    siteConfig.momentsTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"
+          {siteConfig.pageHeaderMode === "hidden" ? (
+            profile?.permission ? (
+              <div className="flex justify-end mb-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isPublisherOpen && !editingMoment) {
+                      setIsPublisherOpen(false);
+                    } else {
+                      openCreatePublisher();
+                    }
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95 ${
+                    isPublisherOpen ? "bg-neutral-700 hover:bg-neutral-800" : "bg-theme hover:bg-theme-hover"
                   }`}
                 >
-                  日常随想
-                </h1>
-                <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                  共收录 {length} 条生活随笔与即时灵感
-                </p>
+                  <i className={isPublisherOpen ? "ri-close-line" : "ri-edit-line"} />
+                  <span>{isPublisherOpen ? "收起便签" : "记录新灵感"}</span>
+                </button>
               </div>
-
+            ) : null
+          ) : siteConfig.pageHeaderMode === "banner" ? (
+            <div className="relative w-full rounded-3xl overflow-hidden mb-6 p-6 sm:p-7 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ani-show">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary">日常随想</h1>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">记录浮生闲步、片刻闪光与晨昏随笔。({length} 条记事)</p>
+              </div>
               <div className="flex items-center gap-3 self-start sm:self-auto">
                 <Link
                   href="/"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-3.5 py-1.5 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900/80 backdrop-blur-md"
                 >
                   <i className="ri-arrow-left-line" />
                   <span>返回画廊</span>
@@ -260,7 +268,7 @@ export function MomentsPage() {
                         openCreatePublisher();
                       }
                     }}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-white shadow-sm transition active:scale-95 ${
+                    className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95 ${
                       isPublisherOpen ? "bg-neutral-700 hover:bg-neutral-800" : "bg-theme hover:bg-theme-hover"
                     }`}
                   >
@@ -270,7 +278,52 @@ export function MomentsPage() {
                 )}
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="w-full text-start py-2 mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-black/5 dark:border-white/5">
+                <div>
+                  <h1
+                    className={`text-xl sm:text-2xl font-bold tracking-tight t-primary art-title-${
+                      siteConfig.momentsTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"
+                    }`}
+                  >
+                    日常随想
+                  </h1>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                    记录浮生闲步、片刻闪光与晨昏随笔。({length} 条记事)
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 self-start sm:self-auto">
+                  <Link
+                    href="/"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3.5 py-1.5 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900"
+                  >
+                    <i className="ri-arrow-left-line" />
+                    <span>返回画廊</span>
+                  </Link>
+                  {profile?.permission && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isPublisherOpen && !editingMoment) {
+                          setIsPublisherOpen(false);
+                        } else {
+                          openCreatePublisher();
+                        }
+                      }}
+                      className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95 ${
+                        isPublisherOpen ? "bg-neutral-700 hover:bg-neutral-800" : "bg-theme hover:bg-theme-hover"
+                      }`}
+                    >
+                      <i className={isPublisherOpen ? "ri-close-line" : "ri-edit-line"} />
+                      <span>{isPublisherOpen ? "收起便签" : "记录新灵感"}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="w-full">
             {/* 管理员登录状态下的轻量级手账留言板式发布面板 */}

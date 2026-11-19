@@ -22,6 +22,7 @@ export function InSituAppearanceDrawer({
   const [navFontSize, setNavFontSize] = useState<number>(siteConfig.headerNavFontSize || 15);
   const [navGap, setNavGap] = useState<number>(siteConfig.headerNavGap || 12);
   const [headerLayout, setHeaderLayout] = useState<string>(siteConfig.headerLayout || "classic");
+  const [pageHeaderMode, setPageHeaderMode] = useState<string>(siteConfig.pageHeaderMode || "clean");
   const [navOrganicTilt, setNavOrganicTilt] = useState<boolean>(siteConfig.headerNavOrganicTilt !== false);
   const [fontFamily, setFontFamily] = useState<string>("sans");
   const [cardGap, setCardGap] = useState<number>(siteConfig.galleryCardGap || 24);
@@ -36,6 +37,7 @@ export function InSituAppearanceDrawer({
       setNavFontSize(siteConfig.headerNavFontSize || 15);
       setNavGap(siteConfig.headerNavGap || 12);
       setHeaderLayout(siteConfig.headerLayout || "classic");
+      setPageHeaderMode(siteConfig.pageHeaderMode || "clean");
       setNavOrganicTilt(siteConfig.headerNavOrganicTilt !== false);
       setCardGap(siteConfig.galleryCardGap || 24);
       setTiltDegree(siteConfig.galleryTiltDegree ?? 1.8);
@@ -81,6 +83,11 @@ export function InSituAppearanceDrawer({
   const handleHeaderLayoutChange = (val: string) => {
     setHeaderLayout(val);
     schedulePersist({ "header.layout": val });
+  };
+
+  const handlePageHeaderModeChange = (val: string) => {
+    setPageHeaderMode(val);
+    schedulePersist({ "page.header_mode": val });
   };
 
   const handleNavOrganicTiltToggle = () => {
@@ -226,8 +233,8 @@ export function InSituAppearanceDrawer({
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { id: "classic", label: "居中自然", icon: "ri-align-center", desc: "纯文字融入画布" },
-                  { id: "dock", label: "胶囊托盘", icon: "ri-capsule-line", desc: "悬浮磨砂托盘" },
-                  { id: "compact", label: "靠左紧凑", icon: "ri-align-left", desc: "经典左侧排布" },
+                  { id: "dock", label: "微光三岛", icon: "ri-capsule-line", desc: "悬浮微光手账托盘" },
+                  { id: "compact", label: "轻透书签", icon: "ri-align-left", desc: "日系极简左侧排布" },
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -241,6 +248,34 @@ export function InSituAppearanceDrawer({
                   >
                     <i className={`${item.icon} text-sm mb-0.5`} />
                     <span className="text-[11px]">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 页面标题区形态 (极简 / 封面横幅 / 彻底隐藏) */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-300 block">
+                页面标题区形态
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: "clean", label: "极简文字", desc: "清爽纯文本" },
+                  { id: "banner", label: "微光横幅", desc: "手账封面图" },
+                  { id: "hidden", label: "彻底隐藏", desc: "纯粹沉浸式" },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handlePageHeaderModeChange(item.id)}
+                    className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition cursor-pointer select-none ${
+                      pageHeaderMode === item.id
+                        ? "border-theme bg-theme/10 ring-1 ring-theme/30 text-theme font-bold shadow-2xs"
+                        : "border-black/10 dark:border-white/10 bg-black/[0.01] hover:bg-black/5 text-neutral-600 dark:text-neutral-400"
+                    }`}
+                  >
+                    <span className="text-xs font-semibold">{item.label}</span>
+                    <span className="text-[9px] text-neutral-400 scale-90">{item.desc}</span>
                   </button>
                 ))}
               </div>
