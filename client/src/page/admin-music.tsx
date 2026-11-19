@@ -32,7 +32,6 @@ import {
   PlaylistDataGrid,
   GalleryView,
   ExploreView,
-  CustomTrackBar,
 } from "./admin-music/index";
 
 export function AdminMusicPage() {
@@ -98,6 +97,7 @@ export function AdminMusicPage() {
   const [newGroupName, setNewGroupName] = useState<string>("");
   const [showNewGroupInput, setShowNewGroupInput] = useState<boolean>(false);
   const [persistingTrackId, setPersistingTrackId] = useState<string | number | null>(null);
+  const [customTrackExpanded, setCustomTrackExpanded] = useState<boolean>(false);
 
   // 全局设置抽屉
   const [settingsExpanded, setSettingsExpanded] = useState<boolean>(false);
@@ -846,6 +846,65 @@ export function AdminMusicPage() {
 
               <button
                 type="button"
+                onClick={() => setCustomTrackExpanded(!customTrackExpanded)}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                  customTrackExpanded
+                    ? "border-theme bg-theme/10 text-theme"
+                    : "border-black/5 dark:border-white/5 hover:border-theme/40 text-neutral-600 dark:text-neutral-300"
+                }`}
+                title="手动录入 OpenList / CDN / 外部音频直链"
+              >
+                <div className="flex items-center gap-2">
+                  <i className="ri-link text-xs" />
+                  <span>录入直链 (OpenList/CDN)</span>
+                </div>
+                <i className={`ri-arrow-${customTrackExpanded ? "up" : "down"}-s-line text-xs`} />
+              </button>
+
+              {customTrackExpanded && (
+                <div className="p-3 rounded-2xl border border-dashed border-theme/40 bg-theme/[0.025] space-y-2 text-xs ani-show">
+                  <span className="font-bold text-[11px] text-theme block flex items-center gap-1">
+                    <i className="ri-music-2-line" />
+                    <span>添加外部音频直链</span>
+                  </span>
+                  <input
+                    type="text"
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder="歌曲名称 (必填)"
+                    className="w-full rounded-xl border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-800 px-2.5 py-1.5 text-xs outline-none focus:border-theme"
+                  />
+                  <input
+                    type="text"
+                    value={customArtist}
+                    onChange={(e) => setCustomArtist(e.target.value)}
+                    placeholder="歌手 (选填)"
+                    className="w-full rounded-xl border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-800 px-2.5 py-1.5 text-xs outline-none focus:border-theme"
+                  />
+                  <input
+                    type="url"
+                    value={customUrl}
+                    onChange={(e) => setCustomUrl(e.target.value)}
+                    placeholder="音频直链 URL (必填)"
+                    className="w-full rounded-xl border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-800 px-2.5 py-1.5 font-mono text-[11px] outline-none focus:border-theme"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomTrack}
+                    className={`w-full py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                      customStatus === "done"
+                        ? "bg-emerald-500 text-white"
+                        : "bg-theme text-white hover:bg-theme-hover shadow-2xs"
+                    }`}
+                  >
+                    <i className={customStatus === "done" ? "ri-check-line" : "ri-add-line"} />
+                    <span>{customStatus === "done" ? "已收录进歌单" : "加入待播歌单"}</span>
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="button"
                 onClick={() => setSettingsExpanded(!settingsExpanded)}
                 className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold border border-black/5 dark:border-white/5 hover:border-theme/40 text-neutral-600 dark:text-neutral-300 transition cursor-pointer"
               >
@@ -881,8 +940,10 @@ export function AdminMusicPage() {
 
         {/* 右侧：主体音乐画布 (Cover Art Grid / Queue Table / Explore Stream) */}
         <main className="flex-1 min-w-0 w-full space-y-4">
+          {/* 🌟 1. 顶部全功能微光音乐播放底座 (置顶常显，进入即见，绝不下滚) */}
+          <BottomPlayerDock mode="top" />
 
-      {/* 2. 电台参数折叠设置抽屉 */}
+          {/* 2. 电台参数折叠设置抽屉 */}
       <MusicSettingsDrawer
         expanded={settingsExpanded}
         onClose={() => setSettingsExpanded(false)}
@@ -1017,17 +1078,6 @@ export function AdminMusicPage() {
             onPause={() => player.pause()}
             onDeleteTrack={handleDeleteTrack}
           />
-
-          <CustomTrackBar
-            customName={customName}
-            setCustomName={setCustomName}
-            customArtist={customArtist}
-            setCustomArtist={setCustomArtist}
-            customUrl={customUrl}
-            setCustomUrl={setCustomUrl}
-            onAddTrack={handleAddCustomTrack}
-            customStatus={customStatus}
-          />
         </div>
       )}
 
@@ -1081,9 +1131,6 @@ export function AdminMusicPage() {
           title="挑选专辑封面图片"
         />
       )}
-
-      {/* 6. MHub & Navidrome 风格：底部常驻一体化播放底座 */}
-      <BottomPlayerDock />
     </div>
   );
 }
