@@ -126,21 +126,21 @@ export function FriendService(): Hono {
             const domain = parsed.hostname;
             const origin = parsed.origin;
 
-            const defaultFavicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+            const defaultFavicon = `https://icon.horse/icon/${domain}`;
 
             let siteTitle = domain;
             let siteDesc = "";
-            let siteAvatar = defaultFavicon;
+            let siteAvatar = `${origin}/favicon.ico`;
             let rawHtmlText = "";
 
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 4000); // 4秒超时熔断
+                const timeoutId = setTimeout(() => controller.abort(), 6500); // 6.5秒充裕探测
 
                 const resp = await fetch(rawUrl, {
                     headers: {
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                        "Accept": "text/html,application/xhtml+xml",
+                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                     },
                     signal: controller.signal,
                 });
@@ -164,18 +164,39 @@ export function FriendService(): Hono {
                         siteDesc = descMatch[1].trim().slice(0, 100);
                     }
 
-                    // 3. 匹配 icon
-                    const iconMatch = html.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i);
-                    if (iconMatch && iconMatch[1]) {
-                        const href = iconMatch[1].trim();
-                        if (href.startsWith("http")) siteAvatar = href;
-                        else if (href.startsWith("//")) siteAvatar = `https:${href}`;
-                        else if (href.startsWith("/")) siteAvatar = `${origin}${href}`;
-                        else siteAvatar = `${origin}/${href}`;
+                    // 3. 增强匹配 icon: 属性顺序无关，全面支持 rel 在前或 href 在前，兼容 apple-touch-icon
+                    let foundIconHref: string | null = null;
+                    const linkRegex = /<link\b[^>]*>/gi;
+                    let m: RegExpExecArray | null;
+                    while ((m = linkRegex.exec(html)) !== null) {
+                        const linkTag = m[0];
+                        const relMatch = linkTag.match(/\brel=["']([^"']+)["']/i);
+                        const hrefMatch = linkTag.match(/\bhref=["']([^"']+)["']/i);
+                        if (relMatch && hrefMatch) {
+                            const rel = relMatch[1].toLowerCase();
+                            if (rel.includes("icon")) {
+                                foundIconHref = hrefMatch[1].trim();
+                                if (rel === "icon" || rel.includes("shortcut")) break;
+                            }
+                        }
+                    }
+
+                    if (foundIconHref) {
+                        try {
+                            siteAvatar = new URL(foundIconHref, rawUrl).toString();
+                        } catch {
+                            siteAvatar = foundIconHref.startsWith("http")
+                                ? foundIconHref
+                                : `${origin}/${foundIconHref.replace(/^\//, "")}`;
+                        }
+                    } else {
+                        // 未声明 link rel=icon 时默认使用根路径 favicon.ico
+                        siteAvatar = `${origin}/favicon.ico`;
                     }
                 }
             } catch {
                 // 网络或超时异常使用保底
+                siteAvatar = defaultFavicon;
             }
 
             // 智能分类与 AI 提炼

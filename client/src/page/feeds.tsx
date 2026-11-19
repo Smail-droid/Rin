@@ -92,6 +92,7 @@ function AtelierPhotoCard({
     onToggleTop,
     onEditCover,
     onOpenAccessModal,
+    dragDropTimestampRef,
 }: {
     feed: any;
     index: number;
@@ -108,6 +109,7 @@ function AtelierPhotoCard({
     onToggleTop?: (feedId: number, top: number) => void;
     onEditCover?: (feed: any) => void;
     onOpenAccessModal?: (feed: any) => void;
+    dragDropTimestampRef?: React.RefObject<number>;
 }) {
     const { t } = useTranslation();
     const siteConfig = useSiteConfig();
@@ -115,6 +117,13 @@ function AtelierPhotoCard({
     const tiltStyle = getTiltStyle(index, tiltOffset, siteConfig.galleryTiltDegree);
     const tapeColor = TAPE_COLORS[(index + tiltOffset) % TAPE_COLORS.length];
     const readingTime = feed.readingTime || Math.max(1, Math.ceil((feed.summary?.length || 100) / 100));
+
+    const handleCardLinkClick = (e: React.MouseEvent) => {
+        if (dragDropTimestampRef?.current && Date.now() - dragDropTimestampRef.current < 450) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    };
 
     const hasImage = Boolean(feed.avatar) && !imageError;
     const variant = siteConfig.feedCardVariant || "default";
@@ -128,6 +137,7 @@ function AtelierPhotoCard({
             <div className="relative group/card w-full">
                 <Link
                     href={`/feed/${feed.id}`}
+                    onClick={handleCardLinkClick}
                     draggable={draggable && canManage}
                     onDragStart={onDragStart}
                     onDragOver={onDragOver}
@@ -248,6 +258,7 @@ function AtelierPhotoCard({
             <div className="relative group/card break-inside-avoid w-full mb-5">
                 <Link
                     href={`/feed/${feed.id}`}
+                    onClick={handleCardLinkClick}
                     draggable={draggable && canManage}
                     onDragStart={onDragStart}
                     onDragOver={onDragOver}
@@ -376,6 +387,7 @@ function AtelierPhotoCard({
             <article className="relative group/card w-full">
                 <Link
                     href={`/feed/${feed.id}`}
+                    onClick={handleCardLinkClick}
                     draggable={draggable && canManage}
                     onDragStart={onDragStart}
                     onDragOver={onDragOver}
@@ -472,6 +484,7 @@ function AtelierPhotoCard({
     return (
         <Link
             href={`/feed/${feed.id}`}
+            onClick={handleCardLinkClick}
             draggable={draggable && canManage}
             onDragStart={onDragStart}
             onDragOver={onDragOver}
@@ -745,38 +758,85 @@ function StickyNoteItem({
 
         return (
             <div
-                className={`group relative flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border transition-all duration-300 text-xs ${
+                className={`group relative flex items-center justify-between gap-3 px-4 py-3 my-2.5 mx-1 sm:mx-2 rounded-2xl border-2 border-dashed transition-all duration-300 text-xs ${
                     isEditorial
-                        ? "py-3 pl-4 border-l-3 border-theme/70 bg-gradient-to-r from-theme/[0.04] via-theme/[0.015] to-transparent hover:from-theme/[0.07] dark:from-theme/[0.07] dark:to-transparent pr-3 my-2 rounded-r-xl border-y-transparent border-r-transparent"
-                        : "border-neutral-200/80 dark:border-white/10 bg-white/70 dark:bg-neutral-900/60 backdrop-blur-md hover:border-theme/40 hover:bg-theme/[0.03] hover:shadow-2xs"
+                        ? "border-l-3 border-l-theme border-y-transparent border-r-transparent bg-gradient-to-r from-theme/[0.04] via-theme/[0.015] to-transparent hover:from-theme/[0.07] dark:from-theme/[0.07] dark:to-transparent pr-3 rounded-r-2xl"
+                        : "border-theme/35 dark:border-theme/30 bg-gradient-to-r from-theme/[0.035] via-theme/[0.015] to-transparent hover:border-theme/60 hover:bg-theme/[0.06] backdrop-blur-md shadow-2xs"
                 } ${dragStyleClasses}`}
                 {...dragHandlers}
             >
                 <Link href={meta.url} className="flex items-center gap-3 min-w-0 flex-1">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-theme/10 text-theme text-sm shrink-0 shadow-2xs ring-1 ring-theme/20 group-hover:scale-105 transition-transform">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-theme/10 text-theme text-sm shrink-0 shadow-2xs ring-1 ring-theme/20 group-hover:scale-105 transition-transform">
                         <VectorIcon name={meta.icon} fallback="ri-bookmark-3-line" />
                     </span>
-                    <span className="font-bold text-neutral-800 dark:text-neutral-100 group-hover:text-theme transition-colors shrink-0">{meta.title}</span>
-                    <span className="truncate text-neutral-500 dark:text-neutral-400 text-[11px]">{meta.desc}</span>
+                    <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-neutral-800 dark:text-neutral-100 group-hover:text-theme transition-colors shrink-0">
+                                {meta.title}
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-theme/10 text-theme font-medium scale-90 origin-left">
+                                便签
+                            </span>
+                        </div>
+                        <span className="truncate text-neutral-500 dark:text-neutral-400 text-[11px] mt-0.5">
+                            {meta.desc}
+                        </span>
+                    </div>
                 </Link>
+
                 <div className="flex items-center gap-2 shrink-0">
                     <Link href={meta.url} className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-theme hover:underline group-hover:translate-x-0.5 transition-transform">
                         <span>进入</span>
                         <i className="ri-arrow-right-s-line text-xs" />
                     </Link>
+
                     {canManage ? (
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onEditNote?.(type);
-                            }}
-                            className="text-neutral-400 hover:text-theme hover:bg-theme/10 rounded-md p-1 transition cursor-pointer"
-                            title="就地配置此便签"
-                        >
-                            <i className="ri-settings-4-line text-xs" />
-                        </button>
+                        <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onMoveStep?.(type, "prev");
+                                }}
+                                title="向前移动一个槽位"
+                                className="h-6 w-6 rounded-md flex items-center justify-center text-neutral-500 hover:text-theme hover:bg-theme/10 transition cursor-pointer"
+                            >
+                                <i className="ri-arrow-left-s-line text-xs" />
+                            </button>
+                            <div
+                                title="按住拖放重排次序"
+                                draggable
+                                onDragStart={onDragStart}
+                                className="h-6 w-6 rounded-md flex items-center justify-center text-neutral-500 hover:text-theme hover:bg-theme/10 cursor-grab active:cursor-grabbing transition cursor-pointer select-none"
+                            >
+                                <i className="ri-drag-move-2-line text-xs" />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onMoveStep?.(type, "next");
+                                }}
+                                title="向后移动一个槽位"
+                                className="h-6 w-6 rounded-md flex items-center justify-center text-neutral-500 hover:text-theme hover:bg-theme/10 transition cursor-pointer"
+                            >
+                                <i className="ri-arrow-right-s-line text-xs" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onEditNote?.(type);
+                                }}
+                                className="h-6 w-6 rounded-md flex items-center justify-center text-neutral-400 hover:text-theme hover:bg-theme/10 transition cursor-pointer"
+                                title="就地配置此便签"
+                            >
+                                <i className="ri-settings-4-line text-xs" />
+                            </button>
+                        </div>
                     ) : null}
                 </div>
             </div>
@@ -1436,6 +1496,7 @@ export function FeedsPage() {
     // 画廊首页全流（文章 + 便签）自由混排拖拽与持久化排序
     const [draggedStreamItem, setDraggedStreamItem] = useState<string | null>(null);
     const [dragOverStreamItem, setDragOverStreamItem] = useState<string | null>(null);
+    const dragEndTimestampRef = useRef<number>(0);
     const [streamOrder, setStreamOrder] = useState<string[]>(() => {
         try {
             const saved = localStorage.getItem("rin_gallery_stream_order");
@@ -1480,6 +1541,7 @@ export function FeedsPage() {
                 localStorage.setItem("rin_gallery_stream_order", JSON.stringify(nextOrder));
             } catch {}
         }
+        dragEndTimestampRef.current = Date.now();
         setDraggedStreamItem(null);
         setDragOverStreamItem(null);
     };
@@ -2223,6 +2285,7 @@ export function FeedsPage() {
                                         onEditCover={openCoverModal}
                                         onMoveStep={(k, dir) => moveNoteStep(k, dir, currentFirstPageKeys)}
                                         onOpenAccessModal={(f) => setAccessModalFeed({ id: f.id, title: f.title })}
+                                        dragDropTimestampRef={dragEndTimestampRef}
                                     />
                                 );
                             }
@@ -2484,7 +2547,7 @@ export function FeedsPage() {
                             </div>
                         )}
 
-                        {/* 在全流中的排列位置（支持跨文章自由位移） */}
+                        {/* 在全流中的排列位置（支持跨文章自由位移与直接对调） */}
                         <div className="p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
                             <div className="min-w-0">
                                 <span className="font-bold text-xs t-primary block">在画廊相纸流中的槽位次序</span>
@@ -2526,6 +2589,46 @@ export function FeedsPage() {
                                     <i className="ri-arrow-right-s-line" />
                                 </button>
                             </div>
+                        </div>
+
+                        {/* 一键直接与任意指定文章互换位置 */}
+                        <div className="p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] space-y-1.5">
+                            <label className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300 flex items-center justify-between">
+                                <span>一键与指定文章对调位置</span>
+                                <span className="text-[10px] text-neutral-400">彻底告别单步微移</span>
+                            </label>
+                            <select
+                                onChange={(e) => {
+                                    const targetFeedKey = e.target.value;
+                                    if (!targetFeedKey) return;
+                                    const noteKey = editingNoteType === "deck" ? "deck" : `note:${editingNoteType}`;
+                                    const allKeys = interleavedItems.map(getItemKey);
+                                    const fromIdx = allKeys.indexOf(noteKey);
+                                    const toIdx = allKeys.indexOf(targetFeedKey);
+                                    if (fromIdx !== -1 && toIdx !== -1) {
+                                        const next = [...allKeys];
+                                        next[fromIdx] = targetFeedKey;
+                                        next[toIdx] = noteKey;
+                                        setStreamOrder(next);
+                                        try {
+                                            localStorage.setItem("rin_gallery_stream_order", JSON.stringify(next));
+                                        } catch {}
+                                        showAlert(`✓ 已成功将此便签与目标文章对调位置！`);
+                                    }
+                                    e.target.value = "";
+                                }}
+                                className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-neutral-800/80 px-2.5 py-1.5 text-xs outline-none focus:border-theme"
+                                defaultValue=""
+                            >
+                                <option value="" disabled>选择要对调位置的目标文章...</option>
+                                {interleavedItems
+                                    .filter((item) => item.type === "photo")
+                                    .map((item, idx) => (
+                                        <option key={item.data.id} value={`feed:${item.data.id}`}>
+                                            第 {idx + 1} 项: {item.data.title || `文章 #${item.data.id}`}
+                                        </option>
+                                    ))}
+                            </select>
                         </div>
 
                         {/* 矢量图标定制（杜绝粗糙 Emoji，采用微光线性质感） */}

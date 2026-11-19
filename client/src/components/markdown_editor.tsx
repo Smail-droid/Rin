@@ -361,27 +361,44 @@ async function insertImage(
     replaceSelection(selection, `$$\n${selected}\n$$\n`);
   };
 
-  const markdownActions = [
+  const [showMoreTools, setShowMoreTools] = useState(false);
+  const moreToolsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showMoreTools) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreToolsRef.current && !moreToolsRef.current.contains(e.target as Node)) {
+        setShowMoreTools(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showMoreTools]);
+
+  const primaryActions = [
     { key: "heading", icon: "ri-heading", label: t("markdown_editor.toolbar.heading"), onClick: formatHeading },
     { key: "bold", icon: "ri-bold", label: t("markdown_editor.toolbar.bold"), onClick: () => wrapSelection("**", "**", t("markdown_editor.placeholder.bold")) },
     { key: "italic", icon: "ri-italic", label: t("markdown_editor.toolbar.italic"), onClick: () => wrapSelection("*", "*", t("markdown_editor.placeholder.italic")) },
     { key: "link", icon: "ri-link", label: t("markdown_editor.toolbar.link"), onClick: insertLink },
-    { key: "download", icon: "ri-download-2-line", label: "插入下载链接", onClick: insertDownloadLink },
     { key: "image", icon: "ri-image-line", label: t("markdown_editor.toolbar.image"), onClick: insertMarkdownImage },
+    { key: "code-block", icon: "ri-code-box-line", label: t("markdown_editor.toolbar.code_block"), onClick: insertCodeBlock },
     { key: "quote", icon: "ri-double-quotes-l", label: t("markdown_editor.toolbar.quote"), onClick: formatQuote },
     { key: "unordered-list", icon: "ri-list-unordered", label: t("markdown_editor.toolbar.unordered_list"), onClick: formatUnorderedList },
-    { key: "ordered-list", icon: "ri-list-ordered", label: t("markdown_editor.toolbar.ordered_list"), onClick: formatOrderedList },
-    { key: "task-list", icon: "ri-checkbox-line", label: "待办任务清单 (- [ ] )", onClick: insertTaskList },
-    { key: "tip", icon: "ri-lightbulb-line", label: "提示块 (> [!TIP])", onClick: () => insertAlert("TIP") },
-    { key: "note", icon: "ri-information-line", label: "说明块 (> [!NOTE])", onClick: () => insertAlert("NOTE") },
-    { key: "warning", icon: "ri-alert-line", label: "警告块 (> [!WARNING])", onClick: () => insertAlert("WARNING") },
-    { key: "inline-code", icon: "ri-code-s-slash-line", label: t("markdown_editor.toolbar.inline_code"), onClick: () => wrapSelection("`", "`", t("markdown_editor.placeholder.code")) },
-    { key: "code-block", icon: "ri-code-box-line", label: t("markdown_editor.toolbar.code_block"), onClick: insertCodeBlock },
-    { key: "bash-code", icon: "ri-terminal-box-line", label: "终端指令代码块 (```bash)", onClick: insertBashBlock },
     { key: "table", icon: "ri-table-line", label: "插入表格", onClick: insertTable },
+  ];
+
+  const secondaryActions = [
+    { key: "ordered-list", icon: "ri-list-ordered", label: t("markdown_editor.toolbar.ordered_list"), onClick: formatOrderedList },
+    { key: "task-list", icon: "ri-checkbox-line", label: "待办清单 (- [ ] )", onClick: insertTaskList },
+    { key: "inline-code", icon: "ri-code-s-slash-line", label: t("markdown_editor.toolbar.inline_code"), onClick: () => wrapSelection("`", "`", t("markdown_editor.placeholder.code")) },
+    { key: "bash-code", icon: "ri-terminal-box-line", label: "终端代码块 (```bash)", onClick: insertBashBlock },
+    { key: "tip", icon: "ri-lightbulb-line", label: "提示框 (> [!TIP])", onClick: () => insertAlert("TIP") },
+    { key: "note", icon: "ri-information-line", label: "说明框 (> [!NOTE])", onClick: () => insertAlert("NOTE") },
+    { key: "warning", icon: "ri-alert-line", label: "警告框 (> [!WARNING])", onClick: () => insertAlert("WARNING") },
     { key: "details", icon: "ri-folder-open-line", label: "折叠详情 (<details>)", onClick: insertDetails },
     { key: "math", icon: "ri-functions", label: "数学公式 ($$)", onClick: insertMathFormula },
     { key: "horizontal-rule", icon: "ri-separator", label: t("markdown_editor.toolbar.horizontal_rule"), onClick: insertHorizontalRule },
+    { key: "download", icon: "ri-download-2-line", label: "下载链接语法", onClick: insertDownloadLink },
   ];
 
   const handlePaste = async (event: React.ClipboardEvent<HTMLDivElement>) => {
@@ -556,11 +573,11 @@ async function insertImage(
         </div>
         <div className="flex-grow" />
         <div
-          className="flex min-w-0 flex-wrap items-center gap-1"
+          className="flex min-w-0 items-center gap-1"
           role="toolbar"
           aria-label={t("markdown_editor.toolbar.label")}
         >
-          {markdownActions.map((action) => (
+          {primaryActions.map((action) => (
             <MarkdownToolButton
               key={action.key}
               label={action.label}
@@ -568,6 +585,43 @@ async function insertImage(
               onClick={action.onClick}
             />
           ))}
+
+          {/* 更多高级排版工具下拉菜单（彻底杜绝工具栏折叠为两排） */}
+          <div className="relative" ref={moreToolsRef}>
+            <button
+              type="button"
+              onClick={() => setShowMoreTools((p) => !p)}
+              className={`flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium transition cursor-pointer ${
+                showMoreTools
+                  ? "bg-theme text-white shadow-2xs"
+                  : "text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/10"
+              }`}
+              title="更多格式工具 (公式/提示块/折叠/终端等)"
+            >
+              <i className="ri-more-fill text-sm" />
+              <span className="hidden sm:inline text-[11px]">更多</span>
+            </button>
+
+            {showMoreTools && (
+              <div className="absolute right-0 top-full mt-1.5 z-50 w-52 rounded-2xl border border-black/10 dark:border-white/10 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl p-1.5 shadow-2xl grid grid-cols-1 gap-0.5 ani-show text-xs">
+                {secondaryActions.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => {
+                      item.onClick();
+                      setShowMoreTools(false);
+                    }}
+                    className="flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-xl text-left text-neutral-700 dark:text-neutral-200 hover:bg-theme/10 hover:text-theme transition cursor-pointer"
+                  >
+                    <i className={`${item.icon} text-sm text-theme/80 shrink-0`} />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <span className="mx-1 hidden h-6 w-px bg-black/10 dark:bg-white/10 sm:block" aria-hidden="true" />
           <UploadImageButton />
         </div>

@@ -72,16 +72,40 @@ function buildBlobUrl(storageKey: string, baseUrl?: string) {
   return `${trimTrailingSlash(baseUrl)}${path}`;
 }
 
-function createStorageResponse(object: R2ObjectBody | R2Object, body?: BodyInit | null) {
+function parseRange(rangeHeader: string | null | undefined, totalSize: number): { offset: number; length: number } | null {
+  if (!rangeHeader || !rangeHeader.startsWith("bytes=")) return null;
+  const parts = rangeHeader.replace("bytes=", "").split("-");
+  const startStr = parts[0]?.trim();
+  const endStr = parts[1]?.trim();
+
+  let start = startStr ? parseInt(startStr, 10) : NaN;
+  let end = endStr ? parseInt(endStr, 10) : NaN;
+
+  if (isNaN(start) && isNaN(end)) return null;
+
+  if (isNaN(start)) {
+    const suffix = end;
+    start = Math.max(0, totalSize - suffix);
+    end = totalSize - 1;
+  } else if (isNaN(end)) {
+    end = totalSize - 1;
+  }
+
+  if (start > end || start >= totalSize || start < 0) return null;
+  end = Math.min(end, totalSize - 1);
+  return { offset: start, length: end - start + 1 };
+}
+
+function createStorageResponse(
+  object: R2ObjectBody | R2Object,
+  body?: BodyInit | null,
+  range?: { offset: number; length: number } | null
+) {
   const headers = new Headers();
   object.writeHttpMetadata(headers);
 
   if (object.httpEtag) {
     headers.set("ETag", object.httpEtag);
-  }
-
-  if (!headers.has("Content-Length")) {
-    headers.set("Content-Length", String(object.size));
   }
 
   if (!headers.has("Last-Modified")) {
@@ -92,6 +116,7 @@ function createStorageResponse(object: R2ObjectBody | R2Object, body?: BodyInit 
     headers.set("Cache-Control", "public, max-age=31536000, immutable");
   }
 
+  headers.set("Accept-Ranges", "bytes");
   headers.set("Access-Control-Allow-Origin", "*");
   headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
   headers.set("Access-Control-Allow-Headers", "Range, Content-Type, Accept, Authorization");
@@ -99,14 +124,46 @@ function createStorageResponse(object: R2ObjectBody | R2Object, body?: BodyInit 
   headers.set("Access-Control-Allow-Private-Network", "true");
   headers.set("X-Content-Type-Options", "nosniff");
 
+  if (range) {
+    const end = range.offset + range.length - 1;
+    headers.set("Content-Range", `bytes ${range.offset}-${end}/${object.size}`);
+    headers.set("Content-Length", String(range.length));
+    return new Response(body ?? null, {
+      status: 206,
+      headers,
+    });
+  }
+
+  if (!headers.has("Content-Length")) {
+    headers.set("Content-Length", String(object.size));
+  }
+
   return new Response(body ?? null, {
     status: 200,
     headers,
   });
 }
 
-export async function getStorageObject(env: Env, storageKey: string): Promise<Response | null> {
+export async function getStorageObject(
+  env: Env,
+  storageKey: string,
+  rangeHeader?: string | null
+): Promise<Response | null> {
   if (env.R2_BUCKET) {
+    if (rangeHeader) {
+      const headObj = await env.R2_BUCKET.head(storageKey);
+      if (!headObj) return null;
+
+      const parsedRange = parseRange(rangeHeader, headObj.size);
+      if (parsedRange) {
+        const rangedObj = await env.R2_BUCKET.get(storageKey, {
+          range: { offset: parsedRange.offset, length: parsedRange.length },
+        });
+        if (!rangedObj) return null;
+        return createStorageResponse(rangedObj, rangedObj.body, parsedRange);
+      }
+    }
+
     const object = await env.R2_BUCKET.get(storageKey);
     if (!object) {
       return null;
@@ -115,15 +172,20 @@ export async function getStorageObject(env: Env, storageKey: string): Promise<Re
   }
 
   const client = createS3Client(env);
+  const s3Headers: Record<string, string> = {};
+  if (rangeHeader) {
+    s3Headers["Range"] = rangeHeader;
+  }
   const response = await client.fetch(buildS3ObjectUrl(env, storageKey), {
     method: "GET",
+    headers: s3Headers,
   });
 
   if (response.status === 404) {
     return null;
   }
 
-  if (!response.ok) {
+  if (!response.ok && response.status !== 206) {
     throw new Error(`Failed to fetch storage object: ${response.status} ${response.statusText}`);
   }
 

@@ -1412,6 +1412,23 @@ function useFriendNsRefresh(
             if (!finalNsDetail && uid) {
                 finalNsDetail = await fetchClientSideNsDetail(uid);
             }
+            if (!finalNsDetail && typeof window !== "undefined") {
+                const pasted = window.prompt("NodeSeek 接口受 Cloudflare 人机防护拦截，未能自动嗅探。\n请直接粘贴该坛友在 NodeSeek 个人空间复制的信息文本（将自动解析等级、鸡腿与天数）：");
+                if (pasted?.trim()) {
+                    const parsedNs = parseNodeSeekPastedText(pasted);
+                    if (parsedNs.rank !== undefined || parsedNs.coin !== undefined || parsedNs.days !== undefined) {
+                        finalNsDetail = {
+                            member_name: parsedNs.name || displayName || friend.name,
+                            rank: parsedNs.rank ?? 1,
+                            coin: parsedNs.coin ?? 0,
+                            days: parsedNs.days ?? 1,
+                            posts: parsedNs.posts ?? 0,
+                            comments: parsedNs.comments ?? 0,
+                            bio: parsedNs.bio ?? "",
+                        };
+                    }
+                }
+            }
 
             // 头像处理：优先使用服务端转存好的 R2 链接 (带时间戳刷新防缓存)；如果服务端没有成功写 R2，则使用官方直链回退
             const serverAvatarUrl = serverData?.avatarUrl || "";
@@ -1498,7 +1515,43 @@ function FriendCard({
     const tiltClass = index % 2 === 0 ? "hover:rotate-[1.6deg]" : "hover:rotate-[-1.8deg]";
 
     return (
-        <div className={`group relative p-4 rounded-3xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/5 backdrop-blur-md shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between gap-3 font-sans ${tiltClass}`}>
+        <div className={`group relative p-3.5 rounded-2xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/5 backdrop-blur-md shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col gap-2.5 font-sans ${tiltClass}`}>
+            {/* 顶角悬浮管理微胶囊（对标图床卡片：缩进卡片内，完全不增加行高） */}
+            {profile?.permission && (
+                <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 dark:bg-neutral-800/90 backdrop-blur-xs p-0.5 rounded-xl border border-black/10 dark:border-white/10 shadow-xs"
+                >
+                    {uid && (
+                        <button
+                            type="button"
+                            onClick={handleQuickRefreshNs}
+                            disabled={isRefreshingNs}
+                            className="h-6 w-6 rounded-lg flex items-center justify-center text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 transition cursor-pointer"
+                            title={refreshNsDone ? "更正成功！" : "更正/同步坛友资产"}
+                        >
+                            <i className={`ri-refresh-line text-xs ${isRefreshingNs ? "animate-spin" : ""}`} />
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={onEdit}
+                        className="h-6 w-6 rounded-lg flex items-center justify-center text-neutral-500 hover:text-theme hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
+                        title="编辑友链"
+                    >
+                        <i className="ri-edit-line text-xs" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onDelete}
+                        className="h-6 w-6 rounded-lg flex items-center justify-center text-neutral-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                        title="删除友链"
+                    >
+                        <i className="ri-delete-bin-line text-xs" />
+                    </button>
+                </div>
+            )}
+
             {/* 顶部标签栏与分类 */}
             <div className="flex items-center justify-between text-[11px]">
                 {profile?.permission && categories && onMoveCategory ? (
@@ -1517,7 +1570,7 @@ function FriendCard({
                         {category}
                     </span>
                 )}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 pr-14 sm:pr-0">
                     {profile?.permission && onReorder && (
                         <div className="flex items-center gap-0.5 font-mono text-[11px] text-neutral-400">
                             <span>#</span>
@@ -1535,15 +1588,33 @@ function FriendCard({
                                     const val = parseInt(e.currentTarget.value, 10);
                                     if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
                                 }}
-                                className="w-10 text-center rounded bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme focus:border-theme outline-none text-[10px] font-mono font-bold py-0.2"
+                                className="w-9 text-center rounded bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme focus:border-theme outline-none text-[10px] font-mono font-bold py-0.2"
                                 title="输入排序序号敲回车即时排序 (数字越小越靠前，0 为默认)"
                             />
                         </div>
                     )}
                     {friend.accepted === 0 && (
-                        <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-600 font-bold">
-                            待审核
-                        </span>
+                        <div className="flex items-center gap-1">
+                            <span className="px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 font-bold text-[10px]">
+                                待审核
+                            </span>
+                            {profile?.permission && (
+                                <>
+                                    <button
+                                        onClick={onApprove}
+                                        className="px-1.5 py-0.5 rounded-md bg-emerald-500 text-white font-bold text-[10px] hover:bg-emerald-600 transition"
+                                    >
+                                        通过
+                                    </button>
+                                    <button
+                                        onClick={onReject}
+                                        className="px-1.5 py-0.5 rounded-md bg-rose-500 text-white font-bold text-[10px] hover:bg-rose-600 transition"
+                                    >
+                                        拒绝
+                                    </button>
+                                </>
+                            )}
+                        </div>
                     )}
                 </div>
             </div>
@@ -1589,7 +1660,7 @@ function FriendCard({
             </div>
 
             {/* 简介说明 */}
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2 min-h-[32px]">
+            <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2">
                 {cleanDesc || "个人技术生活随想"}
             </p>
 
@@ -1623,54 +1694,6 @@ function FriendCard({
                             🕒 {nsData.days}
                         </span>
                     )}
-                </div>
-            )}
-
-            {/* 管理员操作栏 */}
-            {profile?.permission && (
-                <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-xs">
-                    {friend.accepted === 0 ? (
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={onApprove}
-                                className="px-2 py-0.5 rounded-md bg-emerald-500 text-white font-bold text-[11px]"
-                            >
-                                通过
-                            </button>
-                            <button
-                                onClick={onReject}
-                                className="px-2 py-0.5 rounded-md bg-amber-500 text-white font-bold text-[11px]"
-                            >
-                                拒绝
-                            </button>
-                        </div>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={handleQuickRefreshNs}
-                            disabled={isRefreshingNs}
-                            className="inline-flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400 hover:underline cursor-pointer disabled:opacity-50"
-                        >
-                            <i className={`ri-refresh-line ${isRefreshingNs ? "animate-spin" : ""}`} />
-                            <span>{isRefreshingNs ? "更正中" : refreshNsDone ? "✓ 已更正" : "更正数据"}</span>
-                        </button>
-                    )}
-                    <div className="flex items-center gap-2 ml-auto">
-                        <button
-                            onClick={onEdit}
-                            className="p-1 rounded-md text-neutral-400 hover:text-theme transition"
-                            title="编辑"
-                        >
-                            <i className="ri-edit-line text-xs" />
-                        </button>
-                        <button
-                            onClick={onDelete}
-                            className="p-1 rounded-md text-neutral-400 hover:text-rose-500 transition"
-                            title="删除"
-                        >
-                            <i className="ri-delete-bin-line text-xs" />
-                        </button>
-                    </div>
                 </div>
             )}
         </div>
@@ -1820,7 +1843,43 @@ function PolaroidFriendCard({
     const tilt = index % 2 === 0 ? "rotate-1" : "-rotate-1";
 
     return (
-        <div className={`relative pt-4 pb-3.5 px-3.5 sm:px-4 bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 shadow-md hover:shadow-xl transition-all duration-300 rounded-sm font-sans flex flex-col justify-between ${tilt}`}>
+        <div className={`group relative pt-4 pb-3.5 px-3.5 sm:px-4 bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 shadow-md hover:shadow-xl transition-all duration-300 rounded-sm font-sans flex flex-col justify-between ${tilt}`}>
+            {/* 顶角悬浮管理微胶囊 */}
+            {profile?.permission && (
+                <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 dark:bg-neutral-800/95 backdrop-blur-xs p-0.5 rounded-lg border border-black/10 dark:border-white/10 shadow-xs"
+                >
+                    {uid && (
+                        <button
+                            type="button"
+                            onClick={handleQuickRefreshNs}
+                            disabled={isRefreshingNs}
+                            className="h-5 w-5 rounded flex items-center justify-center text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 transition cursor-pointer"
+                            title={refreshNsDone ? "更正成功！" : "更正/同步坛友资产"}
+                        >
+                            <i className={`ri-refresh-line text-xs ${isRefreshingNs ? "animate-spin" : ""}`} />
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={onEdit}
+                        className="h-5 w-5 rounded flex items-center justify-center text-neutral-500 hover:text-theme hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
+                        title="编辑友链"
+                    >
+                        <i className="ri-edit-line text-xs" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onDelete}
+                        className="h-5 w-5 rounded flex items-center justify-center text-neutral-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                        title="删除友链"
+                    >
+                        <i className="ri-delete-bin-line text-xs" />
+                    </button>
+                </div>
+            )}
+
             {/* 顶端半透明彩色和纸胶带拟物 */}
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-4.5 bg-pink-400/40 dark:bg-pink-500/30 backdrop-blur-xs border-t border-b border-white/40 rotate-1 shadow-2xs pointer-events-none" />
 
@@ -1872,6 +1931,29 @@ function PolaroidFriendCard({
                             {category}
                         </span>
                     )}
+                    {friend.accepted === 0 && (
+                        <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-amber-600 font-bold px-1.5 py-0.2 rounded bg-amber-500/10 shrink-0">
+                                待审核
+                            </span>
+                            {profile?.permission && (
+                                <>
+                                    <button
+                                        onClick={onApprove}
+                                        className="text-emerald-600 font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-[10px]"
+                                    >
+                                        通过
+                                    </button>
+                                    <button
+                                        onClick={onReject}
+                                        className="text-rose-600 font-bold px-1.5 py-0.2 rounded bg-rose-500/10 hover:bg-rose-500/20 text-[10px]"
+                                    >
+                                        拒绝
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    )}
                     {profile?.permission && onReorder && (
                         <input
                             type="number"
@@ -1893,7 +1975,7 @@ function PolaroidFriendCard({
                     )}
                 </div>
 
-                <p className="text-xs text-neutral-500 line-clamp-2 min-h-[30px] my-1 leading-relaxed">
+                <p className="text-xs text-neutral-500 line-clamp-2 my-1 leading-relaxed">
                     {cleanDesc || "个人技术生活随想"}
                 </p>
 
@@ -1930,40 +2012,6 @@ function PolaroidFriendCard({
                     </div>
                 )}
             </div>
-
-            {/* 管理员操作栏 */}
-            {profile?.permission && (
-                <div className="pt-2 mt-1.5 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-xs">
-                    {friend.accepted === 0 ? (
-                        <div className="flex items-center gap-1.5">
-                            <button onClick={onApprove} className="text-emerald-600 font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-[11px]">
-                                通过
-                            </button>
-                            <button onClick={onReject} className="text-amber-600 font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-[11px]">
-                                拒绝
-                            </button>
-                        </div>
-                    ) : uid ? (
-                        <button
-                            type="button"
-                            onClick={handleQuickRefreshNs}
-                            disabled={isRefreshingNs}
-                            className="inline-flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400 hover:underline cursor-pointer disabled:opacity-50"
-                        >
-                            <i className={`ri-refresh-line ${isRefreshingNs ? "animate-spin" : ""}`} />
-                            <span>{isRefreshingNs ? "更正中" : refreshNsDone ? "✓ 已更正" : "更正数据"}</span>
-                        </button>
-                    ) : <div />}
-                    <div className="flex items-center gap-2">
-                        <button onClick={onEdit} className="text-neutral-400 hover:text-theme p-0.5" title="编辑">
-                            <i className="ri-edit-line" />
-                        </button>
-                        <button onClick={onDelete} className="text-neutral-400 hover:text-rose-500 p-0.5" title="删除">
-                            <i className="ri-delete-bin-line" />
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

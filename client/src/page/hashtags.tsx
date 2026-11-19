@@ -481,9 +481,9 @@ export function HashtagsPage() {
       ) : null}
 
       <Waiting for={hashtags}>
-        <main className="w-full flex flex-col justify-center items-center mb-10 ani-show">
+        <main className="w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col justify-center items-center mb-10 ani-show">
           {/* 顶栏信息、统计与视图模式切换 */}
-          <div className="wauto text-start py-5 border-b border-black/10 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="w-full text-start py-5 border-b border-black/10 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
                 <h1
@@ -585,7 +585,7 @@ export function HashtagsPage() {
 
           {/* 管理员前台创作与操作中枢 */}
           {isAdmin ? (
-            <div className="wauto mt-4 p-4 rounded-2xl bg-white/70 dark:bg-neutral-900/60 border border-theme/20 shadow-xs backdrop-blur-md flex flex-col gap-3.5 text-xs">
+            <div className="w-full mt-4 p-4 rounded-2xl bg-white/70 dark:bg-neutral-900/60 border border-theme/20 shadow-xs backdrop-blur-md flex flex-col gap-3.5 text-xs">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 {/* 快速新建标签输入栏 */}
                 <form onSubmit={handleCreateTag} className="flex items-center gap-2 flex-1 max-w-md">
@@ -688,7 +688,7 @@ export function HashtagsPage() {
 
           {/* 视图 1：晶透书签星云流 (Artistic Bookmark Cloud) */}
           {viewMode === "cloud" ? (
-            <div className="wauto flex flex-wrap items-center justify-start gap-x-3 gap-y-3.5 mt-8 pb-14">
+            <div className="w-full flex flex-wrap items-center justify-center sm:justify-start gap-x-2.5 gap-y-3 mt-6 pb-14">
               {sortedHashtagsForCloud?.map((hashtag, index) => {
                 const rot = TAG_ROTATIONS[index % TAG_ROTATIONS.length];
                 const feedCount = getTagFeeds(hashtag);
@@ -760,7 +760,7 @@ export function HashtagsPage() {
             </div>
           ) : (
             /* 视图 2：高密单屏超级数据表格 (Dense DataGrid) */
-            <div className="wauto mt-6 pb-16 flex flex-col gap-3">
+            <div className="w-full mt-6 pb-16 flex flex-col gap-3">
               {/* 表格搜索与过滤工具栏 */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                 <div className="flex items-center gap-2">

@@ -31,6 +31,8 @@ export function BottomPlayerDock() {
 
   const [showQueuePopover, setShowQueuePopover] = useState(false);
   const [showLyricsPopover, setShowLyricsPopover] = useState(false);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [seekTime, setSeekTime] = useState(0);
 
   // 如果没有当前曲目且播放列表为空，不渲染底座
   if (!currentTrack && (!playlist || playlist.length === 0)) {
@@ -38,7 +40,8 @@ export function BottomPlayerDock() {
   }
 
   const track = currentTrack || playlist[0];
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const displayTime = isSeeking ? seekTime : currentTime;
+  const progressPercent = duration > 0 ? Math.min(100, Math.max(0, (displayTime / duration) * 100)) : 0;
 
   return (
     <>
@@ -224,7 +227,7 @@ export function BottomPlayerDock() {
 
             {/* 下部：时间进度滑动条 (对齐 MHub/Navidrome 双端精确刻度) */}
             <div className="w-full flex items-center gap-2.5 text-[11px] font-mono text-neutral-400">
-              <span className="w-10 text-right shrink-0">{formatTime(currentTime)}</span>
+              <span className="w-10 text-right shrink-0">{formatTime(displayTime)}</span>
               <div className="relative flex-1 flex items-center group cursor-pointer">
                 {/* 背景轨道 */}
                 <div className="h-1 w-full rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
@@ -238,9 +241,19 @@ export function BottomPlayerDock() {
                   type="range"
                   min={0}
                   max={duration || 1}
-                  step={0.5}
-                  value={currentTime}
-                  onChange={(e) => seek(Number(e.target.value))}
+                  step={0.2}
+                  value={displayTime}
+                  onPointerDown={() => {
+                    setIsSeeking(true);
+                    setSeekTime(currentTime);
+                  }}
+                  onChange={(e) => {
+                    setSeekTime(Number(e.target.value));
+                  }}
+                  onPointerUp={() => {
+                    seek(seekTime);
+                    setIsSeeking(false);
+                  }}
                   className="absolute inset-0 w-full opacity-0 cursor-pointer"
                 />
               </div>

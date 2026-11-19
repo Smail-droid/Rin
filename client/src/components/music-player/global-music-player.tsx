@@ -105,6 +105,9 @@ export function GlobalMusicPlayer() {
   // 播放列表外层点击监听 Ref (Click-outside 防遮挡正文)
   const playlistDrawerRef = useRef<HTMLDivElement>(null);
   const playlistToggleBtnRef = useRef<HTMLButtonElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const [isDraggingProgress, setIsDraggingProgress] = useState(false);
+  const [dragRatio, setDragRatio] = useState<number | null>(null);
 
   // 自由拖拽定位坐标状态 (记忆持久化在本地 localStorage，默认固定左下角，阅读文章绝不上跳)
   const [position, setPosition] = useState<{ x: number; y: number } | null>(() => {
@@ -332,6 +335,43 @@ export function GlobalMusicPlayer() {
   };
 
   const progressPercent = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
+  const effectivePercent = isDraggingProgress && dragRatio !== null ? dragRatio * 100 : progressPercent;
+
+  const handleProgressBarPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const el = progressBarRef.current;
+    if (!el) return;
+    try { el.setPointerCapture(e.pointerId); } catch {}
+    setIsDraggingProgress(true);
+    const rect = el.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    setDragRatio(ratio);
+  };
+
+  const handleProgressBarPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingProgress) return;
+    e.stopPropagation();
+    const el = progressBarRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    setDragRatio(ratio);
+  };
+
+  const handleProgressBarPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingProgress) return;
+    e.stopPropagation();
+    const el = progressBarRef.current;
+    if (el) {
+      try { el.releasePointerCapture(e.pointerId); } catch {}
+    }
+    setIsDraggingProgress(false);
+    if (dragRatio !== null && duration > 0) {
+      seek(dragRatio * duration);
+    }
+    setDragRatio(null);
+  };
 
   return (
     <div
@@ -536,25 +576,25 @@ export function GlobalMusicPlayer() {
             </div>
           </div>
 
-          {/* 紧贴下方嵌入一条 2px 极细粉色半透明播放进度条 */}
+          {/* 紧贴下方嵌入一条舒适热区的双模手势拖拽进度条 */}
           <div
-            onClick={(e) => {
-              e.stopPropagation();
-              const rect = e.currentTarget.getBoundingClientRect();
-              const clickX = e.clientX - rect.left;
-              const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-              seek(ratio * duration);
-            }}
-            className="progress-bar absolute -bottom-[1px] left-6 right-6 h-[2px] rounded-full bg-[#FFD0DA]/40 overflow-hidden cursor-pointer"
-            title="点击快进/倒退"
+            ref={progressBarRef}
+            onPointerDown={handleProgressBarPointerDown}
+            onPointerMove={handleProgressBarPointerMove}
+            onPointerUp={handleProgressBarPointerUp}
+            onPointerCancel={handleProgressBarPointerUp}
+            className="progress-bar absolute -bottom-2.5 left-6 right-6 h-5 flex items-center cursor-pointer group z-20 select-none"
+            title="点击或拖拽快进/倒退"
           >
-            <div
-              style={{
-                width: `${progressPercent}%`,
-                background: "linear-gradient(90deg, #FFD0DA 0%, #FF7E95 100%)",
-              }}
-              className="h-full rounded-full transition-all duration-150"
-            />
+            <div className="w-full h-[3px] group-hover:h-[5px] rounded-full bg-[#FFD0DA]/40 dark:bg-white/20 overflow-hidden transition-all duration-200">
+              <div
+                style={{
+                  width: `${effectivePercent}%`,
+                  background: "linear-gradient(90deg, #FFD0DA 0%, #FF7E95 100%)",
+                }}
+                className="h-full rounded-full transition-[width] duration-75"
+              />
+            </div>
           </div>
 
           {/* 歌单展开视窗 (从上方展开，高度不超过 220px，半透明毛玻璃防遮挡，Click-outside 自动收起) */}
