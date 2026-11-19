@@ -61,7 +61,7 @@ export function DiamondRankSvg({ className = "w-3 h-3" }: { className?: string }
     );
 }
 
-// 复制 NodeSeek 个人空间完整概览文本智能结构化解析
+// 复制 NodeSeek 个人空间完整概览文本智能结构化解析 (支持官方 API JSON、DevTools 拷贝与网页划选文本)
 export function parseNodeSeekPastedText(text: string): {
     name?: string;
     rank?: number;
@@ -71,36 +71,88 @@ export function parseNodeSeekPastedText(text: string): {
     comments?: number;
     bio?: string;
 } {
-    const res: any = {};
-    if (!text) return res;
+    if (!text) return {};
+    const trimmed = text.trim();
 
-    const rankMatch = text.match(/Lv\.?\s*(\d+)/i);
-    if (rankMatch) res.rank = parseInt(rankMatch[1], 10);
+    // 1. 原生 JSON 纯净直读（支持官方接口完整响应或 detail 结构）
+    const jsonCandidate = trimmed.startsWith("{")
+        ? trimmed
+        : (trimmed.match(/\{[\s\S]*\}/)?.[0] || null);
 
-    const coinMatch = text.match(/鸡腿\s*[:：]?\s*(\d+)/i) || text.match(/(\d+)\s*鸡腿/i);
-    if (coinMatch) res.coin = parseInt(coinMatch[1], 10);
-
-    const daysMatch = text.match(/已加入\s*[:：]?\s*(\d+)\s*天/i) || text.match(/加入\s*[:：]?\s*(\d+)\s*天/i) || text.match(/(\d+)\s*天/i);
-    if (daysMatch) res.days = parseInt(daysMatch[1], 10);
-
-    const postsMatch = text.match(/主题\s*[:：]?\s*(\d+)/i) || text.match(/(\d+)\s*主题/i);
-    if (postsMatch) res.posts = parseInt(postsMatch[1], 10);
-
-    const commentsMatch = text.match(/评论\s*[:：]?\s*(\d+)/i) || text.match(/(\d+)\s*评论/i);
-    if (commentsMatch) res.comments = parseInt(commentsMatch[1], 10);
-
-    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-    if (lines.length > 0) {
-        const firstLine = lines[0].replace(/NodeSeek/i, "").trim();
-        if (firstLine && !firstLine.includes("Lv") && !firstLine.includes("鸡腿") && firstLine.length <= 25) {
-            res.name = firstLine;
-        }
+    if (jsonCandidate) {
+        try {
+            const data = JSON.parse(jsonCandidate);
+            const d = data.detail || data;
+            if (d && (d.rank !== undefined || d.coin !== undefined || d.member_id !== undefined)) {
+                let days = typeof d.days === "number" ? d.days : undefined;
+                if (!days && d.created_at) {
+                    const diff = Date.now() - new Date(d.created_at).getTime();
+                    if (!isNaN(diff) && diff > 0) {
+                        days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    }
+                } else if (!days && d.created_at_str) {
+                    const m = String(d.created_at_str).match(/(\d+)\s*days/i);
+                    if (m) days = parseInt(m[1], 10);
+                }
+                return {
+                    name: typeof d.member_name === "string" ? d.member_name : undefined,
+                    rank: typeof d.rank === "number" ? d.rank : (d.rank ? parseInt(d.rank, 10) : undefined),
+                    coin: typeof d.coin === "number" ? d.coin : (d.coin ? parseInt(d.coin, 10) : undefined),
+                    days: days || undefined,
+                    posts: typeof d.nPost === "number" ? d.nPost : (d.posts !== undefined ? Number(d.posts) : undefined),
+                    comments: typeof d.nComment === "number" ? d.nComment : (d.comments !== undefined ? Number(d.comments) : undefined),
+                    bio: typeof d.bio === "string" && d.bio.trim() ? d.bio.trim() : undefined,
+                };
+            }
+        } catch {}
     }
 
-    const bioMatch = text.match(/个性签名\s*[:：]?\s*([^\n]+)/i) || text.match(/签名\s*[:：]?\s*([^\n]+)/i);
-    if (bioMatch) res.bio = bioMatch[1].trim();
+    // 2. 字段级数值抽取（兼容 DevTools 键值对拷贝与前台网页划选文本）
+    const num = (pattern: RegExp) => {
+        const m = trimmed.match(pattern);
+        return m ? parseInt(m[1], 10) : undefined;
+    };
 
-    return res;
+    const rank = num(/(?:rank|Lv\.?|等级)\s*[:：]?\s*(\d+)/i) ?? num(/(\d+)\s*级/i);
+    const coin = num(/(?:coin|鸡腿(?:数目|数)?)\s*[:：]?\s*(\d+)/i) ?? num(/(\d+)\s*个?鸡腿/i);
+    let days = num(/(?:已加入|加入天数|加入|天数)\s*[:：]?\s*(\d+)/i) ?? num(/(\d+)\s*天/i);
+    if (!days) {
+        const daysStrMatch = trimmed.match(/created_at_str\s*[:：]?\s*["'\s]*(\d+)\s*days/i);
+        if (daysStrMatch) {
+            days = parseInt(daysStrMatch[1], 10);
+        } else {
+            const createdAtMatch = trimmed.match(/created_at\s*[:：]?\s*["']([^"'\n\r]+)["']/i);
+            if (createdAtMatch) {
+                const diff = Date.now() - new Date(createdAtMatch[1]).getTime();
+                if (!isNaN(diff) && diff > 0) {
+                    days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                }
+            }
+        }
+    }
+    const posts = num(/(?:nPost|主题帖数|主题数|主题帖|主题)\s*[:：]?\s*(\d+)/i) ?? num(/(\d+)\s*篇?主题/i);
+    const comments = num(/(?:nComment|评论数目|评论数|评论)\s*[:：]?\s*(\d+)/i) ?? num(/(\d+)\s*条?评论/i);
+
+    // 智能提取用户名，避开统计词汇、URL与纯数字
+    let name: string | undefined;
+    const nameMatch = trimmed.match(/(?:member_name|用户名|坛友|昵称)\s*[:：]?\s*["']?([^\s"'\n\r]+)["']?/i);
+    if (nameMatch && nameMatch[1]?.trim()) {
+        name = nameMatch[1].trim().replace(/^["']|["']$/g, "");
+    } else {
+        const lines = trimmed.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        const invalidKw = ["加入", "天数", "等级", "lv", "鸡腿", "主题", "评论", "空间", "uid", "http", "www.", "detail", "success", "true", "false"];
+        const candidate = lines.find(line => {
+            const low = line.toLowerCase();
+            return !invalidKw.some(kw => low.includes(kw)) && line.length <= 25 && !/^\d+$/.test(line) && low !== "nodeseek";
+        });
+        if (candidate) name = candidate;
+    }
+
+    const bioMatch = trimmed.match(/(?:bio|个性签名|个人签名|签名)\s*[:：]?\s*["']?([^"'\n\r]+)["']?/i);
+    let bio = bioMatch ? bioMatch[1].trim().replace(/^["']|["']$/g, "") : undefined;
+    if (bio === '""' || bio === "''") bio = undefined;
+
+    return { name, rank, coin, days, posts, comments, bio };
 }
 
 // 历史分类向后兼容标准化映射
@@ -146,15 +198,74 @@ export function sanitizeAvatarUrl(url: string | null | undefined): string {
     return trimmed;
 }
 
-// 浏览器客户端轻量直取头像链接
+// 浏览器客户端轻量直取头像并转 Base64 供直接存入 R2
 export async function fetchClientAvatarBase64(uid: string): Promise<string | null> {
     if (!uid) return null;
-    return `https://www.nodeseek.com/avatar/${uid}.png`;
+    try {
+        const res = await fetch(`https://www.nodeseek.com/avatar/${uid}.png`);
+        if (res.ok) {
+            const blob = await res.blob();
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = () => resolve(null);
+                reader.readAsDataURL(blob);
+            });
+        }
+    } catch {}
+    return null;
 }
 
-// 统一友链空间数据解析
+// 规范化坛友数据格式
+function normalizeNsDetail(d: any): NodeSeekUserData {
+    let days: number | undefined;
+    if (typeof d.days === "number") {
+        days = d.days;
+    } else if (d.created_at) {
+        days = Math.max(1, Math.floor((Date.now() - new Date(d.created_at).getTime()) / 86400000));
+    } else if (d.created_at_str) {
+        const m = String(d.created_at_str).match(/(\d+)\s*days/i);
+        if (m) days = parseInt(m[1], 10);
+    }
+    return {
+        name: d.member_name,
+        member_name: d.member_name,
+        rank: typeof d.rank === "number" ? d.rank : (d.rank ? parseInt(d.rank, 10) : 1),
+        coin: typeof d.coin === "number" ? d.coin : (d.coin ? parseInt(d.coin, 10) : 0),
+        days: days || 1,
+        join_days: days ? `${days}天` : undefined,
+        posts: d.nPost ?? d.posts ?? 0,
+        comments: d.nComment ?? d.comments ?? 0,
+        bio: typeof d.bio === "string" ? d.bio.trim() : "",
+    };
+}
+
+// 统一友链空间数据解析（利用客户端浏览器网络直连与无头穿透自动抓取）
 export async function fetchClientSideNsDetail(uid: string): Promise<NodeSeekUserData | null> {
     if (!uid) return null;
+    const apiUrl = `https://www.nodeseek.com/api/account/getInfo/${uid}?readme=1`;
+
+    // 1. 优先使用浏览器客户端当前网络直连获取 (利用已通过CF人机验证的网络与指纹)
+    try {
+        const res = await fetch(apiUrl, { headers: { Accept: "application/json" } });
+        if (res.ok) {
+            const data = await res.json();
+            if (data?.detail) return normalizeNsDetail(data.detail);
+        }
+    } catch {}
+
+    // 2. 浏览器受同源 CORS 限制时，通过公用无头代理穿透直读
+    try {
+        const mUrl = `https://api.microlink.io/?url=${encodeURIComponent(apiUrl)}&data.body=%7B%22selector%22%3A%22body%22%7D`;
+        const res = await fetch(mUrl);
+        if (res.ok) {
+            const data = await res.json();
+            const clean = (data?.data?.body || "").replace(/<[^>]+>/g, "").trim();
+            const parsed = JSON.parse(clean);
+            if (parsed?.detail) return normalizeNsDetail(parsed.detail);
+        }
+    } catch {}
+
     return null;
 }
 
@@ -465,6 +576,14 @@ export function FriendsPage() {
         setIsExtractingAvatar(true);
         setExtractBtnFeedback("");
         try {
+            const uidMatch = targetUrl.match(/^\d{1,8}$/) || targetUrl.match(/space\/(\d+)/i);
+            const currentUid = uidMatch ? (uidMatch[1] || uidMatch[0]) : "";
+
+            const [clientDetail, clientAvatar] = await Promise.all([
+                currentUid ? fetchClientSideNsDetail(currentUid) : Promise.resolve(null),
+                currentUid ? fetchClientAvatarBase64(currentUid) : Promise.resolve(null),
+            ]);
+
             const token = localStorage.getItem("rin_auth_token") || "";
             const res = await fetch("/api/friend/extract-source-avatar", {
                 method: "POST",
@@ -475,6 +594,8 @@ export function FriendsPage() {
                 body: JSON.stringify({
                     sourceUrl: targetUrl,
                     name: formName,
+                    clientNsDetail: clientDetail || undefined,
+                    clientAvatarBase64: clientAvatar || undefined,
                 }),
             });
 
@@ -490,15 +611,7 @@ export function FriendsPage() {
                     setFormSpaceUrl(data.spaceUrl);
                 }
 
-                let finalNsDetail = data.nsDetail;
-                const uidMatch = targetUrl.match(/^\d{1,8}$/) || targetUrl.match(/space\/(\d+)/i);
-                if (!finalNsDetail && uidMatch) {
-                    const clientDetail = await fetchClientSideNsDetail(uidMatch[1] || uidMatch[0]);
-                    if (clientDetail) {
-                        finalNsDetail = clientDetail;
-                    }
-                }
-
+                const finalNsDetail = data.nsDetail || clientDetail;
                 if (finalNsDetail) {
                     setNsUserData(finalNsDetail);
                     if (finalNsDetail.member_name) {
@@ -791,6 +904,10 @@ export function FriendsPage() {
                     || f.name.match(/UID[:\s#]+(\d+)/i)
                     || (f.avatar && f.avatar.match(/ns_(\d+)/i));
                 const uid = uidMatch ? uidMatch[1] : "";
+                const [clientDetail, clientAvatar] = await Promise.all([
+                    uid ? fetchClientSideNsDetail(uid) : Promise.resolve(null),
+                    uid ? fetchClientAvatarBase64(uid) : Promise.resolve(null),
+                ]);
                 const token = localStorage.getItem("rin_auth_token") || "";
                 const res = await fetch("/api/friend/extract-source-avatar", {
                     method: "POST",
@@ -801,16 +918,15 @@ export function FriendsPage() {
                     body: JSON.stringify({
                         sourceUrl: parsed.spaceUrl || (uid ? `https://www.nodeseek.com/space/${uid}#/general` : f.url),
                         name: f.name,
+                        clientNsDetail: clientDetail || undefined,
+                        clientAvatarBase64: clientAvatar || undefined,
                     }),
                 });
                 let data: any = null;
                 if (res.ok) {
                     data = await res.json();
                 }
-                let finalDetail = data?.nsDetail;
-                if (!finalDetail && uid) {
-                    finalDetail = await fetchClientSideNsDetail(uid);
-                }
+                let finalDetail = data?.nsDetail || clientDetail;
                 if (finalDetail || uid || data?.avatarUrl) {
                     const isFriendBlog = parsed.category === "友邻博客";
                     const isTempName = f.name.includes("NodeSeek#") || f.name.startsWith("UID:");
@@ -1387,7 +1503,13 @@ function useFriendNsRefresh(
         try {
             const token = localStorage.getItem("rin_auth_token") || "";
 
-            // 1. 请求服务端转存与提取（内置纯净直连与快速降级）
+            // 1. 并发利用客户端网络抓取坛友数据与头像 Base64
+            const [clientDetail, clientAvatar] = await Promise.all([
+                uid ? fetchClientSideNsDetail(uid) : Promise.resolve(null),
+                uid ? fetchClientAvatarBase64(uid) : Promise.resolve(null),
+            ]);
+
+            // 2. 请求服务端转存 R2 与数据提取
             let serverData: any = null;
             try {
                 const res = await fetch("/api/friend/extract-source-avatar", {
@@ -1399,6 +1521,8 @@ function useFriendNsRefresh(
                     body: JSON.stringify({
                         sourceUrl: target || (uid ? `https://www.nodeseek.com/space/${uid}#/general` : ""),
                         name: friend.name,
+                        clientNsDetail: clientDetail || undefined,
+                        clientAvatarBase64: clientAvatar || undefined,
                     }),
                 });
                 if (res.ok) {
@@ -1408,27 +1532,7 @@ function useFriendNsRefresh(
                 console.warn("Server extract error, falling back to client-only:", netErr);
             }
 
-            let finalNsDetail = serverData?.nsDetail;
-            if (!finalNsDetail && uid) {
-                finalNsDetail = await fetchClientSideNsDetail(uid);
-            }
-            if (!finalNsDetail && typeof window !== "undefined") {
-                const pasted = window.prompt("NodeSeek 接口受 Cloudflare 人机防护拦截，未能自动嗅探。\n请直接粘贴该坛友在 NodeSeek 个人空间复制的信息文本（将自动解析等级、鸡腿与天数）：");
-                if (pasted?.trim()) {
-                    const parsedNs = parseNodeSeekPastedText(pasted);
-                    if (parsedNs.rank !== undefined || parsedNs.coin !== undefined || parsedNs.days !== undefined) {
-                        finalNsDetail = {
-                            member_name: parsedNs.name || displayName || friend.name,
-                            rank: parsedNs.rank ?? 1,
-                            coin: parsedNs.coin ?? 0,
-                            days: parsedNs.days ?? 1,
-                            posts: parsedNs.posts ?? 0,
-                            comments: parsedNs.comments ?? 0,
-                            bio: parsedNs.bio ?? "",
-                        };
-                    }
-                }
-            }
+            const finalNsDetail = serverData?.nsDetail || clientDetail;
 
             // 头像处理：优先使用服务端转存好的 R2 链接 (带时间戳刷新防缓存)；如果服务端没有成功写 R2，则使用官方直链回退
             const serverAvatarUrl = serverData?.avatarUrl || "";
@@ -2035,6 +2139,7 @@ function EditFriendModal({
     const [url, setUrl] = useState(friend.url);
     const [category, setCategory] = useState(parsed.category || "友邻博客");
     const [spaceUrl, setSpaceUrl] = useState(parsed.spaceUrl || "");
+    const [nsData, setNsData] = useState<NodeSeekUserData | undefined>(parsed.nsData);
     const [sortOrder, setSortOrder] = useState(friend.sort_order || 0);
     const [accepted, setAccepted] = useState(friend.accepted);
     const [isSaving, setIsSaving] = useState(false);
@@ -2078,7 +2183,7 @@ function EditFriendModal({
         try {
             const formattedDesc = formatFriendDesc(category, desc, {
                 spaceUrl,
-                nsData: parsed.nsData,
+                nsData,
                 avatarMode: parsed.avatarMode,
                 nsAvatar: parsed.nsAvatar,
                 siteAvatar: parsed.siteAvatar,
@@ -2169,7 +2274,36 @@ function EditFriendModal({
                 </div>
 
                 <div>
-                    <label className="block text-neutral-500 mb-1">空间地址或论坛直达 (选填)</label>
+                    <div className="flex items-center justify-between mb-1">
+                        <label className="text-neutral-500">空间地址或论坛直达 (选填)</label>
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                const uidMatch = (spaceUrl || friend.url).match(/space\/(\d+)/i) || name.match(/UID[:\s#]+(\d+)/i);
+                                const editUid = uidMatch ? uidMatch[1] : "";
+                                if (!editUid) return;
+                                const detail = await fetchClientSideNsDetail(editUid);
+                                if (detail) {
+                                    setNsData({
+                                        name: detail.member_name || nsData?.name || name,
+                                        rank: detail.rank ?? nsData?.rank ?? 1,
+                                        coin: detail.coin ?? nsData?.coin ?? 0,
+                                        days: detail.days ?? nsData?.days ?? 1,
+                                        posts: detail.posts ?? nsData?.posts ?? 0,
+                                        comments: detail.comments ?? nsData?.comments ?? 0,
+                                        bio: detail.bio ?? nsData?.bio ?? "",
+                                    });
+                                    if (detail.member_name && (!name || name.includes("NodeSeek#") || name.startsWith("UID:"))) {
+                                        setName(detail.member_name);
+                                    }
+                                }
+                            }}
+                            className="text-[11px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+                        >
+                            <i className="ri-refresh-line text-xs" />
+                            <span>一键同步坛友勋章</span>
+                        </button>
+                    </div>
                     <input
                         type="text"
                         value={spaceUrl}
@@ -2177,6 +2311,14 @@ function EditFriendModal({
                         placeholder="https://www.nodeseek.com/space/UID"
                         className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs"
                     />
+                    {nsData && (
+                        <div className="flex items-center gap-2 mt-1.5 text-[11px] font-mono text-neutral-500">
+                            <span>已关联勋章:</span>
+                            {nsData.rank !== undefined && <span className="text-amber-600 font-bold">Lv.{nsData.rank}</span>}
+                            {nsData.coin !== undefined && <span className="text-orange-600 font-bold">🍗 {nsData.coin}</span>}
+                            {nsData.days !== undefined && <span className="text-blue-600 font-bold">🕒 {nsData.days}天</span>}
+                        </div>
+                    )}
                 </div>
 
                 <div>

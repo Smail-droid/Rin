@@ -356,15 +356,15 @@ export function FriendService(): Hono {
                     "Accept": "application/json, text/plain, */*",
                 };
 
-                // 尝试直接 fetch 并验证响应是有效 JSON 而非 IPv6 错误页面
+                // 尝试直接 fetch 并验证响应是有效 JSON 而非 IPv6 / Cloudflare 拦截页面
                 const tryParseNsJson = (text: string): any => {
-                    if (!text || text.includes("<!DOCTYPE") || text.includes("ipv6") || text.includes("IPv6") || text.includes("DNS")) return null;
+                    if (!text || text.includes("<!DOCTYPE") || text.includes("<html") || text.includes("ipv6") || text.includes("IPv6") || text.includes("DNS") || text.includes("Just a moment") || text.includes("cf-challenge")) return null;
                     try { return JSON.parse(text); } catch { return null; }
                 };
 
-                const safeFetch = async (url: string, opts: any = {}): Promise<string> => {
+                const safeFetch = async (url: string, opts: any = {}, timeoutMs = 1500): Promise<string> => {
                     const ctrl = new AbortController();
-                    const tid = setTimeout(() => ctrl.abort(), 3500);
+                    const tid = setTimeout(() => ctrl.abort(), timeoutMs);
                     try {
                         const r = await fetch(url, { ...opts, signal: ctrl.signal });
                         clearTimeout(tid);
@@ -378,55 +378,34 @@ export function FriendService(): Hono {
                 const apiUrl = `https://www.nodeseek.com/api/account/getInfo/${nsUid}`;
                 let infoRes: any = null;
 
-                // 降级链第 1 级：Worker 直连（可能被 IPv6 阻断）
-                const directText = await safeFetch(apiUrl, { headers: nsHeaders });
-                infoRes = tryParseNsJson(directText);
-                debugLog.direct = { len: directText.length, snippet: directText.slice(0, 120), parsed: !!infoRes?.detail };
-
-                // 降级链第 2 级：corsproxy.io 公共 IPv4 代理穿透
-                if (!infoRes?.detail) {
-                    const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;
-                    const proxyText = await safeFetch(proxyUrl, { headers: { "Accept": "application/json" } });
-                    infoRes = tryParseNsJson(proxyText);
-                    debugLog.corsproxy = { len: proxyText.length, snippet: proxyText.slice(0, 120), parsed: !!infoRes?.detail };
-                }
-
-                // 降级链第 3 级：allorigins 公共代理穿透
-                if (!infoRes?.detail) {
-                    try {
-                        const aoUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
-                        const aoText = await safeFetch(aoUrl, { headers: { "Accept": "application/json" } });
-                        infoRes = tryParseNsJson(aoText);
-                        debugLog.allorigins = { len: aoText.length, snippet: aoText.slice(0, 120), parsed: !!infoRes?.detail };
-                    } catch (err: any) {
-                        debugLog.allorigins = { error: err.message };
-                    }
-                }
-
-                // 降级链第 4 级：microlink.io HTML 嗅探（最后兜底）
-                if (!infoRes?.detail) {
-                    try {
-                        const mUrl = `https://api.microlink.io/?url=${encodeURIComponent(apiUrl)}&data.body=%7B%22selector%22%3A%22body%22%7D`;
-                        const mText = await safeFetch(mUrl, { headers: { "Accept": "application/json" } });
-                        debugLog.microlink = { len: mText.length, snippet: mText.slice(0, 200) };
-                        if (mText) {
-                            const mData: any = JSON.parse(mText);
-                            const rawHtml = mData?.data?.body || "";
-                            const jsonMatch = rawHtml.match(/\{"success":true,"detail":\{[\s\S]*?\}\}/);
-                            if (jsonMatch) {
-                                infoRes = JSON.parse(jsonMatch[0]);
-                            }
-                        }
-                    } catch (err: any) {
-                        debugLog.microlink = { error: err.message };
-                    }
-                }
-
-                if (infoRes?.detail) {
-                    nsDetail = infoRes.detail;
-                } else if (body?.clientNsDetail) {
-                    // 接收前端客户端本地网络兜底抓取的真实坛友资料
+                // 优先直接使用客户端本地网络上送的真实坛友资料
+                if (body?.clientNsDetail) {
                     nsDetail = body.clientNsDetail;
+                }
+
+                // 若客户端未上送，降级尝试 Worker 直连与无头嗅探
+                if (!nsDetail) {
+                    const directText = await safeFetch(apiUrl, { headers: nsHeaders }, 1200);
+                    infoRes = tryParseNsJson(directText);
+
+                    if (!infoRes?.detail) {
+                        try {
+                            const mUrl = `https://api.microlink.io/?url=${encodeURIComponent(apiUrl)}&data.body=%7B%22selector%22%3A%22body%22%7D`;
+                            const mText = await safeFetch(mUrl, { headers: { "Accept": "application/json" } }, 5000);
+                            if (mText) {
+                                const mData: any = JSON.parse(mText);
+                                const cleanJson = (mData?.data?.body || "").replace(/<[^>]+>/g, "").trim();
+                                const parsed = JSON.parse(cleanJson);
+                                if (parsed?.detail) {
+                                    infoRes = parsed;
+                                }
+                            }
+                        } catch {}
+                    }
+
+                    if (infoRes?.detail) {
+                        nsDetail = infoRes.detail;
+                    }
                 }
                 // 标记数据来源：后端已获取 vs 需要客户端兜底
                 debugLog.nsDetailResolved = !!nsDetail;

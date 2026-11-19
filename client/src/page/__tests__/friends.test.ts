@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { parseFriendCategory, formatFriendDesc, PRESET_CATEGORIES } from "../friends";
+import { parseFriendCategory, formatFriendDesc, PRESET_CATEGORIES, parseNodeSeekPastedText, fetchClientSideNsDetail } from "../friends";
 
 describe("Friends page helper functions", () => {
     it("should include all essential categories in PRESET_CATEGORIES", () => {
@@ -45,5 +45,93 @@ describe("Friends page helper functions", () => {
     it("should omit prefix when category is '全部' or empty", () => {
         const result = formatFriendDesc("全部", "普通描述");
         expect(result).toBe("普通描述");
+    });
+
+    describe("parseNodeSeekPastedText", () => {
+        it("should accurately parse multi-line webpage copy without false username", () => {
+            const rawWebText = `加入天数
+640
+等级
+6
+鸡腿数目
+11575
+主题帖数
+226
+评论数目
+8191`;
+
+            const parsed = parseNodeSeekPastedText(rawWebText);
+            expect(parsed.rank).toBe(6);
+            expect(parsed.coin).toBe(11575);
+            expect(parsed.days).toBe(640);
+            expect(parsed.posts).toBe(226);
+            expect(parsed.comments).toBe(8191);
+            // Must not falsely recognize "加入天数" as member name
+            expect(parsed.name).toBeUndefined();
+        });
+
+        it("should parse pure API JSON response directly and cleanly", () => {
+            const jsonText = `{"success": true, "detail": {"member_id": 27361, "member_name": "夜轻", "isAdmin": 0, "rank": 6, "coin": 11575, "stardust": 723, "bio": "个人签名测试", "created_at": "2025-02-18T06:42:29.000Z", "created_at_str": "639days ago", "nComment": 8191, "nPost": 226}}`;
+
+            const parsed = parseNodeSeekPastedText(jsonText);
+            expect(parsed.name).toBe("夜轻");
+            expect(parsed.rank).toBe(6);
+            expect(parsed.coin).toBe(11575);
+            expect(parsed.posts).toBe(226);
+            expect(parsed.comments).toBe(8191);
+            expect(parsed.days).toBeGreaterThanOrEqual(630);
+            expect(parsed.bio).toBe("个人签名测试");
+        });
+
+        it("should parse DevTools console output with key-value pairs", () => {
+            const devtoolsText = `https://www.nodeseek.com/api/account/getInfo/27361?readme=1
+detail
+: 
+{member_id: 27361, member_name: "夜轻", isAdmin: 0, rank: 6, coin: 11575, stardust: 723, bio: "",…}
+bio
+: 
+""
+coin
+: 
+11575
+created_at_str
+: 
+"639days ago"
+member_name
+: 
+"夜轻"
+nComment
+: 
+8191
+nPost
+: 
+226
+rank
+: 
+6`;
+
+            const parsed = parseNodeSeekPastedText(devtoolsText);
+            expect(parsed.name).toBe("夜轻");
+            expect(parsed.rank).toBe(6);
+            expect(parsed.coin).toBe(11575);
+            expect(parsed.posts).toBe(226);
+            expect(parsed.comments).toBe(8191);
+            expect(parsed.days).toBe(639);
+        });
+
+        it("should parse single-line colon-separated text", () => {
+            const singleLine = "坛友: 夜轻 等级: 6 鸡腿: 11575 加入天数: 640 主题: 226 评论: 8191";
+            const parsed = parseNodeSeekPastedText(singleLine);
+            expect(parsed.name).toBe("夜轻");
+            expect(parsed.rank).toBe(6);
+            expect(parsed.coin).toBe(11575);
+            expect(parsed.days).toBe(640);
+            expect(parsed.posts).toBe(226);
+            expect(parsed.comments).toBe(8191);
+        });
+
+        it("should safely handle empty or invalid inputs", async () => {
+            expect(await fetchClientSideNsDetail("")).toBeNull();
+        });
     });
 });
