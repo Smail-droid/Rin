@@ -158,3 +158,4 @@
 - **现代高级字体排印**：去除粗劣 PPT 渐变艺术字，确立衬线明朝体、等宽代码字族与紧实字偶间距体系。
 - **极简迷你侧边栏 (Mini Sidebar)**：默认 68px 纯图标列，悬停展开并带图钉锁定，单屏高效浏览。
 - **Serverless 边缘全栈奠基**：Cloudflare Workers + D1 + R2 原生驱动，Zero Eval 严格 CSP 沙盒加固。
+[v1.0.8]: https://github.com/Smail-droid/Rin/releases/tag/v1.0.8
