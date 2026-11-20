@@ -6,7 +6,6 @@ import { ImageWithFallback } from "../components/image-with-fallback";
 import { Waiting } from "../components/loading";
 import { client } from "../app/runtime";
 import { ProfileContext } from "../state/profile";
-import { siteName } from "../utils/constants";
 import { safeHttpUrl } from "../utils/url";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 
@@ -1003,7 +1002,7 @@ export function FriendsPage() {
     return (
         <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
             <Helmet>
-                <title>{`星标友链 - ${siteName}`}</title>
+                <title>{`星标友链 - ${siteConfig.name}`}</title>
             </Helmet>
             <ConfirmUI />
 
