@@ -889,7 +889,10 @@ export function FriendsPage() {
                 || (f.avatar && f.avatar.match(/ns_(\d+)/i));
             return Boolean(uidMatch);
         });
-        if (nsFriends.length === 0) return;
+        if (nsFriends.length === 0) {
+            alert("当前友链列表中没有发现包含 NodeSeek 空间地址或 UID 的站点！请先在友链空间地址中填入如 https://www.nodeseek.com/space/27361");
+            return;
+        }
 
         setIsBatchRefreshing(true);
         setBatchProgress({ current: 0, total: nsFriends.length });
@@ -904,10 +907,15 @@ export function FriendsPage() {
                     || f.name.match(/UID[:\s#]+(\d+)/i)
                     || (f.avatar && f.avatar.match(/ns_(\d+)/i));
                 const uid = uidMatch ? uidMatch[1] : "";
-                const [clientDetail, clientAvatar] = await Promise.all([
-                    uid ? fetchClientSideNsDetail(uid) : Promise.resolve(null),
-                    uid ? fetchClientAvatarBase64(uid) : Promise.resolve(null),
-                ]);
+                
+                // 1. 如果已有 nsData，基于已有 created_at 自动更新天数
+                let updatedNsData = parsed.nsData ? { ...parsed.nsData } : undefined;
+                if (updatedNsData && (updatedNsData as any).created_at) {
+                    const days = Math.max(1, Math.floor((Date.now() - new Date((updatedNsData as any).created_at).getTime()) / 86400000));
+                    updatedNsData.days = days;
+                    updatedNsData.join_days = `${days}天`;
+                }
+
                 const token = localStorage.getItem("rin_auth_token") || "";
                 const res = await fetch("/api/friend/extract-source-avatar", {
                     method: "POST",
@@ -918,15 +926,25 @@ export function FriendsPage() {
                     body: JSON.stringify({
                         sourceUrl: parsed.spaceUrl || (uid ? `https://www.nodeseek.com/space/${uid}#/general` : f.url),
                         name: f.name,
-                        clientNsDetail: clientDetail || undefined,
-                        clientAvatarBase64: clientAvatar || undefined,
                     }),
                 });
                 let data: any = null;
                 if (res.ok) {
                     data = await res.json();
                 }
-                let finalDetail = data?.nsDetail || clientDetail;
+                let finalDetail = data?.nsDetail;
+                if (finalDetail) {
+                    updatedNsData = {
+                        name: finalDetail.member_name,
+                        rank: finalDetail.rank,
+                        coin: finalDetail.coin,
+                        days: finalDetail.days || finalDetail.join_days,
+                        posts: finalDetail.posts || finalDetail.nPost,
+                        comments: finalDetail.comments || finalDetail.nComment,
+                        bio: finalDetail.bio,
+                    };
+                }
+
                 if (finalDetail || uid || data?.avatarUrl) {
                     const isFriendBlog = parsed.category === "友邻博客";
                     const isTempName = f.name.includes("NodeSeek#") || f.name.startsWith("UID:");
@@ -943,15 +961,7 @@ export function FriendsPage() {
                         avatarMode: parsed.avatarMode,
                         siteAvatar: parsed.siteAvatar,
                         nsAvatar: finalAvatar,
-                        nsData: finalDetail ? {
-                            name: finalDetail.member_name,
-                            rank: finalDetail.rank,
-                            coin: finalDetail.coin,
-                            days: finalDetail.days || finalDetail.join_days,
-                            posts: finalDetail.posts || finalDetail.nPost,
-                            comments: finalDetail.comments || finalDetail.nComment,
-                            bio: finalDetail.bio,
-                        } : parsed.nsData,
+                        nsData: updatedNsData,
                     });
                     await client.friend.update(f.id, {
                         name: nextName,
@@ -965,6 +975,7 @@ export function FriendsPage() {
         setIsBatchRefreshing(false);
         setBatchProgress(null);
         reloadFriends();
+        alert(`✓ 批量更正完成：共成功同步 ${successCount} / ${nsFriends.length} 位坛友的数据与 R2 头像！`);
     };
 
     // 快捷直接移动分类
@@ -1567,7 +1578,51 @@ function useFriendNsRefresh(
                 console.warn("Server extract error, falling back to client-only:", netErr);
             }
 
-            const finalNsDetail = serverData?.nsDetail || clientDetail;
+            let finalNsDetail = serverData?.nsDetail || clientDetail;
+
+            // 3. 优先尝试从剪贴板自动智能直取 (如果站长刚在 NodeSeek 复制了 API JSON 或主页文本，0手动秒级直读)
+            if (!finalNsDetail && typeof navigator !== "undefined" && navigator.clipboard?.readText) {
+                try {
+                    const clipText = await navigator.clipboard.readText();
+                    if (clipText && (clipText.includes("detail") || clipText.includes("member_name") || clipText.includes("加入天数") || clipText.includes("鸡腿") || clipText.includes("等级"))) {
+                        const parsedNs = parseNodeSeekPastedText(clipText);
+                        if (parsedNs.rank !== undefined || parsedNs.coin !== undefined || parsedNs.days !== undefined) {
+                            finalNsDetail = {
+                                name: parsedNs.name || displayName || friend.name,
+                                member_name: parsedNs.name || displayName || friend.name,
+                                rank: parsedNs.rank ?? 1,
+                                coin: parsedNs.coin ?? 0,
+                                days: parsedNs.days ?? 1,
+                                posts: parsedNs.posts ?? 0,
+                                comments: parsedNs.comments ?? 0,
+                                bio: parsedNs.bio ?? "",
+                            };
+                        }
+                    }
+                } catch {}
+            }
+
+            // 4. 若自动穿透受阻且剪贴板无数据，唤起轻量输入弹窗 (带官方直达接口链接)
+            if (!finalNsDetail && uid && typeof window !== "undefined") {
+                const apiHintUrl = `https://www.nodeseek.com/api/account/getInfo/${uid}?readme=1`;
+                const promptMsg = `NodeSeek 官方开启了 Cloudflare 人机防护，自动穿透受阻。\n\n请在浏览器打开以下官方接口并全选复制 JSON，粘贴到下方输入框（秒级自动解析并写入 R2 头像）：\n${apiHintUrl}`;
+                const pasted = window.prompt(promptMsg);
+                if (pasted?.trim()) {
+                    const parsedNs = parseNodeSeekPastedText(pasted);
+                    if (parsedNs.rank !== undefined || parsedNs.coin !== undefined || parsedNs.days !== undefined) {
+                        finalNsDetail = {
+                            name: parsedNs.name || displayName || friend.name,
+                            member_name: parsedNs.name || displayName || friend.name,
+                            rank: parsedNs.rank ?? 1,
+                            coin: parsedNs.coin ?? 0,
+                            days: parsedNs.days ?? 1,
+                            posts: parsedNs.posts ?? 0,
+                            comments: parsedNs.comments ?? 0,
+                            bio: parsedNs.bio ?? "",
+                        };
+                    }
+                }
+            }
 
             // 头像处理：优先使用服务端转存好的 R2 链接 (带时间戳刷新防缓存)；如果服务端没有成功写 R2，则使用官方直链回退
             const serverAvatarUrl = serverData?.avatarUrl || "";
@@ -1576,43 +1631,51 @@ function useFriendNsRefresh(
                 ? serverAvatarUrl
                 : (uid ? `https://www.nodeseek.com/avatar/${uid}.png` : sanitizeAvatarUrl(serverAvatarUrl || friend.avatar));
 
-            if (finalNsDetail) {
+            if (finalNsDetail || isR2Avatar) {
                 const isFriendBlog = category === "友邻博客";
                 const isTempName = friend.name.includes("NodeSeek#") || friend.name.startsWith("UID:");
-                const nextName = isFriendBlog ? friend.name : (isTempName && finalNsDetail.member_name ? finalNsDetail.member_name : (displayName || friend.name));
+                const nextName = isFriendBlog ? friend.name : (isTempName && finalNsDetail?.member_name ? finalNsDetail.member_name : (displayName || friend.name));
                 const existingCleanDesc = cleanDesc?.trim() || "";
                 const hasCustomDesc = existingCleanDesc && existingCleanDesc !== "个人技术生活随想" && !existingCleanDesc.endsWith("的空间");
                 const nextDesc = hasCustomDesc
                     ? existingCleanDesc
-                    : (finalNsDetail.bio ? finalNsDetail.bio.trim().slice(0, 40) : (serverData?.suggestedDesc || `${nextName}的空间`));
+                    : (finalNsDetail?.bio ? finalNsDetail.bio.trim().slice(0, 40) : (serverData?.suggestedDesc || `${nextName}的空间`));
+
+                const nextNsData = finalNsDetail ? {
+                    name: finalNsDetail.member_name,
+                    rank: finalNsDetail.rank,
+                    coin: finalNsDetail.coin,
+                    days: finalNsDetail.days || finalNsDetail.join_days,
+                    posts: finalNsDetail.posts || finalNsDetail.nPost,
+                    comments: finalNsDetail.comments || finalNsDetail.nComment,
+                    bio: finalNsDetail.bio,
+                } : parsed.nsData;
 
                 const newFormattedDesc = formatFriendDesc(category, nextDesc, {
                     spaceUrl: serverData?.spaceUrl || spaceUrl || (uid ? `https://www.nodeseek.com/space/${uid}#/general` : undefined),
                     avatarMode: parsed.avatarMode,
                     siteAvatar: parsed.siteAvatar,
                     nsAvatar: finalAvatarUrl || parsed.nsAvatar,
-                    nsData: {
-                        name: finalNsDetail.member_name,
-                        rank: finalNsDetail.rank,
-                        coin: finalNsDetail.coin,
-                        days: finalNsDetail.days || finalNsDetail.join_days,
-                        posts: finalNsDetail.posts || finalNsDetail.nPost,
-                        comments: finalNsDetail.comments || finalNsDetail.nComment,
-                        bio: finalNsDetail.bio,
-                    },
+                    nsData: nextNsData,
                 });
 
-                await client.friend.update(friend.id, {
+                const updateRes = await client.friend.update(friend.id, {
                     name: nextName,
                     desc: newFormattedDesc,
                     avatar: finalAvatarUrl,
                 });
+
+                if (updateRes.error) {
+                    throw new Error(typeof updateRes.error.value === "string" ? updateRes.error.value : "更新失败");
+                }
 
                 setRefreshNsDone(true);
                 if (onUpdate) {
                     onUpdate();
                 }
                 setTimeout(() => setRefreshNsDone(false), 2500);
+            } else {
+                alert("未获取到坛友资产数据，请检查 UID 或重新操作");
             }
         } catch (err) {
             console.error("Quick refresh NS failed:", err);
