@@ -1584,7 +1584,7 @@ function useFriendNsRefresh(
             if (!finalNsDetail && typeof navigator !== "undefined" && navigator.clipboard?.readText) {
                 try {
                     const clipText = await navigator.clipboard.readText();
-                    if (clipText && (clipText.includes("detail") || clipText.includes("member_name") || clipText.includes("加入天数") || clipText.includes("鸡腿") || clipText.includes("等级"))) {
+                    if (clipText) {
                         const parsedNs = parseNodeSeekPastedText(clipText);
                         if (parsedNs.rank !== undefined || parsedNs.coin !== undefined || parsedNs.days !== undefined) {
                             finalNsDetail = {
@@ -1602,34 +1602,62 @@ function useFriendNsRefresh(
                 } catch {}
             }
 
-            // 4. 若自动穿透受阻且剪贴板无数据，唤起轻量输入弹窗 (带官方直达接口链接)
-            if (!finalNsDetail && uid && typeof window !== "undefined") {
-                const apiHintUrl = `https://www.nodeseek.com/api/account/getInfo/${uid}?readme=1`;
-                const promptMsg = `NodeSeek 官方开启了 Cloudflare 人机防护，自动穿透受阻。\n\n请在浏览器打开以下官方接口并全选复制 JSON，粘贴到下方输入框（秒级自动解析并写入 R2 头像）：\n${apiHintUrl}`;
-                const pasted = window.prompt(promptMsg);
-                if (pasted?.trim()) {
-                    const parsedNs = parseNodeSeekPastedText(pasted);
-                    if (parsedNs.rank !== undefined || parsedNs.coin !== undefined || parsedNs.days !== undefined) {
-                        finalNsDetail = {
-                            name: parsedNs.name || displayName || friend.name,
-                            member_name: parsedNs.name || displayName || friend.name,
-                            rank: parsedNs.rank ?? 1,
-                            coin: parsedNs.coin ?? 0,
-                            days: parsedNs.days ?? 1,
-                            posts: parsedNs.posts ?? 0,
-                            comments: parsedNs.comments ?? 0,
-                            bio: parsedNs.bio ?? "",
-                        };
-                    }
-                }
-            }
-
             // 头像处理：优先使用服务端转存好的 R2 链接 (带时间戳刷新防缓存)；如果服务端没有成功写 R2，则使用官方直链回退
             const serverAvatarUrl = serverData?.avatarUrl || "";
             const isR2Avatar = serverAvatarUrl.includes("/api/blob/");
             const finalAvatarUrl = isR2Avatar
                 ? serverAvatarUrl
                 : (uid ? `https://www.nodeseek.com/avatar/${uid}.png` : sanitizeAvatarUrl(serverAvatarUrl || friend.avatar));
+
+            // 4. 若自动穿透受阻且剪贴板无数据：自动复制接口链接并自动在新标签页打开，监听视口重聚焦自动入库
+            if (!finalNsDetail && uid) {
+                const apiHintUrl = `https://www.nodeseek.com/api/account/getInfo/${uid}?readme=1`;
+                if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+                    try {
+                        await navigator.clipboard.writeText(apiHintUrl);
+                    } catch {}
+                }
+
+                // 自动打开接口新标签（在用户的正常浏览器环境中秒开）
+                window.open(apiHintUrl, "_blank");
+
+                // 注册视口重聚焦监听：用户在新标签页全选复制 (Ctrl+A, Ctrl+C) 切回博客时，自动秒级抓取入库！
+                const onWindowFocusBack = async () => {
+                    window.removeEventListener("focus", onWindowFocusBack);
+                    try {
+                        const newClip = await navigator.clipboard.readText();
+                        if (newClip) {
+                            const parsedNs = parseNodeSeekPastedText(newClip);
+                            if (parsedNs.rank !== undefined || parsedNs.coin !== undefined || parsedNs.days !== undefined) {
+                                const newDesc = formatFriendDesc(category, cleanDesc || `${displayName}的空间`, {
+                                    spaceUrl: serverData?.spaceUrl || spaceUrl || (uid ? `https://www.nodeseek.com/space/${uid}#/general` : undefined),
+                                    avatarMode: parsed.avatarMode,
+                                    siteAvatar: parsed.siteAvatar,
+                                    nsAvatar: finalAvatarUrl || parsed.nsAvatar,
+                                    nsData: {
+                                        name: parsedNs.name || displayName || friend.name,
+                                        rank: parsedNs.rank ?? 1,
+                                        coin: parsedNs.coin ?? 0,
+                                        days: parsedNs.days ?? 1,
+                                        posts: parsedNs.posts ?? 0,
+                                        comments: parsedNs.comments ?? 0,
+                                        bio: parsedNs.bio ?? "",
+                                    },
+                                });
+                                await client.friend.update(friend.id, {
+                                    name: parsedNs.name || displayName || friend.name,
+                                    desc: newDesc,
+                                    avatar: finalAvatarUrl,
+                                });
+                                setRefreshNsDone(true);
+                                if (onUpdate) onUpdate();
+                                setTimeout(() => setRefreshNsDone(false), 2500);
+                            }
+                        }
+                    } catch {}
+                };
+                window.addEventListener("focus", onWindowFocusBack);
+            }
 
             if (finalNsDetail || isR2Avatar) {
                 const isFriendBlog = category === "友邻博客";
@@ -2237,7 +2265,10 @@ function EditFriendModal({
     const [url, setUrl] = useState(friend.url);
     const [category, setCategory] = useState(parsed.category || "友邻博客");
     const [spaceUrl, setSpaceUrl] = useState(parsed.spaceUrl || "");
-    const [nsData, setNsData] = useState<NodeSeekUserData | undefined>(parsed.nsData);
+    const nsData = parsed.nsData;
+    const [nsRank, setNsRank] = useState<number | string>(parsed.nsData?.rank ?? "");
+    const [nsCoin, setNsCoin] = useState<number | string>(parsed.nsData?.coin ?? "");
+    const [nsDays, setNsDays] = useState<number | string>(parsed.nsData?.days ?? "");
     const [sortOrder, setSortOrder] = useState(friend.sort_order || 0);
     const [accepted, setAccepted] = useState(friend.accepted);
     const [isSaving, setIsSaving] = useState(false);
@@ -2279,9 +2310,21 @@ function EditFriendModal({
         e.preventDefault();
         setIsSaving(true);
         try {
+            const hasNsData = nsRank !== "" || nsCoin !== "" || nsDays !== "" || (spaceUrl && spaceUrl.includes("nodeseek"));
+            const finalNsData = hasNsData ? {
+                name: nsData?.name || name,
+                member_name: nsData?.member_name || name,
+                rank: nsRank !== "" ? Number(nsRank) : (nsData?.rank ?? 1),
+                coin: nsCoin !== "" ? Number(nsCoin) : (nsData?.coin ?? 0),
+                days: nsDays !== "" ? Number(nsDays) : (nsData?.days ?? 1),
+                posts: nsData?.posts ?? 0,
+                comments: nsData?.comments ?? 0,
+                bio: nsData?.bio ?? "",
+            } : undefined;
+
             const formattedDesc = formatFriendDesc(category, desc, {
                 spaceUrl,
-                nsData,
+                nsData: finalNsData,
                 avatarMode: parsed.avatarMode,
                 nsAvatar: parsed.nsAvatar,
                 siteAvatar: parsed.siteAvatar,
@@ -2372,51 +2415,105 @@ function EditFriendModal({
                 </div>
 
                 <div>
-                    <div className="flex items-center justify-between mb-1">
-                        <label className="text-neutral-500">空间地址或论坛直达 (选填)</label>
-                        <button
-                            type="button"
-                            onClick={async () => {
-                                const uidMatch = (spaceUrl || friend.url).match(/space\/(\d+)/i) || name.match(/UID[:\s#]+(\d+)/i);
-                                const editUid = uidMatch ? uidMatch[1] : "";
-                                if (!editUid) return;
-                                const detail = await fetchClientSideNsDetail(editUid);
-                                if (detail) {
-                                    setNsData({
-                                        name: detail.member_name || nsData?.name || name,
-                                        rank: detail.rank ?? nsData?.rank ?? 1,
-                                        coin: detail.coin ?? nsData?.coin ?? 0,
-                                        days: detail.days ?? nsData?.days ?? 1,
-                                        posts: detail.posts ?? nsData?.posts ?? 0,
-                                        comments: detail.comments ?? nsData?.comments ?? 0,
-                                        bio: detail.bio ?? nsData?.bio ?? "",
-                                    });
-                                    if (detail.member_name && (!name || name.includes("NodeSeek#") || name.startsWith("UID:"))) {
-                                        setName(detail.member_name);
-                                    }
-                                }
-                            }}
-                            className="text-[11px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-0.5 cursor-pointer"
-                        >
-                            <i className="ri-refresh-line text-xs" />
-                            <span>一键同步坛友勋章</span>
-                        </button>
-                    </div>
+                    <label className="block text-neutral-500 mb-1">空间地址或论坛直达 (选填)</label>
                     <input
                         type="text"
                         value={spaceUrl}
                         onChange={(e) => setSpaceUrl(e.target.value)}
                         placeholder="https://www.nodeseek.com/space/UID"
-                        className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs"
+                        className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs font-mono"
                     />
-                    {nsData && (
-                        <div className="flex items-center gap-2 mt-1.5 text-[11px] font-mono text-neutral-500">
-                            <span>已关联勋章:</span>
-                            {nsData.rank !== undefined && <span className="text-amber-600 font-bold">Lv.{nsData.rank}</span>}
-                            {nsData.coin !== undefined && <span className="text-orange-600 font-bold">🍗 {nsData.coin}</span>}
-                            {nsData.days !== undefined && <span className="text-blue-600 font-bold">🕒 {nsData.days}天</span>}
+                </div>
+
+                {/* NodeSeek 勋章资产调节面板 */}
+                <div className="p-3 rounded-2xl border border-purple-500/20 bg-purple-500/5 dark:bg-purple-950/20 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                            <i className="ri-medal-line text-sm" />
+                            <span>NodeSeek 坛友勋章资产 (实时联动)</span>
+                        </span>
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                const editUid = (spaceUrl || friend.url).match(/space\/(\d+)/i)?.[1] || name.match(/UID[:\s#]+(\d+)/i)?.[1] || "";
+                                // 1. 尝试从剪贴板自动读取
+                                if (typeof navigator !== "undefined" && navigator.clipboard?.readText) {
+                                    try {
+                                        const clipText = await navigator.clipboard.readText();
+                                        if (clipText) {
+                                            const p = parseNodeSeekPastedText(clipText);
+                                            if (p.rank !== undefined || p.coin !== undefined || p.days !== undefined) {
+                                                if (p.rank !== undefined) setNsRank(p.rank);
+                                                if (p.coin !== undefined) setNsCoin(p.coin);
+                                                if (p.days !== undefined) setNsDays(p.days);
+                                                if (p.name && (!name || name.includes("NodeSeek#") || name.startsWith("UID:"))) setName(p.name);
+                                                return;
+                                            }
+                                        }
+                                    } catch {}
+                                }
+                                // 2. 若剪贴板无数据，唤起官方接口并监听切回
+                                if (editUid) {
+                                    const apiHintUrl = `https://www.nodeseek.com/api/account/getInfo/${editUid}?readme=1`;
+                                    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+                                        try { await navigator.clipboard.writeText(apiHintUrl); } catch {}
+                                    }
+                                    window.open(apiHintUrl, "_blank");
+                                    const onFocusBack = async () => {
+                                        window.removeEventListener("focus", onFocusBack);
+                                        try {
+                                            const newClip = await navigator.clipboard.readText();
+                                            if (newClip) {
+                                                const p = parseNodeSeekPastedText(newClip);
+                                                if (p.rank !== undefined) setNsRank(p.rank);
+                                                if (p.coin !== undefined) setNsCoin(p.coin);
+                                                if (p.days !== undefined) setNsDays(p.days);
+                                                if (p.name && (!name || name.includes("NodeSeek#") || name.startsWith("UID:"))) setName(p.name);
+                                            }
+                                        } catch {}
+                                    };
+                                    window.addEventListener("focus", onFocusBack);
+                                }
+                            }}
+                            className="text-[11px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-0.5 cursor-pointer font-medium"
+                        >
+                            <i className="ri-refresh-line text-xs" />
+                            <span>自动读取/同步</span>
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                        <div>
+                            <label className="block text-[11px] text-neutral-500 mb-0.5">等级 (Lv)</label>
+                            <input
+                                type="number"
+                                value={nsRank}
+                                onChange={(e) => setNsRank(e.target.value)}
+                                placeholder="如: 6"
+                                className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-black/10 dark:border-white/10 text-xs font-mono font-bold"
+                            />
                         </div>
-                    )}
+                        <div>
+                            <label className="block text-[11px] text-neutral-500 mb-0.5">鸡腿数 (🍗)</label>
+                            <input
+                                type="number"
+                                value={nsCoin}
+                                onChange={(e) => setNsCoin(e.target.value)}
+                                placeholder="如: 11575"
+                                className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-black/10 dark:border-white/10 text-xs font-mono font-bold"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[11px] text-neutral-500 mb-0.5">加入天数 (🕒)</label>
+                            <input
+                                type="number"
+                                value={nsDays}
+                                onChange={(e) => setNsDays(e.target.value)}
+                                placeholder="如: 640"
+                                className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-black/10 dark:border-white/10 text-xs font-mono font-bold"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <div>
