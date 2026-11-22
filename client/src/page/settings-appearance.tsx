@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ACCENT_COLOR_PRESETS,
   OPACITY_SHORTCUTS,
@@ -20,28 +21,6 @@ import { normalizeAmbienceMode, type AmbienceMode } from "../components/ambient-
 type ClientConfigReader = {
   get: (key: string) => unknown;
 };
-
-const CARD_VARIANT_BLOCKS: Array<{
-  id: FeedCardVariant;
-  label: string;
-  tag: string;
-}> = [
-  { id: "default", label: "拍立得瀑布流", tag: "白边微倾" },
-  { id: "poster", label: "全幅沉浸画册", tag: "原图满幅" },
-  { id: "editorial", label: "图文双栏杂志", tag: "左文右图" },
-  { id: "compact", label: "紧凑文章列表", tag: "高密扫读" },
-];
-
-const AMBIENCE_BLOCKS: Array<{
-  id: AmbienceMode;
-  label: string;
-  icon: string;
-}> = [
-  { id: "none", label: "关闭粒子", icon: "ri-forbid-line" },
-  { id: "sakura", label: "飘落樱花", icon: "ri-flower-line" },
-  { id: "rain", label: "清透细雨", icon: "ri-rainy-line" },
-  { id: "fireflies", label: "呼吸萤火", icon: "ri-sparkling-2-line" },
-];
 
 function VariantThumb({ variant }: { variant: FeedCardVariant }) {
   if (variant === "editorial") {
@@ -125,6 +104,21 @@ export function SettingsAppearancePanel({
   clientConfig: ClientConfigReader;
   setConfigValue: (type: "client" | "server", key: string, value: unknown) => void;
 }) {
+  const { t } = useTranslation();
+
+  const cardVariantBlocks = useMemo(() => [
+    { id: "default" as FeedCardVariant, label: t("appearance.variant_default", { defaultValue: "拍立得瀑布流" }), tag: t("appearance.variant_default_tag", { defaultValue: "白边微倾" }) },
+    { id: "poster" as FeedCardVariant, label: t("appearance.variant_poster", { defaultValue: "全幅沉浸画册" }), tag: t("appearance.variant_poster_tag", { defaultValue: "原图满幅" }) },
+    { id: "editorial" as FeedCardVariant, label: t("appearance.variant_editorial", { defaultValue: "图文双栏杂志" }), tag: t("appearance.variant_editorial_tag", { defaultValue: "左文右图" }) },
+    { id: "compact" as FeedCardVariant, label: t("appearance.variant_compact", { defaultValue: "紧凑文章列表" }), tag: t("appearance.variant_compact_tag", { defaultValue: "高密扫读" }) },
+  ], [t]);
+
+  const ambienceBlocks = useMemo(() => [
+    { id: "none" as AmbienceMode, label: t("appearance.ambience_none", { defaultValue: "关闭粒子" }), icon: "ri-forbid-line" },
+    { id: "sakura" as AmbienceMode, label: t("appearance.ambience_sakura", { defaultValue: "飘落樱花" }), icon: "ri-flower-line" },
+    { id: "rain" as AmbienceMode, label: t("appearance.ambience_rain", { defaultValue: "清透细雨" }), icon: "ri-rainy-line" },
+    { id: "fireflies" as AmbienceMode, label: t("appearance.ambience_fireflies", { defaultValue: "呼吸萤火" }), icon: "ri-sparkling-2-line" },
+  ], [t]);
   const cardVariant = normalizeFeedCardVariant(String(clientConfig.get("feed.card_variant") ?? "default"));
   const activePreset = String(clientConfig.get("theme.preset") ?? "sakura");
   const activeColor = normalizeThemeColor(String(clientConfig.get("theme.color") ?? "#fc466b"));
@@ -212,7 +206,7 @@ export function SettingsAppearancePanel({
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {CARD_VARIANT_BLOCKS.map((item) => {
+          {cardVariantBlocks.map((item) => {
             const selected = cardVariant === item.id;
             return (
               <button
@@ -423,7 +417,7 @@ export function SettingsAppearancePanel({
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
-            {AMBIENCE_BLOCKS.map((item) => {
+            {ambienceBlocks.map((item) => {
               const selected = activeAmbience === item.id;
               return (
                 <button

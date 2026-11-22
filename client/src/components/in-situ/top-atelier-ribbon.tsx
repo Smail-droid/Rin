@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { ProfileContext } from "../../state/profile";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 import { client } from "../../app/runtime";
@@ -107,6 +108,7 @@ function IconTag({ className = "h-3.5 w-3.5" }: { className?: string }) {
 export function TopAtelierRibbon() {
   const profile = useContext(ProfileContext);
   const siteConfig = useSiteConfig();
+  const { t } = useTranslation();
   const isAdmin = Boolean(profile?.permission);
 
   const [ambience, setAmbience] = useState<AmbienceMode>(() => {
@@ -269,14 +271,23 @@ export function TopAtelierRibbon() {
     label: string;
     icon: JSX.Element;
   }> = [
-    { id: "sakura", label: "樱花", icon: <IconSakura /> },
-    { id: "rain", label: "细雨", icon: <IconRain /> },
-    { id: "fireflies", label: "萤火", icon: <IconFireflies /> },
+    { id: "sakura", label: t("ambience.sakura", { defaultValue: "樱花" }), icon: <IconSakura /> },
+    { id: "rain", label: t("ambience.rain", { defaultValue: "细雨" }), icon: <IconRain /> },
+    { id: "fireflies", label: t("ambience.fireflies", { defaultValue: "萤火" }), icon: <IconFireflies /> },
   ];
+
+  const variantLabels: Record<FeedCardVariant, string> = {
+    default: t("variant.polaroid", { defaultValue: "拍立得" }),
+    poster: t("variant.poster", { defaultValue: "画册" }),
+    editorial: t("variant.editorial", { defaultValue: "杂志" }),
+    compact: t("variant.compact", { defaultValue: "列表" }),
+  };
+  const currentVariantLabel = variantLabels[siteConfig.feedCardVariant] || currentVariantMeta.label;
+  const currentPaletteName = t(`palette.${currentPalette.id}`, { defaultValue: currentPalette.name });
 
   return (
     <div
-      aria-label="画廊氛围与在场工坊"
+      aria-label={t("top_ribbon_aria", { defaultValue: "画廊氛围与在场工坊" })}
       className="w-full max-w-4xl mx-auto px-4 pt-2 pb-2 flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-1.5 text-xs select-none ani-show"
     >
       {/* 1. 访客可用：独立氛围微开关 */}
@@ -288,7 +299,11 @@ export function TopAtelierRibbon() {
             type="button"
             onClick={() => handleToggleAmbience(item.id)}
             aria-pressed={active}
-            title={active ? `关闭${item.label}氛围` : `开启${item.label}氛围`}
+            title={
+              active
+                ? t("ambience.close_mode", { mode: item.label, defaultValue: `关闭${item.label}氛围` })
+                : t("ambience.open_mode", { mode: item.label, defaultValue: `开启${item.label}氛围` })
+            }
             className={`inline-flex items-center gap-1 py-0.5 text-xs transition-all duration-200 cursor-pointer ${
               active
                 ? "text-theme font-semibold glow-theme"
@@ -310,18 +325,18 @@ export function TopAtelierRibbon() {
           <button
             type="button"
             onClick={handleCycleVariant}
-            title={`切换文章版式（当前：${currentVariantMeta.label}）`}
+            title={t("variant.switch_title", { current: currentVariantLabel, defaultValue: `切换文章版式（当前：${currentVariantLabel}）` })}
             className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme transition-all duration-200 cursor-pointer font-medium"
           >
             <IconLayout />
-            <span>{currentVariantMeta.label}</span>
+            <span>{currentVariantLabel}</span>
           </button>
 
           {/* 预设色盘一键即切 */}
           <button
             type="button"
             onClick={handleCyclePalette}
-            title={`切换画廊主题色（当前：${currentPalette.name}）`}
+            title={t("palette.switch_title", { current: currentPaletteName, defaultValue: `切换画廊主题色（当前：${currentPaletteName}）` })}
             className="inline-flex items-center gap-1.5 py-0.5 text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme transition-all duration-200 cursor-pointer font-medium"
           >
             <span
@@ -329,23 +344,23 @@ export function TopAtelierRibbon() {
               style={{ backgroundColor: liveColorHex }}
               aria-hidden="true"
             />
-            <span>{currentPalette.name}</span>
+            <span>{currentPaletteName}</span>
           </button>
 
           {/* 自由彩虹调色 */}
           <label
-            title="自由取色实时调控"
+            title={t("palette.custom_title", { defaultValue: "自由取色实时调控" })}
             className="relative inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
           >
             <span
               className="h-2.5 w-2.5 rounded-full bg-gradient-to-tr from-rose-500 via-amber-400 via-emerald-400 to-sky-500 shrink-0"
               aria-hidden="true"
             />
-            <span className="hidden sm:inline">调色</span>
+            <span className="hidden sm:inline">{t("palette.custom_label", { defaultValue: "调色" })}</span>
             <input
               ref={colorInputRef}
               type="color"
-              aria-label="自由调色盘选色"
+              aria-label={t("palette.custom_aria", { defaultValue: "自由调色盘选色" })}
               defaultValue={liveColorHex}
               onInput={(e) => handleLiveColorInput((e.target as HTMLInputElement).value)}
               onBlur={(e) => {
@@ -361,7 +376,11 @@ export function TopAtelierRibbon() {
           <button
             type="button"
             onClick={handleToggleAISummary}
-            title={siteConfig.aiSummaryEnabled ? "点击即刻关闭全站文章导读" : "点击即刻开启全站文章导读"}
+            title={
+              siteConfig.aiSummaryEnabled
+                ? t("ai_summary.disable_hint", { defaultValue: "点击即刻关闭全站文章导读" })
+                : t("ai_summary.enable_hint", { defaultValue: "点击即刻开启全站文章导读" })
+            }
             className={`inline-flex items-center gap-1 py-0.5 text-xs transition-all duration-200 cursor-pointer ${
               siteConfig.aiSummaryEnabled
                 ? "text-theme font-bold"
@@ -369,7 +388,11 @@ export function TopAtelierRibbon() {
             }`}
           >
             <i className="ri-sparkling-2-line" />
-            <span>导读:{siteConfig.aiSummaryEnabled ? "开" : "关"}</span>
+            <span>
+              {siteConfig.aiSummaryEnabled
+                ? t("ai_summary.status_on", { defaultValue: "导读:开" })
+                : t("ai_summary.status_off", { defaultValue: "导读:关" })}
+            </span>
           </button>
 
           <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/10 rounded-full" aria-hidden="true" />
@@ -377,51 +400,51 @@ export function TopAtelierRibbon() {
           {/* 全屏创作直达 */}
           <Link
             href="/admin/writing"
-            title="进入全屏沉浸创作台"
+            title={t("nav.write_title", { defaultValue: "进入全屏沉浸创作台" })}
             className="inline-flex items-center gap-1 py-0.5 text-xs text-theme hover:brightness-110 font-bold transition-all duration-200 cursor-pointer"
           >
             <IconQuill />
-            <span>撰写</span>
+            <span>{t("writing", { defaultValue: "撰写" })}</span>
           </Link>
 
           {/* 图床画廊直达 */}
           <Link
             href="/gallery"
-            title="进入全宽图床画廊"
+            title={t("nav.gallery_title", { defaultValue: "进入全宽图床画廊" })}
             className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
           >
             <IconGallery />
-            <span className="hidden sm:inline">图床</span>
+            <span className="hidden sm:inline">{t("gallery_title", { defaultValue: "图床" })}</span>
           </Link>
 
           {/* 音廊电台直达 */}
           <Link
             href="/music"
-            title="进入沉浸音廊工作台"
+            title={t("nav.music_title", { defaultValue: "进入沉浸音廊工作台" })}
             className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
           >
             <IconMusic />
-            <span className="hidden sm:inline">音廊</span>
+            <span className="hidden sm:inline">{t("music_title", { defaultValue: "音廊" })}</span>
           </Link>
 
           {/* 标签管理直达 */}
           <Link
             href="/hashtags"
-            title="标签体系管理"
+            title={t("nav.tags_title", { defaultValue: "标签体系管理" })}
             className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
           >
             <IconTag />
-            <span className="hidden md:inline">标签</span>
+            <span className="hidden md:inline">{t("hashtags", { defaultValue: "标签" })}</span>
           </Link>
 
           {/* 后台设置直达 */}
           <Link
             href="/admin/settings"
-            title="进入系统综合设置大盘"
+            title={t("nav.settings_title", { defaultValue: "进入系统综合设置大盘" })}
             className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
           >
             <i className="ri-settings-3-line text-xs" />
-            <span className="hidden sm:inline">设置</span>
+            <span className="hidden sm:inline">{t("settings.title", { defaultValue: "设置" })}</span>
           </Link>
         </>
       ) : null}

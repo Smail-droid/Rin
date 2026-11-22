@@ -149,7 +149,6 @@ export function InSituWritingDrawer({
   const insertImageToContent = (url: string, name?: string) => {
     const mdImg = `\n\n![${name || "插图"}](${url})\n\n`;
     setContent(content ? `${content}${mdImg}` : mdImg);
-    showAlert("✓ 已就地将图片 Markdown 语法插入到文章中！");
   };
 
   // 本地极速直传至 R2 并插入
@@ -451,7 +450,7 @@ export function InSituWritingDrawer({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="h-11 px-2.5 rounded-lg border border-dashed border-theme/40 hover:border-theme bg-theme/[0.04] text-theme text-[10px] font-bold flex flex-col items-center justify-center shrink-0 transition"
-              title="上传本地图片至 R2 并插入"
+              title="上传本地图片并插入"
             >
               <i className="ri-upload-cloud-line text-sm" />
               <span>上传</span>
@@ -467,7 +466,7 @@ export function InSituWritingDrawer({
             {loadingMedia ? (
               <div className="flex items-center gap-1.5 text-xs text-neutral-400 py-2 px-4">
                 <i className="ri-loader-4-line animate-spin text-theme" />
-                <span>加载 R2 媒体库…</span>
+                <span>加载媒体库…</span>
               </div>
             ) : mediaFiles.length === 0 ? (
               <span className="text-[11px] text-neutral-400 py-2">暂无图片素材</span>

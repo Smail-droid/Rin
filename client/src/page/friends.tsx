@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from 'react-helmet';
+import { useTranslation } from "react-i18next";
 import { Modal } from "@rin/ui";
 import { useConfirm } from "../components/dialog";
 import { ImageWithFallback } from "../components/image-with-fallback";
@@ -492,6 +493,7 @@ export const PRESET_CATEGORIES = [
 ];
 
 export function FriendsPage() {
+    const { t } = useTranslation();
     const profile = useContext(ProfileContext);
     const siteConfig = useSiteConfig();
 
@@ -1002,7 +1004,7 @@ export function FriendsPage() {
     return (
         <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
             <Helmet>
-                <title>{`星标友链 - ${siteConfig.name}`}</title>
+                <title>{`${t("friends.starry_title", { defaultValue: "星标友链" })} - ${siteConfig.name}`}</title>
             </Helmet>
             <ConfirmUI />
 
@@ -1012,10 +1014,10 @@ export function FriendsPage() {
                     <div>
                         <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary flex items-center gap-2">
                             <i className="ri-planet-line text-theme" />
-                            <span>星标友链</span>
+                            <span>{t("friends.starry_title", { defaultValue: "星标友链" })}</span>
                         </h1>
                         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                            山海有朋，见字如晤。与志趣相投的旅人一同漫步星空。
+                            {t("friends.desc", { defaultValue: "山海有朋，见字如晤。与志趣相投的旅人一同漫步星空。" })}
                         </p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -1025,7 +1027,7 @@ export function FriendsPage() {
                                 onClick={handleBatchRefreshAll}
                                 disabled={isBatchRefreshing}
                                 className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 dark:bg-neutral-800/80 border border-black/5 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:text-theme transition cursor-pointer disabled:opacity-50"
-                                title={isBatchRefreshing ? `刷新中 (${batchProgress?.current}/${batchProgress?.total})` : "刷新友链数据"}
+                                title={isBatchRefreshing ? `刷新中 (${batchProgress?.current}/${batchProgress?.total})` : t("friends.refresh_data", { defaultValue: "刷新友链数据" })}
                             >
                                 <i className={`ri-refresh-line text-sm ${isBatchRefreshing ? "animate-spin text-theme" : ""}`} />
                             </button>
@@ -1036,7 +1038,7 @@ export function FriendsPage() {
                             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-theme text-white text-xs font-semibold hover:opacity-90 transition shadow-sm cursor-pointer"
                         >
                             <i className="ri-add-line text-base" />
-                            <span>{profile?.permission ? "收录星标站点" : "申请加入星标"}</span>
+                            <span>{profile?.permission ? t("friends.add_site", { defaultValue: "收录星标站点" }) : t("friends.apply_site", { defaultValue: "申请加入星标" })}</span>
                         </button>
                     </div>
                 </div>
@@ -1045,10 +1047,10 @@ export function FriendsPage() {
                     <div>
                         <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary flex items-center gap-2">
                             <i className="ri-planet-line text-theme" />
-                            <span>星标友链</span>
+                            <span>{t("friends.starry_title", { defaultValue: "星标友链" })}</span>
                         </h1>
                         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                            山海有朋，见字如晤。与志趣相投的旅人一同漫步星空。
+                            {t("friends.desc", { defaultValue: "山海有朋，见字如晤。与志趣相投的旅人一同漫步星空。" })}
                         </p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -1058,7 +1060,7 @@ export function FriendsPage() {
                                 onClick={handleBatchRefreshAll}
                                 disabled={isBatchRefreshing}
                                 className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300 hover:text-theme transition cursor-pointer disabled:opacity-50"
-                                title={isBatchRefreshing ? `刷新中 (${batchProgress?.current}/${batchProgress?.total})` : "刷新友链数据"}
+                                title={isBatchRefreshing ? `刷新中 (${batchProgress?.current}/${batchProgress?.total})` : t("friends.refresh_data", { defaultValue: "刷新友链数据" })}
                             >
                                 <i className={`ri-refresh-line text-sm ${isBatchRefreshing ? "animate-spin text-theme" : ""}`} />
                             </button>

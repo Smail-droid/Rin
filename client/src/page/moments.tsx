@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
@@ -23,14 +23,11 @@ interface Moment {
   };
 }
 
-const MOMENT_STATUSES = [
-  { id: "casual", label: "随笔", icon: "ri-chat-1-line" },
-  { id: "code", label: "代码", icon: "ri-code-line" },
-  { id: "idea", label: "灵感", icon: "ri-lightbulb-line" },
-  { id: "daily", label: "日常", icon: "ri-sun-line" },
-  { id: "study", label: "阅读", icon: "ri-book-open-line" },
-  { id: "chill", label: "放空", icon: "ri-cup-line" },
-];
+interface MomentStatus {
+  id: string;
+  label: string;
+  icon: string;
+}
 
 export function MomentsPage() {
   const [moments, setMoments] = useState<Moment[]>([]);
@@ -47,6 +44,15 @@ export function MomentsPage() {
   const { t } = useTranslation();
   const siteConfig = useSiteConfig();
   const profile = useContext(ProfileContext);
+
+  const momentStatuses: MomentStatus[] = useMemo(() => [
+    { id: "casual", label: t("moments.status_casual", { defaultValue: "随笔" }), icon: "ri-chat-1-line" },
+    { id: "code", label: t("moments.status_code", { defaultValue: "代码" }), icon: "ri-code-line" },
+    { id: "idea", label: t("moments.status_idea", { defaultValue: "灵感" }), icon: "ri-lightbulb-line" },
+    { id: "daily", label: t("moments.status_daily", { defaultValue: "日常" }), icon: "ri-sun-line" },
+    { id: "study", label: t("moments.status_study", { defaultValue: "阅读" }), icon: "ri-book-open-line" },
+    { id: "chill", label: t("moments.status_chill", { defaultValue: "放空" }), icon: "ri-cup-line" },
+  ], [t]);
   const { showAlert, AlertUI } = useAlert();
   const { showConfirm, ConfirmUI } = useConfirm();
 
@@ -119,7 +125,7 @@ export function MomentsPage() {
     }, 0);
   };
 
-  const handleApplyStatus = (status: (typeof MOMENT_STATUSES)[0]) => {
+  const handleApplyStatus = (status: MomentStatus) => {
     const isSame = activeStatusId === status.id;
     setActiveStatusId(isSame ? "" : status.id);
     const tag = `#${status.label} `;
@@ -240,15 +246,17 @@ export function MomentsPage() {
                   }`}
                 >
                   <i className={isPublisherOpen ? "ri-close-line" : "ri-edit-line"} />
-                  <span>{isPublisherOpen ? "收起便签" : "记录新灵感"}</span>
+                  <span>{isPublisherOpen ? t("moments.collapse", { defaultValue: "收起便签" }) : t("moments.new_moment", { defaultValue: "记录新灵感" })}</span>
                 </button>
               </div>
             ) : null
           ) : siteConfig.pageHeaderMode === "banner" ? (
             <div className="relative w-full rounded-3xl overflow-hidden mb-6 p-6 sm:p-7 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ani-show">
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary">日常随想</h1>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">记录浮生闲步、片刻闪光与晨昏随笔。({length} 条记事)</p>
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary">{t("moments.title", { defaultValue: "日常随想" })}</h1>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  {t("moments.desc", { count: length, defaultValue: `记录浮生闲步、片刻闪光与晨昏随笔。(${length} 条记事)` })}
+                </p>
               </div>
               <div className="flex items-center gap-3 self-start sm:self-auto">
                 <Link
@@ -256,7 +264,7 @@ export function MomentsPage() {
                   className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-3.5 py-1.5 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900/80 backdrop-blur-md"
                 >
                   <i className="ri-arrow-left-line" />
-                  <span>返回画廊</span>
+                  <span>{t("back_to_gallery", { defaultValue: "返回画廊" })}</span>
                 </Link>
                 {profile?.permission && (
                   <button
@@ -273,7 +281,7 @@ export function MomentsPage() {
                     }`}
                   >
                     <i className={isPublisherOpen ? "ri-close-line" : "ri-edit-line"} />
-                    <span>{isPublisherOpen ? "收起便签" : "记录新灵感"}</span>
+                    <span>{isPublisherOpen ? t("moments.collapse", { defaultValue: "收起便签" }) : t("moments.new_moment", { defaultValue: "记录新灵感" })}</span>
                   </button>
                 )}
               </div>
@@ -287,10 +295,10 @@ export function MomentsPage() {
                       siteConfig.momentsTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"
                     }`}
                   >
-                    日常随想
+                    {t("moments.title", { defaultValue: "日常随想" })}
                   </h1>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                    记录浮生闲步、片刻闪光与晨昏随笔。({length} 条记事)
+                    {t("moments.desc", { count: length, defaultValue: `记录浮生闲步、片刻闪光与晨昏随笔。(${length} 条记事)` })}
                   </p>
                 </div>
 
@@ -300,7 +308,7 @@ export function MomentsPage() {
                     className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3.5 py-1.5 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900"
                   >
                     <i className="ri-arrow-left-line" />
-                    <span>返回画廊</span>
+                    <span>{t("back_to_gallery", { defaultValue: "返回画廊" })}</span>
                   </Link>
                   {profile?.permission && (
                     <button
@@ -317,7 +325,7 @@ export function MomentsPage() {
                       }`}
                     >
                       <i className={isPublisherOpen ? "ri-close-line" : "ri-edit-line"} />
-                      <span>{isPublisherOpen ? "收起便签" : "记录新灵感"}</span>
+                      <span>{isPublisherOpen ? t("moments.collapse", { defaultValue: "收起便签" }) : t("moments.new_moment", { defaultValue: "记录新灵感" })}</span>
                     </button>
                   )}
                 </div>
@@ -369,7 +377,7 @@ export function MomentsPage() {
                     <span className="text-[11px] font-semibold text-neutral-400 shrink-0 mr-1">
                       心情状态:
                     </span>
-                    {MOMENT_STATUSES.map((st) => {
+                    {momentStatuses.map((st: MomentStatus) => {
                       const isSelected = activeStatusId === st.id;
                       return (
                         <button

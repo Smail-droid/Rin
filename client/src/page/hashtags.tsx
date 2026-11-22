@@ -459,9 +459,9 @@ export function HashtagsPage() {
   return (
     <>
       <Helmet>
-        <title>{`${t("hashtags")} - ${siteConfig.name}`}</title>
+        <title>{`${t("hashtags_index", { defaultValue: "标签索引" })} - ${siteConfig.name}`}</title>
         <meta property="og:site_name" content={siteName} />
-        <meta property="og:title" content={t("hashtags")} />
+        <meta property="og:title" content={t("hashtags_index", { defaultValue: "标签索引" })} />
         <meta property="og:image" content={siteConfig.avatar} />
         <meta property="og:type" content="article" />
         <meta property="og:url" content={document.URL} />
@@ -483,8 +483,10 @@ export function HashtagsPage() {
           {siteConfig.pageHeaderMode === "hidden" ? null : siteConfig.pageHeaderMode === "banner" ? (
             <div className="w-full relative rounded-3xl overflow-hidden mb-6 p-6 sm:p-7 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ani-show">
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary">标签索引</h1>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">万象归卷，随引而遇。共 {hashtags?.length || 0} 个话题 · 关联 {totalFeedsCount} 篇次</p>
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary">{t("hashtags_index", { defaultValue: "标签索引" })}</h1>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  {t("hashtags_desc", { count: hashtags?.length || 0, feeds: totalFeedsCount, defaultValue: `万象归卷，随引而遇。共 ${hashtags?.length || 0} 个话题 · 关联 ${totalFeedsCount} 篇次` })}
+                </p>
               </div>
               <div className="flex items-center gap-2 self-start sm:self-auto">
                 {isAdmin && (
@@ -499,7 +501,7 @@ export function HashtagsPage() {
                       }`}
                     >
                       <i className="ri-bookmark-3-line" />
-                      <span>星云流</span>
+                      <span>{t("hashtags_view_cloud", { defaultValue: "星云流" })}</span>
                     </button>
                     <button
                       type="button"
@@ -511,7 +513,7 @@ export function HashtagsPage() {
                       }`}
                     >
                       <i className="ri-table-line" />
-                      <span>超级数据盘</span>
+                      <span>{t("hashtags_view_datagrid", { defaultValue: "超级数据盘" })}</span>
                     </button>
                   </div>
                 )}
@@ -520,7 +522,7 @@ export function HashtagsPage() {
                   className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 dark:bg-neutral-800/80 px-3.5 py-1.5 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 backdrop-blur-md"
                 >
                   <i className="ri-arrow-left-line" />
-                  <span>返回画廊</span>
+                  <span>{t("back_to_gallery", { defaultValue: "返回画廊" })}</span>
                 </Link>
               </div>
             </div>
@@ -532,7 +534,7 @@ export function HashtagsPage() {
                     siteConfig.hashtagsTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"
                   }`}
                 >
-                  {t("hashtags")}
+                  {t("hashtags_index", { defaultValue: "标签索引" })}
                 </h1>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex items-center gap-2 flex-wrap font-mono">
                   <span>万象归卷，随引而遇。</span>

@@ -99,7 +99,7 @@ export function TimelinePage() {
                         combined.push({
                             id: `m_${m.id}`,
                             type: "moment",
-                            title: m.content?.slice(0, 36) || "生活记事",
+                            title: m.content?.slice(0, 36) || t("moments.default_entry_title", { defaultValue: "生活记事" }),
                             content: m.content,
                             createdAt: m.createdAt,
                         });
@@ -160,9 +160,9 @@ export function TimelinePage() {
     return (
         <>
             <Helmet>
-                <title>{`时光长河 - ${siteConfig.name}`}</title>
+                <title>{`${t("timeline_title", { defaultValue: "时光长河" })} - ${siteConfig.name}`}</title>
                 <meta property="og:site_name" content={siteName} />
-                <meta property="og:title" content="时光长河" />
+                <meta property="og:title" content={t("timeline_title", { defaultValue: "时光长河" })} />
                 <meta property="og:image" content={siteConfig.avatar} />
                 <meta property="og:type" content="article" />
                 <meta property="og:url" content={document.URL} />
@@ -174,17 +174,17 @@ export function TimelinePage() {
                     {siteConfig.pageHeaderMode === "hidden" ? null : siteConfig.pageHeaderMode === "banner" ? (
                         <div className="relative w-full rounded-3xl overflow-hidden mb-6 p-6 sm:p-7 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 shadow-xs flex items-center justify-between gap-4 ani-show">
                             <div>
-                                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary">时光长河</h1>
-                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">流年有声，岁序常易。静候每一程漫行与落笔。</p>
+                                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary">{t("timeline_title", { defaultValue: "时光长河" })}</h1>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{t("timeline_desc", { defaultValue: "流年有声，岁序常易。静候每一程漫行与落笔。" })}</p>
                             </div>
                         </div>
                     ) : (
                         <div className="mb-6 pb-3 border-b border-black/5 dark:border-white/5">
                             <h1 className={`text-xl sm:text-2xl font-bold tracking-tight t-primary art-title-${siteConfig.timelineTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"}`}>
-                                时光长河
+                                {t("timeline_title", { defaultValue: "时光长河" })}
                             </h1>
                             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                                流年有声，岁序常易。静候每一程漫行与落笔。
+                                {t("timeline_desc", { defaultValue: "流年有声，岁序常易。静候每一程漫行与落笔。" })}
                             </p>
                         </div>
                     )}

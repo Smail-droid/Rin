@@ -63,7 +63,7 @@ export function SearchPage({ keyword }: { keyword: string }) {
                         <div>
                             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 text-xs font-bold mb-2">
                                 <i className="ri-search-line" />
-                                <span>搜索探索</span>
+                                <span>{t("search_explore", { defaultValue: "搜索探索" })}</span>
                             </div>
                             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight t-primary">
                                 {t('article.search.title')}: <span className="text-theme font-normal">{keyword}</span>
@@ -77,7 +77,7 @@ export function SearchPage({ keyword }: { keyword: string }) {
                             className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900"
                         >
                             <i className="ri-arrow-left-line" />
-                            <span>返回画廊</span>
+                            <span>{t("back_to_gallery", { defaultValue: "返回画廊" })}</span>
                         </Link>
                     </div>
                     <Waiting for={status === 'idle'}>

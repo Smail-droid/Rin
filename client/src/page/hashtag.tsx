@@ -124,7 +124,7 @@ export function HashtagPage({ name }: { name: string }) {
                         <div>
                             <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold mb-2 shadow-2xs ${tagTheme.badgeClass}`}>
                                 <SolidTagIcon color={tagTheme.iconColor} className="w-3.5 h-3.5" />
-                                <span>标签分类</span>
+                                <span>{t("tag_category", { defaultValue: "标签分类" })}</span>
                             </div>
                             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight t-primary flex items-center gap-2">
                                 <SolidTagIcon color={tagTheme.iconColor} className="w-7 h-7 sm:w-8 sm:h-8" />
@@ -135,7 +135,7 @@ export function HashtagPage({ name }: { name: string }) {
                                 {isSmartSearch && (
                                     <span className="inline-flex items-center gap-1 rounded-full bg-theme/10 text-theme px-2.5 py-0.5 text-xs font-semibold">
                                         <i className="ri-sparkling-fill" />
-                                        <span>已智能关联匹配复合标签内容</span>
+                                        <span>{t("tag_smart_search_hint", { defaultValue: "已智能关联匹配复合标签内容" })}</span>
                                     </span>
                                 )}
                             </p>
@@ -145,7 +145,7 @@ export function HashtagPage({ name }: { name: string }) {
                             className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900"
                         >
                             <i className="ri-arrow-left-line" />
-                            <span>返回画廊</span>
+                            <span>{t("back_to_gallery", { defaultValue: "返回画廊" })}</span>
                         </Link>
                     </div>
                     <Waiting for={status === 'idle'}>

@@ -530,5 +530,16 @@ html.theme-transitioning *::after {
   transition-delay: 0s !important;
 }
 
+/* 🌸 音乐微卡片平滑走马灯动画 */
+@keyframes musicMarqueeFlow {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+
 
 

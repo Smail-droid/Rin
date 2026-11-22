@@ -415,11 +415,11 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                   className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-w px-4 py-2 text-xs font-bold t-primary shadow-2xs hover:shadow-md hover:border-theme transition"
                 >
                   <i className="ri-arrow-left-line text-theme" />
-                  <span>返回画廊随想</span>
+                  <span>{t("back_to_gallery", { defaultValue: "返回画廊随想" })}</span>
                 </Link>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/5 dark:bg-white/5 text-xs text-neutral-400">
                   <i className="ri-gallery-line text-theme" />
-                  <span>艺术画廊展厅</span>
+                  <span>{t("art_exhibition_hall", { defaultValue: "艺术画廊展厅" })}</span>
                 </div>
               </div>
 
@@ -473,7 +473,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                                   textShadow: "0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.85)",
                                 }}
                                 className={`absolute left-0 transform ${dm.rot} ${dm.size} font-extrabold tracking-wide whitespace-nowrap pointer-events-auto hover:[animation-play-state:paused] hover:scale-105 transition-transform cursor-default`}
-                                title="画廊随想读者灵感 · 悬停定格"
+                                title={t("danmaku.reader_inspiration", { defaultValue: "画廊随想读者灵感 · 悬停定格" })}
                               >
                                 {dm.text}
                               </div>
@@ -495,7 +495,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                                   textShadow: "0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.85)",
                                 }}
                                 className={`absolute right-0 transform ${dm.rot} ${dm.size} font-extrabold tracking-wide whitespace-nowrap pointer-events-auto hover:[animation-play-state:paused] hover:scale-105 transition-transform cursor-default`}
-                                title="画廊随想读者留言 · 悬停定格"
+                                title={t("danmaku.reader_comment", { defaultValue: "画廊随想读者留言 · 悬停定格" })}
                               >
                                 {dm.text}
                               </div>

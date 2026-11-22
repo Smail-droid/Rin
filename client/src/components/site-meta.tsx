@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { stripImageUrlMetadata } from "../utils/image-upload";
 
@@ -12,9 +13,12 @@ interface SiteMetaProps {
 // Component to provide site metadata for pages
 export function SiteMeta({ title, description, image, children }: SiteMetaProps) {
     const siteConfig = useSiteConfig();
+    const { t } = useTranslation();
 
-    const pageTitle = title 
-        ? `${title} - ${siteConfig.name}` 
+    const normalizedTitle = title === "画廊随想" ? (siteConfig.atelierTitle || t("atelier.title", { defaultValue: "画廊随想" })) : title;
+
+    const pageTitle = normalizedTitle 
+        ? `${normalizedTitle} - ${siteConfig.name}` 
         : siteConfig.name;
 
     const pageDescription = description || siteConfig.description;

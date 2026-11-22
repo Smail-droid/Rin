@@ -97,7 +97,7 @@ export function NavBar({
           <span className="opacity-0 group-hover:opacity-100 group-hover:nav-hop-left transition-opacity text-theme text-xs font-bold">
             ✦
           </span>
-          <span>{siteConfig.openlistNavTitle || "资源列表"}</span>
+          <span>{siteConfig.openlistNavTitle || t("openlist_nav_title", { defaultValue: "资源列表" })}</span>
           <i className="ri-external-link-line text-xs opacity-60" />
           <span className="opacity-0 group-hover:opacity-100 group-hover:nav-hop-right transition-opacity text-theme text-xs font-bold">
             ✦

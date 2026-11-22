@@ -681,6 +681,7 @@ function StickyNoteItem({
     onEditNote?: (type: string) => void;
 }) {
     const [, setLocation] = useLocation();
+    const { t } = useTranslation();
     const [searchKeyword, setSearchKeyword] = useState("");
 
     const dragHandlers = draggable ? {
@@ -749,11 +750,11 @@ function StickyNoteItem({
     if (siteConfig?.feedCardVariant === "compact" || siteConfig?.feedCardVariant === "editorial") {
         const isEditorial = siteConfig?.feedCardVariant === "editorial";
         const meta = {
-            about: { icon: siteConfig.atelierAboutIcon || "ri-user-smile-line", title: siteConfig.name || "关于我", url: siteConfig.atelierAboutUrl || "/about", desc: siteConfig.atelierAboutDesc || "记忆工坊与随笔空间" },
-            timeline: { icon: siteConfig.atelierTimelineIcon || "ri-time-line", title: "岁月轨迹", url: siteConfig.atelierTimelineUrl || "/timeline", desc: siteConfig.atelierTimelineDesc || "时间轴历程与脚印" },
-            moments: { icon: siteConfig.atelierMomentsIcon || "ri-chat-heart-line", title: "日常随想", url: siteConfig.atelierMomentsUrl || "/moments", desc: siteConfig.atelierMomentsDesc || "日常随笔与动态" },
-            friends: { icon: siteConfig.atelierFriendsIcon || "ri-planet-line", title: "星廊友链", url: siteConfig.atelierFriendsUrl || "/friends", desc: siteConfig.atelierFriendsDesc || "友情链接与同行空间" },
-            search: { icon: siteConfig.atelierSearchIcon || "ri-search-line", title: "站内检索", url: siteConfig.atelierSearchUrl || "/search", desc: siteConfig.atelierSearchDesc || "输入关键词快速检索" },
+            about: { icon: siteConfig.atelierAboutIcon || "ri-user-smile-line", title: t("about.title", { defaultValue: siteConfig.name || "关于我" }), url: siteConfig.atelierAboutUrl || "/about", desc: siteConfig.atelierAboutDesc },
+            timeline: { icon: siteConfig.atelierTimelineIcon || "ri-time-line", title: t("timeline_title", { defaultValue: "岁月轨迹" }), url: siteConfig.atelierTimelineUrl || "/timeline", desc: siteConfig.atelierTimelineDesc },
+            moments: { icon: siteConfig.atelierMomentsIcon || "ri-chat-heart-line", title: t("moments.title", { defaultValue: "日常随想" }), url: siteConfig.atelierMomentsUrl || "/moments", desc: siteConfig.atelierMomentsDesc },
+            friends: { icon: siteConfig.atelierFriendsIcon || "ri-planet-line", title: t("friends.title", { defaultValue: "星廊友链" }), url: siteConfig.atelierFriendsUrl || "/friends", desc: siteConfig.atelierFriendsDesc },
+            search: { icon: siteConfig.atelierSearchIcon || "ri-search-line", title: t("notes.search_title", { defaultValue: "站内检索" }), url: siteConfig.atelierSearchUrl || "/search", desc: siteConfig.atelierSearchDesc },
         }[type];
 
         return (
@@ -775,7 +776,7 @@ function StickyNoteItem({
                                 {meta.title}
                             </span>
                             <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-theme/10 text-theme font-medium scale-90 origin-left">
-                                便签
+                                {t("notes.badge", { defaultValue: "便签" })}
                             </span>
                         </div>
                         <span className="truncate text-neutral-500 dark:text-neutral-400 text-[11px] mt-0.5">
@@ -786,7 +787,7 @@ function StickyNoteItem({
 
                 <div className="flex items-center gap-2 shrink-0">
                     <Link href={meta.url} className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-theme hover:underline group-hover:translate-x-0.5 transition-transform">
-                        <span>进入</span>
+                        <span>{t("notes.enter", { defaultValue: "进入" })}</span>
                         <i className="ri-arrow-right-s-line text-xs" />
                     </Link>
 
@@ -852,10 +853,10 @@ function StickyNoteItem({
             textMode: (siteConfig.atelierAboutTextMode || "hover") as "hover" | "hidden" | "always",
             icon: siteConfig.atelierAboutIcon,
             fallbackIcon: "ri-user-smile-line",
-            title: siteConfig.name || "关于我",
-            shortSub: "关于我",
-            desc: siteConfig.atelierAboutDesc || "欢迎光临我的记忆工坊与随笔空间。",
-            cta: "关于我",
+            title: t("about.title", { defaultValue: siteConfig.name || "关于我" }),
+            shortSub: t("about.title", { defaultValue: "关于我" }),
+            desc: siteConfig.atelierAboutDesc,
+            cta: t("notes.about_cta", { defaultValue: "关于我" }),
             tiltClass: "rotate-[0.8deg]",
         },
         timeline: {
@@ -865,10 +866,10 @@ function StickyNoteItem({
             textMode: (siteConfig.atelierTimelineTextMode || "hover") as "hover" | "hidden" | "always",
             icon: siteConfig.atelierTimelineIcon,
             fallbackIcon: "ri-time-line",
-            title: "岁月轨迹",
-            shortSub: "时光刻度",
-            desc: siteConfig.atelierTimelineDesc || "以时间为轴，串联每一次灵感与足迹。",
-            cta: "查看轨迹",
+            title: t("timeline_title", { defaultValue: "岁月轨迹" }),
+            shortSub: t("notes.timeline_sub", { defaultValue: "时光刻度" }),
+            desc: siteConfig.atelierTimelineDesc,
+            cta: t("notes.timeline_cta", { defaultValue: "查看轨迹" }),
             tiltClass: "-rotate-[1deg]",
         },
         moments: {
@@ -878,10 +879,10 @@ function StickyNoteItem({
             textMode: (siteConfig.atelierMomentsTextMode || "hover") as "hover" | "hidden" | "always",
             icon: siteConfig.atelierMomentsIcon,
             fallbackIcon: "ri-chat-heart-line",
-            title: "日常随想",
-            shortSub: "随笔动态",
-            desc: siteConfig.atelierMomentsDesc || "生活碎碎念与即兴灵感记录。",
-            cta: "进入动态",
+            title: t("moments.title", { defaultValue: "日常随想" }),
+            shortSub: t("notes.moments_sub", { defaultValue: "随笔动态" }),
+            desc: siteConfig.atelierMomentsDesc,
+            cta: t("notes.moments_cta", { defaultValue: "进入动态" }),
             tiltClass: "rotate-[1deg]",
         },
         friends: {
@@ -891,10 +892,10 @@ function StickyNoteItem({
             textMode: (siteConfig.atelierFriendsTextMode || "hover") as "hover" | "hidden" | "always",
             icon: siteConfig.atelierFriendsIcon,
             fallbackIcon: "ri-planet-line",
-            title: "星廊友链",
-            shortSub: "数字花园",
-            desc: siteConfig.atelierFriendsDesc || "漫步同好博主的数字花园。",
-            cta: "拜访朋友",
+            title: t("friends.title", { defaultValue: "星廊友链" }),
+            shortSub: t("notes.friends_sub", { defaultValue: "数字花园" }),
+            desc: siteConfig.atelierFriendsDesc,
+            cta: t("notes.friends_cta", { defaultValue: "拜访朋友" }),
             tiltClass: "-rotate-[0.8deg]",
         },
         search: {
@@ -904,10 +905,10 @@ function StickyNoteItem({
             textMode: (siteConfig.atelierSearchTextMode || "hover") as "hover" | "hidden" | "always",
             icon: siteConfig.atelierSearchIcon,
             fallbackIcon: "ri-search-line",
-            title: "随心探索",
-            shortSub: "站内检索",
-            desc: siteConfig.atelierSearchDesc || "输入关键词即刻检索全站文章。",
-            cta: "站内检索",
+            title: t("notes.search_title", { defaultValue: "随心探索" }),
+            shortSub: t("article.search.title", { defaultValue: "站内检索" }),
+            desc: siteConfig.atelierSearchDesc,
+            cta: t("notes.search_cta", { defaultValue: "站内检索" }),
             tiltClass: "rotate-[0.6deg]",
         },
     };
@@ -2253,7 +2254,7 @@ export function FeedsPage() {
                         <div className="flex items-center gap-3">
                             <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary flex items-center gap-2">
                                 <span className={`transition-all duration-300 art-title-${siteConfig.atelierTitleStyle || "aurora_flow"}`}>
-                                    {listState === "draft" ? t("draft_bin") : listState === "unlisted" ? t("unlisted") : siteConfig.atelierTitle || "画廊随想"}
+                                    {listState === "draft" ? t("draft_bin") : listState === "unlisted" ? t("unlisted") : (siteConfig.atelierTitle || t("atelier.title", { defaultValue: "画廊随想" }))}
                                 </span>
                                 <span className="text-sm font-normal text-neutral-400 dark:text-neutral-500 font-mono">
                                     ({currentFeeds.size})
@@ -2263,11 +2264,11 @@ export function FeedsPage() {
                                 <button
                                     type="button"
                                     onClick={resetStreamOrder}
-                                    title="恢复文章与便签为默认排布次序"
+                                    title={t("notes.reset_order_title", { defaultValue: "恢复文章与便签为默认排布次序" })}
                                     className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 shadow-2xs border border-amber-500/20 transition select-none active:scale-95"
                                 >
                                     <i className="ri-restart-line text-xs" />
-                                    <span>恢复默认排序</span>
+                                    <span>{t("notes.reset_order", { defaultValue: "恢复默认排序" })}</span>
                                 </button>
                             )}
                         </div>
