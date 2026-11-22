@@ -240,6 +240,9 @@ export function AdminMusicPage() {
       const [moved] = list.splice(idx, 1);
       list.unshift(moved);
       player.setPlaylist(list);
+      try {
+        void client.config.update("client", { "music.playlist": JSON.stringify(list) });
+      } catch {}
     }
   };
 
@@ -248,7 +251,11 @@ export function AdminMusicPage() {
     if (!selectedTrackIds.size) return;
     const selected = player.playlist.filter((t) => selectedTrackIds.has(t.id));
     const unselected = player.playlist.filter((t) => !selectedTrackIds.has(t.id));
-    player.setPlaylist([...selected, ...unselected]);
+    const updated = [...selected, ...unselected];
+    player.setPlaylist(updated);
+    try {
+      void client.config.update("client", { "music.playlist": JSON.stringify(updated) });
+    } catch {}
   };
 
   // 单曲手动转存至音廊
@@ -627,7 +634,11 @@ export function AdminMusicPage() {
   };
 
   const handleDeleteTrack = async (track: MusicTrack) => {
+    const remaining = player.playlist.filter((t) => t.id !== track.id);
     player.removeTrack(track.id);
+    try {
+      await client.config.update("client", { "music.playlist": JSON.stringify(remaining) });
+    } catch {}
   };
 
   const handleAssignGroup = (groupName: string) => {
@@ -638,6 +649,9 @@ export function AdminMusicPage() {
       return t;
     });
     player.setPlaylist(updated);
+    try {
+      void client.config.update("client", { "music.playlist": JSON.stringify(updated) });
+    } catch {}
     setNewGroupName("");
     setShowNewGroupInput(false);
   };
@@ -1068,7 +1082,12 @@ export function AdminMusicPage() {
             onBatchMoveToTop={handleBatchMoveToTop}
             onBatchPersistR2={handleBatchPersistR2}
             onBatchDelete={handleBatchDelete}
-            onResetPlaylist={() => player.clearPlaylist()}
+            onResetPlaylist={async () => {
+              player.clearPlaylist();
+              try {
+                await client.config.update("client", { "music.playlist": "[]" });
+              } catch {}
+            }}
             persistR2Status={persistR2Status}
             persistingTrackId={persistingTrackId}
             onSingleTrackPersist={handleSingleTrackPersist}

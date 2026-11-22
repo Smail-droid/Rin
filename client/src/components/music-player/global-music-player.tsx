@@ -366,7 +366,7 @@ export function GlobalMusicPlayer() {
     } catch {}
   };
 
-  if (location.startsWith("/admin/music")) {
+  if (location.startsWith("/music") || location.startsWith("/admin/music")) {
     return null;
   }
 

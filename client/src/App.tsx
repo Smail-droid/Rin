@@ -8,9 +8,6 @@ import { Suspense, lazy } from "react";
 const InSituAestheticStudio = lazy(() =>
   import("./components/in-situ/aesthetic-studio").then((m) => ({ default: m.InSituAestheticStudio }))
 );
-const InSituDeskDock = lazy(() =>
-  import("./components/in-situ/in-situ-desk-dock").then((m) => ({ default: m.InSituDeskDock }))
-);
 
 function App() {
   const { config, profile } = useAppBootstrap();
@@ -22,7 +19,6 @@ function App() {
         <GlobalMusicPlayer />
         <Suspense fallback={null}>
           <InSituAestheticStudio />
-          {profile?.permission ? <InSituDeskDock /> : null}
         </Suspense>
       </MusicPlayerProvider>
     </AppProviders>

@@ -10,7 +10,6 @@ import {
 } from "react";
 import type { LyricLine, MusicPlayerContextType, MusicTrack, PlayMode } from "./types";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
-import { client } from "../../app/runtime";
 
 export const DEFAULT_PRESET_TRACKS: MusicTrack[] = [];
 
@@ -281,7 +280,6 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     setPlaylistState(tracks);
     try {
       localStorage.setItem("rin_music_playlist", JSON.stringify(tracks));
-      void client.config.update("client", { "music.playlist": JSON.stringify(tracks) });
     } catch {}
   }, []);
 
@@ -314,7 +312,6 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       targetIdx = 0;
       try {
         localStorage.setItem("rin_music_playlist", JSON.stringify(nextList));
-        void client.config.update("client", { "music.playlist": JSON.stringify(nextList) });
       } catch {}
       return nextList;
     });
@@ -332,7 +329,6 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       const nextList = prev.filter((t) => t.id !== id);
       try {
         localStorage.setItem("rin_music_playlist", JSON.stringify(nextList));
-        void client.config.update("client", { "music.playlist": JSON.stringify(nextList) });
       } catch {}
       return nextList;
     });
@@ -343,7 +339,6 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     pause();
     try {
       localStorage.setItem("rin_music_playlist", "[]");
-      void client.config.update("client", { "music.playlist": "[]" });
     } catch {}
   }, [pause]);
 
