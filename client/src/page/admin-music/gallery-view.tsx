@@ -627,7 +627,7 @@ export function GalleryView({
                           type="button"
                           onClick={() => onDeleteR2PhysicalFile(file)}
                           className="p-1 rounded-md text-neutral-400 hover:text-red-500 transition"
-                          title="从 R2 永久删除"
+                          title="永久删除文件"
                         >
                           <i className="ri-delete-bin-line text-sm" />
                         </button>

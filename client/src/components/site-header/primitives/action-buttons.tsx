@@ -509,7 +509,7 @@ export function UserAvatar({
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   <i className="ri-folder-image-line text-sky-500" />
-                  <span>R2 图床媒体工坊</span>
+                  <span>图库媒体工坊</span>
                 </button>
                 <button
                   onClick={() => {

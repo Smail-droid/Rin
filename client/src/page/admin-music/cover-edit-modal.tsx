@@ -53,14 +53,14 @@ export function CoverEditModal({
               type="url"
               value={coverInputUrl}
               onChange={(e) => setCoverInputUrl(e.target.value)}
-              placeholder="输入封面图片 URL (自动转存 R2 存储桶)"
+              placeholder="输入封面图片 URL (自动转存云端)"
               className="flex-1 rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] px-3 py-2 text-xs outline-none focus:border-theme"
             />
             <button
               type="button"
               onClick={onOpenMediaPicker}
               className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 font-bold shrink-0 transition"
-              title="从 R2 媒体库中挑选已有的封面图片"
+              title="从媒体库挑选已有的封面图片"
             >
               媒体库
             </button>

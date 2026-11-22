@@ -1240,10 +1240,10 @@ export function AdminDashboardPage() {
                   onClick={() => setIsR2PickerOpen(true)}
                   disabled={isUploadingCover}
                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-theme/10 hover:bg-theme/20 text-theme text-xs font-semibold shrink-0 transition"
-                  title="从 Cloudflare R2 存储桶中点选已有相册图片"
+                  title="从图库相册中挑选已有图片"
                 >
                   <i className="ri-folder-image-line" />
-                  <span>R2 相册</span>
+                  <span>图库相册</span>
                 </button>
                 <button
                   type="button"

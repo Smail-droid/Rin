@@ -17,6 +17,25 @@ import { MarkdownEditor } from '../components/markdown_editor';
 import { Markdown } from "../components/markdown";
 import { WritingAICopilotDrawer } from "../components/writing-ai-copilot-drawer";
 
+function getFileIcon(key: string, contentType?: string) {
+  const ext = key.split(".").pop()?.toLowerCase() || "";
+  if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) return "ri-file-zip-line text-amber-500";
+  if (["pdf"].includes(ext)) return "ri-file-pdf-line text-rose-500";
+  if (["mp3", "flac", "wav", "m4a", "ogg"].includes(ext)) return "ri-music-2-line text-pink-500";
+  if (["mp4", "mkv", "mov", "webm"].includes(ext)) return "ri-film-line text-violet-500";
+  if (["doc", "docx", "txt", "md"].includes(ext)) return "ri-file-text-line text-blue-500";
+  if (["exe", "bin", "apk", "dmg", "iso"].includes(ext)) return "ri-cpu-line text-emerald-500";
+  if (["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext) || contentType?.startsWith("image/")) return "ri-image-2-line text-theme";
+  return "ri-file-3-line text-neutral-400";
+}
+
+function formatFileSize(bytes?: number) {
+  if (!bytes || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
 async function publish({
   title,
   alias,
@@ -158,6 +177,8 @@ export function WritingPage({ id: propId }: { id?: number }) {
   const [isMetaExpanded, setIsMetaExpanded] = useState(false);
   const { showAlert, AlertUI } = useAlert();
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
+  const [mediaPickerTab, setMediaPickerTab] = useState<"images" | "files">("images");
+  const [mediaSearchQuery, setMediaSearchQuery] = useState("");
   const [mediaFiles, setMediaFiles] = useState<any[]>([]);
   const [loadingMedia, setLoadingMedia] = useState(false);
 
@@ -169,6 +190,18 @@ export function WritingPage({ id: propId }: { id?: number }) {
       return Boolean(file.contentType?.startsWith("image/") || isImgExt);
     });
   }, [mediaFiles]);
+
+  const filteredImageFiles = useMemo(() => {
+    if (!mediaSearchQuery.trim()) return imageFiles;
+    const q = mediaSearchQuery.toLowerCase();
+    return imageFiles.filter((file) => file.key?.toLowerCase().includes(q));
+  }, [imageFiles, mediaSearchQuery]);
+
+  const filteredAllFiles = useMemo(() => {
+    if (!mediaSearchQuery.trim()) return mediaFiles;
+    const q = mediaSearchQuery.toLowerCase();
+    return mediaFiles.filter((file) => file.key?.toLowerCase().includes(q));
+  }, [mediaFiles, mediaSearchQuery]);
 
   // 从后台读取自定义提示词预设库
   const [presetsList] = useState<any[]>(() => {
@@ -200,7 +233,15 @@ export function WritingPage({ id: propId }: { id?: number }) {
     const mdImg = `\n\n![${name || "图片"}](${url})\n\n`;
     setContent(content ? `${content}${mdImg}` : mdImg);
     setImagePickerOpen(false);
-    showAlert("已成功将图片 Markdown 语法插入到文章中！");
+  };
+
+  const insertFileLinkToContent = (url: string, name?: string, asDownloadCard = true) => {
+    const fileName = name || url.split("/").pop() || "附件文件";
+    const insertText = asDownloadCard
+      ? `\n\n<a href="${url}" download="${fileName}">📥 下载 ${fileName}</a>\n\n`
+      : `\n\n[${fileName}](${url})\n\n`;
+    setContent(content ? `${content}${insertText}` : insertText);
+    setImagePickerOpen(false);
   };
 
   useEffect(() => {
@@ -568,20 +609,36 @@ export function WritingPage({ id: propId }: { id?: number }) {
             })}
           </div>
 
-          {/* 右侧：图床选图按钮 + 自动执行开关与立即梳理按钮 */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            {/* 图床插图快捷抽屉按钮 */}
+          {/* 右侧：图床选图/文件链接按钮 + 自动执行开关与立即梳理按钮 */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* 图床插图快捷按钮 */}
             <button
               type="button"
               onClick={() => {
+                setMediaPickerTab("images");
                 setImagePickerOpen(true);
                 loadMediaLibrary();
               }}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:border-theme hover:text-theme text-xs font-semibold transition"
-              title="从 R2 图床相册中挑选照片或上传插入"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:border-theme hover:text-theme text-xs font-semibold transition cursor-pointer"
+              title="挑选图库照片并插入文章"
             >
               <i className="ri-image-add-line text-xs text-theme" />
               <span>图床插图</span>
+            </button>
+
+            {/* 插入文件链接快捷按钮 */}
+            <button
+              type="button"
+              onClick={() => {
+                setMediaPickerTab("files");
+                setImagePickerOpen(true);
+                loadMediaLibrary();
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:border-theme hover:text-theme text-xs font-semibold transition cursor-pointer"
+              title="挑选云端文件并插入下载链接"
+            >
+              <i className="ri-attachment-2 text-xs text-theme" />
+              <span>插入文件链接</span>
             </button>
 
             <label className="flex items-center gap-1 cursor-pointer text-xs font-medium text-neutral-600 dark:text-neutral-300">
@@ -751,61 +808,178 @@ export function WritingPage({ id: propId }: { id?: number }) {
         </div>
       </Modal>
 
-      {/* 图床相册快速挑选与插入抽屉 Modal */}
+      {/* 图库素材挑选与文件链接插入 Modal */}
       <Modal
         isOpen={imagePickerOpen}
         onRequestClose={() => setImagePickerOpen(false)}
         size="lg"
-        contentLabel="从图床中挑选插图"
+        contentLabel="挑选图库素材与文件链接"
         panelClassName="p-4 sm:p-5"
       >
-        <div className="flex flex-col gap-3 max-h-[80vh]">
+        <div className="flex flex-col gap-3 max-h-[82vh]">
+          {/* 顶栏：标题 + 关闭 */}
           <div className="flex items-center justify-between pb-2.5 border-b border-black/5 dark:border-white/5">
             <div className="flex items-center gap-2">
-              <i className="ri-folder-image-line text-theme text-base" />
-              <h3 className="font-bold text-sm t-primary">从 R2 图床相册挑选插图并一键插入</h3>
+              <i className="ri-folder-shared-line text-theme text-base" />
+              <h3 className="font-bold text-sm t-primary">挑选图库素材与文件链接</h3>
             </div>
             <button
               type="button"
               onClick={() => setImagePickerOpen(false)}
-              className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+              className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer"
             >
               <i className="ri-close-line text-lg" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto pr-1">
+          {/* Tab 切换与搜索框 */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-0.5 rounded-lg text-xs">
+              <button
+                type="button"
+                onClick={() => setMediaPickerTab("images")}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+                  mediaPickerTab === "images"
+                    ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs font-bold"
+                    : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+                }`}
+              >
+                <i className="ri-image-line text-xs" />
+                <span>相册图片 ({imageFiles.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMediaPickerTab("files")}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+                  mediaPickerTab === "files"
+                    ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs font-bold"
+                    : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+                }`}
+              >
+                <i className="ri-file-3-line text-xs" />
+                <span>所有文件与附件 ({mediaFiles.length})</span>
+              </button>
+            </div>
+
+            <div className="relative flex-1 sm:max-w-xs">
+              <i className="ri-search-line absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
+              <input
+                type="text"
+                value={mediaSearchQuery}
+                onChange={(e) => setMediaSearchQuery(e.target.value)}
+                placeholder="搜索文件名..."
+                className="w-full pl-7 pr-2.5 py-1 text-xs rounded-lg bg-black/5 dark:bg-white/5 border border-transparent focus:border-theme/40 outline-hidden transition"
+              />
+            </div>
+          </div>
+
+          {/* 素材列表区域 */}
+          <div className="flex-1 overflow-y-auto pr-1 min-h-[240px]">
             {loadingMedia ? (
-              <div className="flex items-center justify-center py-16 text-neutral-400 text-xs">
+              <div className="flex items-center justify-center py-20 text-neutral-400 text-xs">
                 <i className="ri-loader-4-line animate-spin text-xl text-theme mr-2" />
-                <span>正在加载 R2 图床相册…</span>
+                <span>正在加载素材库…</span>
               </div>
-            ) : imageFiles.length === 0 ? (
-              <div className="py-12 text-center text-xs text-neutral-400">
-                暂未获取到图片素材，您可以前往【图库相册】上传
+            ) : mediaPickerTab === "images" ? (
+              filteredImageFiles.length === 0 ? (
+                <div className="py-14 text-center text-xs text-neutral-400">
+                  {mediaSearchQuery ? "未检索到匹配的图片素材" : "暂无图片素材，可前往图库相册上传"}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                  {filteredImageFiles.map((file) => {
+                    const fileName = file.key.split("/").pop() || file.key;
+                    return (
+                      <div
+                        key={file.key}
+                        className="group relative flex flex-col items-center justify-between rounded-xl border border-black/10 dark:border-white/10 p-2 bg-black/[0.015] dark:bg-white/[0.02] hover:border-theme hover:shadow-xs transition"
+                      >
+                        <div
+                          onClick={() => insertImageToContent(file.url, fileName)}
+                          className="h-24 w-full flex items-center justify-center overflow-hidden rounded-lg bg-black/5 dark:bg-white/5 cursor-pointer relative"
+                          title="点击以 Markdown 图片语法直接插入文章"
+                        >
+                          <img
+                            src={file.url}
+                            alt={file.key}
+                            className="max-h-full max-w-full object-contain group-hover:scale-105 transition duration-200"
+                            loading="lazy"
+                          />
+                        </div>
+                        <span className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate w-full mt-1.5 text-center" title={fileName}>
+                          {fileName}
+                        </span>
+                        <div className="flex items-center gap-1 w-full mt-1.5 pt-1.5 border-t border-black/5 dark:border-white/5">
+                          <button
+                            type="button"
+                            onClick={() => insertImageToContent(file.url, fileName)}
+                            className="flex-1 py-0.5 rounded bg-theme/10 hover:bg-theme text-theme hover:text-white text-[10px] font-medium transition cursor-pointer text-center"
+                            title="插入为图片 ![图片](url)"
+                          >
+                            插图
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => insertFileLinkToContent(file.url, fileName, false)}
+                            className="flex-1 py-0.5 rounded bg-black/5 dark:bg-white/5 hover:bg-theme/10 text-neutral-600 dark:text-neutral-300 hover:text-theme text-[10px] font-medium transition cursor-pointer text-center"
+                            title="插入为普通超链接 [链接](url)"
+                          >
+                            链接
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : filteredAllFiles.length === 0 ? (
+              <div className="py-14 text-center text-xs text-neutral-400">
+                {mediaSearchQuery ? "未检索到匹配的文件素材" : "暂无文件素材，可前往图库相册上传"}
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-                {imageFiles.map((file) => (
-                  <div
-                    key={file.key}
-                    onClick={() => insertImageToContent(file.url, file.key.split("/").pop())}
-                    className="group relative flex flex-col items-center justify-center rounded-xl border border-black/10 dark:border-white/10 p-2 cursor-pointer hover:border-theme hover:shadow-xs transition bg-black/[0.015] dark:bg-white/[0.02]"
-                    title="点击将该图片插入到当前文章正文"
-                  >
-                    <div className="h-24 w-full flex items-center justify-center overflow-hidden rounded-lg bg-black/5 dark:bg-white/5">
-                      <img
-                        src={file.url}
-                        alt={file.key}
-                        className="max-h-full max-w-full object-contain group-hover:scale-105 transition duration-200"
-                        loading="lazy"
-                      />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {filteredAllFiles.map((file) => {
+                  const fileName = file.key.split("/").pop() || file.key;
+                  return (
+                    <div
+                      key={file.key}
+                      className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.015] dark:bg-white/[0.02] hover:border-theme/40 transition"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <i className={`text-xl shrink-0 ${getFileIcon(file.key, file.contentType)}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate" title={fileName}>
+                            {fileName}
+                          </p>
+                          <p className="text-[10px] text-neutral-400">
+                            {formatFileSize(file.size)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => insertFileLinkToContent(file.url, fileName, true)}
+                          className="px-2 py-1 rounded-md bg-theme text-white text-[10px] font-semibold hover:bg-theme-hover transition shadow-2xs cursor-pointer flex items-center gap-0.5"
+                          title="插入 HTML 下载框卡片语法"
+                        >
+                          <i className="ri-download-2-line text-xs" />
+                          <span>下载卡片</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertFileLinkToContent(file.url, fileName, false)}
+                          className="px-2 py-1 rounded-md bg-black/5 dark:bg-white/5 hover:bg-theme/10 text-neutral-600 dark:text-neutral-300 hover:text-theme text-[10px] font-medium transition cursor-pointer flex items-center gap-0.5"
+                          title="插入标准 Markdown 链接 [文件名](url)"
+                        >
+                          <i className="ri-link text-xs" />
+                          <span>链接</span>
+                        </button>
+                      </div>
                     </div>
-                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate w-full mt-1.5 text-center">
-                      {file.key.split("/").pop()}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

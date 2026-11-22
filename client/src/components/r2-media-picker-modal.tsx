@@ -8,7 +8,7 @@ export function R2MediaPickerModal({
   isOpen,
   onClose,
   onSelect,
-  title = "选择 R2 存储桶图片",
+  title = "选择图库图片",
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -64,7 +64,7 @@ export function R2MediaPickerModal({
             <div>
               <h3 className="text-sm font-bold t-primary">{title}</h3>
               <p className="text-[11px] text-neutral-400">
-                从 Cloudflare R2 对象存储桶中点选已有相册图片
+                从图库相册中点选已有图片
               </p>
             </div>
           </div>
@@ -93,13 +93,13 @@ export function R2MediaPickerModal({
         <div className="flex-1 overflow-y-auto pr-1 min-h-[260px] max-h-[50vh]">
           {loading ? (
             <div className="py-20 text-center text-neutral-400 flex flex-col items-center justify-center gap-2">
-              <Spinner label="正在读取 R2 存储桶图片..." />
-              <span className="text-xs">正在从 R2 边缘节点检索相册资源...</span>
+              <Spinner label="正在读取图库图片..." />
+              <span className="text-xs">正在检索相册资源...</span>
             </div>
           ) : filteredFiles.length === 0 ? (
             <div className="py-16 text-center text-neutral-400 flex flex-col items-center justify-center">
               <i className="ri-image-line text-3xl mb-1 opacity-40" />
-              <p className="text-xs">{search ? "未找到匹配名称的图片" : "R2 存储桶中暂无图片文件"}</p>
+              <p className="text-xs">{search ? "未找到匹配名称的图片" : "相册中暂无图片文件"}</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">

@@ -126,7 +126,7 @@ export function ImageUploadInput({
         <div className="min-w-0 flex-1 flex flex-col justify-between gap-2">
           <div>
             <label className="text-[10px] font-mono text-neutral-400 block mb-1">
-              图片访问直链 (支持手动输入或粘贴 R2 链接 · 推荐 800×480)
+              图片访问直链 (支持手动输入或粘贴图床链接 · 推荐 800×480)
             </label>
             <input
               type="url"
