@@ -404,13 +404,14 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                 </div>
             )}
 
-            {/* 全功能交互式画廊缩放灯箱 (支持滚轮无级放大、双击缩放、拖拽平移漫游、原图一键下载、数字计数) */}
+            {/* 全功能交互式画廊缩放灯箱 (支持滚轮无级放大、双击缩放、拖拽平移漫游、原图一键下载、数字计数、点击空白处秒速关闭) */}
             <Lightbox
                 open={previewIndex !== null}
                 close={() => setPreviewIndex(null)}
                 index={previewIndex ?? 0}
                 slides={imageSlides}
                 plugins={[Zoom, Download, Counter]}
+                controller={{ closeOnBackdropClick: true }}
                 zoom={{
                     maxZoomPixelRatio: 8,
                     zoomInMultiplier: 2,

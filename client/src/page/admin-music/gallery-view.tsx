@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useState, useEffect, type Dispatch, type SetStateAction } from "react";
 import type { R2MusicFileItem } from "../../services/music-api";
 import type { MusicTrack } from "../../components/music-player/types";
 import { VinylDiscArt } from "../../components/music-player/vinyl-disc-art";
@@ -74,6 +74,36 @@ export function GalleryView({
   onPauseTrack,
 }: GalleryViewProps) {
   const missingCoversCount = r2Files.filter((f) => !f.pic || f.pic.trim() === "").length;
+
+  // 黄金比例分页器：每页 24 首（适配 4/6/8 列整行网格），告别无尽下拉
+  const PAGE_SIZE = 24;
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchR2Query, sortR2By]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredR2Files.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * PAGE_SIZE;
+  const paginatedR2Files = filteredR2Files.slice(startIndex, startIndex + PAGE_SIZE);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    const container = document.getElementById("gallery-tracks-container");
+    if (container) {
+      container.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const getPageNumbers = (current: number, total: number): (number | string)[] => {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    if (current <= 4) return [1, 2, 3, 4, 5, "...", total];
+    if (current >= total - 3) return [1, "...", total - 4, total - 3, total - 2, total - 1, total];
+    return [1, "...", current - 1, current, current + 1, "...", total];
+  };
 
   return (
     <>
@@ -218,6 +248,7 @@ export function GalleryView({
       {/* Navidrome 画册图格视图 */}
       {displayLayout === "grid" ? (
         <div
+          id="gallery-tracks-container"
           className={
             gridColumns === 10
               ? "grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3"
@@ -226,22 +257,24 @@ export function GalleryView({
               : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5"
           }
         >
-          {/* 首格：等高虚线上传卡片 */}
-          <div
-            onClick={onTriggerUploadClick}
-            className="aspect-square rounded-2xl border-2 border-dashed border-black/15 dark:border-white/15 hover:border-theme/60 bg-black/[0.015] hover:bg-theme/5 transition flex flex-col items-center justify-center gap-2 cursor-pointer p-3 text-center group select-none"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-theme/10 text-theme text-lg group-hover:scale-110 transition-transform">
-              <i className="ri-upload-cloud-line" />
-            </span>
-            <div>
-              <span className="font-bold text-xs t-primary block group-hover:text-theme">上传音频</span>
-              <span className="text-[10px] text-neutral-400 block mt-0.5">支持 MP3/FLAC/WAV</span>
+          {/* 首格：等高虚线上传卡片 (仅第一页展示，避免每页重复占用) */}
+          {safePage === 1 && (
+            <div
+              onClick={onTriggerUploadClick}
+              className="aspect-square rounded-2xl border-2 border-dashed border-black/15 dark:border-white/15 hover:border-theme/60 bg-black/[0.015] hover:bg-theme/5 transition flex flex-col items-center justify-center gap-2 cursor-pointer p-3 text-center group select-none"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-theme/10 text-theme text-lg group-hover:scale-110 transition-transform">
+                <i className="ri-upload-cloud-line" />
+              </span>
+              <div>
+                <span className="font-bold text-xs t-primary block group-hover:text-theme">上传音频</span>
+                <span className="text-[10px] text-neutral-400 block mt-0.5">支持 MP3/FLAC/WAV</span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* 歌曲画册卡片列表 */}
-          {filteredR2Files.map((file) => {
+          {paginatedR2Files.map((file) => {
             const isQueued = playlist.some((t) => t.url === file.url);
             const isCur = currentTrack?.url === file.url;
             const isPlayingThis = isCur && isPlaying;
@@ -446,7 +479,8 @@ export function GalleryView({
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5 dark:divide-white/5">
-              {filteredR2Files.map((file, idx) => {
+              {paginatedR2Files.map((file, idx) => {
+                const globalIndex = startIndex + idx + 1;
                 const isQueued = playlist.some((t) => t.url === file.url);
                 const isCur = currentTrack?.url === file.url;
                 const isPlayingThis = isCur && isPlaying;
@@ -467,7 +501,7 @@ export function GalleryView({
                         className="accent-theme cursor-pointer"
                       />
                     </td>
-                    <td className="py-2 px-2 text-center font-mono text-neutral-400">#{idx + 1}</td>
+                    <td className="py-2 px-2 text-center font-mono text-neutral-400">#{globalIndex}</td>
                     <td className="py-2 px-2">
                       <div className="flex items-center gap-2">
                         {file.pic ? (
@@ -578,6 +612,67 @@ export function GalleryView({
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* 音廊曲库现代微光分页器 (仅当有数据时呈现) */}
+      {totalPages > 1 && (
+        <div className="mt-8 pt-4 pb-6 border-t border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-4 select-none ani-show">
+          <div className="text-xs font-mono text-neutral-400 dark:text-neutral-500">
+            共 <span className="font-bold text-neutral-700 dark:text-neutral-300">{filteredR2Files.length}</span> 首曲目 · 第 <span className="font-bold text-theme">{safePage}</span> / {totalPages} 页
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs">
+            <button
+              type="button"
+              onClick={() => handlePageChange(safePage - 1)}
+              disabled={safePage <= 1}
+              className="px-2.5 py-1.5 rounded-xl border border-neutral-200/80 dark:border-white/10 bg-white/80 dark:bg-white/[0.04] text-neutral-600 dark:text-neutral-300 hover:border-theme hover:text-theme disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer flex items-center gap-1 shadow-2xs"
+              title="上一页"
+            >
+              <i className="ri-arrow-left-s-line" />
+              <span className="hidden sm:inline">上一页</span>
+            </button>
+
+            <div className="flex items-center gap-1">
+              {getPageNumbers(safePage, totalPages).map((p, idx) => {
+                if (p === "...") {
+                  return (
+                    <span key={`ellipsis-${idx}`} className="px-1.5 text-neutral-400 font-mono">
+                      …
+                    </span>
+                  );
+                }
+                const num = p as number;
+                const isCur = num === safePage;
+                return (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => handlePageChange(num)}
+                    className={`h-7 min-w-7 px-1.5 rounded-xl font-mono text-xs transition cursor-pointer flex items-center justify-center ${
+                      isCur
+                        ? "bg-theme text-white font-bold shadow-2xs"
+                        : "border border-neutral-200/80 dark:border-white/10 bg-white/80 dark:bg-white/[0.04] text-neutral-600 dark:text-neutral-300 hover:border-theme hover:text-theme"
+                    }`}
+                  >
+                    {num}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handlePageChange(safePage + 1)}
+              disabled={safePage >= totalPages}
+              className="px-2.5 py-1.5 rounded-xl border border-neutral-200/80 dark:border-white/10 bg-white/80 dark:bg-white/[0.04] text-neutral-600 dark:text-neutral-300 hover:border-theme hover:text-theme disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer flex items-center gap-1 shadow-2xs"
+              title="下一页"
+            >
+              <span className="hidden sm:inline">下一页</span>
+              <i className="ri-arrow-right-s-line" />
+            </button>
+          </div>
         </div>
       )}
     </>

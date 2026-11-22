@@ -368,16 +368,16 @@ export function GlobalMusicPlayer() {
           onPointerMove={handleExpandedPointerMove}
           onPointerUp={handleExpandedPointerUp}
           onDoubleClick={handleResetPosition}
-          className={`relative flex flex-col rounded-2xl p-2.5 min-w-[280px] max-w-[310px] bg-white/90 dark:bg-[#12141a]/90 backdrop-blur-xl border border-neutral-200/80 dark:border-white/10 shadow-[0_12px_36px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.55)] transition-all cursor-grab active:cursor-grabbing ani-show ${
+          className={`relative flex flex-col rounded-2xl p-3 min-w-[285px] max-w-[320px] bg-white/90 dark:bg-[#12141a]/90 backdrop-blur-xl border border-neutral-200/80 dark:border-white/10 shadow-[0_12px_36px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.55)] transition-all cursor-grab active:cursor-grabbing ani-show ${
             isDragging ? "scale-95 ring-2 ring-theme/40 transition-none" : "hover:border-theme/30"
           }`}
         >
-          {/* 上半区：黑胶唱片徽标 + 歌曲/歌手/歌词信息 + 收起按钮 */}
+          {/* 第一层（曲目信息层）：微缩旋转黑胶 + 歌曲名/歌手/歌词 + 右上角微型收起按钮 */}
           <div className="flex items-center gap-2.5 w-full">
             <button
               type="button"
               onClick={handleCollapse}
-              className="relative h-8 w-8 rounded-full overflow-hidden shrink-0 shadow-xs border border-black/10 dark:border-white/10 hover:scale-105 transition cursor-pointer"
+              className="relative h-9 w-9 rounded-full overflow-hidden shrink-0 shadow-xs border border-black/10 dark:border-white/10 hover:scale-105 transition cursor-pointer"
               title="点击收起微标"
             >
               <VinylDiscArt
@@ -404,30 +404,26 @@ export function GlobalMusicPlayer() {
               )}
             </div>
 
-            {/* 核心播放/暂停键 */}
+            {/* 右上角微型收起小按钮 (不再把播放大钮突兀放在这里) */}
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                togglePlay();
-              }}
-              className="h-7 w-7 rounded-full bg-theme text-white flex items-center justify-center shrink-0 hover:scale-110 active:scale-95 shadow-sm shadow-theme/30 transition cursor-pointer"
-              title={isPlaying ? "暂停" : "播放"}
+              onClick={handleCollapse}
+              className="h-6 w-6 rounded-lg flex items-center justify-center text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-white/5 transition cursor-pointer"
+              title="收起为黑胶徽标"
             >
-              <i className={isPlaying ? "ri-pause-fill text-sm" : "ri-play-fill text-sm translate-x-0.5"} />
+              <i className="ri-arrow-down-s-line text-sm" />
             </button>
           </div>
 
-          {/* 下半区：精细流光进度条 + 时间刻度 + 辅助控制按钮 */}
-          <div className="mt-2 pt-1.5 border-t border-neutral-100 dark:border-white/5 flex flex-col gap-1.5">
-            {/* 流光精度可拖拽进度条 */}
+          {/* 第二层（流光刻度层）：极细进度条 + 左右两端等宽时间 */}
+          <div className="mt-2.5 flex flex-col gap-1 select-none">
             <div
               ref={progressBarRef}
               onPointerDown={handleProgressBarPointerDown}
               onPointerMove={handleProgressBarPointerMove}
               onPointerUp={handleProgressBarPointerUp}
               onPointerCancel={handleProgressBarPointerUp}
-              className="progress-bar relative h-3.5 flex items-center cursor-pointer group select-none"
+              className="progress-bar relative h-3 flex items-center cursor-pointer group select-none"
               title="拖拽快进 / 倒退"
             >
               <div className="w-full h-1 group-hover:h-1.5 rounded-full bg-neutral-200/80 dark:bg-white/10 overflow-hidden transition-all duration-150">
@@ -438,86 +434,101 @@ export function GlobalMusicPlayer() {
               </div>
             </div>
 
-            {/* 控制条底行：时间 + 切歌 + 循环 + 歌词 + 歌单 */}
-            <div className="flex items-center justify-between text-[11px] text-neutral-400 dark:text-neutral-500 font-mono">
-              <span className="tabular-nums text-[10px]">{formatTime(currentTime)} / {formatTime(duration)}</span>
+            <div className="flex items-center justify-between text-[10px] text-neutral-400 dark:text-neutral-500 font-mono tabular-nums px-0.5">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
 
-              <div className="flex items-center gap-1.5 font-sans">
-                {/* 上一曲 */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    prev();
-                  }}
-                  className="p-1 text-neutral-500 dark:text-neutral-400 hover:text-theme hover:scale-110 active:scale-90 transition cursor-pointer"
-                  title="上一曲"
-                >
-                  <i className="ri-skip-back-fill text-xs" />
-                </button>
+          {/* 第三层（人体工学控制中枢）：所有控制操作严密聚合在底部同一水平线上 */}
+          <div className="mt-1 pt-1.5 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between px-1">
+            {/* 循环模式 */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                const nextMode = playMode === "loop" ? "single" : playMode === "single" ? "random" : "loop";
+                setPlayMode(nextMode);
+              }}
+              className={`p-1.5 rounded-lg transition cursor-pointer ${
+                playMode !== "loop" ? "text-theme font-bold" : "text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+              }`}
+              title={playMode === "loop" ? "列表循环" : playMode === "single" ? "单曲循环" : "随机播放"}
+            >
+              {playMode === "loop" && <i className="ri-repeat-2-line text-xs" />}
+              {playMode === "single" && <i className="ri-repeat-one-line text-xs" />}
+              {playMode === "random" && <i className="ri-shuffle-line text-xs" />}
+            </button>
 
-                {/* 下一曲 */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    next();
-                  }}
-                  className="p-1 text-neutral-500 dark:text-neutral-400 hover:text-theme hover:scale-110 active:scale-90 transition cursor-pointer"
-                  title="下一曲"
-                >
-                  <i className="ri-skip-forward-fill text-xs" />
-                </button>
+            {/* 核心播放三联键（上一曲 + 播放/暂停 + 下一曲 环抱居中） */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  prev();
+                }}
+                className="p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-theme hover:scale-110 active:scale-90 transition cursor-pointer"
+                title="上一曲"
+              >
+                <i className="ri-skip-back-fill text-sm" />
+              </button>
 
-                {/* 循环模式 */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const nextMode = playMode === "loop" ? "single" : playMode === "single" ? "random" : "loop";
-                    setPlayMode(nextMode);
-                  }}
-                  className={`p-1 transition cursor-pointer ${
-                    playMode !== "loop" ? "text-theme font-bold" : "text-neutral-500 dark:text-neutral-400 hover:text-theme"
-                  }`}
-                  title={playMode === "loop" ? "列表循环" : playMode === "single" ? "单曲循环" : "随机播放"}
-                >
-                  {playMode === "loop" && <i className="ri-repeat-2-line text-xs" />}
-                  {playMode === "single" && <i className="ri-repeat-one-line text-xs" />}
-                  {playMode === "random" && <i className="ri-shuffle-line text-xs" />}
-                </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePlay();
+                }}
+                className="h-8 w-8 rounded-full bg-theme text-white flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 shadow-sm shadow-theme/30 transition cursor-pointer"
+                title={isPlaying ? "暂停" : "播放"}
+              >
+                <i className={isPlaying ? "ri-pause-fill text-base" : "ri-play-fill text-base translate-x-0.5"} />
+              </button>
 
-                {/* 歌词显隐 */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowLyrics(!showLyrics);
-                  }}
-                  className={`px-1 py-0.2 text-[10px] font-mono font-bold transition rounded cursor-pointer ${
-                    showLyrics ? "bg-theme/15 text-theme" : "text-neutral-500 dark:text-neutral-400 hover:text-theme"
-                  }`}
-                  title="歌词显隐"
-                >
-                  LRC
-                </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  next();
+                }}
+                className="p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-theme hover:scale-110 active:scale-90 transition cursor-pointer"
+                title="下一曲"
+              >
+                <i className="ri-skip-forward-fill text-sm" />
+              </button>
+            </div>
 
-                {/* 待播歌单呼出 */}
-                <button
-                  ref={playlistToggleBtnRef}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowPlaylistDrawer(!showPlaylistDrawer);
-                  }}
-                  className={`p-1 transition cursor-pointer ${
-                    showPlaylistDrawer ? "text-theme bg-theme/10 rounded-md" : "text-neutral-500 dark:text-neutral-400 hover:text-theme"
-                  }`}
-                  title="展开待播清单"
-                >
-                  <i className="ri-play-list-line text-xs" />
-                </button>
-              </div>
+            {/* 辅助操作区：歌词 + 待播歌单 */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowLyrics(!showLyrics);
+                }}
+                className={`px-1.5 py-0.5 text-[10px] font-mono font-bold transition rounded cursor-pointer ${
+                  showLyrics ? "bg-theme/15 text-theme" : "text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                }`}
+                title="歌词显隐"
+              >
+                LRC
+              </button>
+
+              <button
+                ref={playlistToggleBtnRef}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPlaylistDrawer(!showPlaylistDrawer);
+                }}
+                className={`p-1.5 rounded-lg transition cursor-pointer ${
+                  showPlaylistDrawer ? "text-theme bg-theme/10" : "text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                }`}
+                title="展开待播清单"
+              >
+                <i className="ri-play-list-line text-xs" />
+              </button>
             </div>
           </div>
 

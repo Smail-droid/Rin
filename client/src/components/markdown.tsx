@@ -772,6 +772,7 @@ export function Markdown({ content }: { content: string }) {
         slides={slides.current}
         open={index >= 0}
         close={() => setIndex(-1)}
+        controller={{ closeOnBackdropClick: true }}
       />
     </>
   );
