@@ -484,7 +484,7 @@ export function UserAvatar({
                 <button
                   onClick={() => {
                     setIsOpen(false);
-                    window.dispatchEvent(new CustomEvent("rin:open-writing-drawer"));
+                    setLocation("/admin/writing");
                   }}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >

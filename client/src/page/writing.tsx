@@ -367,8 +367,24 @@ export function WritingPage({ id: propId }: { id?: number }) {
   function MetaInput({ className: _className }: { className?: string }) {
     return (
         <div className="w-full flex flex-col gap-2">
-          {/* 48px 单行沉浸式顶栏：左侧标题，右侧属性设置 + 紧凑发布按钮 */}
-          <div className="flex items-center justify-between gap-3 w-full h-12 px-3 rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] shadow-2xs select-none">
+          {/* 48px 单行沉浸式顶栏：左侧返回画廊与标题，右侧属性设置 + 紧凑发布按钮 */}
+          <div className="flex items-center justify-between gap-2.5 w-full h-12 px-3 rounded-xl border border-neutral-200/80 bg-white/90 dark:border-white/10 dark:bg-[#12141a]/90 backdrop-blur-md shadow-2xs select-none">
+            <button
+              type="button"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  window.location.href = "/";
+                }
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-neutral-200/80 dark:border-white/10 hover:border-theme hover:text-theme text-xs font-semibold text-neutral-600 dark:text-neutral-300 transition shrink-0"
+              title="返回前台画廊"
+            >
+              <i className="ri-arrow-left-line text-sm" />
+              <span className="hidden sm:inline">返回画廊</span>
+            </button>
+            <div className="h-4 w-px bg-neutral-200 dark:bg-white/10 shrink-0" aria-hidden="true" />
             <div className="flex-1 min-w-0">
               <input
                 type="text"

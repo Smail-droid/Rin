@@ -118,6 +118,7 @@ export const SITE_CONFIG_KEYS = {
     galleryTiltMode: "gallery.tilt_mode", // "subtle" (自然微倾) | "pronounced" (显著错落) | "flat" (纯平对齐) | "dynamic" (随性活力)
 
     danmakuSpeed: "danmaku.speed",
+    aiSummaryEnabled: "ai_summary.enabled",
 } as const;
 
 // Hook to get site configuration (memoized per ConfigWrapper instance to avoid 50+ redundant JSON.parse/allocations per render)
@@ -263,6 +264,7 @@ export function useSiteConfig() {
         galleryTiltMode: String(config.get(SITE_CONFIG_KEYS.galleryTiltMode) ?? "subtle"),
 
         danmakuSpeed: String(config.get(SITE_CONFIG_KEYS.danmakuSpeed) ?? "normal"),
+        aiSummaryEnabled: config.get(SITE_CONFIG_KEYS.aiSummaryEnabled) === true || config.get(SITE_CONFIG_KEYS.aiSummaryEnabled) === "true",
 
         friendsCategories: (() => {
             try {

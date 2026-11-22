@@ -113,6 +113,7 @@ function AtelierPhotoCard({
 }) {
     const { t } = useTranslation();
     const siteConfig = useSiteConfig();
+    const [, setLocation] = useLocation();
     const [imageError, setImageError] = useState(false);
     const tiltStyle = getTiltStyle(index, tiltOffset, siteConfig.galleryTiltDegree);
     const tapeColor = TAPE_COLORS[(index + tiltOffset) % TAPE_COLORS.length];
@@ -235,11 +236,9 @@ function AtelierPhotoCard({
                                     onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        window.dispatchEvent(
-                                            new CustomEvent("rin:open-writing-drawer", { detail: { id: feed.id } })
-                                        );
+                                        setLocation(`/admin/writing/${feed.id}`);
                                     }}
-                                    title="就地编辑文章"
+                                    title="全屏编辑文章"
                                     className="h-6 w-6 rounded-md flex items-center justify-center text-xs bg-neutral-100 dark:bg-white/10 hover:text-theme transition cursor-pointer"
                                 >
                                     <i className="ri-edit-line" />
@@ -337,9 +336,9 @@ function AtelierPhotoCard({
                                 onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    window.dispatchEvent(new CustomEvent("rin:open-writing-drawer", { detail: { id: feed.id } }));
+                                    setLocation(`/admin/writing/${feed.id}`);
                                 }}
-                                title="就地编辑文章"
+                                title="全屏编辑文章"
                                 className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-md border border-white/15 transition hover:bg-theme"
                             >
                                 <i className="ri-edit-line text-xs" />
@@ -419,7 +418,7 @@ function AtelierPhotoCard({
                             {feed.title}
                         </h2>
 
-                        {feed.summary ? (
+                        {siteConfig.aiSummaryEnabled && feed.summary ? (
                             <p className="line-clamp-3 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 max-w-2xl">
                                 {feed.summary}
                             </p>
@@ -450,9 +449,9 @@ function AtelierPhotoCard({
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            window.dispatchEvent(new CustomEvent("rin:open-writing-drawer", { detail: { id: feed.id } }));
+                                            setLocation(`/admin/writing/${feed.id}`);
                                         }}
-                                        title="就地编辑文章"
+                                        title="全屏编辑文章"
                                         className="h-6 w-6 rounded-md border border-neutral-200 dark:border-white/10 flex items-center justify-center text-neutral-500 hover:text-theme hover:border-theme transition"
                                     >
                                         <i className="ri-edit-line text-xs" />
@@ -578,9 +577,9 @@ function AtelierPhotoCard({
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            window.dispatchEvent(new CustomEvent("rin:open-writing-drawer", { detail: { id: feed.id } }));
+                            setLocation(`/admin/writing/${feed.id}`);
                         }}
-                        title="在场就地编辑文章"
+                        title="全屏编辑文章"
                         className="flex h-7 w-7 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme"
                     >
                         <i className="ri-edit-line text-xs" />

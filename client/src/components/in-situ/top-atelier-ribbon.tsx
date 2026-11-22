@@ -88,17 +88,6 @@ function IconMusic({ className = "h-3.5 w-3.5" }: { className?: string }) {
   );
 }
 
-function IconSliders({ className = "h-3.5 w-3.5" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <path d="M4 7h4m4 0h8M4 12h10m4 0h2M4 17h6m4 0h6" />
-      <circle cx="10" cy="7" r="2" />
-      <circle cx="16" cy="12" r="2" />
-      <circle cx="12" cy="17" r="2" />
-    </svg>
-  );
-}
-
 function IconTag({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
@@ -109,10 +98,11 @@ function IconTag({ className = "h-3.5 w-3.5" }: { className?: string }) {
 }
 
 /**
- * 页面上方居中纯图标+文字微工具栏（完全无外框包裹，与画布自然融为一体）：
- * - 访客与站长均可见 3 枚独立的「樱花 / 细雨 / 萤火」直按开关；
- * - 站长登录态顺滑衔接版式/配色/调色盘与撰写/图床/音廊/设置；
- * - 调色盘拖动采用 rAF 纯 CSS 变量实时预览 + 停顿防抖单次持久化，彻底根绝卡顿。
+ * 🌸 画廊微光在场工坊微控制岛（In-Situ Live Studio）：
+ * - 彻底消灭半屏抽屉，所见即管理；
+ * - 访客可用：独立氛围开关（樱花 / 细雨 / 萤火）；
+ * - 管理员可用：现场直调版式、主题色、调色盘、AI 导读现场总开关，以及全屏创作/图床/音廊/设置直达；
+ * - 调色采用 rAF 硬件加速，零卡顿流转。
  */
 export function TopAtelierRibbon() {
   const profile = useContext(ProfileContext);
@@ -127,7 +117,6 @@ export function TopAtelierRibbon() {
     return normalizeAmbienceMode(siteConfig.themeAmbience);
   });
 
-  // 拖动调色盘时的纯本地颜色展示，避免每像素触发全局 ConfigContext 重渲染
   const [liveColorHex, setLiveColorHex] = useState<string>(() =>
     normalizeThemeColor(siteConfig.themeColor)
   );
@@ -196,7 +185,6 @@ export function TopAtelierRibbon() {
     [persistClientConfig]
   );
 
-  // 60fps 丝滑选色：拖动中仅用 rAF 写 CSS 变量（0 次整树重渲染、0 次网络请求），停顿 350ms 后才持久化一次
   const handleLiveColorInput = useCallback(
     (rawHex: string) => {
       const hex = normalizeThemeColor(rawHex);
@@ -262,6 +250,20 @@ export function TopAtelierRibbon() {
     });
   };
 
+  const handleToggleAISummary = async () => {
+    const nextVal = !siteConfig.aiSummaryEnabled;
+    try {
+      const cached = sessionStorage.getItem("config");
+      const parsed = cached ? JSON.parse(cached) : {};
+      parsed["ai_summary.enabled"] = nextVal;
+      sessionStorage.setItem("config", JSON.stringify(parsed));
+      window.dispatchEvent(new Event("rin:config-updated"));
+      await client.config.update("server", { "ai_summary.enabled": nextVal });
+    } catch (err) {
+      console.error("Failed to toggle AI summary:", err);
+    }
+  };
+
   const ambienceItems: Array<{
     id: Exclude<AmbienceMode, "none">;
     label: string;
@@ -274,10 +276,10 @@ export function TopAtelierRibbon() {
 
   return (
     <div
-      aria-label="画廊氛围与快捷栏"
-      className="w-full max-w-5xl mx-auto px-4 pt-1.5 pb-2.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs select-none"
+      aria-label="画廊氛围与在场工坊"
+      className="w-full max-w-4xl mx-auto px-4 pt-2 pb-2 flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-1.5 text-xs select-none ani-show"
     >
-      {/* 1. 访客可用：纯图标+文字独立氛围开关（无任何外框包裹） */}
+      {/* 1. 访客可用：独立氛围微开关 */}
       {ambienceItems.map((item) => {
         const active = ambience === item.id;
         return (
@@ -299,26 +301,28 @@ export function TopAtelierRibbon() {
         );
       })}
 
-      {/* 2. 管理员登录态专属：无外框纯图标+文字快捷区 */}
+      {/* 2. 管理员专属：现场直调与全屏直达 */}
       {isAdmin ? (
         <>
-          <span className="h-3.5 w-px bg-neutral-300/50 dark:bg-white/10 rounded-full" aria-hidden="true" />
+          <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/10 rounded-full" aria-hidden="true" />
 
+          {/* 版式一键即切 */}
           <button
             type="button"
             onClick={handleCycleVariant}
             title={`切换文章版式（当前：${currentVariantMeta.label}）`}
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
+            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme transition-all duration-200 cursor-pointer font-medium"
           >
             <IconLayout />
             <span>{currentVariantMeta.label}</span>
           </button>
 
+          {/* 预设色盘一键即切 */}
           <button
             type="button"
             onClick={handleCyclePalette}
-            title={`切换明快主题色（当前：${currentPalette.name}）`}
-            className="inline-flex items-center gap-1.5 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
+            title={`切换画廊主题色（当前：${currentPalette.name}）`}
+            className="inline-flex items-center gap-1.5 py-0.5 text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme transition-all duration-200 cursor-pointer font-medium"
           >
             <span
               className="h-2.5 w-2.5 rounded-full shrink-0 ring-1 ring-black/10 dark:ring-white/15"
@@ -328,12 +332,13 @@ export function TopAtelierRibbon() {
             <span>{currentPalette.name}</span>
           </button>
 
+          {/* 自由彩虹调色 */}
           <label
-            title="打开调色盘自由选色"
+            title="自由取色实时调控"
             className="relative inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
           >
             <span
-              className="h-3 w-3 rounded-full bg-gradient-to-tr from-rose-500 via-amber-400 via-emerald-400 to-sky-500 shrink-0"
+              className="h-2.5 w-2.5 rounded-full bg-gradient-to-tr from-rose-500 via-amber-400 via-emerald-400 to-sky-500 shrink-0"
               aria-hidden="true"
             />
             <span className="hidden sm:inline">调色</span>
@@ -352,55 +357,72 @@ export function TopAtelierRibbon() {
             />
           </label>
 
-          <span className="h-3.5 w-px bg-neutral-300/50 dark:bg-white/10 rounded-full" aria-hidden="true" />
-
+          {/* 现场 AI 导读总开关 (点一下现场立即生效，无需穿门) */}
           <button
             type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent("rin:open-writing-drawer"))}
-            title="写新文章"
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-theme hover:brightness-110 hover:glow-theme-sm transition-all duration-200 cursor-pointer font-semibold"
+            onClick={handleToggleAISummary}
+            title={siteConfig.aiSummaryEnabled ? "点击即刻关闭全站文章导读" : "点击即刻开启全站文章导读"}
+            className={`inline-flex items-center gap-1 py-0.5 text-xs transition-all duration-200 cursor-pointer ${
+              siteConfig.aiSummaryEnabled
+                ? "text-theme font-bold"
+                : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+            }`}
+          >
+            <i className="ri-sparkling-2-line" />
+            <span>导读:{siteConfig.aiSummaryEnabled ? "开" : "关"}</span>
+          </button>
+
+          <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/10 rounded-full" aria-hidden="true" />
+
+          {/* 全屏创作直达 */}
+          <Link
+            href="/admin/writing"
+            title="进入全屏沉浸创作台"
+            className="inline-flex items-center gap-1 py-0.5 text-xs text-theme hover:brightness-110 font-bold transition-all duration-200 cursor-pointer"
           >
             <IconQuill />
             <span>撰写</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent("rin:open-media-drawer"))}
-            title="图床与媒体库"
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-all duration-200 cursor-pointer"
-          >
-            <IconGallery />
-            <span className="hidden md:inline">图床</span>
-          </button>
-
-          <Link
-            href="/music"
-            title="微光音廊工作台"
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-all duration-200 cursor-pointer"
-          >
-            <IconMusic />
-            <span className="hidden md:inline">音廊</span>
           </Link>
 
+          {/* 图床画廊直达 */}
+          <Link
+            href="/gallery"
+            title="进入全宽图床画廊"
+            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
+          >
+            <IconGallery />
+            <span className="hidden sm:inline">图床</span>
+          </Link>
+
+          {/* 音廊电台直达 */}
+          <Link
+            href="/music"
+            title="进入沉浸音廊工作台"
+            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
+          >
+            <IconMusic />
+            <span className="hidden sm:inline">音廊</span>
+          </Link>
+
+          {/* 标签管理直达 */}
           <Link
             href="/hashtags"
-            title="标签体系前台管理"
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-all duration-200 cursor-pointer"
+            title="标签体系管理"
+            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
           >
             <IconTag />
             <span className="hidden md:inline">标签</span>
           </Link>
 
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent("rin:open-appearance-drawer"))}
-            title="前台排版与导航外观工坊（实时调节字号、间距与排布）"
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-400 dark:text-neutral-500 hover:text-theme transition-all duration-200 cursor-pointer"
+          {/* 后台设置直达 */}
+          <Link
+            href="/admin/settings"
+            title="进入系统综合设置大盘"
+            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
           >
-            <IconSliders />
-            <span className="hidden md:inline">排版</span>
-          </button>
+            <i className="ri-settings-3-line text-xs" />
+            <span className="hidden sm:inline">设置</span>
+          </Link>
         </>
       ) : null}
     </div>
