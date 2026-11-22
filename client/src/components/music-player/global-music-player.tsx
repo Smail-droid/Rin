@@ -30,21 +30,19 @@ function AnimeLuminousNoteSvg({
       }}
     >
       <defs>
-        {/* 全站主题色自适应柔光渐变 */}
         <linearGradient id="anime-note-theme-grad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="rgb(var(--theme-rgb))" />
           <stop offset="60%" stopColor="rgb(var(--theme-secondary-rgb, var(--theme-hover-rgb)))" />
           <stop offset="100%" stopColor="#ffffff" stopOpacity="0.85" />
         </linearGradient>
 
-        {/* 灵动星芒亮光渐变 */}
         <linearGradient id="anime-star-grad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#ffffff" />
           <stop offset="100%" stopColor="rgb(var(--theme-secondary-rgb, var(--theme-rgb)))" />
         </linearGradient>
       </defs>
 
-      {/* 1. 灵动四芒星芒 (右上角伴随音符闪烁) */}
+      {/* 1. 灵动四芒星芒 */}
       <path
         d="M25 4.5 C25 6.5 26.5 8 28.5 8 C26.5 8 25 9.5 25 11.5 C25 9.5 23.5 8 21.5 8 C23.5 8 25 6.5 25 4.5 Z"
         fill="url(#anime-star-grad)"
@@ -52,7 +50,7 @@ function AnimeLuminousNoteSvg({
       />
       <circle cx="25" cy="8" r="0.8" fill="#ffffff" />
 
-      {/* 2. 优雅的双音符连梁与挺拔符杆 */}
+      {/* 2. 优雅的双音符连梁与符杆 */}
       <path
         d="M10 22V7.2C10 6.5 10.5 5.9 11.2 5.7L21.2 3.5C22 3.3 22.8 3.9 22.8 4.7V19"
         stroke="url(#anime-note-theme-grad)"
@@ -78,7 +76,6 @@ function AnimeLuminousNoteSvg({
         transform="rotate(-22 7.2 22)"
         fill="url(#anime-note-theme-grad)"
       />
-      {/* 左音符二次元晶莹纯白高光点 */}
       <circle cx="6.2" cy="21.2" r="1.1" fill="#ffffff" opacity="0.95" />
       <circle cx="8.2" cy="22.8" r="0.5" fill="#ffffff" opacity="0.8" />
 
@@ -91,19 +88,26 @@ function AnimeLuminousNoteSvg({
         transform="rotate(-22 20 19.2)"
         fill="url(#anime-note-theme-grad)"
       />
-      {/* 右音符二次元晶莹纯白高光点 */}
       <circle cx="19" cy="18.4" r="1.1" fill="#ffffff" opacity="0.95" />
       <circle cx="21" cy="20" r="0.5" fill="#ffffff" opacity="0.8" />
     </svg>
   );
 }
 
+function formatTime(seconds: number): string {
+  if (isNaN(seconds) || seconds < 0) return "00:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
 /**
- * 🌸 cPlayer 经典微型双层卡片播放器 (cPlayer Inspired Minimal Card Player)
- * - 折叠态：彻底去除白色底座，实现纯透明悬浮的日系二次元微光星芒音符！
- * - 展开态：245px × 54px 紧凑黄金双层矩形，左侧 1:1 正方形封面，右侧经典双层中枢
- * - 歌单浮层向下优雅弹出 (top-full mt-2)，彻底解除 overflow 裁切
- * - 全量遵循 Web Interface Guidelines：aria-label 完备、触控无障碍良好、支持 reduced-motion
+ * 🌸 cPlayer 黄金对称双层微卡片播放器 (cPlayer Symmetrical Card Player)
+ * - 左侧：56px × 56px 纯正方形封面 (点击秒速收缩为纯透明音符)
+ * - 右侧上层：严格居中对称的控制中枢 (左侧 LRC/音量，中央播放三联键，右侧循环/歌单/收折)
+ * - 右侧下层：[歌名 - 歌手] + [01:43/03:09 分秒时间刻度]
+ * - 进度条起止：从封面右边缘 (left-[56px]) 开始，彻底解决遮挡封面问题！
+ * - 拖拽移动：按住文本区或空隙随时丝滑拖移，无卡顿吞噬
  */
 export function GlobalMusicPlayer() {
   const [location] = useLocation();
@@ -115,12 +119,16 @@ export function GlobalMusicPlayer() {
     currentTime,
     duration,
     playMode,
+    volume,
+    isMuted,
     currentLyricText,
     loadError,
     togglePlay,
     next,
     prev,
     seek,
+    setVolume,
+    toggleMute,
     setPlayMode,
     play,
     removeTrack,
@@ -134,6 +142,8 @@ export function GlobalMusicPlayer() {
     }
   });
 
+  const [showLyrics, setShowLyrics] = useState(false);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [showPlaylistDrawer, setShowPlaylistDrawer] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -160,12 +170,13 @@ export function GlobalMusicPlayer() {
   });
   const hasMovedRef = useRef(false);
 
+  // 视口边界保护与初始化 (卡片尺寸：宽 270px，高 56px)
   const getSafePosition = (x: number, y: number) => {
     if (typeof window === "undefined") return { x, y };
     const winW = window.innerWidth;
     const winH = window.innerHeight;
-    const widgetW = isExpanded ? 255 : 44;
-    const widgetH = isExpanded ? 64 : 44;
+    const widgetW = isExpanded ? 280 : 44;
+    const widgetH = isExpanded ? 68 : 44;
 
     const safeX = Math.max(12, Math.min(winW - widgetW - 12, x));
     const safeY = Math.max(60, Math.min(winH - widgetH - 16, y));
@@ -270,10 +281,12 @@ export function GlobalMusicPlayer() {
     }
   };
 
+  // 展开态下的拖拽处理 (排除按钮、滑块、进度条)
   const handleExpandedPointerDown = (e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
     if (
       target.closest("button") ||
+      target.closest("input") ||
       target.closest(".progress-bar") ||
       target.closest(".playlist-drawer") ||
       target.closest(".collapse-trigger")
@@ -281,6 +294,7 @@ export function GlobalMusicPlayer() {
       return;
     }
 
+    e.preventDefault();
     dragStartRef.current = {
       startX: e.clientX,
       startY: e.clientY,
@@ -302,7 +316,7 @@ export function GlobalMusicPlayer() {
     const deltaY = e.clientY - dragStartRef.current.startY;
     const dist = Math.hypot(deltaX, deltaY);
 
-    if (dist > 6) {
+    if (dist > 5) {
       hasMovedRef.current = true;
     }
 
@@ -343,6 +357,7 @@ export function GlobalMusicPlayer() {
     setIsDragging(false);
     setIsExpanded(false);
     setShowPlaylistDrawer(false);
+    setShowVolumeSlider(false);
     try {
       localStorage.setItem("rin_music_expanded", "false");
     } catch {}
@@ -402,7 +417,7 @@ export function GlobalMusicPlayer() {
 
   const trackTitle = currentTrack?.name || "画廊随想电台";
   const trackArtist = currentTrack?.artist || "随心漫游";
-  const displayText = currentLyricText ? `♫ ${currentLyricText}` : `${trackTitle} - ${trackArtist}`;
+  const displayText = showLyrics && currentLyricText ? `♫ ${currentLyricText}` : `${trackTitle} - ${trackArtist}`;
 
   return (
     <div
@@ -414,7 +429,7 @@ export function GlobalMusicPlayer() {
         isDragging ? "cursor-grabbing opacity-90 transition-none" : "transition-transform duration-75"
       }`}
     >
-      {/* 状态 1: 折叠状态 (彻底去除白底座与边框！纯透明悬浮二次元微光星芒音符) */}
+      {/* 状态 1: 折叠状态 (彻底去除白底！纯透明悬浮日系二次元微光星芒音符) */}
       {!isExpanded ? (
         <div
           className="relative group flex items-center justify-center"
@@ -424,13 +439,12 @@ export function GlobalMusicPlayer() {
           {showTooltip && (
             <div
               role="tooltip"
-              className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full bg-white/95 dark:bg-[#141720]/95 text-neutral-800 dark:text-neutral-100 text-[11px] font-bold shadow-md border border-neutral-200/80 dark:border-white/10 pointer-events-none ani-show backdrop-blur-md truncate max-w-[190px]"
+              className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full bg-white/95 dark:bg-[#141720]/95 text-neutral-800 dark:text-neutral-100 text-[11px] font-bold shadow-md border border-neutral-200/80 dark:border-white/10 pointer-events-none ani-show backdrop-blur-md truncate max-w-[200px]"
             >
               {displayText}
             </div>
           )}
 
-          {/* 纯透明音符按钮：零白色背景，零硬边框，只有灵动的微光音符悬浮 */}
           <button
             type="button"
             onPointerDown={handleCollapsedPointerDown}
@@ -443,7 +457,6 @@ export function GlobalMusicPlayer() {
             }`}
             title="点击展开播放器 (按住可拖动，双击复位)"
           >
-            {/* 播放时纯透明微光呼吸波纹 */}
             {isPlaying && (
               <span
                 className="absolute inset-0 rounded-full border border-dashed border-theme/40 animate-ping duration-[2800ms] pointer-events-none motion-reduce:hidden"
@@ -458,22 +471,22 @@ export function GlobalMusicPlayer() {
           </button>
         </div>
       ) : (
-        /* 状态 2: 展开状态 (cPlayer 经典黄金微卡片：左侧正方形封面 + 右侧经典双层中枢) */
+        /* 状态 2: 展开状态 (cPlayer 黄金对称微卡片：高 56px 宽 275px，封面零遮挡，控制栏严密居中) */
         <div
           onPointerDown={handleExpandedPointerDown}
           onPointerMove={handleExpandedPointerMove}
           onPointerUp={handleExpandedPointerUp}
           onDoubleClick={handleResetPosition}
-          className={`relative group flex items-stretch h-[54px] w-[245px] sm:w-[260px] rounded-xl bg-white/95 dark:bg-[#18181b]/95 backdrop-blur-xl border border-neutral-200/80 dark:border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.55)] transition-all cursor-grab active:cursor-grabbing ani-show ${
+          className={`relative group flex items-stretch h-[56px] w-[270px] sm:w-[285px] rounded-xl bg-white/95 dark:bg-[#18181b]/95 backdrop-blur-xl border border-neutral-200/80 dark:border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.55)] transition-all select-none cursor-grab active:cursor-grabbing ${
             isDragging ? "scale-95 ring-2 ring-theme/40 transition-none" : "hover:border-theme/40"
           }`}
         >
-          {/* 1. 左侧：正方形专辑封面 (带 collapse-trigger，点击秒速收缩为纯透明音符) */}
+          {/* 1. 左侧：56px × 56px 正方形封面 (点击秒速收缩为纯透明音符) */}
           <button
             type="button"
             onClick={handleCollapse}
             aria-label="收起为微光音符图标"
-            className="collapse-trigger relative h-[54px] w-[54px] shrink-0 bg-neutral-900 rounded-l-xl overflow-hidden cursor-pointer group/cover border-0 p-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-theme/60"
+            className="collapse-trigger relative h-[56px] w-[56px] shrink-0 bg-neutral-900 rounded-l-xl overflow-hidden cursor-pointer group/cover border-0 p-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-theme/60"
             title="点击收缩为微光音符图标"
           >
             {currentTrack?.pic ? (
@@ -487,7 +500,6 @@ export function GlobalMusicPlayer() {
                 <AnimeLuminousNoteSvg className="w-7 h-7" isPlaying={isPlaying} />
               </div>
             )}
-            {/* 悬停微暗幕浮现折叠提示图标 */}
             <div
               className="absolute inset-0 bg-black/45 opacity-0 group-hover/cover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs"
               aria-hidden="true"
@@ -496,12 +508,80 @@ export function GlobalMusicPlayer() {
             </div>
           </button>
 
-          {/* 2. 右侧：cPlayer 经典双层控制与曲目信息区 */}
-          <div className="flex-1 min-w-0 flex flex-col justify-between p-1.5 pl-2 relative">
-            {/* 上半层：经典控制三联键 (居中) + 右侧循环模式与歌单 */}
+          {/* 2. 右侧主体：上下双层高度对称排布 */}
+          <div className="flex-1 min-w-0 flex flex-col justify-between py-1.5 px-2 relative">
+            {/* 上半层：严格居中对称的控制中枢 */}
             <div className="flex items-center justify-between w-full h-6">
-              {/* 控制中枢三联键：上一曲 + 经典 cPlayer 空心圆圈播放键 + 下一曲 */}
-              <div className="flex items-center gap-1.5">
+              {/* 左侧辅助组：LRC 歌词按钮 + 音量按钮 */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowLyrics((p) => !p);
+                  }}
+                  aria-label={showLyrics ? "切换为显示歌曲名" : "切换为显示实时歌词"}
+                  className={`px-1 py-0.5 rounded text-[10px] font-mono font-bold transition cursor-pointer ${
+                    showLyrics
+                      ? "bg-theme/15 text-theme"
+                      : "text-neutral-400 dark:text-neutral-500 hover:text-theme"
+                  }`}
+                  title={showLyrics ? "正在显示歌词 (点击显示歌曲名)" : "点击显示实时歌词"}
+                >
+                  LRC
+                </button>
+
+                {/* 音量控制按钮与微型滑块 */}
+                <div
+                  className="relative flex items-center"
+                  onMouseEnter={() => setShowVolumeSlider(true)}
+                  onMouseLeave={() => setShowVolumeSlider(false)}
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleMute();
+                    }}
+                    aria-label={isMuted ? "取消静音" : "静音"}
+                    className="p-1 text-neutral-400 dark:text-neutral-500 hover:text-theme transition cursor-pointer"
+                    title={isMuted ? "取消静音" : `当前音量: ${Math.round(volume * 100)}%`}
+                  >
+                    <i
+                      className={
+                        isMuted
+                          ? "ri-volume-mute-line text-xs text-rose-500"
+                          : volume > 0.5
+                          ? "ri-volume-up-line text-xs"
+                          : "ri-volume-down-line text-xs"
+                      }
+                      aria-hidden="true"
+                    />
+                  </button>
+
+                  {/* 悬停展开的极细音量微滑块 */}
+                  {showVolumeSlider && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute -top-7 left-0 z-30 px-2 py-1 rounded-lg bg-white/95 dark:bg-[#18181b]/95 border border-neutral-200/80 dark:border-white/10 shadow-lg ani-show flex items-center"
+                    >
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={isMuted ? 0 : volume}
+                        onChange={(e) => setVolume(Number(e.target.value))}
+                        className="w-16 h-1 accent-theme cursor-pointer"
+                        aria-label="调节音量"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 中间核心三联键：在可用宽度内绝对居中！ */}
+              <div className="flex items-center justify-center gap-2 flex-1">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -523,10 +603,10 @@ export function GlobalMusicPlayer() {
                     togglePlay();
                   }}
                   aria-label={isPlaying ? "暂停播放" : "开始播放"}
-                  className="h-5 w-5 rounded-full border border-theme text-theme flex items-center justify-center hover:scale-110 active:scale-95 transition cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-theme/50"
+                  className="h-5.5 w-5.5 rounded-full border border-theme text-theme flex items-center justify-center hover:scale-110 active:scale-95 transition cursor-pointer shadow-2xs focus-visible:ring-2 focus-visible:ring-theme/50"
                   title={isPlaying ? "暂停" : "播放"}
                 >
-                  <i className={isPlaying ? "ri-pause-fill text-[10px]" : "ri-play-fill text-[10px] translate-x-0.2"} aria-hidden="true" />
+                  <i className={isPlaying ? "ri-pause-fill text-[11px]" : "ri-play-fill text-[11px] translate-x-0.2"} aria-hidden="true" />
                 </button>
 
                 <button
@@ -544,7 +624,7 @@ export function GlobalMusicPlayer() {
               </div>
 
               {/* 右侧辅助组：循环模式 + 歌单列表 + 显式收起按钮 */}
-              <div className="flex items-center gap-1 text-neutral-400 dark:text-neutral-500">
+              <div className="flex items-center gap-1 shrink-0 text-neutral-400 dark:text-neutral-500">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -563,7 +643,6 @@ export function GlobalMusicPlayer() {
                   {playMode === "random" && <i className="ri-shuffle-line text-xs" aria-hidden="true" />}
                 </button>
 
-                {/* 播放列表触发按钮 */}
                 <button
                   ref={playlistToggleBtnRef}
                   type="button"
@@ -580,7 +659,6 @@ export function GlobalMusicPlayer() {
                   <i className="ri-play-list-line text-xs" aria-hidden="true" />
                 </button>
 
-                {/* 显式折叠图标按钮 */}
                 <button
                   type="button"
                   onClick={handleCollapse}
@@ -593,22 +671,28 @@ export function GlobalMusicPlayer() {
               </div>
             </div>
 
-            {/* 下半层：居中单行曲目信息 (歌名 - 歌手 或 实时 LRC 歌词) */}
-            <div className="w-full truncate text-[11px] font-medium text-neutral-600 dark:text-neutral-300 text-center select-none pt-0.5 border-t border-black/[0.04] dark:border-white/5">
-              <span className="truncate block" title={displayText}>
+            {/* 下半层：曲目信息 (左侧/中间) + 分秒时间刻度 (右侧) */}
+            <div className="w-full flex items-center justify-between gap-1 select-none pt-0.5 border-t border-black/[0.04] dark:border-white/5">
+              <span
+                className="text-[11px] font-medium text-neutral-700 dark:text-neutral-200 truncate flex-1 min-w-0"
+                title={displayText}
+              >
                 {displayText}
+              </span>
+              <span className="tabular-nums text-[10px] font-mono text-neutral-400 dark:text-neutral-500 shrink-0">
+                {formatTime(currentTime)} / {formatTime(duration)}
               </span>
             </div>
           </div>
 
-          {/* 3. 底部贴边极细流光进度条 */}
+          {/* 3. 底部贴边极细流光进度条：起止位置从封面右边开始 (left-[56px] right-0)，绝对不遮挡封面！ */}
           <div
             ref={progressBarRef}
             onPointerDown={handleProgressBarPointerDown}
             onPointerMove={handleProgressBarPointerMove}
             onPointerUp={handleProgressBarPointerUp}
             onPointerCancel={handleProgressBarPointerUp}
-            className="progress-bar absolute bottom-0 inset-x-0 h-1.5 flex items-end cursor-pointer group select-none z-10 rounded-b-xl overflow-hidden"
+            className="progress-bar absolute bottom-0 left-[56px] right-0 h-1.5 flex items-end cursor-pointer group z-10 rounded-br-xl overflow-hidden"
             title="点击快进 / 倒退"
           >
             <div className="w-full h-[2px] group-hover:h-[3px] bg-neutral-200/60 dark:bg-white/10 transition-all duration-150">
