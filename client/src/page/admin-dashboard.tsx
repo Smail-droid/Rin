@@ -730,7 +730,7 @@ export function AdminDashboardPage() {
             </button>
 
             <Link
-              href="/admin/writing"
+              href="/writing"
               className="px-3.5 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 transition flex items-center gap-1"
             >
               <i className="ri-add-line" />
@@ -1343,10 +1343,10 @@ export function AdminDashboardPage() {
             <div className="flex items-center justify-between pt-2 border-t border-black/5 dark:border-white/5 text-xs">
               <div className="flex items-center gap-3">
                 <Link
-                  href={`/admin/writing/${editingTarget.id}`}
+                  href={`/writing/${editingTarget.id}`}
                   className="text-neutral-400 hover:text-theme transition"
                 >
-                  前往完整写作工坊 ➔
+                  前往完整撰写工坊 ➔
                 </Link>
                 <button
                   type="button"

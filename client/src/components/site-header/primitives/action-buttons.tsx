@@ -402,31 +402,7 @@ export function UserAvatar({
 
   return shouldShowEntry ? (
     <div className={className + " flex flex-row items-center"}>
-      {profile?.permission ? (
-        <button
-          onClick={() => setLocation("/admin")}
-          title={t("admin.title") || "进入后台管理"}
-          aria-label={t("profile.title") || "进入后台管理"}
-          className={
-            plain
-              ? "group flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-neutral-500 transition-all hover:bg-black/5 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-neutral-100"
-              : "flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-black/10 bg-w dark:border-white/10 shadow-2xs hover:border-theme transition"
-          }
-        >
-          {profile.avatar ? (
-            <ImageWithFallback
-              src={profile.avatar}
-              alt={profile.name || t("profile.title")}
-              className="h-8 w-8 cursor-pointer rounded-full"
-              imageClassName="transition duration-200 group-hover:brightness-95"
-            />
-          ) : (
-            <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-theme/10 text-theme transition-colors">
-              <i className="ri-dashboard-line text-sm" />
-            </div>
-          )}
-        </button>
-      ) : profile ? (
+      {profile ? (
         <Popup
           arrow={false}
           position={popoverUp ? "top left" : "bottom right"}
@@ -436,12 +412,16 @@ export function UserAvatar({
           onClose={() => setIsOpen(false)}
           trigger={
             <button
-              title={t("profile.title")}
+              title={profile.permission ? (t("admin.title") || "管理员工作台") : t("profile.title")}
               aria-label={t("profile.title")}
               className={
                 plain
                   ? "group flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-neutral-500 transition-all hover:bg-black/5 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-neutral-100"
-                  : "flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-black/10 bg-w dark:border-white/10"
+                  : `flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border bg-w shadow-2xs transition ${
+                      profile.permission
+                        ? "border-theme/40 hover:border-theme ring-2 ring-theme/15"
+                        : "border-black/10 dark:border-white/10 hover:border-theme"
+                    }`
               }
             >
               {profile.avatar ? (
@@ -452,54 +432,51 @@ export function UserAvatar({
                   imageClassName="transition duration-200 group-hover:brightness-95"
                 />
               ) : (
-                <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-secondary transition-colors group-hover:bg-black/5 dark:group-hover:bg-white/10">
-                  <i className="ri-user-line text-lg t-secondary" />
+                <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-theme/10 text-theme transition-colors">
+                  <i className={profile.permission ? "ri-dashboard-line text-sm" : "ri-user-line text-sm"} />
                 </div>
               )}
             </button>
           }
         >
-          <div className={`mt-3 flex min-w-44 flex-col ${HEADER_POPUP_PANEL_CLASS}`}>
+          <div className={`mt-3 flex min-w-48 flex-col ${HEADER_POPUP_PANEL_CLASS}`}>
             <button
               onClick={() => {
                 setIsOpen(false);
                 setLocation("/profile");
               }}
-              className="mb-2 flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+              className="mb-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-black/5 dark:hover:bg-white/10"
             >
               {profile.avatar ? (
-                <ImageWithFallback src={profile.avatar} alt={profile.name || t("profile.title")} className="h-10 w-10 rounded-full" />
+                <ImageWithFallback src={profile.avatar} alt={profile.name || t("profile.title")} className="h-9 w-9 rounded-full ring-1 ring-black/5 dark:ring-white/10" />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
-                  <i className="ri-user-line text-lg t-secondary" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
+                  <i className="ri-user-line text-base t-secondary" />
                 </div>
               )}
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold t-primary">{profile.name || t("profile.title")}</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("profile.title")}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                    profile.permission ? "bg-theme/10 text-theme border border-theme/20" : "text-neutral-500 dark:text-neutral-400"
+                  }`}>
+                    {profile.permission ? "画廊博主" : t("profile.title")}
+                  </span>
+                </div>
               </div>
             </button>
             {profile.permission ? (
               <>
+                <div className="h-px bg-black/5 dark:bg-white/5 my-1" />
                 <button
                   onClick={() => {
                     setIsOpen(false);
-                    setLocation("/admin/writing");
+                    setLocation("/writing");
                   }}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   <i className="ri-quill-pen-line text-theme" />
-                  <span>创作撰写文章</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setLocation("/music");
-                  }}
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-                >
-                  <i className="ri-disc-line text-emerald-500" />
-                  <span>微光音廊工作台</span>
+                  <span className="font-semibold">✍️ 撰写工坊</span>
                 </button>
                 <button
                   onClick={() => {
@@ -509,7 +486,17 @@ export function UserAvatar({
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   <i className="ri-folder-image-line text-sky-500" />
-                  <span>图库媒体工坊</span>
+                  <span>🖼️ 云端图床</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setLocation("/music");
+                  }}
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  <i className="ri-disc-line text-pink-500" />
+                  <span>🎵 微光音廊</span>
                 </button>
                 <button
                   onClick={() => {
@@ -519,38 +506,30 @@ export function UserAvatar({
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   <i className="ri-price-tag-3-line text-amber-500" />
-                  <span>标签体系管理</span>
+                  <span>🏷️ 标签表格</span>
                 </button>
+                <div className="h-px bg-black/5 dark:bg-white/5 my-1" />
                 <button
                   onClick={() => {
                     setIsOpen(false);
-                    setLocation("/admin/ai");
+                    setLocation("/admin/settings");
                   }}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
-                  <i className="ri-brain-line text-purple-500" />
-                  <span>AI 智能模型调优</span>
+                  <i className="ri-settings-4-line text-neutral-500" />
+                  <span>⚙️ 系统设置</span>
                 </button>
                 <button
                   onClick={() => {
                     setIsOpen(false);
                     setLocation("/admin/dashboard");
                   }}
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10 pb-1.5"
                 >
                   <i className="ri-dashboard-3-line text-neutral-500" />
-                  <span>底层总控大盘</span>
+                  <span>📊 概览大盘</span>
                 </button>
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setLocation("/admin/settings");
-                  }}
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10 border-b border-black/5 dark:border-white/5 pb-2 mb-1"
-                >
-                  <i className="ri-settings-4-line text-neutral-500" />
-                  <span>全站完整系统设置</span>
-                </button>
+                <div className="h-px bg-black/5 dark:bg-white/5 my-1" />
               </>
             ) : null}
             <button

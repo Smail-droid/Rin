@@ -984,10 +984,10 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
 
             <div className="flex items-center justify-between pt-2 border-t border-black/5 dark:border-white/5 text-xs">
               <Link
-                href={`/admin/writing/${feed?.id}`}
+                href={`/writing/${feed?.id}`}
                 className="text-neutral-400 hover:text-theme transition"
               >
-                前往完整后台工坊 ➔
+                前往完整撰写工坊 ➔
               </Link>
               <div className="flex items-center gap-2">
                 <button

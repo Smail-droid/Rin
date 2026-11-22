@@ -45,7 +45,7 @@ function EmptyFeedsState({ listState, canWrite }: { listState: FeedType; canWrit
             </p>
             {canWrite && (
                 <Link
-                    href="/admin/writing"
+                    href="/writing"
                     className="inline-flex items-center gap-2 rounded-full bg-theme px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90 active:scale-95"
                 >
                     <i className="ri-quill-pen-line" />
@@ -237,7 +237,7 @@ function AtelierPhotoCard({
                                     onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        setLocation(`/admin/writing/${feed.id}`);
+                                        setLocation(`/writing/${feed.id}`);
                                     }}
                                     title="全屏编辑文章"
                                     className="h-6 w-6 rounded-md flex items-center justify-center text-xs bg-neutral-100 dark:bg-white/10 hover:text-theme transition cursor-pointer"
@@ -337,7 +337,7 @@ function AtelierPhotoCard({
                                 onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    setLocation(`/admin/writing/${feed.id}`);
+                                    setLocation(`/writing/${feed.id}`);
                                 }}
                                 title="全屏编辑文章"
                                 className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-md border border-white/15 transition hover:bg-theme"
@@ -450,7 +450,7 @@ function AtelierPhotoCard({
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            setLocation(`/admin/writing/${feed.id}`);
+                                            setLocation(`/writing/${feed.id}`);
                                         }}
                                         title="全屏编辑文章"
                                         className="h-6 w-6 rounded-md border border-neutral-200 dark:border-white/10 flex items-center justify-center text-neutral-500 hover:text-theme hover:border-theme transition"
@@ -578,7 +578,7 @@ function AtelierPhotoCard({
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            setLocation(`/admin/writing/${feed.id}`);
+                            setLocation(`/writing/${feed.id}`);
                         }}
                         title="全屏编辑文章"
                         className="flex h-7 w-7 items-center justify-center rounded-full bg-white/95 dark:bg-neutral-800/95 text-neutral-600 dark:text-neutral-200 shadow-md backdrop-blur-xs transition hover:scale-110 hover:text-theme"

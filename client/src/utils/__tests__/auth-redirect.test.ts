@@ -8,7 +8,7 @@ import {
 
 describe("auth redirect helpers", () => {
   it("builds a login path with a safe redirect", () => {
-    expect(buildLoginPath(HIDDEN_LOGIN_REDIRECT)).toBe("/login?redirect=%2Fadmin%2Fwriting");
+    expect(buildLoginPath(HIDDEN_LOGIN_REDIRECT)).toBe("/login?redirect=%2Fwriting");
   });
 
   it("omits the redirect query for the default destination", () => {
@@ -21,6 +21,6 @@ describe("auth redirect helpers", () => {
   });
 
   it("returns a safe in-app redirect", () => {
-    expect(getLoginRedirectPath("?redirect=%2Fadmin%2Fwriting")).toBe(HIDDEN_LOGIN_REDIRECT);
+    expect(getLoginRedirectPath("?redirect=%2Fwriting")).toBe(HIDDEN_LOGIN_REDIRECT);
   });
 });

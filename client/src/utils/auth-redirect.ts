@@ -1,5 +1,5 @@
 export const DEFAULT_LOGIN_REDIRECT = "/";
-export const HIDDEN_LOGIN_REDIRECT = "/admin/writing";
+export const HIDDEN_LOGIN_REDIRECT = "/writing";
 
 export function buildLoginPath(redirectTo?: string): string {
   const safeRedirect = sanitizeRedirectPath(redirectTo);

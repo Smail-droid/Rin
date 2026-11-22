@@ -911,9 +911,9 @@ export function QueueStatusPage() {
 
                               {/* 标题文字字号调整为 14px~15px / text-[15px] font-medium，纯净展示标题 */}
                               <Link
-                                href={`/admin/writing?id=${item.id}`}
+                                href={`/writing?id=${item.id}`}
                                 className="text-[15px] font-medium tracking-tight truncate t-primary hover:text-theme cursor-pointer transition max-w-xs sm:max-w-md lg:max-w-lg"
-                                title="点击直接在后台编辑此文章"
+                                title="点击直接在撰写工坊编辑此文章"
                               >
                                 {item.title ? String(item.title).trim() : "无标题文章"}
                               </Link>
@@ -1015,9 +1015,9 @@ export function QueueStatusPage() {
 
                           {/* 4. 撰写编辑 */}
                           <Link
-                            href={`/admin/writing?id=${item.id}`}
+                            href={`/writing?id=${item.id}`}
                             className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-200 font-semibold transition text-[11px]"
-                            title="在后台直接修改与编辑此文章"
+                            title="在撰写工坊直接修改与编辑此文章"
                           >
                             <i className="ri-edit-line text-xs" />
                             <span>编辑</span>

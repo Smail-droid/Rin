@@ -57,6 +57,7 @@ function GalleryPageWithAuth() {
 
 export function AppRoutes() {
   const { t } = useTranslation();
+  const profile = useContext(ProfileContext);
 
   return (
     <Switch>
@@ -146,12 +147,56 @@ export function AppRoutes() {
       </AdminRoute>
 
       <AdminRoute path="/admin/writing" requirePermission title="撰写" description={t("admin.writing_description")}>
-        <WritingPage />
+        <Redirect to="/writing" />
       </AdminRoute>
 
       <AdminRoute path="/admin/writing/:id" requirePermission title="撰写" description={t("admin.writing_description")}>
-        {({ id }) => <WritingPage id={tryInt(0, id)} />}
+        {({ id }) => <Redirect to={`/writing/${id}`} />}
       </AdminRoute>
+
+      <Route path="/writing">
+        {() => {
+          if (profile === undefined) {
+            return (
+              <div className="flex flex-col items-center justify-center py-24 ani-show">
+                <i className="ri-loader-4-line animate-spin text-3xl text-theme mb-3" />
+              </div>
+            );
+          }
+          if (!profile?.permission) {
+            return <ErrorPage error={t("error.permission_denied")} />;
+          }
+          return (
+            <div className="min-h-screen p-3 sm:p-5 bg-stone-50/70 dark:bg-[#0c0e14] transition-colors">
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <WritingPage />
+              </Suspense>
+            </div>
+          );
+        }}
+      </Route>
+
+      <Route path="/writing/:id">
+        {({ id }) => {
+          if (profile === undefined) {
+            return (
+              <div className="flex flex-col items-center justify-center py-24 ani-show">
+                <i className="ri-loader-4-line animate-spin text-3xl text-theme mb-3" />
+              </div>
+            );
+          }
+          if (!profile?.permission) {
+            return <ErrorPage error={t("error.permission_denied")} />;
+          }
+          return (
+            <div className="min-h-screen p-3 sm:p-5 bg-stone-50/70 dark:bg-[#0c0e14] transition-colors">
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <WritingPage id={tryInt(0, id)} />
+              </Suspense>
+            </div>
+          );
+        }}
+      </Route>
 
       <AdminRoute path="/admin/files" requirePermission title="图床" description={t("admin_files.description")}>
         <Redirect to="/gallery" />

@@ -14,11 +14,12 @@ export type NavItem = {
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/dashboard", icon: "ri-dashboard-3-line", label: "概览" },
-  { href: "/admin/writing", icon: "ri-quill-pen-line", label: "撰写" },
-  { href: "/hashtags", icon: "ri-price-tag-3-line", label: "标签" },
-  { href: "/music", icon: "ri-disc-line", label: "音廊" },
-  { href: "/gallery", icon: "ri-folder-image-line", label: "图床" },
   { href: "/admin/settings", icon: "ri-equalizer-line", label: "设置" },
+  { href: "/admin/tokens", icon: "ri-key-2-line", label: "口令" },
+  { href: "/admin/access", icon: "ri-lock-password-line", label: "权限" },
+  { href: "/admin/ops", icon: "ri-pulse-line", label: "运维" },
+  { href: "/admin/queue-status", icon: "ri-stack-line", label: "队列" },
+  { href: "/admin/openlist", icon: "ri-folder-cloud-line", label: "资源" },
 ];
 
 export function AdminLayout({
@@ -149,8 +150,15 @@ export function AdminLayout({
           </nav>
         </div>
 
-        {/* Bottom Area: Logout */}
+        {/* Bottom Area: Front-Office & Logout */}
         <div className="flex flex-col items-center border-t border-black/5 p-1.5 dark:border-white/5 gap-1">
+          <Link
+            href="/"
+            className="flex h-9 w-full items-center justify-center rounded-xl text-neutral-400 hover:bg-black/5 hover:text-theme dark:hover:bg-white/5 transition"
+            title="返回前台画廊"
+          >
+            <i className="ri-home-4-line text-base" />
+          </Link>
           {/* 退出登录按钮 */}
           <button
             type="button"
@@ -238,9 +246,26 @@ export function AdminLayout({
               </button>
             )}
 
-            <Link href="/" className="text-xs text-neutral-400 hover:text-theme transition hidden md:inline">
-              返回画廊前台 &rarr;
-            </Link>
+            <div className="flex items-center gap-2.5 text-xs text-neutral-400">
+              <Link href="/writing" className="hover:text-theme transition hidden sm:inline-flex items-center gap-1 font-semibold" title="进入沉浸式撰写工坊">
+                <i className="ri-quill-pen-line text-xs" />
+                <span>撰写</span>
+              </Link>
+              <span className="hidden sm:inline opacity-30">|</span>
+              <Link href="/gallery" className="hover:text-theme transition hidden sm:inline-flex items-center gap-1 font-semibold" title="进入云端图床画廊">
+                <i className="ri-folder-image-line text-xs" />
+                <span>图床</span>
+              </Link>
+              <span className="hidden sm:inline opacity-30">|</span>
+              <Link href="/music" className="hover:text-theme transition hidden sm:inline-flex items-center gap-1 font-semibold" title="进入微光音廊工作台">
+                <i className="ri-disc-line text-xs" />
+                <span>音廊</span>
+              </Link>
+              <span className="hidden sm:inline opacity-30">|</span>
+              <Link href="/" className="hover:text-theme transition font-medium">
+                返回画廊前台 &rarr;
+              </Link>
+            </div>
           </div>
         </header>
 

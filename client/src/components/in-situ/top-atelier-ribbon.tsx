@@ -399,7 +399,7 @@ export function TopAtelierRibbon() {
 
           {/* 全屏创作直达 */}
           <Link
-            href="/admin/writing"
+            href="/writing"
             title={t("nav.write_title", { defaultValue: "进入全屏沉浸创作台" })}
             className="inline-flex items-center gap-1 py-0.5 text-xs text-theme hover:brightness-110 font-bold transition-all duration-200 cursor-pointer"
           >

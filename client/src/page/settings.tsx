@@ -421,19 +421,6 @@ export function Settings() {
                       </div>
                     );
                   })}
-
-                  <div className="p-3.5 rounded-xl border border-theme/20 bg-theme/[0.04] flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <span className="font-bold text-xs text-theme block truncate">首页便签就地编辑</span>
-                      <span className="text-[11px] text-neutral-400 block truncate">封面文字模式与拖拽排序</span>
-                    </div>
-                    <Link
-                      href="/"
-                      className="px-2.5 py-1 rounded-lg bg-theme text-white font-bold text-xs shadow-2xs hover:bg-theme-hover transition shrink-0"
-                    >
-                      前往首页 &rarr;
-                    </Link>
-                  </div>
                 </div>
               </div>
 
