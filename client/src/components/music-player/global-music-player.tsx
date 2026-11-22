@@ -2,20 +2,77 @@ import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useSiteConfig } from "../../hooks/useSiteConfig";
 import { useMusicPlayer } from "./music-player-context";
-import { VinylDiscArt } from "./vinyl-disc-art";
 
-function formatTime(seconds: number): string {
-  if (isNaN(seconds) || seconds < 0) return "00:00";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+/** 精雕日系二次元可爱微光矢量 SVG 音符 (全站主题色渐变驱动 + 晶莹高光点) */
+function KawaiiMusicNoteSvg({
+  className = "w-5 h-5",
+  isPlaying = false,
+}: {
+  className?: string;
+  isPlaying?: boolean;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{
+        filter: "drop-shadow(0 2px 6px rgba(var(--theme-rgb), 0.35))",
+        animation: isPlaying ? "spin 8s linear infinite" : "none",
+      }}
+    >
+      <defs>
+        <linearGradient id="kawaii-note-theme-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="rgb(var(--theme-rgb))" />
+          <stop offset="100%" stopColor="rgb(var(--theme-hover-rgb))" />
+        </linearGradient>
+      </defs>
+      {/* 优雅的双音符连梁 */}
+      <path
+        d="M9 16.5V5.2C9 4.7 9.4 4.3 9.9 4.2L18.9 2.5C19.5 2.4 20 2.8 20 3.4V14.5"
+        stroke="url(#kawaii-note-theme-grad)"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* 上方连梁横杠 */}
+      <path
+        d="M9 8.2L20 6.2"
+        stroke="url(#kawaii-note-theme-grad)"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      {/* 左音符实体 (倾斜椭圆) */}
+      <ellipse
+        cx="6.8"
+        cy="16.5"
+        rx="3.6"
+        ry="2.7"
+        transform="rotate(-18 6.8 16.5)"
+        fill="url(#kawaii-note-theme-grad)"
+      />
+      {/* 右音符实体 */}
+      <ellipse
+        cx="17.8"
+        cy="14.5"
+        rx="3.6"
+        ry="2.7"
+        transform="rotate(-18 17.8 14.5)"
+        fill="url(#kawaii-note-theme-grad)"
+      />
+      {/* 二次元晶莹高光点 */}
+      <circle cx="5.8" cy="15.8" r="0.9" fill="#FFFFFF" opacity="0.95" />
+      <circle cx="16.8" cy="13.8" r="0.9" fill="#FFFFFF" opacity="0.95" />
+    </svg>
+  );
 }
 
 /**
- * 🌸 画廊微光黑胶胶囊播放器 (Global Vinyl Capsule Player)
- * - 彻底告别硬编码塑料粉与刺眼白底，100% 接入全站 Tailwind 语义系统与暗黑模式
- * - 折叠态：极具质感的 38px 磁性黑胶微标（随音乐匀速旋转，带主题呼吸微光）
- * - 展开态：280px 精致微光唱片磁贴（微缩黑胶、优雅单行元数据、触控进度条、自适应歌单浮层）
+ * 🌸 极致极简微光单行胶囊播放器 (Ultra-compact Floating Pill Player)
+ * - 高度收敛至仅 40px，纯圆微光磁贴胶囊，绝无任何庞大笨重感
+ * - 核心标志回归精雕微光二次元音符（自旋微动 + 主题自适应）
+ * - 单行一字流：音符微标 + 歌名/歌手 + 上一曲/播放/下一曲/歌单全部并列，底部贴边极细流光进度条
  */
 export function GlobalMusicPlayer() {
   const [location] = useLocation();
@@ -26,19 +83,17 @@ export function GlobalMusicPlayer() {
     isPlaying,
     currentTime,
     duration,
-    playMode,
     currentLyricText,
     loadError,
     togglePlay,
     next,
     prev,
     seek,
-    setPlayMode,
     play,
     removeTrack,
   } = useMusicPlayer();
 
-  // 展开与折叠控制 (默认折叠为精致黑胶微标)
+  // 展开与折叠控制 (默认折叠为精致微标)
   const [isExpanded, setIsExpanded] = useState<boolean>(() => {
     try {
       return localStorage.getItem("rin_music_expanded") === "true";
@@ -47,7 +102,6 @@ export function GlobalMusicPlayer() {
     }
   });
 
-  const [showLyrics, setShowLyrics] = useState(false);
   const [showPlaylistDrawer, setShowPlaylistDrawer] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -80,8 +134,8 @@ export function GlobalMusicPlayer() {
     if (typeof window === "undefined") return { x, y };
     const winW = window.innerWidth;
     const winH = window.innerHeight;
-    const widgetW = isExpanded ? 300 : 44;
-    const widgetH = isExpanded ? 68 : 44;
+    const widgetW = isExpanded ? 280 : 44;
+    const widgetH = 46;
 
     const safeX = Math.max(12, Math.min(winW - widgetW - 12, x));
     const safeY = Math.max(60, Math.min(winH - widgetH - 16, y));
@@ -94,7 +148,7 @@ export function GlobalMusicPlayer() {
     const handleResize = () => {
       const winH = window.innerHeight;
       const defaultX = 20;
-      const defaultY = Math.max(60, winH - 76);
+      const defaultY = Math.max(60, winH - 68);
 
       setPosition((prev) => {
         if (!prev) return { x: defaultX, y: defaultY };
@@ -140,7 +194,7 @@ export function GlobalMusicPlayer() {
       startX: e.clientX,
       startY: e.clientY,
       initX: position?.x ?? 20,
-      initY: position?.y ?? (typeof window !== "undefined" ? window.innerHeight - 76 : 500),
+      initY: position?.y ?? (typeof window !== "undefined" ? window.innerHeight - 68 : 500),
     };
     hasMovedRef.current = false;
     try {
@@ -203,7 +257,7 @@ export function GlobalMusicPlayer() {
       startX: e.clientX,
       startY: e.clientY,
       initX: position?.x ?? 20,
-      initY: position?.y ?? (typeof window !== "undefined" ? window.innerHeight - 76 : 500),
+      initY: position?.y ?? (typeof window !== "undefined" ? window.innerHeight - 68 : 500),
     };
     hasMovedRef.current = false;
     setIsDragging(true);
@@ -246,7 +300,7 @@ export function GlobalMusicPlayer() {
   const handleResetPosition = () => {
     if (typeof window === "undefined") return;
     const winH = window.innerHeight;
-    const pos = { x: 20, y: Math.max(60, winH - 76) };
+    const pos = { x: 20, y: Math.max(60, winH - 68) };
     setPosition(pos);
     try {
       localStorage.setItem("rin_music_player_pos", JSON.stringify(pos));
@@ -273,7 +327,7 @@ export function GlobalMusicPlayer() {
 
   const currentCoords = position || {
     x: 20,
-    y: typeof window !== "undefined" ? window.innerHeight - 76 : 500,
+    y: typeof window !== "undefined" ? window.innerHeight - 68 : 500,
   };
 
   const progressPercent = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
@@ -325,7 +379,7 @@ export function GlobalMusicPlayer() {
         isDragging ? "cursor-grabbing opacity-90 transition-none" : "transition-transform duration-75"
       }`}
     >
-      {/* 状态 1: 折叠状态 (灵动微光黑胶徽标，38px 极致克制，播放自旋，带暗黑自适应 Tooltip) */}
+      {/* 状态 1: 折叠状态 (极致小巧的 36px 微光音符徽章，带呼吸光圈与晶莹高光) */}
       {!isExpanded ? (
         <div
           className="relative group flex items-center justify-center"
@@ -333,7 +387,7 @@ export function GlobalMusicPlayer() {
           onMouseLeave={() => setShowTooltip(false)}
         >
           {showTooltip && (
-            <div className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-full bg-white/95 dark:bg-[#141720]/95 text-neutral-800 dark:text-neutral-100 text-[11px] font-bold shadow-lg border border-neutral-200/80 dark:border-white/10 pointer-events-none ani-show backdrop-blur-md truncate max-w-[200px]">
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full bg-white/95 dark:bg-[#141720]/95 text-neutral-800 dark:text-neutral-100 text-[11px] font-bold shadow-md border border-neutral-200/80 dark:border-white/10 pointer-events-none ani-show backdrop-blur-md truncate max-w-[190px]">
               {currentTrack ? `${currentTrack.name} · ${currentTrack.artist}` : "画廊随想电台"}
             </div>
           )}
@@ -343,200 +397,138 @@ export function GlobalMusicPlayer() {
             onPointerMove={handleCollapsedPointerMove}
             onPointerUp={handleCollapsedPointerUp}
             onDoubleClick={handleResetPosition}
-            className={`relative flex h-10 w-10 items-center justify-center rounded-full bg-white/80 dark:bg-[#12141a]/80 backdrop-blur-md border border-neutral-200/80 dark:border-white/10 shadow-md hover:border-theme/40 hover:shadow-lg active:scale-95 transition-all cursor-grab active:cursor-grabbing ${
+            className={`relative flex h-9 w-9 items-center justify-center rounded-full bg-white/85 dark:bg-[#12141a]/85 backdrop-blur-md border border-neutral-200/80 dark:border-white/10 shadow-md hover:border-theme/50 hover:shadow-lg active:scale-95 transition-all cursor-grab active:cursor-grabbing ${
               isDragging ? "ring-2 ring-theme/50 scale-105" : "hover:scale-105"
             }`}
-            title="点击展开控制栏 (按住可拖动，双击复位)"
+            title="点击展开极简胶囊 (按住可拖动，双击复位)"
           >
             {isPlaying && (
               <span className="absolute inset-0 rounded-full border border-theme/40 animate-ping duration-[2500ms] pointer-events-none" />
             )}
 
-            <div className="h-7 w-7 rounded-full overflow-hidden shrink-0 pointer-events-none shadow-xs">
-              <VinylDiscArt
-                coverUrl={currentTrack?.pic}
-                isPlaying={isPlaying}
-                className="h-full w-full"
-              />
-            </div>
+            <KawaiiMusicNoteSvg className="w-5 h-5 pointer-events-none" isPlaying={isPlaying} />
           </div>
         </div>
       ) : (
-        /* 状态 2: 展开状态 (高质感微光黑胶胶囊，纯净毛玻璃 + 1px 细微描边，全站主题与暗黑完美契合) */
+        /* 状态 2: 展开状态 (极致纤细 40px 单行流体胶囊，底部贴边极细流光，绝无大块头压迫感) */
         <div
           onPointerDown={handleExpandedPointerDown}
           onPointerMove={handleExpandedPointerMove}
           onPointerUp={handleExpandedPointerUp}
           onDoubleClick={handleResetPosition}
-          className={`relative flex flex-col rounded-2xl p-3 min-w-[285px] max-w-[320px] bg-white/90 dark:bg-[#12141a]/90 backdrop-blur-xl border border-neutral-200/80 dark:border-white/10 shadow-[0_12px_36px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.55)] transition-all cursor-grab active:cursor-grabbing ani-show ${
-            isDragging ? "scale-95 ring-2 ring-theme/40 transition-none" : "hover:border-theme/30"
+          className={`relative group flex items-center h-10 w-[265px] sm:w-[285px] rounded-full px-2.5 bg-white/92 dark:bg-[#12141a]/92 backdrop-blur-xl border border-neutral-200/80 dark:border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.5)] transition-all cursor-grab active:cursor-grabbing ani-show ${
+            isDragging ? "scale-95 ring-2 ring-theme/40 transition-none" : "hover:border-theme/40"
           }`}
         >
-          {/* 第一层（曲目信息层）：微缩旋转黑胶 + 歌曲名/歌手/歌词 + 右上角微型收起按钮 */}
-          <div className="flex items-center gap-2.5 w-full">
-            <button
-              type="button"
-              onClick={handleCollapse}
-              className="relative h-9 w-9 rounded-full overflow-hidden shrink-0 shadow-xs border border-black/10 dark:border-white/10 hover:scale-105 transition cursor-pointer"
-              title="点击收起微标"
-            >
-              <VinylDiscArt
-                coverUrl={currentTrack?.pic}
-                isPlaying={isPlaying}
-                className="h-full w-full"
-              />
-            </button>
+          {/* 左侧：精雕微光音符图标 (点击无条件收起折叠) */}
+          <button
+            type="button"
+            onClick={handleCollapse}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-theme/10 hover:bg-theme/20 active:scale-90 transition p-0.5 cursor-pointer mr-2"
+            title="点击收起微标"
+          >
+            <KawaiiMusicNoteSvg className="w-4 h-4 pointer-events-none" isPlaying={isPlaying} />
+          </button>
 
-            <div className="flex-1 min-w-0 pr-1">
-              {showLyrics && currentLyricText ? (
-                <div className="text-[11px] font-bold text-theme truncate ani-show">
-                  ♫ {currentLyricText}
-                </div>
-              ) : (
-                <div className="truncate">
-                  <div className="text-xs font-bold text-neutral-800 dark:text-neutral-100 truncate">
-                    {currentTrack?.name || "画廊随想电台"}
-                  </div>
-                  <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5">
-                    {currentTrack?.artist || "随心漫游"}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 右上角微型收起小按钮 (不再把播放大钮突兀放在这里) */}
-            <button
-              type="button"
-              onClick={handleCollapse}
-              className="h-6 w-6 rounded-lg flex items-center justify-center text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-white/5 transition cursor-pointer"
-              title="收起为黑胶徽标"
-            >
-              <i className="ri-arrow-down-s-line text-sm" />
-            </button>
-          </div>
-
-          {/* 第二层（流光刻度层）：极细进度条 + 左右两端等宽时间 */}
-          <div className="mt-2.5 flex flex-col gap-1 select-none">
-            <div
-              ref={progressBarRef}
-              onPointerDown={handleProgressBarPointerDown}
-              onPointerMove={handleProgressBarPointerMove}
-              onPointerUp={handleProgressBarPointerUp}
-              onPointerCancel={handleProgressBarPointerUp}
-              className="progress-bar relative h-3 flex items-center cursor-pointer group select-none"
-              title="拖拽快进 / 倒退"
-            >
-              <div className="w-full h-1 group-hover:h-1.5 rounded-full bg-neutral-200/80 dark:bg-white/10 overflow-hidden transition-all duration-150">
-                <div
-                  style={{ width: `${effectivePercent}%` }}
-                  className="h-full bg-theme rounded-full transition-[width] duration-75"
-                />
+          {/* 中间：弹性单行信息区 (歌名 + 歌手 或 实时歌词) */}
+          <div className="flex-1 min-w-0 pr-1.5 overflow-hidden">
+            {currentLyricText ? (
+              <div className="text-[11px] font-bold text-theme truncate ani-show tracking-tight">
+                ♫ {currentLyricText}
               </div>
-            </div>
-
-            <div className="flex items-center justify-between text-[10px] text-neutral-400 dark:text-neutral-500 font-mono tabular-nums px-0.5">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
+            ) : (
+              <div className="truncate flex items-baseline gap-1.5">
+                <span className="text-xs font-bold text-neutral-800 dark:text-neutral-100 truncate">
+                  {currentTrack?.name || "画廊随想电台"}
+                </span>
+                <span className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate shrink-0">
+                  {currentTrack?.artist || "随心漫游"}
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* 第三层（人体工学控制中枢）：所有控制操作严密聚合在底部同一水平线上 */}
-          <div className="mt-1 pt-1.5 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between px-1">
-            {/* 循环模式 */}
+          {/* 右侧：单行紧凑控制三联键 (上一曲 + 播放/暂停 + 下一曲 + 歌单) */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* 上一曲 */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                const nextMode = playMode === "loop" ? "single" : playMode === "single" ? "random" : "loop";
-                setPlayMode(nextMode);
+                prev();
               }}
-              className={`p-1.5 rounded-lg transition cursor-pointer ${
-                playMode !== "loop" ? "text-theme font-bold" : "text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
-              }`}
-              title={playMode === "loop" ? "列表循环" : playMode === "single" ? "单曲循环" : "随机播放"}
+              className="p-1 text-neutral-400 hover:text-theme hover:scale-110 active:scale-90 transition cursor-pointer"
+              title="上一曲"
             >
-              {playMode === "loop" && <i className="ri-repeat-2-line text-xs" />}
-              {playMode === "single" && <i className="ri-repeat-one-line text-xs" />}
-              {playMode === "random" && <i className="ri-shuffle-line text-xs" />}
+              <i className="ri-skip-back-fill text-xs" />
             </button>
 
-            {/* 核心播放三联键（上一曲 + 播放/暂停 + 下一曲 环抱居中） */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  prev();
-                }}
-                className="p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-theme hover:scale-110 active:scale-90 transition cursor-pointer"
-                title="上一曲"
-              >
-                <i className="ri-skip-back-fill text-sm" />
-              </button>
+            {/* 核心播放/暂停键 (轻巧微凸圆纽) */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePlay();
+              }}
+              className="h-6 w-6 rounded-full bg-theme text-white flex items-center justify-center hover:scale-105 active:scale-95 shadow-2xs shadow-theme/30 transition cursor-pointer"
+              title={isPlaying ? "暂停" : "播放"}
+            >
+              <i className={isPlaying ? "ri-pause-fill text-xs" : "ri-play-fill text-xs translate-x-0.5"} />
+            </button>
 
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePlay();
-                }}
-                className="h-8 w-8 rounded-full bg-theme text-white flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 shadow-sm shadow-theme/30 transition cursor-pointer"
-                title={isPlaying ? "暂停" : "播放"}
-              >
-                <i className={isPlaying ? "ri-pause-fill text-base" : "ri-play-fill text-base translate-x-0.5"} />
-              </button>
+            {/* 下一曲 */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                next();
+              }}
+              className="p-1 text-neutral-400 hover:text-theme hover:scale-110 active:scale-90 transition cursor-pointer"
+              title="下一曲"
+            >
+              <i className="ri-skip-forward-fill text-xs" />
+            </button>
 
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  next();
-                }}
-                className="p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-theme hover:scale-110 active:scale-90 transition cursor-pointer"
-                title="下一曲"
-              >
-                <i className="ri-skip-forward-fill text-sm" />
-              </button>
-            </div>
+            {/* 待播歌单呼出 */}
+            <button
+              ref={playlistToggleBtnRef}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowPlaylistDrawer(!showPlaylistDrawer);
+              }}
+              className={`p-1 transition cursor-pointer ${
+                showPlaylistDrawer ? "text-theme" : "text-neutral-400 hover:text-theme"
+              }`}
+              title="展开待播清单"
+            >
+              <i className="ri-play-list-line text-xs" />
+            </button>
+          </div>
 
-            {/* 辅助操作区：歌词 + 待播歌单 */}
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowLyrics(!showLyrics);
-                }}
-                className={`px-1.5 py-0.5 text-[10px] font-mono font-bold transition rounded cursor-pointer ${
-                  showLyrics ? "bg-theme/15 text-theme" : "text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
-                }`}
-                title="歌词显隐"
-              >
-                LRC
-              </button>
-
-              <button
-                ref={playlistToggleBtnRef}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowPlaylistDrawer(!showPlaylistDrawer);
-                }}
-                className={`p-1.5 rounded-lg transition cursor-pointer ${
-                  showPlaylistDrawer ? "text-theme bg-theme/10" : "text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
-                }`}
-                title="展开待播清单"
-              >
-                <i className="ri-play-list-line text-xs" />
-              </button>
+          {/* 底部贴边极细流光进度条 (仅 2px 高度，完全不占垂直空间，悬停可微拖拽) */}
+          <div
+            ref={progressBarRef}
+            onPointerDown={handleProgressBarPointerDown}
+            onPointerMove={handleProgressBarPointerMove}
+            onPointerUp={handleProgressBarPointerUp}
+            onPointerCancel={handleProgressBarPointerUp}
+            className="progress-bar absolute bottom-0 inset-x-3 h-2 flex items-end cursor-pointer group select-none"
+            title="拖拽快进 / 倒退"
+          >
+            <div className="w-full h-[2px] group-hover:h-[3px] rounded-full bg-neutral-200/60 dark:bg-white/10 overflow-hidden transition-all duration-150">
+              <div
+                style={{ width: `${effectivePercent}%` }}
+                className="h-full bg-theme rounded-full transition-[width] duration-75"
+              />
             </div>
           </div>
 
-          {/* 歌单展开浮层 (毛玻璃深浅自适应面板) */}
+          {/* 歌单展开浮层 (从胶囊上方弹出，高度不超过 200px) */}
           {showPlaylistDrawer && (
             <div
               ref={playlistDrawerRef}
-              className="playlist-drawer absolute bottom-20 left-0 w-72 max-h-56 overflow-y-auto p-2.5 z-50 ani-show flex flex-col gap-1 rounded-2xl border border-neutral-200/80 dark:border-white/10 bg-white/95 dark:bg-[#141720]/95 backdrop-blur-xl shadow-2xl text-xs scrollbar-thin"
+              className="playlist-drawer absolute bottom-12 left-0 w-72 max-h-52 overflow-y-auto p-2.5 z-50 ani-show flex flex-col gap-1 rounded-2xl border border-neutral-200/80 dark:border-white/10 bg-white/95 dark:bg-[#141720]/95 backdrop-blur-xl shadow-2xl text-xs scrollbar-thin"
             >
               <div className="flex items-center justify-between pb-1.5 px-1 border-b border-neutral-100 dark:border-white/10 text-[11px] font-bold text-neutral-700 dark:text-neutral-200">
                 <span className="flex items-center gap-1">
@@ -554,7 +546,7 @@ export function GlobalMusicPlayer() {
               </div>
 
               {playlist.length === 0 ? (
-                <p className="text-center text-neutral-400 py-6 text-[11px]">暂无曲目，请在音廊中收录</p>
+                <p className="text-center text-neutral-400 py-5 text-[11px]">暂无曲目，请在音廊中收录</p>
               ) : (
                 playlist.map((track, i) => {
                   const isCur = currentTrack?.id === track.id;
@@ -595,7 +587,7 @@ export function GlobalMusicPlayer() {
 
           {/* 错误自愈提示微标 */}
           {loadError && (
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-rose-500 bg-rose-50 dark:bg-rose-950/60 px-2.5 py-0.5 rounded-full border border-rose-200 dark:border-rose-800/40 pointer-events-none ani-show shadow-xs">
+            <div className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-rose-500 bg-rose-50 dark:bg-rose-950/60 px-2.5 py-0.5 rounded-full border border-rose-200 dark:border-rose-800/40 pointer-events-none ani-show shadow-xs">
               {loadError}
             </div>
           )}
