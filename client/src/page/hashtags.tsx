@@ -9,6 +9,7 @@ import { Waiting } from "../components/loading";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { ProfileContext } from "../state/profile";
 import { siteName } from "../utils/constants";
+import { SolidTagIcon, getTagColorTheme } from "../components/hashtag";
 
 type Hashtag = {
   id: number;
@@ -733,17 +734,19 @@ export function HashtagsPage() {
                   const targetHref = isSingleArticle
                     ? `/feed/${hashtag.singleFeedId}`
                     : `/hashtag/${encodeURIComponent(hashtag.name)}`;
+                  const tagTheme = getTagColorTheme(hashtag.name);
 
                   if (cloudStyle === "pill") {
                     return (
                       <Link
                         key={hashtag.id || index}
                         href={targetHref}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-theme/20 hover:border-theme/40 bg-white/80 dark:bg-neutral-800/80 hover:bg-theme/10 text-neutral-700 dark:text-neutral-200 hover:text-theme shadow-2xs hover:shadow-xs hover:scale-105 active:scale-95 transition-all select-none cursor-pointer group"
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-2xs hover:scale-105 active:scale-95 transition-all select-none cursor-pointer group ${tagTheme.badgeClass}`}
                         title={isSingleArticle ? "包含 1 篇文章，点击直达正文" : `包含 ${feedCount} 篇文章`}
                       >
-                        <span className="font-bold tracking-tight text-xs">#{hashtag.name}</span>
-                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-theme/10 text-theme">
+                        <SolidTagIcon color={tagTheme.iconColor} className="w-3.5 h-3.5 shrink-0" />
+                        <span className="font-bold tracking-tight text-xs">{hashtag.name}</span>
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-black/5 dark:bg-white/10 opacity-80">
                           {feedCount}
                         </span>
                       </Link>
@@ -771,12 +774,11 @@ export function HashtagsPage() {
                     <Link
                       key={hashtag.id || index}
                       href={targetHref}
-                      className={`inline-flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 rounded-md rounded-r-2xl border shadow-2xs text-xs font-medium transform ${rot} hover:rotate-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 select-none cursor-pointer ${bookmarkStyle.card}`}
+                      className={`inline-flex items-center gap-1.5 pl-2.5 pr-2.5 py-1.5 rounded-md rounded-r-2xl border shadow-2xs text-xs font-medium transform ${rot} hover:rotate-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 select-none cursor-pointer ${isEmptyTag ? bookmarkStyle.card : tagTheme.badgeClass}`}
                       title={isSingleArticle ? "包含 1 篇文章，点击直达正文" : `包含 ${feedCount} 篇文章`}
                     >
-                      {/* 书签穿孔小圆点 */}
-                      <span className={`h-1.5 w-1.5 rounded-full shrink-0 opacity-80 ${bookmarkStyle.dot}`} aria-hidden="true" />
-                      <span className="font-bold tracking-tight">#{hashtag.name}</span>
+                      <SolidTagIcon color={isEmptyTag ? undefined : tagTheme.iconColor} className="w-3.5 h-3.5 shrink-0" />
+                      <span className="font-bold tracking-tight">{hashtag.name}</span>
                       <span className="text-[10px] font-mono font-semibold opacity-70 px-1 py-0.2 rounded-full bg-black/5 dark:bg-white/10">
                         {feedCount}
                       </span>
@@ -933,7 +935,8 @@ export function HashtagsPage() {
                                   href={`/hashtag/${encodeURIComponent(tag.name)}`}
                                   className="font-bold text-neutral-800 dark:text-neutral-200 hover:text-theme transition flex items-center gap-1.5"
                                 >
-                                  <span>#{tag.name}</span>
+                                  <SolidTagIcon color={getTagColorTheme(tag.name).iconColor} className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{tag.name}</span>
                                   {getTagFeeds(tag) === 0 ? (
                                     <span className="text-[10px] text-neutral-400 font-normal scale-90">
                                       (空)

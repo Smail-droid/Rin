@@ -4,6 +4,7 @@ import { Link } from "wouter"
 import { useTranslation } from "react-i18next"
 import { FeedCard } from "../components/feed_card"
 import { Waiting } from "../components/loading"
+import { SolidTagIcon, getTagColorTheme } from "../components/hashtag"
 import { client } from "../app/runtime"
 
 import { useSiteConfig } from "../hooks/useSiteConfig";
@@ -104,6 +105,9 @@ export function HashtagPage({ name }: { name: string }) {
         fetchFeeds()
         ref.current = name
     }, [name])
+    const tagName = hashtag?.name || decodeURI(name);
+    const tagTheme = getTagColorTheme(tagName);
+
     return (
         <>
             <Helmet>
@@ -118,12 +122,13 @@ export function HashtagPage({ name }: { name: string }) {
                 <main className="w-full flex flex-col justify-center items-center mb-8">
                     <div className="wauto text-start py-4 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
                         <div>
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 text-xs font-bold mb-2">
-                                <i className="ri-price-tag-3-line" />
+                            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold mb-2 shadow-2xs ${tagTheme.badgeClass}`}>
+                                <SolidTagIcon color={tagTheme.iconColor} className="w-3.5 h-3.5" />
                                 <span>标签分类</span>
                             </div>
-                            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight t-primary">
-                                #{hashtag?.name}
+                            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight t-primary flex items-center gap-2">
+                                <SolidTagIcon color={tagTheme.iconColor} className="w-7 h-7 sm:w-8 sm:h-8" />
+                                <span>{tagName}</span>
                             </h1>
                             <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1 flex items-center gap-2">
                                 <span>{t('article.total$count', { count: hashtagFeeds.length })}</span>

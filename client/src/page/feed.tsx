@@ -890,24 +890,13 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
 
                     {/* 原生圆润极简彩胶囊流 + 附加漫游功能标签 */}
                     <div className="flex flex-wrap items-center gap-1.5 text-xs pt-0.5">
-                      {recommendedTags.map((tag, idx) => {
-                        const pastel = [
-                          "bg-amber-100/80 text-amber-900 border-amber-300/50 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800/40",
-                          "bg-sky-100/80 text-sky-900 border-sky-300/50 dark:bg-sky-950/40 dark:text-sky-200 dark:border-sky-800/40",
-                          "bg-rose-100/80 text-rose-900 border-rose-300/50 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-800/40",
-                          "bg-emerald-100/80 text-emerald-900 border-emerald-300/50 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800/40",
-                          "bg-purple-100/80 text-purple-900 border-purple-300/50 dark:bg-purple-950/40 dark:text-purple-200 dark:border-purple-800/40",
-                        ];
-                        const colorClass = pastel[idx % pastel.length];
-                        return (
-                          <HashTag
-                            key={tag.id}
-                            name={tag.name}
-                            currentFeedId={feed?.id}
-                            colorClass={colorClass}
-                          />
-                        );
-                      })}
+                      {recommendedTags.map((tag) => (
+                        <HashTag
+                          key={tag.id}
+                          name={tag.name}
+                          currentFeedId={feed?.id}
+                        />
+                      ))}
                       <ActionTag type="random" currentFeedId={feed?.id} />
                     </div>
                   </div>
