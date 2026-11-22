@@ -796,5 +796,115 @@
     "view_grid": "網格",
     "view_list": "列表",
     "r2_not_configured": "R2 儲存桶未設定"
+  },
+  "site": {
+    "default_name": "畫廊隨想",
+    "default_desc": "記錄生活閃光與技術沉澱，讓每一次漫步都有跡可循。"
+  },
+  "atelier": {
+    "title": "畫廊隨想"
+  },
+  "timeline_title": "時光長河",
+  "timeline_desc": "流年有聲，歲序常易。靜候每一程漫行與落筆。",
+  "back_to_gallery": "返回畫廊",
+  "art_exhibition_hall": "藝術畫廊展廳",
+  "tag_category": "標籤分類",
+  "tag_smart_search_hint": "已智慧關聯匹配複合標籤內容",
+  "search_explore": "搜尋探索",
+  "gallery_title": "圖床",
+  "music_title": "音廊",
+  "top_ribbon_aria": "畫廊氛圍與在場工坊",
+  "hashtags_index": "標籤索引",
+  "hashtags_desc": "萬象歸卷，隨引而遇。共 {{count}} 個話題 · 關聯 {{feeds}} 篇次",
+  "hashtags_view_cloud": "星雲流",
+  "hashtags_view_datagrid": "超級數據盤",
+  "openlist_nav_title": "資源列表",
+  "music": {
+    "radio_title": "畫廊隨想電台"
+  },
+  "ambience": {
+    "sakura": "櫻花",
+    "rain": "細雨",
+    "fireflies": "螢火",
+    "open_mode": "開啟{{mode}}氛圍",
+    "close_mode": "關閉{{mode}}氛圍"
+  },
+  "variant": {
+    "polaroid": "拍立得",
+    "poster": "畫冊",
+    "editorial": "雜誌",
+    "compact": "列表",
+    "switch_title": "切換文章版式（目前：{{current}}）"
+  },
+  "palette": {
+    "switch_title": "切換畫廊主題色（目前：{{current}}）",
+    "custom_label": "調色",
+    "custom_title": "自由取色即時調控",
+    "custom_aria": "自由調色盤選色",
+    "classic": "預設經典",
+    "sakura": "春日櫻落",
+    "paper_ink": "極簡紙墨",
+    "cyber_cold": "賽博冷萃",
+    "aoi_sora": "和風青空",
+    "midnight_deep": "午夜深邃",
+    "violet_twilight": "暮光紫霞",
+    "forest_mist": "森嶼綠野",
+    "golden_sunset": "落日熔金",
+    "rose_cream": "玫瑰奶霜",
+    "mint_soda": "薄荷蘇打",
+    "ocean_abyss": "蔚藍深海",
+    "lilac_dream": "迷霧丁香",
+    "caramel_amber": "暖橘蜜糖",
+    "moss_rain": "初霽嫩芽",
+    "obsidian_slate": "清霧石板",
+    "peach_coral": "珊瑚蜜桃",
+    "aurora_teal": "極光青翠",
+    "crimson_flame": "朱砂緋紅"
+  },
+  "notes": {
+    "badge": "便簽",
+    "enter": "進入",
+    "about_cta": "關於我",
+    "about_desc": "歡迎光臨我的記憶工坊與隨筆空間，點擊了解更多。",
+    "timeline_cta": "查看軌跡",
+    "timeline_sub": "時光刻度",
+    "timeline_desc": "以時間為軸，串聯起每一次靈感與技術實踐。",
+    "moments_cta": "進入動態",
+    "moments_sub": "隨筆動態",
+    "moments_desc": "生活碎碎念、靈感火花與不設限的日常記錄。",
+    "friends_cta": "拜訪朋友",
+    "friends_sub": "數位花園",
+    "friends_desc": "漫步在同好博主的數位花園，交換思想火花。",
+    "search_title": "隨心探索",
+    "search_cta": "站內搜尋",
+    "search_desc": "輸入關鍵字即刻搜尋文章與處理解決方案。",
+    "deck_desc": "漫遊圖床畫廊，瀏覽大圖並複製連結。",
+    "reset_order": "恢復預設排序",
+    "reset_order_title": "恢復文章與便簽為預設排布次序"
+  },
+  "nav": {
+    "write_title": "進入全螢幕沉浸創作台",
+    "gallery_title": "進入全寬圖床畫廊",
+    "music_title": "進入沉浸音廊工作台",
+    "tags_title": "標籤體系管理",
+    "settings_title": "進入系統綜合設定大盤"
+  },
+  "appearance": {
+    "variant_default": "拍立得瀑布流",
+    "variant_default_tag": "白邊微傾",
+    "variant_poster": "全幅沉浸畫冊",
+    "variant_poster_tag": "原圖滿幅",
+    "variant_editorial": "圖文雙欄雜誌",
+    "variant_editorial_tag": "左文右圖",
+    "variant_compact": "緊湊文章列表",
+    "variant_compact_tag": "高密掃讀",
+    "ambience_none": "關閉粒子",
+    "ambience_sakura": "飄落櫻花",
+    "ambience_rain": "清透細雨",
+    "ambience_fireflies": "呼吸螢火"
+  },
+  "danmaku": {
+    "reader_inspiration": "畫廊隨想讀者靈感 · 懸停定格",
+    "reader_comment": "畫廊隨想讀者留言 · 懸停定格"
   }
 }

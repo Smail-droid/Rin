@@ -42,6 +42,10 @@
     }
   },
   "ai_summary": {
+    "status_on": "导读:开",
+    "status_off": "导读:关",
+    "enable_hint": "点击即刻开启全站文章导读",
+    "disable_hint": "点击即刻关闭全站文章导读",
     "message": {
       "completed": "导读已生成。",
       "failed": "导读生成失败。",
@@ -179,6 +183,11 @@
     "rss": "RSS 订阅链接"
   },
   "friends": {
+    "starry_title": "星标友链",
+    "desc": "山海有朋，见字如晤。与志趣相投的旅人一同漫步星空。",
+    "add_site": "收录星标站点",
+    "apply_site": "申请加入星标",
+    "refresh_data": "刷新友链数据",
     "apply": "申请友链",
     "create": "创建友链",
     "left": "暂时离开",
@@ -225,6 +234,16 @@
   "logout": "退出登录",
   "main_content": "正文",
   "moments": {
+    "desc": "记录浮生闲步、片刻闪光与晨昏随笔。({{count}} 条记事)",
+    "collapse": "收起便签",
+    "new_moment": "记录新灵感",
+    "default_entry_title": "生活记事",
+    "status_casual": "随笔",
+    "status_code": "代码",
+    "status_idea": "灵感",
+    "status_daily": "日常",
+    "status_study": "阅读",
+    "status_chill": "放空",
     "edit": "编辑动态",
     "publish": "发布动态",
     "title": "动态",
@@ -804,5 +823,115 @@
     "view_grid": "网格",
     "view_list": "列表",
     "r2_not_configured": "R2 存储桶未配置"
+  },
+  "site": {
+    "default_name": "画廊随想",
+    "default_desc": "记录生活闪光与技术沉淀，让每一次漫步都有迹可循。"
+  },
+  "atelier": {
+    "title": "画廊随想"
+  },
+  "timeline_title": "时光长河",
+  "timeline_desc": "流年有声，岁序常易。静候每一程漫行与落笔。",
+  "back_to_gallery": "返回画廊",
+  "art_exhibition_hall": "艺术画廊展厅",
+  "tag_category": "标签分类",
+  "tag_smart_search_hint": "已智能关联匹配复合标签内容",
+  "search_explore": "搜索探索",
+  "gallery_title": "图床",
+  "music_title": "音廊",
+  "top_ribbon_aria": "画廊氛围与在场工坊",
+  "hashtags_index": "标签索引",
+  "hashtags_desc": "万象归卷，随引而遇。共 {{count}} 个话题 · 关联 {{feeds}} 篇次",
+  "hashtags_view_cloud": "星云流",
+  "hashtags_view_datagrid": "超级数据盘",
+  "openlist_nav_title": "资源列表",
+  "music": {
+    "radio_title": "画廊随想电台"
+  },
+  "ambience": {
+    "sakura": "樱花",
+    "rain": "细雨",
+    "fireflies": "萤火",
+    "open_mode": "开启{{mode}}氛围",
+    "close_mode": "关闭{{mode}}氛围"
+  },
+  "variant": {
+    "polaroid": "拍立得",
+    "poster": "画册",
+    "editorial": "杂志",
+    "compact": "列表",
+    "switch_title": "切换文章版式（当前：{{current}}）"
+  },
+  "palette": {
+    "switch_title": "切换画廊主题色（当前：{{current}}）",
+    "custom_label": "调色",
+    "custom_title": "自由取色实时调控",
+    "custom_aria": "自由调色盘选色",
+    "classic": "默认经典",
+    "sakura": "春日樱落",
+    "paper_ink": "极简纸墨",
+    "cyber_cold": "赛博冷萃",
+    "aoi_sora": "和风青空",
+    "midnight_deep": "午夜深邃",
+    "violet_twilight": "暮光紫霞",
+    "forest_mist": "森屿绿野",
+    "golden_sunset": "落日熔金",
+    "rose_cream": "玫瑰奶霜",
+    "mint_soda": "薄荷苏打",
+    "ocean_abyss": "蔚蓝深海",
+    "lilac_dream": "迷雾丁香",
+    "caramel_amber": "暖橘蜜糖",
+    "moss_rain": "初霁嫩芽",
+    "obsidian_slate": "清雾石板",
+    "peach_coral": "珊瑚蜜桃",
+    "aurora_teal": "极光青翠",
+    "crimson_flame": "朱砂绯红"
+  },
+  "notes": {
+    "badge": "便签",
+    "enter": "进入",
+    "about_cta": "关于我",
+    "about_desc": "欢迎光临我的记忆工坊与随笔空间，点击了解更多。",
+    "timeline_cta": "查看轨迹",
+    "timeline_sub": "时光刻度",
+    "timeline_desc": "以时间为轴，串联起每一次灵感与技术实践。",
+    "moments_cta": "进入动态",
+    "moments_sub": "随笔动态",
+    "moments_desc": "生活碎碎念、灵感火花与不设限的日常记录。",
+    "friends_cta": "拜访朋友",
+    "friends_sub": "数字花园",
+    "friends_desc": "漫步在同好博主的数字花园，交换思想火花。",
+    "search_title": "随心探索",
+    "search_cta": "站内检索",
+    "search_desc": "输入关键词即刻检索文章与解决方案。",
+    "deck_desc": "漫游图床画廊，浏览大图并复制链接。",
+    "reset_order": "恢复默认排序",
+    "reset_order_title": "恢复文章与便签为默认排布次序"
+  },
+  "nav": {
+    "write_title": "进入全屏沉浸创作台",
+    "gallery_title": "进入全宽图床画廊",
+    "music_title": "进入沉浸音廊工作台",
+    "tags_title": "标签体系管理",
+    "settings_title": "进入系统综合设置大盘"
+  },
+  "appearance": {
+    "variant_default": "拍立得瀑布流",
+    "variant_default_tag": "白边微倾",
+    "variant_poster": "全幅沉浸画册",
+    "variant_poster_tag": "原图满幅",
+    "variant_editorial": "图文双栏杂志",
+    "variant_editorial_tag": "左文右图",
+    "variant_compact": "紧凑文章列表",
+    "variant_compact_tag": "高密扫读",
+    "ambience_none": "关闭粒子",
+    "ambience_sakura": "飘落樱花",
+    "ambience_rain": "清透细雨",
+    "ambience_fireflies": "呼吸萤火"
+  },
+  "danmaku": {
+    "reader_inspiration": "画廊随想读者灵感 · 悬停定格",
+    "reader_comment": "画廊随想读者留言 · 悬停定格"
   }
 }

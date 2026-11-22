@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { useAlert } from "../components/dialog";
 import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
 import { VectorIcon } from "../components/vector-icon";
+import { SolidTagIcon, getTagColorTheme } from "../components/hashtag";
 
 const ArticleAccessModal = lazy(() =>
     import("../components/article-access-modal").then((m) => ({ default: m.ArticleAccessModal }))
@@ -1392,17 +1393,38 @@ export function FeedsPage() {
     const [editingTagAliasText, setEditingTagAliasText] = useState("");
 
     const [homepageTagsConfig, setHomepageTagsConfig] = useState<{
+        enabled: boolean;
         hiddenIds: number[];
         customOrder: number[];
         limit: number | "all";
         palette: "pastel" | "macaron" | "cyber" | "theme" | "mono";
         aliases: Record<number, string>;
     }>(() => {
+        // 1. 优先读取服务端全局下发的权威配置 (访客、无痕、全网设备 100% 同步)
+        try {
+            const serverRaw = (siteConfig as any).homepageTagsConfig;
+            if (serverRaw) {
+                const parsed = typeof serverRaw === "string" ? JSON.parse(serverRaw) : serverRaw;
+                if (parsed && typeof parsed === "object") {
+                    return {
+                        enabled: parsed.enabled !== false,
+                        hiddenIds: parsed.hiddenIds || [],
+                        customOrder: parsed.customOrder || [],
+                        limit: parsed.limit ?? 8,
+                        palette: parsed.palette || "pastel",
+                        aliases: parsed.aliases || {},
+                    };
+                }
+            }
+        } catch {}
+
+        // 2. 本地缓存兜底
         try {
             const saved = localStorage.getItem("rin_gallery_homepage_tags_config");
             if (saved) {
                 const parsed = JSON.parse(saved);
                 return {
+                    enabled: parsed.enabled !== false,
                     hiddenIds: parsed.hiddenIds || [],
                     customOrder: parsed.customOrder || [],
                     limit: parsed.limit ?? 8,
@@ -1411,8 +1433,28 @@ export function FeedsPage() {
                 };
             }
         } catch {}
-        return { hiddenIds: [], customOrder: [], limit: 8, palette: "pastel", aliases: {} };
+        return { enabled: true, hiddenIds: [], customOrder: [], limit: 8, palette: "pastel", aliases: {} };
     });
+
+    // 当服务端配置动态下发或更新时，自动同步状态
+    useEffect(() => {
+        const serverRaw = (siteConfig as any).homepageTagsConfig;
+        if (!serverRaw) return;
+        try {
+            const parsed = typeof serverRaw === "string" ? JSON.parse(serverRaw) : serverRaw;
+            if (parsed && typeof parsed === "object") {
+                setHomepageTagsConfig((prev) => ({
+                    ...prev,
+                    enabled: parsed.enabled !== false,
+                    hiddenIds: parsed.hiddenIds || [],
+                    customOrder: parsed.customOrder || [],
+                    limit: parsed.limit ?? 8,
+                    palette: parsed.palette || "pastel",
+                    aliases: parsed.aliases || {},
+                }));
+            }
+        } catch {}
+    }, [(siteConfig as any).homepageTagsConfig]);
 
     const limit = 36;
     const shuffleSeed = 0;
@@ -1779,6 +1821,20 @@ export function FeedsPage() {
         try {
             localStorage.setItem("rin_gallery_homepage_tags_config", JSON.stringify(next));
         } catch {}
+
+        // 持久化到服务端全局配置中心，确保访客端、无痕模式 100% 同步！
+        try {
+            const cached = sessionStorage.getItem("config");
+            const parsed = cached ? JSON.parse(cached) : {};
+            parsed["gallery.homepage_tags_config"] = JSON.stringify(next);
+            sessionStorage.setItem("config", JSON.stringify(parsed));
+            window.dispatchEvent(new Event("rin:config-updated"));
+            void client.config.update("client", {
+                "gallery.homepage_tags_config": JSON.stringify(next),
+            });
+        } catch (e) {
+            console.error("Failed to persist homepage tags config:", e);
+        }
     };
 
     const getTagColorClass = (index: number) => {
@@ -1835,11 +1891,13 @@ export function FeedsPage() {
     }, [tagOrderList, tags]);
 
     const displayTags = useMemo(() => {
+        if (homepageTagsConfig.enabled === false || homepageTagsConfig.limit === 0) return [];
         if (!tags || tags.length === 0) return [];
         let list = orderedTagObjects.filter((t) => !homepageTagsConfig.hiddenIds.includes(t.id));
+        if (list.length === 0) return [];
         const limitCount = homepageTagsConfig.limit === "all" ? list.length : (homepageTagsConfig.limit || 8);
         return list.slice(0, limitCount);
-    }, [tags, orderedTagObjects, homepageTagsConfig.hiddenIds, homepageTagsConfig.limit]);
+    }, [homepageTagsConfig.enabled, homepageTagsConfig.limit, tags, orderedTagObjects, homepageTagsConfig.hiddenIds]);
 
     // 核心排序：输入目标数字直接调序，被替换的位置项依次自动顺延下移
     const handleMoveTagToIndex = (fromIndex: number, targetNumStr: string) => {
@@ -1854,16 +1912,20 @@ export function FeedsPage() {
         updateTagsConfig({ customOrder: nextOrder });
     };
 
-    // 首页展示数量预设：一步到位，点击 4个/6个/8个/12个/全部 时，严格根据当前表格真实排序，直接将前 N 个置为开启，其余置为隐藏
+    // 首页展示数量预设
     const handleSelectTagLimit = (val: number | "all") => {
+        if (val === 0) {
+            updateTagsConfig({ enabled: false, limit: 0, hiddenIds: [...tagOrderList] });
+            return;
+        }
         if (val === "all") {
-            updateTagsConfig({ limit: "all", hiddenIds: [] });
+            updateTagsConfig({ enabled: true, limit: "all", hiddenIds: [] });
             return;
         }
         const targetCount = Math.max(1, Math.min(val, orderedTagObjects.length));
         const keepIds = new Set(orderedTagObjects.slice(0, targetCount).map((t) => t.id));
         const nextHidden = orderedTagObjects.filter((t) => !keepIds.has(t.id)).map((t) => t.id);
-        updateTagsConfig({ limit: val, hiddenIds: nextHidden });
+        updateTagsConfig({ enabled: true, limit: val, hiddenIds: nextHidden });
     };
 
     // 历史缓存自动纠偏自愈：若本地 localStorage 残留了历史旧版本的 3 个开启脏数据，自动按当前 limit 校准
@@ -1880,9 +1942,9 @@ export function FeedsPage() {
         }
     }, [orderedTagObjects.length]);
 
-    // 全选：所有标签开启展示
+    // 全选/全开：所有标签开启展示
     const handleSelectAllTags = () => {
-        updateTagsConfig({ hiddenIds: [] });
+        updateTagsConfig({ enabled: true, hiddenIds: [] });
     };
 
     // 反选：已开启的关闭，已关闭的开启
@@ -1894,7 +1956,7 @@ export function FeedsPage() {
 
     // 全关：关闭所有标签展示
     const handleDisableAllTags = () => {
-        updateTagsConfig({ hiddenIds: [...tagOrderList] });
+        updateTagsConfig({ enabled: false, hiddenIds: [...tagOrderList] });
     };
 
     const handleToggleTagVisibility = (tagId: number) => {
@@ -1944,7 +2006,7 @@ export function FeedsPage() {
     };
 
     const handleResetTagsConfig = () => {
-        const resetVal = { hiddenIds: [], customOrder: [], limit: 8, palette: "pastel" as const, aliases: {} };
+        const resetVal = { enabled: true, hiddenIds: [], customOrder: [], limit: 8, palette: "pastel" as const, aliases: {} };
         setHomepageTagsConfig(resetVal);
         try {
             localStorage.removeItem("rin_gallery_homepage_tags_config");
@@ -2261,21 +2323,21 @@ export function FeedsPage() {
                                 "rotate-[-2.5deg]",
                                 "rotate-[1.5deg]",
                             ][i % 8];
-                            const bg = getTagColorClass(i);
                             const tagData = (tags || []).find((t: any) => t.id === tag.id) as any;
                             const isSingleArticle = tagData?.feeds === 1 && Boolean(tagData?.singleFeedId);
                             const targetHref = isSingleArticle
                                 ? `/feed/${tagData.singleFeedId}`
                                 : `/hashtag/${encodeURIComponent(tag.name)}`;
                             const tagDisplayName = homepageTagsConfig.aliases?.[tag.id] || tag.name;
+                            const tagTheme = getTagColorTheme(tag.name);
                             return (
                                 <Link
                                     key={tag.id}
                                     href={targetHref}
-                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border shadow-2xs text-xs font-semibold transform ${rot} hover:rotate-0 hover:scale-110 hover:shadow-md transition-all duration-300 ${bg}`}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border shadow-2xs text-xs font-semibold transform ${rot} hover:rotate-0 hover:scale-110 hover:shadow-md transition-all duration-300 ${tagTheme.badgeClass}`}
                                     title={isSingleArticle ? `独家文章，点击直达正文！` : `浏览 #${tag.name} 标签聚合`}
                                 >
-                                    <span className="opacity-60 text-[10px]">🏷️</span>
+                                    <SolidTagIcon color={tagTheme.iconColor} className="w-3.5 h-3.5 shrink-0" />
                                     <span>#{tagDisplayName}</span>
                                 </Link>
                             );
@@ -2936,8 +2998,33 @@ export function FeedsPage() {
                             </button>
                         </div>
 
-                        {/* 顶部预设与色彩方案联动控制区 */}
+                        {/* 顶部总开关与预设控制区 */}
                         <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col gap-3">
+                            {/* 0. 首页标签显隐总开关 */}
+                            <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-xs t-primary">首页标签前台总开关</span>
+                                    <span className="text-[11px] text-neutral-400">关闭后访客端与前台 100% 完全隐藏</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const nextEnabled = !homepageTagsConfig.enabled;
+                                        updateTagsConfig({
+                                            enabled: nextEnabled,
+                                            hiddenIds: nextEnabled ? [] : [...tagOrderList],
+                                        });
+                                    }}
+                                    className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer select-none ${
+                                        homepageTagsConfig.enabled && homepageTagsConfig.limit !== 0
+                                            ? "bg-theme text-white shadow-2xs"
+                                            : "bg-neutral-200 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300"
+                                    }`}
+                                >
+                                    {homepageTagsConfig.enabled && homepageTagsConfig.limit !== 0 ? "✓ 前台开启显示" : "已彻底隐藏"}
+                                </button>
+                            </div>
+
                             {/* 1. 首页展示数量预设 */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div>
@@ -2948,13 +3035,16 @@ export function FeedsPage() {
                                 </div>
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                     {[
+                                        { label: "0 个 (隐藏)", val: 0 },
                                         { label: "4 个", val: 4 },
                                         { label: "6 个", val: 6 },
                                         { label: "8 个 (默认)", val: 8 },
                                         { label: "12 个", val: 12 },
                                         { label: "全部", val: "all" as const },
                                     ].map((opt) => {
-                                        const isSel = homepageTagsConfig.limit === opt.val;
+                                        const isSel = opt.val === 0
+                                            ? (!homepageTagsConfig.enabled || homepageTagsConfig.limit === 0)
+                                            : (homepageTagsConfig.enabled && homepageTagsConfig.limit === opt.val);
                                         return (
                                             <button
                                                 key={String(opt.val)}

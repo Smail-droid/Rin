@@ -1,4 +1,5 @@
 import { useContext, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ClientConfigContext } from "../state/config";
 import { normalizeFeedCardVariant } from "../components/feed-card-options";
 import { normalizeFeedLayout } from "../components/feed-layout-options";
@@ -116,6 +117,7 @@ export const SITE_CONFIG_KEYS = {
     galleryCardMaxWidth: "gallery.card_max_width",
     galleryCardGap: "gallery.card_gap",
     galleryTiltMode: "gallery.tilt_mode", // "subtle" (自然微倾) | "pronounced" (显著错落) | "flat" (纯平对齐) | "dynamic" (随性活力)
+    homepageTagsConfig: "gallery.homepage_tags_config",
 
     danmakuSpeed: "danmaku.speed",
     aiSummaryEnabled: "ai_summary.enabled",
@@ -124,6 +126,7 @@ export const SITE_CONFIG_KEYS = {
 // Hook to get site configuration (memoized per ConfigWrapper instance to avoid 50+ redundant JSON.parse/allocations per render)
 export function useSiteConfig() {
     const config = useContext(ClientConfigContext);
+    const { t } = useTranslation();
     return useMemo(() => {
     const pageSizeValue = config.get<string | number>(SITE_CONFIG_KEYS.pageSize);
     const parsedPageSize =
@@ -136,9 +139,61 @@ export function useSiteConfig() {
     const showNavRaw = config.get<string | boolean>(SITE_CONFIG_KEYS.headerShowNav);
     const headerShowNav = showNavRaw === undefined ? undefined : showNavRaw === true || showNavRaw === "true";
 
+    const defaultSiteName = t("site.default_name", { defaultValue: "Rin" });
+    const rawName = config.get<string>(SITE_CONFIG_KEYS.name);
+    const name = !rawName || rawName === "Rin" || rawName === "画廊随想"
+        ? (rawName === "画廊随想" ? t("atelier.title", { defaultValue: "Gallery Blog" }) : defaultSiteName)
+        : rawName;
+
+    const defaultDesc = t("site.default_desc", { defaultValue: "记录生活闪光与技术沉淀，让每一次漫步都有迹可循。" });
+    const rawDesc = config.get<string>(SITE_CONFIG_KEYS.description);
+    const description = !rawDesc || rawDesc === "记录生活闪光与技术沉淀，让每一次漫步都有迹可循。"
+        ? defaultDesc
+        : rawDesc;
+
+    const rawAtelierTitle = config.get<string>(SITE_CONFIG_KEYS.atelierTitle);
+    const atelierTitle = !rawAtelierTitle || rawAtelierTitle === "画廊随想"
+        ? t("atelier.title", { defaultValue: "画廊随想" })
+        : rawAtelierTitle;
+
+    const rawOpenlistNavTitle = config.get<string>(SITE_CONFIG_KEYS.openlistNavTitle);
+    const openlistNavTitle = !rawOpenlistNavTitle || rawOpenlistNavTitle === "资源列表"
+        ? t("openlist_nav_title", { defaultValue: "资源列表" })
+        : rawOpenlistNavTitle;
+
+    const rawAboutDesc = config.get<string>(SITE_CONFIG_KEYS.atelierAboutDesc);
+    const atelierAboutDesc = !rawAboutDesc || rawAboutDesc === "欢迎光临我的记忆工坊与随笔空间，点击了解更多。"
+        ? t("notes.about_desc", { defaultValue: "欢迎光临我的记忆工坊与随笔空间，点击了解更多。" })
+        : rawAboutDesc;
+
+    const rawTimelineDesc = config.get<string>(SITE_CONFIG_KEYS.atelierTimelineDesc);
+    const atelierTimelineDesc = !rawTimelineDesc || rawTimelineDesc === "以时间为轴，串联起每一次灵感与技术实践。"
+        ? t("notes.timeline_desc", { defaultValue: "以时间为轴，串联起每一次灵感与技术实践。" })
+        : rawTimelineDesc;
+
+    const rawMomentsDesc = config.get<string>(SITE_CONFIG_KEYS.atelierMomentsDesc);
+    const atelierMomentsDesc = !rawMomentsDesc || rawMomentsDesc === "生活碎碎念、灵感火花与不设限的日常记录。"
+        ? t("notes.moments_desc", { defaultValue: "生活碎碎念、灵感火花与不设限的日常记录。" })
+        : rawMomentsDesc;
+
+    const rawFriendsDesc = config.get<string>(SITE_CONFIG_KEYS.atelierFriendsDesc);
+    const atelierFriendsDesc = !rawFriendsDesc || rawFriendsDesc === "漫步在同好博主的数字花园，交换思想火花。"
+        ? t("notes.friends_desc", { defaultValue: "漫步在同好博主的数字花园，交换思想火花。" })
+        : rawFriendsDesc;
+
+    const rawSearchDesc = config.get<string>(SITE_CONFIG_KEYS.atelierSearchDesc);
+    const atelierSearchDesc = !rawSearchDesc || rawSearchDesc === "输入关键词即刻检索文章与解决方案。"
+        ? t("notes.search_desc", { defaultValue: "输入关键词即刻检索文章与解决方案。" })
+        : rawSearchDesc;
+
+    const rawDeckDesc = config.get<string>(SITE_CONFIG_KEYS.atelierDeckDesc);
+    const atelierDeckDesc = !rawDeckDesc || rawDeckDesc === "漫游图床画廊，浏览大图并复制链接。"
+        ? t("notes.deck_desc", { defaultValue: "漫游图床画廊，浏览大图并复制链接。" })
+        : rawDeckDesc;
+
     return {
-        name: config.get<string>(SITE_CONFIG_KEYS.name) || "Rin",
-        description: config.get<string>(SITE_CONFIG_KEYS.description) || "",
+        name,
+        description,
         avatar: normalizeBlobUrl(config.get<string>(SITE_CONFIG_KEYS.avatar)) || config.get<string>(SITE_CONFIG_KEYS.avatar) || "",
         pageSize: Number.isFinite(parsedPageSize) ? parsedPageSize : 5,
         headerBehavior: config.get<string>(SITE_CONFIG_KEYS.headerBehavior) || "fixed",
@@ -177,7 +232,7 @@ export function useSiteConfig() {
         storageGalleryShowInNav: config.getBoolean(SITE_CONFIG_KEYS.storageGalleryShowInNav),
         openlistWorkerUrl: config.get<string>(SITE_CONFIG_KEYS.openlistWorkerUrl) || "",
         openlistShowInNav: config.get(SITE_CONFIG_KEYS.openlistShowInNav) === true || config.get(SITE_CONFIG_KEYS.openlistShowInNav) === "true",
-        openlistNavTitle: config.get<string>(SITE_CONFIG_KEYS.openlistNavTitle) || "资源列表",
+        openlistNavTitle,
 
         musicEnabled: config.get(SITE_CONFIG_KEYS.musicEnabled) === true || config.get(SITE_CONFIG_KEYS.musicEnabled) === "true",
         musicAutoPlay: config.get(SITE_CONFIG_KEYS.musicAutoPlay) === true || config.get(SITE_CONFIG_KEYS.musicAutoPlay) === "true",
@@ -187,7 +242,7 @@ export function useSiteConfig() {
         musicOpenlistUrl: config.get<string>(SITE_CONFIG_KEYS.musicOpenlistUrl) || "",
         musicPlaylist: config.get<string>(SITE_CONFIG_KEYS.musicPlaylist) || "",
         musicPosition: config.get<string>(SITE_CONFIG_KEYS.musicPosition) || "bottom-right",
-        atelierTitle: config.get<string>(SITE_CONFIG_KEYS.atelierTitle) || "画廊随想",
+        atelierTitle,
         atelierTitleStyle: config.get<string>(SITE_CONFIG_KEYS.atelierTitleStyle) || "aurora_flow",
         hashtagsTitleStyle: config.get<string>(SITE_CONFIG_KEYS.hashtagsTitleStyle) || "aurora_flow",
         timelineTitleStyle: config.get<string>(SITE_CONFIG_KEYS.timelineTitleStyle) || "aurora_flow",
@@ -196,32 +251,32 @@ export function useSiteConfig() {
         atelierTitleColor: config.get<string>(SITE_CONFIG_KEYS.atelierTitleColor) || "",
         atelierTitleCustomColorEnabled: config.getBoolean(SITE_CONFIG_KEYS.atelierTitleCustomColorEnabled),
         atelierAboutUrl: config.get<string>(SITE_CONFIG_KEYS.atelierAboutUrl) || "/about",
-        atelierAboutDesc: config.get<string>(SITE_CONFIG_KEYS.atelierAboutDesc) || "欢迎光临我的记忆工坊与随笔空间，点击了解更多。",
+        atelierAboutDesc,
         atelierAboutBg: config.get<string>(SITE_CONFIG_KEYS.atelierAboutBg) || "",
         atelierAboutIcon: config.get<string>(SITE_CONFIG_KEYS.atelierAboutIcon) || "ri-user-smile-line",
 
         atelierTimelineUrl: config.get<string>(SITE_CONFIG_KEYS.atelierTimelineUrl) || "/timeline",
-        atelierTimelineDesc: config.get<string>(SITE_CONFIG_KEYS.atelierTimelineDesc) || "以时间为轴，串联起每一次灵感与技术实践。",
+        atelierTimelineDesc,
         atelierTimelineBg: config.get<string>(SITE_CONFIG_KEYS.atelierTimelineBg) || "",
         atelierTimelineIcon: config.get<string>(SITE_CONFIG_KEYS.atelierTimelineIcon) || "ri-time-line",
 
         atelierMomentsUrl: config.get<string>(SITE_CONFIG_KEYS.atelierMomentsUrl) || "/moments",
-        atelierMomentsDesc: config.get<string>(SITE_CONFIG_KEYS.atelierMomentsDesc) || "生活碎碎念、灵感火花与不设限的日常记录。",
+        atelierMomentsDesc,
         atelierMomentsBg: config.get<string>(SITE_CONFIG_KEYS.atelierMomentsBg) || "",
         atelierMomentsIcon: config.get<string>(SITE_CONFIG_KEYS.atelierMomentsIcon) || "ri-chat-heart-line",
 
         atelierFriendsUrl: config.get<string>(SITE_CONFIG_KEYS.atelierFriendsUrl) || "/friends",
-        atelierFriendsDesc: config.get<string>(SITE_CONFIG_KEYS.atelierFriendsDesc) || "漫步在同好博主的数字花园，交换思想火花。",
+        atelierFriendsDesc,
         atelierFriendsBg: config.get<string>(SITE_CONFIG_KEYS.atelierFriendsBg) || "",
         atelierFriendsIcon: config.get<string>(SITE_CONFIG_KEYS.atelierFriendsIcon) || "ri-planet-line",
 
         atelierSearchUrl: config.get<string>(SITE_CONFIG_KEYS.atelierSearchUrl) || "/search",
-        atelierSearchDesc: config.get<string>(SITE_CONFIG_KEYS.atelierSearchDesc) || "输入关键词即刻检索文章与解决方案。",
+        atelierSearchDesc,
         atelierSearchBg: config.get<string>(SITE_CONFIG_KEYS.atelierSearchBg) || "",
         atelierSearchIcon: config.get<string>(SITE_CONFIG_KEYS.atelierSearchIcon) || "ri-search-line",
 
         atelierDeckUrl: config.get<string>(SITE_CONFIG_KEYS.atelierDeckUrl) || "/gallery",
-        atelierDeckDesc: config.get<string>(SITE_CONFIG_KEYS.atelierDeckDesc) || "漫游图床画廊，浏览大图并复制链接。",
+        atelierDeckDesc,
         atelierDeckBg: config.get<string>(SITE_CONFIG_KEYS.atelierDeckBg) || "",
         atelierDeckIcon: config.get<string>(SITE_CONFIG_KEYS.atelierDeckIcon) || "ri-camera-lens-line",
         atelierNotesLayout: config.get<string>(SITE_CONFIG_KEYS.atelierNotesLayout) || "grid",
@@ -262,6 +317,7 @@ export function useSiteConfig() {
             return Number.isNaN(parsed) ? 16 : Math.max(0, parsed);
         })(),
         galleryTiltMode: String(config.get(SITE_CONFIG_KEYS.galleryTiltMode) ?? "subtle"),
+        homepageTagsConfig: config.get<string>(SITE_CONFIG_KEYS.homepageTagsConfig) || "",
 
         danmakuSpeed: String(config.get(SITE_CONFIG_KEYS.danmakuSpeed) ?? "normal"),
         aiSummaryEnabled: config.get(SITE_CONFIG_KEYS.aiSummaryEnabled) === true || config.get(SITE_CONFIG_KEYS.aiSummaryEnabled) === "true",
@@ -277,7 +333,7 @@ export function useSiteConfig() {
             return ["友邻博客", "主机算力", "探针测速", "极客工具", "技术社区", "漫游灵感"];
         })(),
     };
-    }, [config]);
+    }, [config, t]);
 }
 
 // Hook to get a specific site config value

@@ -47,6 +47,7 @@ export const CLIENT_CONFIG_DEFAULTS = new Map(
     "gallery.card_size": "medium",
     "gallery.card_max_width": 380,
     "gallery.card_gap": 24,
+    "gallery.homepage_tags_config": "",
     "comment.enabled": true,
     "login.enabled": true,
     "friends.categories": JSON.stringify(["友邻博客", "主机算力", "探针测速", "极客工具", "技术社区", "漫游灵感"]),

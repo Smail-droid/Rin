@@ -42,6 +42,10 @@
     }
   },
   "ai_summary": {
+    "status_on": "AI Summary: On",
+    "status_off": "AI Summary: Off",
+    "enable_hint": "Click to enable AI summary site-wide",
+    "disable_hint": "Click to disable AI summary site-wide",
     "message": {
       "completed": "AI summary is ready.",
       "failed": "AI summary generation failed.",
@@ -179,6 +183,11 @@
     "rss": "RSS Subscription Link"
   },
   "friends": {
+    "starry_title": "Starred Friends",
+    "desc": "Across mountains and seas, like meeting face to face. Strolling beneath the stars with kindred spirits.",
+    "add_site": "Add Starred Site",
+    "apply_site": "Apply for Starred Site",
+    "refresh_data": "Refresh Friends Data",
     "apply": "Apply for Friend Link",
     "create": "Create Friend Link",
     "left": "Left temporarily",
@@ -225,6 +234,16 @@
   "logout": "Logout",
   "main_content": "Main content",
   "moments": {
+    "desc": "Capturing fleeting moments, quiet reflections, and sparks of thought. ({{count}} entries)",
+    "collapse": "Close Note",
+    "new_moment": "Record Moment",
+    "default_entry_title": "Daily note",
+    "status_casual": "Casual",
+    "status_code": "Code",
+    "status_idea": "Idea",
+    "status_daily": "Daily",
+    "status_study": "Reading",
+    "status_chill": "Chill",
     "edit": "Edit Moment",
     "publish": "Publish Moment",
     "title": "Moments",
@@ -796,5 +815,115 @@
     "view_grid": "Grid",
     "view_list": "List",
     "r2_not_configured": "R2 bucket is not configured"
+  },
+  "site": {
+    "default_name": "Gallery Blog",
+    "default_desc": "Capturing flashes of life and technical depth, making every stroll memorable."
+  },
+  "atelier": {
+    "title": "Gallery Blog"
+  },
+  "timeline_title": "River of Time",
+  "timeline_desc": "Time flows with gentle whispers. Cherishing every stroll and written word.",
+  "back_to_gallery": "Back to Gallery",
+  "art_exhibition_hall": "Art Exhibition Hall",
+  "tag_category": "Tag Category",
+  "tag_smart_search_hint": "Smart match for composite tag content",
+  "search_explore": "Search & Explore",
+  "gallery_title": "Gallery",
+  "music_title": "Music",
+  "top_ribbon_aria": "Gallery Ambience & Atelier Bar",
+  "hashtags_index": "Tags Index",
+  "hashtags_desc": "All knowledge indexed and gathered. {{count}} topics · {{feeds}} references",
+  "hashtags_view_cloud": "Cloud Stream",
+  "hashtags_view_datagrid": "Dense DataGrid",
+  "openlist_nav_title": "Resources",
+  "music": {
+    "radio_title": "Gallery Radio"
+  },
+  "ambience": {
+    "sakura": "Sakura",
+    "rain": "Rain",
+    "fireflies": "Fireflies",
+    "open_mode": "Turn on {{mode}} ambience",
+    "close_mode": "Turn off {{mode}} ambience"
+  },
+  "variant": {
+    "polaroid": "Polaroid",
+    "poster": "Poster",
+    "editorial": "Editorial",
+    "compact": "Compact",
+    "switch_title": "Switch feed layout (Current: {{current}})"
+  },
+  "palette": {
+    "switch_title": "Switch theme color (Current: {{current}})",
+    "custom_label": "Palette",
+    "custom_title": "Custom theme color picker",
+    "custom_aria": "Pick custom color",
+    "classic": "Classic",
+    "sakura": "Sakura",
+    "paper_ink": "Paper Ink",
+    "cyber_cold": "Cyber Cold",
+    "aoi_sora": "Aoi Sora",
+    "midnight_deep": "Midnight Deep",
+    "violet_twilight": "Twilight Violet",
+    "forest_mist": "Forest Mist",
+    "golden_sunset": "Golden Sunset",
+    "rose_cream": "Rose Cream",
+    "mint_soda": "Mint Soda",
+    "ocean_abyss": "Ocean Abyss",
+    "lilac_dream": "Lilac Dream",
+    "caramel_amber": "Caramel Amber",
+    "moss_rain": "Moss Rain",
+    "obsidian_slate": "Obsidian Slate",
+    "peach_coral": "Peach Coral",
+    "aurora_teal": "Aurora Teal",
+    "crimson_flame": "Crimson Flame"
+  },
+  "notes": {
+    "badge": "Note",
+    "enter": "Enter",
+    "about_cta": "About Me",
+    "about_desc": "Welcome to my memory atelier and journal space, click to learn more.",
+    "timeline_cta": "View Timeline",
+    "timeline_sub": "Timeline",
+    "timeline_desc": "Tracing time as an axis, connecting every spark of inspiration and practice.",
+    "moments_cta": "Enter Moments",
+    "moments_sub": "Musings",
+    "moments_desc": "Daily musings, spontaneous sparks, and unconstrained moments.",
+    "friends_cta": "Visit Friends",
+    "friends_sub": "Digital Garden",
+    "friends_desc": "Strolling through digital gardens of like-minded creators, exchanging thoughts.",
+    "search_title": "Search",
+    "search_cta": "Search Now",
+    "search_desc": "Enter keywords to instantly search articles and solutions.",
+    "deck_desc": "Explore the gallery, view high-res images, and copy links.",
+    "reset_order": "Reset Order",
+    "reset_order_title": "Reset articles and notes to default layout"
+  },
+  "nav": {
+    "write_title": "Enter immersive writing studio",
+    "gallery_title": "Enter image gallery",
+    "music_title": "Enter music atelier",
+    "tags_title": "Manage tags",
+    "settings_title": "System settings dashboard"
+  },
+  "appearance": {
+    "variant_default": "Polaroid Waterfall",
+    "variant_default_tag": "Tilted border",
+    "variant_poster": "Full-bleed Poster",
+    "variant_poster_tag": "Full image",
+    "variant_editorial": "Editorial Magazine",
+    "variant_editorial_tag": "Two columns",
+    "variant_compact": "Compact List",
+    "variant_compact_tag": "Dense feed",
+    "ambience_none": "Off",
+    "ambience_sakura": "Falling Sakura",
+    "ambience_rain": "Gentle Rain",
+    "ambience_fireflies": "Breathing Fireflies"
+  },
+  "danmaku": {
+    "reader_inspiration": "Gallery Reader Inspiration · Hover to Pause",
+    "reader_comment": "Gallery Reader Comment · Hover to Pause"
   }
 }

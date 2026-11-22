@@ -787,5 +787,115 @@
     "view_grid": "グリッド",
     "view_list": "リスト",
     "r2_not_configured": "R2バケットが設定されていません"
+  },
+  "site": {
+    "default_name": "ギャラリー随想",
+    "default_desc": "生活の輝きと技術の蓄積を記録し、すべての歩みに確かな足跡を残す。"
+  },
+  "atelier": {
+    "title": "ギャラリー随想"
+  },
+  "timeline_title": "時の河",
+  "timeline_desc": "歳月はささやき、季節は移ろう。すべての旅路と言葉に耳を澄ませて。",
+  "back_to_gallery": "ギャラリーへ戻る",
+  "art_exhibition_hall": "アート展示ホール",
+  "tag_category": "タグ分類",
+  "tag_smart_search_hint": "複合タグの関連コンテンツをスマート検索しました",
+  "search_explore": "検索と探索",
+  "gallery_title": "ギャラリー",
+  "music_title": "音楽",
+  "top_ribbon_aria": "ギャラリー雰囲気とアトリエバー",
+  "hashtags_index": "タグ一覧",
+  "hashtags_desc": "万象が集うインデックス。合計 {{count}} 個の話題 · {{feeds}} 篇の関連",
+  "hashtags_view_cloud": "星雲ストリーム",
+  "hashtags_view_datagrid": "データグリッド",
+  "openlist_nav_title": "リソース一覧",
+  "music": {
+    "radio_title": "ギャラリー随想ラジオ"
+  },
+  "ambience": {
+    "sakura": "桜",
+    "rain": "雨",
+    "fireflies": "蛍",
+    "open_mode": "{{mode}}の雰囲気をオンにする",
+    "close_mode": "{{mode}}の雰囲気をオフにする"
+  },
+  "variant": {
+    "polaroid": "ポラロイド",
+    "poster": "ポスター",
+    "editorial": "エディトリアル",
+    "compact": "コンパクト",
+    "switch_title": "レイアウトを切り替え（現在：{{current}}）"
+  },
+  "palette": {
+    "switch_title": "テーマカラーを切り替え（現在：{{current}}）",
+    "custom_label": "パレット",
+    "custom_title": "カスタムカラーピッカー",
+    "custom_aria": "カラーを選択",
+    "classic": "クラシック",
+    "sakura": "桜",
+    "paper_ink": "紙と墨",
+    "cyber_cold": "サイバーコールド",
+    "aoi_sora": "青空",
+    "midnight_deep": "ミッドナイト",
+    "violet_twilight": "トワイライト",
+    "forest_mist": "フォレストミスト",
+    "golden_sunset": "夕焼けゴールド",
+    "rose_cream": "ローズクリーム",
+    "mint_soda": "ミントソーダ",
+    "ocean_abyss": "オーシャンブルー",
+    "lilac_dream": "ライラック",
+    "caramel_amber": "アンバー",
+    "moss_rain": "若葉の雨",
+    "obsidian_slate": "スレートグレー",
+    "peach_coral": "ピーチコーラル",
+    "aurora_teal": "オーロラティール",
+    "crimson_flame": "深紅の炎"
+  },
+  "notes": {
+    "badge": "ノート",
+    "enter": "入る",
+    "about_cta": "プロフィール",
+    "about_desc": "記憶のアトリエとエッセイ空間へようこそ。",
+    "timeline_cta": "タイムラインを見る",
+    "timeline_sub": "時の刻み",
+    "timeline_desc": "時間を軸に、インスピレーションと歩みを繋ぐ。",
+    "moments_cta": "つぶやきへ",
+    "moments_sub": "日々の記録",
+    "moments_desc": "日常のつぶやきやひらめきの記録。",
+    "friends_cta": "友達を訪ねる",
+    "friends_sub": "デジタルガーデン",
+    "friends_desc": "同じ趣味を持つブロガーの庭を散策する。",
+    "search_title": "検索",
+    "search_cta": "サイト内検索",
+    "search_desc": "キーワードを入力して記事を素早く検索。",
+    "deck_desc": "画像ギャラリーを散策し、リンクをコピー。",
+    "reset_order": "デフォルト順に戻す",
+    "reset_order_title": "記事とノートをデフォルトの配置に戻す"
+  },
+  "nav": {
+    "write_title": "執筆スタジオへ",
+    "gallery_title": "画像ギャラリーへ",
+    "music_title": "音楽アトリエへ",
+    "tags_title": "タグ管理",
+    "settings_title": "システム設定ダッシュボード"
+  },
+  "appearance": {
+    "variant_default": "ポラロイドウォーターフォール",
+    "variant_default_tag": "白枠微傾",
+    "variant_poster": "フルスクリーンポスター",
+    "variant_poster_tag": "原寸フル",
+    "variant_editorial": "雑誌風2カラム",
+    "variant_editorial_tag": "左文右図",
+    "variant_compact": "コンパクトリスト",
+    "variant_compact_tag": "高密度",
+    "ambience_none": "オフ",
+    "ambience_sakura": "舞い散る桜",
+    "ambience_rain": "澄んだ雨",
+    "ambience_fireflies": "呼吸する蛍"
+  },
+  "danmaku": {
+    "reader_inspiration": "読者のインスピレーション · ホバーで停止",
+    "reader_comment": "読者のコメント · ホバーで停止"
   }
 }
