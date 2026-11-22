@@ -1,4 +1,4 @@
-import { useState, useEffect, type Dispatch, type SetStateAction } from "react";
+import { useState, useEffect, useMemo, type Dispatch, type SetStateAction } from "react";
 import type { R2MusicFileItem } from "../../services/music-api";
 import type { MusicTrack } from "../../components/music-player/types";
 import { VinylDiscArt } from "../../components/music-player/vinyl-disc-art";
@@ -75,26 +75,30 @@ export function GalleryView({
 }: GalleryViewProps) {
   const missingCoversCount = r2Files.filter((f) => !f.pic || f.pic.trim() === "").length;
 
-  // 黄金比例分页器：每页 24 首（适配 4/6/8 列整行网格），告别无尽下拉
-  const PAGE_SIZE = 24;
+  // 严密整除自适应容量：按当前列数自适应计算 2~3 行，彻底消灭孤儿格子与多出一行
+  const pageSize = useMemo(() => {
+    if (displayLayout === "list") return 20;
+    if (gridColumns === 10) return 20; // 10 列 × 2 行
+    if (gridColumns === 8) return 16;  // 8 列 × 2 行，单屏完整呈现
+    return 18;                         // 6 列 × 3 行
+  }, [displayLayout, gridColumns]);
+
   const [currentPage, setCurrentPage] = useState<number>(1);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchR2Query, sortR2By]);
+  }, [searchR2Query, sortR2By, pageSize]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredR2Files.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredR2Files.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
-  const startIndex = (safePage - 1) * PAGE_SIZE;
-  const paginatedR2Files = filteredR2Files.slice(startIndex, startIndex + PAGE_SIZE);
+  const startIndex = (safePage - 1) * pageSize;
+  const paginatedR2Files = filteredR2Files.slice(startIndex, startIndex + pageSize);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     const container = document.getElementById("gallery-tracks-container");
     if (container) {
       container.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else {
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -203,6 +207,44 @@ export function GalleryView({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap justify-between md:justify-end">
+          {/* 上传音频醒目主按钮 (收纳于工具栏，彻底消除多占 1 格的数学冲突，全屏拖拽文件夹依然 100% 支持) */}
+          <button
+            type="button"
+            onClick={onTriggerUploadClick}
+            className="px-3 py-1.5 rounded-xl bg-theme text-white text-xs font-bold hover:brightness-110 active:scale-95 transition flex items-center gap-1.5 shadow-2xs cursor-pointer shrink-0"
+            title="上传音频文件或文件夹 (支持直接拖放整个文件夹到页面任意处)"
+          >
+            <i className="ri-upload-cloud-line text-sm" />
+            <span>上传音频</span>
+          </button>
+
+          {/* 顶部微光极简翻页器 (零下拉翻页，鼠标不离上方) */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-black/5 dark:bg-white/5 text-xs select-none">
+              <button
+                type="button"
+                onClick={() => handlePageChange(safePage - 1)}
+                disabled={safePage <= 1}
+                className="h-6 w-6 rounded-lg flex items-center justify-center text-neutral-500 hover:text-theme disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                title="上一页"
+              >
+                <i className="ri-arrow-left-s-line" />
+              </button>
+              <span className="font-mono text-[11px] text-neutral-500 px-1">
+                <span className="font-bold text-neutral-800 dark:text-neutral-100">{safePage}</span>/{totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => handlePageChange(safePage + 1)}
+                disabled={safePage >= totalPages}
+                className="h-6 w-6 rounded-lg flex items-center justify-center text-neutral-500 hover:text-theme disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                title="下一页"
+              >
+                <i className="ri-arrow-right-s-line" />
+              </button>
+            </div>
+          )}
+
           {/* 自动补全封面功能 (智能跳过已有封面) */}
           <button
             type="button"
@@ -257,23 +299,7 @@ export function GalleryView({
               : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5"
           }
         >
-          {/* 首格：等高虚线上传卡片 (仅第一页展示，避免每页重复占用) */}
-          {safePage === 1 && (
-            <div
-              onClick={onTriggerUploadClick}
-              className="aspect-square rounded-2xl border-2 border-dashed border-black/15 dark:border-white/15 hover:border-theme/60 bg-black/[0.015] hover:bg-theme/5 transition flex flex-col items-center justify-center gap-2 cursor-pointer p-3 text-center group select-none"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-theme/10 text-theme text-lg group-hover:scale-110 transition-transform">
-                <i className="ri-upload-cloud-line" />
-              </span>
-              <div>
-                <span className="font-bold text-xs t-primary block group-hover:text-theme">上传音频</span>
-                <span className="text-[10px] text-neutral-400 block mt-0.5">支持 MP3/FLAC/WAV</span>
-              </div>
-            </div>
-          )}
-
-          {/* 歌曲画册卡片列表 */}
+          {/* 歌曲画册卡片列表 (纯净歌曲网格，完美整除每一行) */}
           {paginatedR2Files.map((file) => {
             const isQueued = playlist.some((t) => t.url === file.url);
             const isCur = currentTrack?.url === file.url;
