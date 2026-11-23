@@ -26,6 +26,7 @@ export function StorageService(): Hono {
         const body = await profileAsync(c, 'storage_parse', () => c.req.parseBody());
         const key = body.key as string;
         const file = body.file as File;
+        const customDir = (c.req.query('dir') || c.req.query('folder') || (body.dir as string) || (body.folder as string) || "").trim();
         
         if (!uid) {
             return c.text('Unauthorized', 401);
@@ -53,10 +54,14 @@ export function StorageService(): Hono {
         ));
         const hash = buf2hex(hashArray);
         const hashkey = cleanSuffix ? `${hash}.${cleanSuffix}` : hash;
+        const cleanDir = customDir
+            ? customDir.replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5\/]/g, '').replace(/^\/+|\/+$/g, '')
+            : '';
+        const finalKey = cleanDir ? `${cleanDir}/${hashkey}` : hashkey;
         
         try {
-            const result = await profileAsync(c, 'storage_put', () => putStorageObject(env, hashkey, file, file.type, new URL(c.req.url).origin));
-            return c.json({ url: result.url });
+            const result = await profileAsync(c, 'storage_put', () => putStorageObject(env, finalKey, file, file.type, new URL(c.req.url).origin));
+            return c.json({ url: result.url, key: result.key, dir: cleanDir || undefined });
         } catch (e: any) {
             console.error(e.message);
             const status = e.message?.includes('is not defined') ? 500 : 400;
@@ -218,10 +223,17 @@ export function StorageService(): Hono {
             return c.text('R2 bucket is not configured', 400);
         }
 
-        const prefix = c.req.query('prefix') ?? env.S3_FOLDER ?? '';
+        const baseFolder: string = env.S3_FOLDER ?? 'images/';
+        const rawDir = (c.req.query('dir') || '').trim();
         const cursor = c.req.query('cursor');
         const limitParam = parseInt(c.req.query('limit') || '50', 10);
         const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 100) : 50;
+
+        let prefix = c.req.query('prefix') ?? baseFolder;
+        if (rawDir && rawDir !== 'all' && rawDir !== '_root_' && rawDir !== 'root') {
+            const cleanDir = rawDir.replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5\/]/g, '').replace(/^\/+|\/+$/g, '');
+            prefix = baseFolder ? `${baseFolder}${cleanDir}/` : `${cleanDir}/`;
+        }
 
         try {
             const listing = await profileAsync(c, 'storage_list', () =>
@@ -233,30 +245,64 @@ export function StorageService(): Hono {
             );
 
             const origin = new URL(c.req.url).origin;
-            const files = listing.objects.map((obj) => {
-                const ext = obj.key.split('.').pop()?.toLowerCase() || '';
-                let contentType = obj.httpMetadata?.contentType || '';
-                if (!contentType) {
-                    if (['jpg', 'jpeg'].includes(ext)) contentType = 'image/jpeg';
-                    else if (ext === 'png') contentType = 'image/png';
-                    else if (ext === 'gif') contentType = 'image/gif';
-                    else if (ext === 'webp') contentType = 'image/webp';
-                    else if (ext === 'svg') contentType = 'image/svg+xml';
-                    else if (ext === 'pdf') contentType = 'application/pdf';
-                    else contentType = 'application/octet-stream';
-                }
+            const discoveredDirs = new Set<string>();
 
-                return {
-                    key: obj.key,
-                    size: obj.size,
-                    uploaded: obj.uploaded.toISOString(),
-                    contentType,
-                    url: getStoragePublicUrl(env, obj.key, origin),
-                };
-            });
+            const files = listing.objects
+                .filter((obj) => !obj.key.endsWith('/.keep') && !obj.key.endsWith('.keep'))
+                .map((obj) => {
+                    const ext = obj.key.split('.').pop()?.toLowerCase() || '';
+                    let contentType = obj.httpMetadata?.contentType || '';
+                    if (!contentType) {
+                        if (['jpg', 'jpeg'].includes(ext)) contentType = 'image/jpeg';
+                        else if (ext === 'png') contentType = 'image/png';
+                        else if (ext === 'gif') contentType = 'image/gif';
+                        else if (ext === 'webp') contentType = 'image/webp';
+                        else if (ext === 'svg') contentType = 'image/svg+xml';
+                        else if (ext === 'pdf') contentType = 'application/pdf';
+                        else contentType = 'application/octet-stream';
+                    }
+
+                    let relativeKey = obj.key;
+                    if (baseFolder && relativeKey.startsWith(baseFolder)) {
+                        relativeKey = relativeKey.slice(baseFolder.length);
+                    }
+                    relativeKey = relativeKey.replace(/^\/+/, '');
+                    const segments = relativeKey.split('/');
+                    const directory = segments.length > 1 ? segments.slice(0, -1).join('/') : '';
+                    if (directory) {
+                        discoveredDirs.add(directory);
+                    }
+
+                    return {
+                        key: obj.key,
+                        size: obj.size,
+                        uploaded: obj.uploaded.toISOString(),
+                        contentType,
+                        url: getStoragePublicUrl(env, obj.key, origin),
+                        directory: directory || undefined,
+                    };
+                });
+
+            // Also inspect all objects (including placeholders) to gather full directory set
+            for (const obj of listing.objects) {
+                let relativeKey = obj.key;
+                if (baseFolder && relativeKey.startsWith(baseFolder)) {
+                    relativeKey = relativeKey.slice(baseFolder.length);
+                }
+                relativeKey = relativeKey.replace(/^\/+/, '');
+                const segments = relativeKey.split('/');
+                if (segments.length > 1) {
+                    discoveredDirs.add(segments.slice(0, -1).join('/'));
+                }
+            }
+
+            const filteredFiles = (rawDir === '_root_' || rawDir === 'root')
+                ? files.filter((f) => !f.directory)
+                : files;
 
             return c.json({
-                files,
+                files: filteredFiles,
+                directories: Array.from(discoveredDirs).sort(),
                 cursor: listing.truncated ? listing.cursor : undefined,
                 truncated: listing.truncated,
             });
@@ -264,6 +310,208 @@ export function StorageService(): Hono {
             console.error('[StorageService] list error:', error?.message);
             return c.text(`List failed: ${error?.message}`, 500);
         }
+    });
+
+    // GET /storage/directories - List all album directories in R2
+    app.get('/directories', async (c: AppContext) => {
+        const env = c.get('env');
+        if (!env.R2_BUCKET) {
+            return c.json({ directories: [] });
+        }
+
+        const baseFolder: string = env.S3_FOLDER ?? 'images/';
+        try {
+            const listing = await profileAsync(c, 'storage_list_dirs', () =>
+                env.R2_BUCKET!.list({
+                    prefix: baseFolder,
+                    limit: 1000,
+                })
+            );
+
+            const dirSet = new Set<string>();
+            for (const obj of listing.objects) {
+                let relativeKey = obj.key;
+                if (baseFolder && relativeKey.startsWith(baseFolder)) {
+                    relativeKey = relativeKey.slice(baseFolder.length);
+                }
+                relativeKey = relativeKey.replace(/^\/+/, '');
+                const segments = relativeKey.split('/');
+                if (segments.length > 1) {
+                    const dir = segments.slice(0, -1).join('/');
+                    if (dir && !dir.includes('..')) {
+                        dirSet.add(dir);
+                    }
+                }
+            }
+
+            return c.json({ directories: Array.from(dirSet).sort() });
+        } catch (e: any) {
+            console.error('[StorageService] list directories error:', e?.message);
+            return c.json({ directories: [] });
+        }
+    });
+
+    // POST /storage/directory - Create a new album directory (Admin only)
+    app.post('/directory', async (c: AppContext) => {
+        const admin = c.get('admin');
+        const env = c.get('env');
+
+        if (!admin) {
+            return c.text('Forbidden', 403);
+        }
+
+        if (!env.R2_BUCKET) {
+            return c.text('R2 bucket is not configured', 400);
+        }
+
+        let body: any;
+        try {
+            body = await c.req.json();
+        } catch {
+            return c.text('Invalid JSON', 400);
+        }
+
+        const rawName = (body?.name || '').trim();
+        const cleanName = rawName.replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5\/]/g, '').replace(/^\/+|\/+$/g, '');
+
+        if (!cleanName || cleanName.includes('..')) {
+            return c.text('Invalid directory name', 400);
+        }
+
+        const baseFolder: string = env.S3_FOLDER ?? 'images/';
+        const keepKey = baseFolder ? `${baseFolder}${cleanName}/.keep` : `${cleanName}/.keep`;
+
+        try {
+            await env.R2_BUCKET.put(keepKey, new Uint8Array(0), {
+                httpMetadata: { contentType: 'application/x-directory' },
+                customMetadata: { type: 'directory_placeholder' },
+            });
+            return c.json({ success: true, name: cleanName });
+        } catch (e: any) {
+            console.error('[StorageService] create directory error:', e?.message);
+            return c.text(`Create directory failed: ${e?.message}`, 500);
+        }
+    });
+
+    // DELETE /storage/directory/:name - Delete an album directory (Admin only)
+    app.delete('/directory/:name', async (c: AppContext) => {
+        const admin = c.get('admin');
+        const env = c.get('env');
+
+        if (!admin) {
+            return c.text('Forbidden', 403);
+        }
+
+        if (!env.R2_BUCKET) {
+            return c.text('R2 bucket is not configured', 400);
+        }
+
+        const rawName = c.req.param('name');
+        let name: string;
+        try {
+            name = decodeURIComponent(rawName);
+        } catch {
+            name = rawName;
+        }
+
+        const cleanName = name.replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5\/]/g, '').replace(/^\/+|\/+$/g, '');
+        if (!cleanName || cleanName.includes('..')) {
+            return c.text('Invalid directory name', 400);
+        }
+
+        const baseFolder: string = env.S3_FOLDER ?? 'images/';
+        const dirPrefix = baseFolder ? `${baseFolder}${cleanName}/` : `${cleanName}/`;
+
+        try {
+            const listing = await env.R2_BUCKET.list({ prefix: dirPrefix, limit: 1000 });
+            const keysToDelete = listing.objects.map((o) => o.key);
+            if (keysToDelete.length > 0) {
+                await env.R2_BUCKET.delete(keysToDelete);
+            }
+            return c.json({ success: true, deleted: keysToDelete.length });
+        } catch (e: any) {
+            console.error('[StorageService] delete directory error:', e?.message);
+            return c.text(`Delete directory failed: ${e?.message}`, 500);
+        }
+    });
+
+    // POST /storage/move - Batch move files to target directory (Admin only)
+    app.post('/move', async (c: AppContext) => {
+        const admin = c.get('admin');
+        const env = c.get('env');
+
+        if (!admin) {
+            return c.text('Forbidden', 403);
+        }
+
+        if (!env.R2_BUCKET) {
+            return c.text('R2 bucket is not configured', 400);
+        }
+
+        let body: any;
+        try {
+            body = await c.req.json();
+        } catch {
+            return c.text('Invalid JSON', 400);
+        }
+
+        const keys = body?.keys;
+        if (!Array.isArray(keys) || keys.length === 0) {
+            return c.text('Keys array is required', 400);
+        }
+
+        const rawTargetDir = (body?.targetDir ?? '').trim();
+        const targetDir = (rawTargetDir === '_root_' || rawTargetDir === 'root')
+            ? ''
+            : rawTargetDir.replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5\/]/g, '').replace(/^\/+|\/+$/g, '');
+
+        const baseFolder: string = env.S3_FOLDER ?? 'images/';
+        const origin = new URL(c.req.url).origin;
+        const validKeys = keys.filter((k) => typeof k === 'string' && k.length > 0 && !k.includes('..'));
+
+        const movedItems: Array<{ oldKey: string; newKey: string; url: string }> = [];
+
+        for (const oldKey of validKeys) {
+            let relativeKey = oldKey;
+            if (baseFolder && relativeKey.startsWith(baseFolder)) {
+                relativeKey = relativeKey.slice(baseFolder.length);
+            }
+            relativeKey = relativeKey.replace(/^\/+/, '');
+            const segments = relativeKey.split('/');
+            const fileName = segments[segments.length - 1];
+            if (!fileName || fileName === '.keep') continue;
+
+            const newRelativePath = targetDir ? `${targetDir}/${fileName}` : fileName;
+            const newKey = baseFolder ? `${baseFolder}${newRelativePath}` : newRelativePath;
+
+            if (oldKey === newKey) {
+                continue;
+            }
+
+            try {
+                const oldObj = await env.R2_BUCKET.get(oldKey);
+                if (oldObj) {
+                    await env.R2_BUCKET.put(newKey, oldObj.body, {
+                        httpMetadata: oldObj.httpMetadata,
+                        customMetadata: oldObj.customMetadata,
+                    });
+                    await env.R2_BUCKET.delete(oldKey);
+                    movedItems.push({
+                        oldKey,
+                        newKey,
+                        url: getStoragePublicUrl(env, newKey, origin),
+                    });
+                }
+            } catch (err: any) {
+                console.error(`[StorageService] move file failed (${oldKey} -> ${newKey}):`, err?.message);
+            }
+        }
+
+        return c.json({
+            success: true,
+            moved: movedItems.length,
+            items: movedItems,
+        });
     });
 
     // GET /storage/stats - R2 Capacity & Asset breakdown statistics

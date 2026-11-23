@@ -70,6 +70,22 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
     const [typeFilter, setTypeFilter] = useState<FileCategory | "all">("image");
     const [sortBy, setSortBy] = useState<"newest" | "oldest" | "largest" | "smallest">("newest");
 
+    // 相册目录状态 (Album Directories)
+    const [directories, setDirectories] = useState<string[]>([]);
+    const [selectedDir, setSelectedDir] = useState<string>("all"); // "all" | "_root_" | album name
+    const [uploadTargetDir, setUploadTargetDir] = useState<string>(""); // "" means auto/root, or album name
+
+    // 新建相册弹窗状态
+    const [isCreateDirModalOpen, setIsCreateDirModalOpen] = useState(false);
+    const [newDirName, setNewDirName] = useState("");
+
+    // 移动至相册弹窗状态
+    const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+    const [filesToMove, setFilesToMove] = useState<string[]>([]);
+    const [moveTargetDir, setMoveTargetDir] = useState<string>("_root_");
+    const [isMoving, setIsMoving] = useState(false);
+    const [customMoveDirName, setCustomMoveDirName] = useState("");
+
     // Per-card format selection: key -> "url" | "html" | "markdown" | "bbcode"
     const [cardFormats, setCardFormats] = useState<Record<string, CopyFormat>>({});
     // Recently copied card key (for highlight animation)
@@ -95,21 +111,41 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
         }
 
         try {
-            const { data, error } = await client.storage.listFiles({
-                cursor: appendCursor,
-                limit: 60,
-            });
+            const [filesRes, dirsRes] = await Promise.all([
+                client.storage.listFiles({
+                    cursor: appendCursor,
+                    limit: 100,
+                }),
+                client.storage.listDirectories(),
+            ]);
 
-            if (data) {
+            if (filesRes.data) {
+                const resData = filesRes.data;
                 if (appendCursor) {
-                    setFiles((prev) => [...prev, ...data.files]);
+                    setFiles((prev) => [...prev, ...resData.files]);
                 } else {
-                    setFiles(data.files);
+                    setFiles(resData.files);
                 }
-                setCursor(data.cursor);
-                setHasMore(Boolean(data.truncated && data.cursor));
-            } else if (error) {
-                console.error("List files error:", error);
+                setCursor(resData.cursor);
+                setHasMore(Boolean(resData.truncated && resData.cursor));
+            } else if (filesRes.error) {
+                console.error("List files error:", filesRes.error);
+            }
+
+            const discovered = new Set<string>();
+            if (dirsRes.data?.directories) {
+                dirsRes.data.directories.forEach((d) => discovered.add(d));
+            }
+            if (filesRes.data?.directories) {
+                filesRes.data.directories.forEach((d) => discovered.add(d));
+            }
+            if (filesRes.data?.files) {
+                filesRes.data.files.forEach((f) => {
+                    if (f.directory) discovered.add(f.directory);
+                });
+            }
+            if (discovered.size > 0) {
+                setDirectories(Array.from(discovered).sort());
             }
         } catch (err) {
             console.error("Fetch files failed:", err);
@@ -133,20 +169,29 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
         let successCount = 0;
         let lastUrl = "";
 
+        // Determine effective target directory
+        const effectiveDir = uploadTargetDir === "_root_"
+            ? ""
+            : (uploadTargetDir || (selectedDir === "all" || selectedDir === "_root_" ? "" : selectedDir));
+
         for (const file of filesToUpload) {
             try {
-                const { data, error } = await client.storage.upload(file, file.name);
+                const { data, error } = await client.storage.upload(file, file.name, effectiveDir || undefined);
                 if (data && data.url) {
                     lastUrl = data.url;
                     successCount++;
                     const newItem: StorageFileItem = {
-                        key: file.name,
+                        key: data.key || (effectiveDir ? `${effectiveDir}/${file.name}` : file.name),
                         size: file.size,
                         uploaded: new Date().toISOString(),
                         contentType: file.type || "application/octet-stream",
                         url: data.url,
+                        directory: effectiveDir || undefined,
                     };
                     setFiles((prev) => [newItem, ...prev]);
+                    if (effectiveDir) {
+                        setDirectories((prev) => (prev.includes(effectiveDir) ? prev : [...prev, effectiveDir].sort()));
+                    }
                 } else if (error) {
                     console.error("Upload error:", error);
                 }
@@ -158,14 +203,15 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
         setIsUploading(false);
 
         if (successCount > 0) {
+            const albumDesc = effectiveDir ? ` 至「${effectiveDir}」相册` : "";
             if (lastUrl) {
                 navigator.clipboard.writeText(lastUrl);
-                showToast(`上传成功 (${successCount} 个文件)，链接已复制！`);
+                showToast(`上传成功 (${successCount} 个文件${albumDesc})，链接已复制！`);
             } else {
-                showToast(`上传成功 (${successCount} 个文件)`);
+                showToast(`上传成功 (${successCount} 个文件${albumDesc})`);
             }
         }
-    }, [showToast]);
+    }, [showToast, uploadTargetDir, selectedDir]);
 
     // Drag and drop handlers
     const handleDragOver = (e: React.DragEvent) => {
@@ -241,7 +287,15 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                 const matchesSearch = searchQuery.trim() === "" || fileName.toLowerCase().includes(searchQuery.toLowerCase());
                 const category = getFileCategory(file.contentType, file.key);
                 const matchesType = typeFilter === "all" || category === typeFilter;
-                return matchesSearch && matchesType;
+                
+                let matchesAlbum = true;
+                if (selectedDir === "_root_") {
+                    matchesAlbum = !file.directory;
+                } else if (selectedDir !== "all") {
+                    matchesAlbum = file.directory === selectedDir;
+                }
+
+                return matchesSearch && matchesType && matchesAlbum;
             })
             .sort((a, b) => {
                 if (sortBy === "newest") {
@@ -258,13 +312,32 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                 }
                 return 0;
             });
-    }, [files, searchQuery, typeFilter, sortBy]);
+    }, [files, searchQuery, typeFilter, selectedDir, sortBy]);
 
     // Statistics
     const totalCount = files.length;
     const totalSize = useMemo(() => {
         return files.reduce((acc, f) => acc + (f.size || 0), 0);
     }, [files]);
+
+    // 相册目录统计
+    const albumCounts = useMemo(() => {
+        const counts: Record<string, number> = {
+            all: files.length,
+            _root_: 0,
+        };
+        for (const dir of directories) {
+            counts[dir] = 0;
+        }
+        for (const f of files) {
+            if (f.directory) {
+                counts[f.directory] = (counts[f.directory] || 0) + 1;
+            } else {
+                counts._root_ = (counts._root_ || 0) + 1;
+            }
+        }
+        return counts;
+    }, [files, directories]);
 
     // 分类统计 (各类型数量分布，为分类Tab提供数字Badge)
     const categoryCounts = useMemo(() => {
@@ -364,6 +437,106 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
             }
         } catch (err: any) {
             alert(`Batch delete failed: ${err?.message || "Unknown error"}`);
+        }
+    };
+
+    // Album and Move Handlers
+    const handleCreateDirectory = async (e?: React.FormEvent) => {
+        e?.preventDefault();
+        const cleanName = newDirName.trim().replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5\/]/g, '').replace(/^\/+|\/+$/g, '');
+        if (!cleanName) {
+            alert("请输入有效的相册名称（支持中英文、数字、中划线和下划线）");
+            return;
+        }
+
+        try {
+            const { data, error } = await client.storage.createDirectory(cleanName);
+            if (data?.success) {
+                setDirectories((prev) => Array.from(new Set([...prev, cleanName])).sort());
+                setSelectedDir(cleanName);
+                setUploadTargetDir(cleanName);
+                setIsCreateDirModalOpen(false);
+                setNewDirName("");
+                showToast(`相册「${cleanName}」创建成功！`);
+            } else if (error) {
+                alert(`创建相册失败: ${typeof error.value === "string" ? error.value : "未知错误"}`);
+            }
+        } catch (err: any) {
+            alert(`创建相册失败: ${err?.message || "未知错误"}`);
+        }
+    };
+
+    const handleDeleteDirectory = async (dirName: string, e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        const count = albumCounts[dirName] || 0;
+        const msg = count > 0
+            ? `确定要删除相册「${dirName}」吗？\n注意：该相册内包含的 ${count} 个文件也将一并被删除！`
+            : `确定要删除相册「${dirName}」吗？`;
+        if (!window.confirm(msg)) return;
+
+        try {
+            const { data, error } = await client.storage.deleteDirectory(dirName);
+            if (data?.success) {
+                setDirectories((prev) => prev.filter((d) => d !== dirName));
+                setFiles((prev) => prev.filter((f) => f.directory !== dirName));
+                if (selectedDir === dirName) {
+                    setSelectedDir("all");
+                }
+                showToast(`相册「${dirName}」已删除`);
+            } else if (error) {
+                alert(`删除相册失败: ${typeof error.value === "string" ? error.value : "未知错误"}`);
+            }
+        } catch (err: any) {
+            alert(`删除相册失败: ${err?.message || "未知错误"}`);
+        }
+    };
+
+    const openMoveModal = (keys: string[]) => {
+        if (keys.length === 0) return;
+        setFilesToMove(keys);
+        setMoveTargetDir(selectedDir && selectedDir !== "all" ? selectedDir : "_root_");
+        setCustomMoveDirName("");
+        setIsMoveModalOpen(true);
+    };
+
+    const handleExecuteMove = async (targetDirName: string) => {
+        if (filesToMove.length === 0) return;
+        setIsMoving(true);
+        try {
+            const cleanTarget = (targetDirName === "_root_" || targetDirName === "root") ? "" : targetDirName.trim();
+            const { data, error } = await client.storage.moveFiles(filesToMove, cleanTarget);
+            if (data?.success) {
+                const movedMap = new Map(data.items.map((it) => [it.oldKey, it]));
+                setFiles((prev) =>
+                    prev.map((f) => {
+                        const moved = movedMap.get(f.key);
+                        if (moved) {
+                            return {
+                                ...f,
+                                key: moved.newKey,
+                                url: moved.url,
+                                directory: cleanTarget || undefined,
+                            };
+                        }
+                        return f;
+                    })
+                );
+
+                if (cleanTarget && !directories.includes(cleanTarget)) {
+                    setDirectories((prev) => Array.from(new Set([...prev, cleanTarget])).sort());
+                }
+
+                setSelectedKeys(new Set());
+                setIsMoveModalOpen(false);
+                setFilesToMove([]);
+                showToast(`已成功将 ${data.moved} 个文件移动至「${cleanTarget || "默认图床"}」！`);
+            } else if (error) {
+                alert(`移动失败: ${typeof error.value === "string" ? error.value : "未知错误"}`);
+            }
+        } catch (err: any) {
+            alert(`移动失败: ${err?.message || "未知错误"}`);
+        } finally {
+            setIsMoving(false);
         }
     };
 
@@ -524,7 +697,25 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* 目标相册快捷选择器 */}
+                        {canUpload && directories.length > 0 && (
+                            <div className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
+                                <span className="text-neutral-400 font-medium">目标:</span>
+                                <select
+                                    value={uploadTargetDir || (selectedDir === "all" ? "_root_" : selectedDir)}
+                                    onChange={(e) => setUploadTargetDir(e.target.value)}
+                                    className="bg-transparent font-bold t-primary focus:outline-none cursor-pointer text-xs"
+                                >
+                                    <option value="_root_">默认图床 (根目录)</option>
+                                    {directories.map((d) => (
+                                        <option key={d} value={d}>
+                                            {d}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         {!readOnly && (
                             <button
                                 type="button"
@@ -544,7 +735,15 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                 className="inline-flex items-center gap-1.5 rounded-xl bg-theme px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-theme-hover active:scale-95 transition disabled:opacity-50"
                             >
                                 <i className="ri-upload-cloud-line text-sm" />
-                                <span>{isUploading ? "正在上传..." : "上传媒体与文件"}</span>
+                                <span>
+                                    {isUploading
+                                        ? "正在上传..."
+                                        : uploadTargetDir && uploadTargetDir !== "_root_"
+                                        ? `上传至「${uploadTargetDir}」`
+                                        : selectedDir && selectedDir !== "all" && selectedDir !== "_root_"
+                                        ? `上传至「${selectedDir}」`
+                                        : "上传媒体与文件"}
+                                </span>
                             </button>
                         )}
                         <button
@@ -555,6 +754,125 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                             <i className={`ri-refresh-line text-xs ${refreshing ? "animate-spin" : ""}`} />
                             <span>{t("admin_files.refresh", "刷新")}</span>
                         </button>
+                    </div>
+                </div>
+
+                {/* 相册/目录横向切换与管理栏 */}
+                <div className="flex flex-col gap-2 p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5">
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-xs font-bold t-primary">
+                            <i className="ri-folder-image-line text-theme" />
+                            <span>相册目录</span>
+                            <span className="text-[11px] font-normal text-neutral-400">
+                                ({directories.length + 1} 个相册)
+                            </span>
+                        </div>
+
+                        {!readOnly && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setNewDirName("");
+                                    setIsCreateDirModalOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-theme/10 hover:bg-theme/20 text-theme text-xs font-bold transition active:scale-95 cursor-pointer"
+                            >
+                                <i className="ri-folder-add-line text-xs" />
+                                <span>新建相册</span>
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-xs select-none">
+                        {/* 全部相册 */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSelectedDir("all");
+                                setUploadTargetDir("");
+                            }}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition whitespace-nowrap cursor-pointer ${
+                                selectedDir === "all"
+                                    ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-xs"
+                                    : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10 dark:hover:bg-white/10"
+                            }`}
+                        >
+                            <i className="ri-apps-2-line" />
+                            <span>全部文件</span>
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                                selectedDir === "all" ? "bg-white/20 dark:bg-black/20 text-white dark:text-neutral-900" : "bg-black/10 dark:bg-white/10 text-neutral-500 dark:text-neutral-400"
+                            }`}>
+                                {albumCounts.all}
+                            </span>
+                        </button>
+
+                        {/* 默认图床 (未分类) */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSelectedDir("_root_");
+                                setUploadTargetDir("_root_");
+                            }}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition whitespace-nowrap cursor-pointer ${
+                                selectedDir === "_root_"
+                                    ? "bg-theme text-white shadow-xs"
+                                    : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10 dark:hover:bg-white/10"
+                            }`}
+                        >
+                            <i className="ri-home-4-line" />
+                            <span>默认图床 (根目录)</span>
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                                selectedDir === "_root_" ? "bg-white/25 text-white" : "bg-black/10 dark:bg-white/10 text-neutral-500 dark:text-neutral-400"
+                            }`}>
+                                {albumCounts._root_}
+                            </span>
+                        </button>
+
+                        {/* 自定义相册列表 */}
+                        {directories.map((dir) => {
+                            const active = selectedDir === dir;
+                            const isWallpaper = dir.toLowerCase().includes("wallpaper") || dir.includes("壁纸");
+                            return (
+                                <div
+                                    key={dir}
+                                    className={`group/album inline-flex items-center rounded-xl transition ${
+                                        active
+                                            ? "bg-theme text-white shadow-xs"
+                                            : "bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 hover:bg-black/10 dark:hover:bg-white/10"
+                                    }`}
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedDir(dir);
+                                            setUploadTargetDir(dir);
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold whitespace-nowrap cursor-pointer"
+                                    >
+                                        <i className={isWallpaper ? "ri-image-2-line" : "ri-folder-3-line"} />
+                                        <span>{dir}</span>
+                                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                                            active ? "bg-white/25 text-white" : "bg-black/10 dark:bg-white/10 text-neutral-500 dark:text-neutral-400"
+                                        }`}>
+                                            {albumCounts[dir] ?? 0}
+                                        </span>
+                                    </button>
+
+                                    {!readOnly && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleDeleteDirectory(dir, e)}
+                                            title={`删除相册「${dir}」`}
+                                            className={`p-1 mr-1.5 rounded-lg opacity-0 group-hover/album:opacity-100 transition cursor-pointer ${
+                                                active ? "hover:bg-white/20 text-white" : "hover:bg-rose-500/20 text-rose-500"
+                                            }`}
+                                        >
+                                            <i className="ri-close-line text-xs" />
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -658,13 +976,25 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                     </label>
 
                     {selectedKeys.size > 0 && (
-                        <button
-                            onClick={handleDeleteBatch}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900/40"
-                        >
-                            <i className="ri-delete-bin-line" />
-                            <span>{t("admin_files.delete_selected", "删除所选")} ({selectedKeys.size})</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {!readOnly && (
+                                <button
+                                    type="button"
+                                    onClick={() => openMoveModal(Array.from(selectedKeys))}
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-theme/10 px-3 py-1.5 text-xs font-semibold text-theme transition hover:bg-theme/20 dark:bg-theme/20 dark:hover:bg-theme/30 cursor-pointer"
+                                >
+                                    <i className="ri-folder-transfer-line text-xs" />
+                                    <span>移动至相册 ({selectedKeys.size})</span>
+                                </button>
+                            )}
+                            <button
+                                onClick={handleDeleteBatch}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900/40 cursor-pointer"
+                            >
+                                <i className="ri-delete-bin-line" />
+                                <span>{t("admin_files.delete_selected", "删除所选")} ({selectedKeys.size})</span>
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>
@@ -699,7 +1029,13 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                 <i className={`text-2xl ${isUploading ? "ri-loader-4-line animate-spin text-theme" : "ri-upload-cloud-2-line"}`} />
                             </div>
                             <span className="font-bold text-xs t-primary group-hover:text-theme transition-colors">
-                                {isUploading ? "上传处理中..." : "上传或拖拽图片"}
+                                {isUploading
+                                    ? "上传处理中..."
+                                    : uploadTargetDir && uploadTargetDir !== "_root_"
+                                    ? `上传至「${uploadTargetDir}」`
+                                    : selectedDir && selectedDir !== "all" && selectedDir !== "_root_"
+                                    ? `上传至「${selectedDir}」`
+                                    : "上传或拖拽图片"}
                             </span>
                             <span className="text-[10px] text-neutral-400 mt-1 text-center">
                                 支持 JPG/PNG/WebP，可直接 Ctrl+V 粘贴
@@ -735,17 +1071,30 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                 </div>
                                 <div className="absolute right-4 top-4 z-10 flex items-center gap-1.5">
                                     {!readOnly && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteSingle(file);
-                                            }}
-                                            title={t("admin_files.delete", "删除")}
-                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-rose-500 shadow-xs backdrop-blur-xs transition hover:bg-rose-500 hover:text-white dark:bg-neutral-800/90"
-                                        >
-                                            <i className="ri-delete-bin-line text-xs" />
-                                        </button>
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openMoveModal([file.key]);
+                                                }}
+                                                title="移动至相册"
+                                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-neutral-600 shadow-xs backdrop-blur-xs transition hover:bg-theme hover:text-white dark:bg-neutral-800/90 dark:text-neutral-300 cursor-pointer"
+                                            >
+                                                <i className="ri-folder-transfer-line text-xs" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteSingle(file);
+                                                }}
+                                                title={t("admin_files.delete", "删除")}
+                                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-rose-500 shadow-xs backdrop-blur-xs transition hover:bg-rose-500 hover:text-white dark:bg-neutral-800/90 cursor-pointer"
+                                            >
+                                                <i className="ri-delete-bin-line text-xs" />
+                                            </button>
+                                        </>
                                     )}
                                 </div>
 
@@ -795,8 +1144,16 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                                         {fileName}
                                     </p>
                                     <div className="mt-0.5 flex items-center justify-between text-[11px] text-neutral-400">
-                                        <span>{formatDate(file.uploaded)}</span>
-                                        <span>{formatFileSize(file.size)}</span>
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <span>{formatDate(file.uploaded)}</span>
+                                            {file.directory ? (
+                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-theme/10 text-theme font-medium text-[10px] truncate max-w-[90px]" title={`所属相册: ${file.directory}`}>
+                                                    <i className="ri-folder-line text-[9px]" />
+                                                    <span className="truncate">{file.directory}</span>
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                        <span className="shrink-0">{formatFileSize(file.size)}</span>
                                     </div>
                                 </div>
 
@@ -915,6 +1272,203 @@ export function AdminFilesPage({ readOnly = false }: { readOnly?: boolean } = {}
                         <span>{t("admin_files.load_more", "加载更多")}</span>
                     </button>
                 </div>
+            )}
+
+            {/* 新建相册目录弹窗 */}
+            {isCreateDirModalOpen && (
+                <Modal
+                    isOpen={isCreateDirModalOpen}
+                    onRequestClose={() => setIsCreateDirModalOpen(false)}
+                    contentLabel="新建相册目录"
+                    panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-md w-full bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl font-sans"
+                >
+                    <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
+                        <div className="flex items-center gap-2">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-theme/15 text-theme text-sm">
+                                <i className="ri-folder-add-line" />
+                            </span>
+                            <h3 className="font-bold text-sm t-primary">新建相册目录</h3>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsCreateDirModalOpen(false)}
+                            className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 cursor-pointer"
+                        >
+                            <i className="ri-close-line text-lg font-bold" />
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleCreateDirectory} className="mt-4 flex flex-col gap-3.5">
+                        <div>
+                            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-300 mb-1.5">
+                                相册目录名称
+                            </label>
+                            <input
+                                type="text"
+                                value={newDirName}
+                                onChange={(e) => setNewDirName(e.target.value)}
+                                placeholder="例如: wallpapers 或 桌面壁纸"
+                                autoFocus
+                                className="w-full rounded-xl border border-black/10 bg-w px-3.5 py-2 text-sm t-primary placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-theme/30 dark:border-white/10 dark:bg-white/5"
+                            />
+                            <p className="mt-1 text-[11px] text-neutral-400">
+                                支持中英文、数字、中划线和下划线。创建后会自动与随机图片接口 <code>?dir=名称</code> 无缝连通。
+                            </p>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/5">
+                            <button
+                                type="button"
+                                onClick={() => setIsCreateDirModalOpen(false)}
+                                className="px-3.5 py-1.5 rounded-xl border border-black/10 dark:border-white/10 text-xs font-semibold t-primary hover:bg-neutral-50 dark:hover:bg-white/5 transition cursor-pointer"
+                            >
+                                取消
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={!newDirName.trim()}
+                                className="px-4 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                            >
+                                确认创建
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+
+            {/* 移动文件至相册弹窗 */}
+            {isMoveModalOpen && (
+                <Modal
+                    isOpen={isMoveModalOpen}
+                    onRequestClose={() => {
+                        if (!isMoving) setIsMoveModalOpen(false);
+                    }}
+                    contentLabel="移动文件至相册"
+                    panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-md w-full bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl font-sans"
+                >
+                    <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
+                        <div className="flex items-center gap-2">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-theme/15 text-theme text-sm">
+                                <i className="ri-folder-transfer-line" />
+                            </span>
+                            <h3 className="font-bold text-sm t-primary">
+                                移动至相册 ({filesToMove.length} 个文件)
+                            </h3>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsMoveModalOpen(false)}
+                            disabled={isMoving}
+                            className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 cursor-pointer disabled:opacity-50"
+                        >
+                            <i className="ri-close-line text-lg font-bold" />
+                        </button>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-3">
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                            请选择要将所选文件移动到的目标相册：
+                        </p>
+
+                        <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+                            {/* 默认根目录 */}
+                            <div
+                                onClick={() => setMoveTargetDir("_root_")}
+                                className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition select-none ${
+                                    moveTargetDir === "_root_"
+                                        ? "border-theme bg-theme/10 font-bold text-theme"
+                                        : "border-black/5 dark:border-white/5 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] text-neutral-700 dark:text-neutral-300"
+                                }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <i className="ri-home-4-line text-sm" />
+                                    <span>默认图床 (根目录)</span>
+                                </div>
+                                {moveTargetDir === "_root_" ? (
+                                    <i className="ri-check-line text-theme font-bold" />
+                                ) : null}
+                            </div>
+
+                            {/* 各自定义相册 */}
+                            {directories.map((dir) => (
+                                <div
+                                    key={dir}
+                                    onClick={() => setMoveTargetDir(dir)}
+                                    className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition select-none ${
+                                        moveTargetDir === dir
+                                            ? "border-theme bg-theme/10 font-bold text-theme"
+                                            : "border-black/5 dark:border-white/5 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] text-neutral-700 dark:text-neutral-300"
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <i className="ri-folder-3-line text-sm text-theme" />
+                                        <span>{dir}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] text-neutral-400 font-normal">
+                                            {albumCounts[dir] ?? 0} 个文件
+                                        </span>
+                                        {moveTargetDir === dir ? (
+                                            <i className="ri-check-line text-theme font-bold" />
+                                        ) : null}
+                                    </div>
+                                </div>
+                            ))}
+
+                            {/* 新建并移入 */}
+                            <div
+                                onClick={() => setMoveTargetDir("__custom__")}
+                                className={`p-2.5 rounded-xl border text-xs cursor-pointer transition ${
+                                    moveTargetDir === "__custom__"
+                                        ? "border-theme bg-theme/10"
+                                        : "border-dashed border-black/15 dark:border-white/15 hover:border-theme"
+                                }`}
+                            >
+                                <div className="flex items-center gap-2 text-theme font-semibold">
+                                    <i className="ri-folder-add-line" />
+                                    <span>新建相册并移入</span>
+                                </div>
+                                {moveTargetDir === "__custom__" && (
+                                    <input
+                                        type="text"
+                                        value={customMoveDirName}
+                                        onChange={(e) => setCustomMoveDirName(e.target.value)}
+                                        placeholder="输入新相册名称 (如: wallpapers)"
+                                        className="mt-2 w-full rounded-lg border border-black/10 bg-w px-2.5 py-1.5 text-xs t-primary placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-theme dark:border-white/10 dark:bg-neutral-800"
+                                        autoFocus
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/5">
+                            <button
+                                type="button"
+                                onClick={() => setIsMoveModalOpen(false)}
+                                disabled={isMoving}
+                                className="px-3.5 py-1.5 rounded-xl border border-black/10 dark:border-white/10 text-xs font-semibold t-primary hover:bg-neutral-50 dark:hover:bg-white/5 transition cursor-pointer disabled:opacity-50"
+                            >
+                                取消
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const finalTarget = moveTargetDir === "__custom__" ? customMoveDirName.trim() : moveTargetDir;
+                                    if (moveTargetDir === "__custom__" && !finalTarget) {
+                                        alert("请输入新相册名称");
+                                        return;
+                                    }
+                                    handleExecuteMove(finalTarget);
+                                }}
+                                disabled={isMoving || (moveTargetDir === "__custom__" && !customMoveDirName.trim())}
+                                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                            >
+                                {isMoving && <i className="ri-loader-4-line animate-spin" />}
+                                <span>{isMoving ? "正在移动..." : "确认移动"}</span>
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
             )}
 
             {/* Typora / PicGo / 随机图片 API 快捷指南弹窗 */}

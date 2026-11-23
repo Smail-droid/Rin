@@ -30,6 +30,7 @@ import type {
   ConfigResponse,
   AIConfig,
   UploadResponse,
+  MoveFilesResponse,
   AuthStatus,
   LoginRequest,
   LoginResponse,
@@ -46,10 +47,12 @@ export interface StorageFileItem {
   uploaded: string;
   contentType: string;
   url: string;
+  directory?: string;
 }
 
 export interface StorageListResponse {
   files: StorageFileItem[];
+  directories?: string[];
   cursor?: string;
   truncated: boolean;
 }
@@ -686,22 +689,44 @@ class StorageAPI {
   constructor(private http: HttpClient) {}
 
   // POST /api/storage
-  async upload(file: File, key?: string): Promise<ApiResponse<UploadResponse>> {
+  async upload(file: File, key?: string, dir?: string): Promise<ApiResponse<UploadResponse>> {
     const formData = new FormData();
     formData.append("file", file);
     if (key) formData.append("key", key);
+    if (dir) formData.append("dir", dir);
     
     return this.http.post<UploadResponse>("/api/storage", formData);
   }
 
   // GET /api/storage/files
-  async listFiles(params?: { prefix?: string; cursor?: string; limit?: number }): Promise<ApiResponse<StorageListResponse>> {
+  async listFiles(params?: { prefix?: string; cursor?: string; limit?: number; dir?: string }): Promise<ApiResponse<StorageListResponse>> {
     const searchParams = new URLSearchParams();
     if (params?.prefix) searchParams.set("prefix", params.prefix);
     if (params?.cursor) searchParams.set("cursor", params.cursor);
     if (params?.limit) searchParams.set("limit", params.limit.toString());
+    if (params?.dir) searchParams.set("dir", params.dir);
     const query = searchParams.toString();
     return this.http.get<StorageListResponse>(`/api/storage/files${query ? `?${query}` : ""}`);
+  }
+
+  // GET /api/storage/directories
+  async listDirectories(): Promise<ApiResponse<{ directories: string[] }>> {
+    return this.http.get<{ directories: string[] }>("/api/storage/directories");
+  }
+
+  // POST /api/storage/directory
+  async createDirectory(name: string): Promise<ApiResponse<{ success: boolean; name: string }>> {
+    return this.http.post<{ success: boolean; name: string }>("/api/storage/directory", { name });
+  }
+
+  // DELETE /api/storage/directory/:name
+  async deleteDirectory(name: string): Promise<ApiResponse<{ success: boolean; deleted: number }>> {
+    return this.http.delete<{ success: boolean; deleted: number }>(`/api/storage/directory/${encodeURIComponent(name)}`);
+  }
+
+  // POST /api/storage/move
+  async moveFiles(keys: string[], targetDir: string): Promise<ApiResponse<MoveFilesResponse>> {
+    return this.http.post<MoveFilesResponse>("/api/storage/move", { keys, targetDir });
   }
 
   // DELETE /api/storage/file/:key

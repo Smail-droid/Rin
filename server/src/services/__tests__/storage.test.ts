@@ -426,6 +426,56 @@ describe('StorageService', () => {
             expect(deletedKeys).toContain('images/sample.png');
         });
 
+        it('should upload into specified directory when dir is provided', async () => {
+            const putCalls: Array<{ key: string; type: string | undefined }> = [];
+            const r2Env = createMockEnv({
+                R2_BUCKET: {
+                    put: async (key: string, value: any, options?: R2PutOptions) => {
+                        putCalls.push({
+                            key,
+                            type: options?.httpMetadata && 'contentType' in options.httpMetadata
+                                ? options.httpMetadata.contentType
+                                : undefined,
+                        });
+                        return {
+                            key,
+                            version: '1',
+                            size: value.size || 0,
+                            etag: 'etag',
+                            httpEtag: 'etag',
+                            uploaded: new Date(),
+                            storageClass: 'Standard',
+                            checksums: {} as R2Checksums,
+                            writeHttpMetadata: () => {},
+                        } as unknown as R2Object;
+                    },
+                } as unknown as R2Bucket,
+                S3_ACCESS_HOST: 'https://images.example.com' as any,
+                S3_ENDPOINT: '' as any,
+                S3_BUCKET: '' as any,
+                S3_ACCESS_KEY_ID: '',
+                S3_SECRET_ACCESS_KEY: '',
+            });
+
+            const r2App = createAppWithEnv(r2Env, 1);
+            const formData = new FormData();
+            formData.append('key', 'wallpaper.png');
+            formData.append('dir', 'wallpapers');
+            formData.append('file', new File(['wallpaper content'], 'wallpaper.png', { type: 'image/png' }));
+
+            const res = await r2App.request('/', {
+                method: 'POST',
+                body: formData,
+            }, r2Env);
+
+            expect(res.status).toBe(200);
+            expect(putCalls).toHaveLength(1);
+            expect(putCalls[0]?.key).toMatch(/^images\/wallpapers\/[a-f0-9]+\.png$/);
+            const payload = await res.json() as { url: string; key: string; dir: string };
+            expect(payload.dir).toBe('wallpapers');
+            expect(payload.url).toContain('/images/wallpapers/');
+        });
+
         it('should batch delete files for admin', async () => {
             const adminApp = createAppWithEnv(r2Env, 1, true);
             const res = await adminApp.request('/files', {
@@ -439,6 +489,89 @@ describe('StorageService', () => {
             expect(data.deleted).toBe(2);
             expect(deletedKeys).toContain('images/f1.png');
             expect(deletedKeys).toContain('images/f2.png');
+        });
+
+        it('should list directories and discover album folders', async () => {
+            const r2App = createAppWithEnv(r2Env, 1, true);
+            const res = await r2App.request('/directories', { method: 'GET' }, r2Env);
+            expect(res.status).toBe(200);
+            const data = await res.json() as { directories: string[] };
+            expect(Array.isArray(data.directories)).toBe(true);
+        });
+
+        it('should create and delete directory for admin', async () => {
+            const putKeys: string[] = [];
+            const customEnv = createMockEnv({
+                R2_BUCKET: {
+                    put: async (key: string) => {
+                        putKeys.push(key);
+                        return {} as any;
+                    },
+                    list: async () => ({
+                        objects: [{ key: 'images/wallpapers/.keep' }],
+                        truncated: false,
+                    }),
+                    delete: async (keys: string | string[]) => {
+                        if (Array.isArray(keys)) deletedKeys.push(...keys);
+                        else deletedKeys.push(keys);
+                    },
+                } as unknown as R2Bucket,
+            });
+
+            const adminApp = createAppWithEnv(customEnv, 1, true);
+            const createRes = await adminApp.request('/directory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: 'wallpapers' }),
+            }, customEnv);
+
+            expect(createRes.status).toBe(200);
+            expect(putKeys).toContain('images/wallpapers/.keep');
+
+            const delRes = await adminApp.request('/directory/wallpapers', {
+                method: 'DELETE',
+            }, customEnv);
+            expect(delRes.status).toBe(200);
+            expect(deletedKeys).toContain('images/wallpapers/.keep');
+        });
+
+        it('should move files to target directory for admin', async () => {
+            const putMap = new Map<string, any>();
+            const customEnv = createMockEnv({
+                R2_BUCKET: {
+                    get: async (key: string) => ({
+                        body: 'mock_body',
+                        httpMetadata: { contentType: 'image/png' },
+                        customMetadata: {},
+                    }),
+                    put: async (key: string, body: any) => {
+                        putMap.set(key, body);
+                        return {} as any;
+                    },
+                    delete: async (keys: string | string[]) => {
+                        if (Array.isArray(keys)) deletedKeys.push(...keys);
+                        else deletedKeys.push(keys);
+                    },
+                } as unknown as R2Bucket,
+                S3_ACCESS_HOST: 'https://cdn.example.com' as any,
+            });
+
+            const adminApp = createAppWithEnv(customEnv, 1, true);
+            const res = await adminApp.request('/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    keys: ['images/sample.png'],
+                    targetDir: 'wallpapers',
+                }),
+            }, customEnv);
+
+            expect(res.status).toBe(200);
+            const data = await res.json() as any;
+            expect(data.success).toBe(true);
+            expect(data.moved).toBe(1);
+            expect(putMap.has('images/wallpapers/sample.png')).toBe(true);
+            expect(deletedKeys).toContain('images/sample.png');
         });
     });
 });

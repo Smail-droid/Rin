@@ -289,6 +289,30 @@ export interface AIConfig {
 
 export interface UploadResponse {
   url: string;
+  key?: string;
+  dir?: string;
+}
+
+export interface StorageFileItem {
+  key: string;
+  size: number;
+  uploaded: string;
+  contentType: string;
+  url: string;
+  directory?: string;
+}
+
+export interface StorageListResponse {
+  files: StorageFileItem[];
+  directories?: string[];
+  cursor?: string;
+  truncated: boolean;
+}
+
+export interface MoveFilesResponse {
+  success: boolean;
+  moved: number;
+  items: Array<{ oldKey: string; newKey: string; url: string }>;
 }
 
 // ============================================================================
