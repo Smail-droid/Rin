@@ -227,7 +227,7 @@ export function MomentsPage() {
         <meta property="og:url" content={document.URL} />
       </Helmet>
       <Waiting for={!loading}>
-        <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 mb-12 ani-show">
+        <main className="w-full max-w-5xl mx-auto px-1.5 sm:px-6 mb-12 ani-show">
           {/* Moments Top Header */}
           {siteConfig.pageHeaderMode === "hidden" ? (
             profile?.permission ? (

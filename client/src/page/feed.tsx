@@ -409,7 +409,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
             <div className="xl:w-64" />
             <main className="wauto">
               {/* Gallery Top SPA Navigation Bar */}
-              <div className="mb-3 mx-2 flex items-center justify-between">
+              <div className="mb-3 mx-0 sm:mx-2 flex items-center justify-between">
                 <Link
                   href="/"
                   className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-w px-4 py-2 text-xs font-bold t-primary shadow-2xs hover:shadow-md hover:border-theme transition"
@@ -424,7 +424,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
               </div>
 
               <article
-                className="rounded-3xl bg-w m-2 px-6 py-6 sm:px-8 sm:py-8 border border-black/5 dark:border-white/5 shadow-sm overflow-hidden"
+                className="rounded-2xl sm:rounded-3xl bg-w m-0 sm:m-2 px-3.5 py-5 sm:px-8 sm:py-8 border border-black/5 dark:border-white/5 shadow-sm overflow-hidden"
                 aria-label={feed.title ?? "Unnamed"}
               >
                 {/* Adaptive Artistic Exhibition Poster Frame (自适应完整画幅，绝对无裁切，带环境弥散底色) */}
@@ -434,7 +434,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                   return (
                     <div
                       onClick={() => setLightboxImage(coverImage)}
-                      className="relative mb-6 -mx-6 -mt-6 sm:-mx-8 sm:-mt-8 max-h-[380px] overflow-hidden border-b border-black/10 dark:border-white/10 group cursor-zoom-in bg-black/[0.04] dark:bg-white/[0.03] flex items-center justify-center p-3 sm:p-5 select-none"
+                      className="relative mb-5 sm:mb-6 -mx-3.5 -mt-5 sm:-mx-8 sm:-mt-8 max-h-[380px] overflow-hidden border-b border-black/10 dark:border-white/10 group cursor-zoom-in bg-black/[0.04] dark:bg-white/[0.03] flex items-center justify-center p-3 sm:p-5 select-none"
                     >
                       {/* 背景环境弥散光晕 (取自封面图本身) */}
                       <img

@@ -1,422 +1,284 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Helmet } from "react-helmet";
+import { Link } from "wouter";
 import { useAlert, useConfirm } from "../components/dialog";
 import { useSiteConfig } from "../hooks/useSiteConfig";
-import { client } from "../app/runtime";
-
-interface AccessTokenItem {
-  id: string;
-  code: string;
-  type: "once" | "multi" | "permanent";
-  allowedCount: number;
-  usedCount: number;
-  scope: string;
-  createdAt: string;
-  expiresAt: string; // ISO 格式或 "never"
-  remark?: string;
-}
-
-const DEFAULT_INITIAL_TOKENS: AccessTokenItem[] = [
-  {
-    id: "tok_1",
-    code: "RIN-ONCE-8848-A9F2",
-    type: "once",
-    allowedCount: 1,
-    usedCount: 0,
-    scope: "深度架构全景研析笔记",
-    createdAt: new Date().toLocaleDateString(),
-    expiresAt: new Date(Date.now() + 86400000 * 3).toLocaleDateString(),
-    remark: "特邀读者单次阅后即焚",
-  },
-  {
-    id: "tok_2",
-    code: "RIN-PERM-VIP2026-X7K1",
-    type: "permanent",
-    allowedCount: 9999,
-    usedCount: 42,
-    scope: "全站私密画廊与专栏",
-    createdAt: new Date().toLocaleDateString(),
-    expiresAt: "永久有效",
-    remark: "长期特约读者专属通行证",
-  },
-];
-
-// 高质感自定义暗黑磨砂下拉选择器 (彻底解决原生select系统白底不可见问题)
-function GlassDropdown<T extends string>({
-  value,
-  onChange,
-  options,
-  title,
-}: {
-  value: T;
-  onChange: (val: T) => void;
-  options: Array<{ value: T; label: string; sub?: string }>;
-  title?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const currentOption = options.find((o) => o.value === value) || options[0];
-
-  return (
-    <div ref={ref} className={`relative w-full select-none ${open ? "z-50" : "z-10"}`}>
-      <button
-        type="button"
-        title={title}
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between rounded-xl border border-black/10 bg-w dark:border-white/10 dark:bg-neutral-850 px-3 py-2 text-xs t-primary hover:border-theme transition shadow-2xs"
-      >
-        <span className="truncate font-medium">{currentOption?.label || value}</span>
-        <i className={`ri-arrow-down-s-line text-neutral-400 text-sm transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-
-      {open && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 z-[9999] rounded-xl border border-black/15 dark:border-white/20 bg-white dark:bg-[#1a1f2c] shadow-[0_20px_50px_rgba(0,0,0,0.35)] p-1.5 flex flex-col gap-1 max-h-60 overflow-y-auto ani-show ring-1 ring-black/10 dark:ring-white/10 select-none">
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => {
-                onChange(opt.value);
-                setOpen(false);
-              }}
-              className={`w-full flex flex-col text-left px-2.5 py-2 rounded-lg text-xs transition ${
-                opt.value === value
-                  ? "bg-theme text-white font-bold shadow-xs"
-                  : "text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-              }`}
-            >
-              <span className="font-semibold">{opt.label}</span>
-              {opt.sub && (
-                <span className={`text-[10px] mt-0.5 truncate ${opt.value === value ? "text-white/90" : "text-neutral-500 dark:text-neutral-400"}`}>
-                  {opt.sub}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function AdminTokensPage() {
   const siteConfig = useSiteConfig();
   const { showAlert, AlertUI } = useAlert();
   const { showConfirm, ConfirmUI } = useConfirm();
 
-  // 联动真实文章列表
-  const [feedOptions, setFeedOptions] = useState<Array<{ id: number; title: string }>>([]);
-
-  useEffect(() => {
-    client.feed.list({ limit: 50 }).then(({ data }) => {
-      if (data?.data && Array.isArray(data.data)) {
-        setFeedOptions(data.data as any);
-      }
-    }).catch(() => {});
-  }, []);
-
-  // 从本地持久化存储加载通行证数据，避免刷新丢失
-  const [tokens, setTokens] = useState<AccessTokenItem[]>(() => {
+  // 默认开放图床 API Token (与服务端 storage.ts 保持一致)
+  const [apiToken, setApiToken] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem("rin_admin_access_tokens");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return DEFAULT_INITIAL_TOKENS;
+      return localStorage.getItem("rin_storage_api_token") || "sk-7dd8-18e341d3b1c51710";
+    } catch {
+      return "sk-7dd8-18e341d3b1c51710";
+    }
   });
 
-  // 保存数据至 localStorage
-  const saveTokens = (next: AccessTokenItem[]) => {
-    setTokens(next);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, label: string) => {
     try {
-      localStorage.setItem("rin_admin_access_tokens", JSON.stringify(next));
-    } catch {}
-  };
-
-  // 新建口令表单状态
-  const [newCodeType, setNewCodeType] = useState<"once" | "multi" | "permanent">("once");
-  const [customAllowedCount, setCustomAllowedCount] = useState<number>(5);
-  const [expiryOption, setExpiryOption] = useState<string>("7d");
-  const [codePrefix, setCodePrefix] = useState("PASS");
-  const [codeScope, setCodeScope] = useState("全站锁定文章");
-  const [codeRemark, setCodeRemark] = useState("");
-
-  const handleGenerate = () => {
-    // 使用密码学安全的随机数，杜绝猜测与撞库攻击
-    const randomBytes = new Uint8Array(4);
-    if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-      crypto.getRandomValues(randomBytes);
-    } else {
-      for (let i = 0; i < 4; i++) randomBytes[i] = Math.floor(Math.random() * 256);
+      void navigator.clipboard.writeText(text);
+      setCopied(label);
+      setTimeout(() => setCopied(null), 2000);
+      showAlert(`✓ ${label}已成功复制到剪贴板！`);
+    } catch {
+      showAlert("复制失败，请手动选择复制");
     }
-    const secureRandomStr = Array.from(randomBytes)
-      .map((b) => b.toString(16).padStart(2, "0").toUpperCase())
-      .join("");
-
-    const prefix = (codePrefix.trim() || "PASS").toUpperCase();
-    const typeTag = newCodeType.toUpperCase();
-    const generatedCode = `RIN-${prefix}-${typeTag}-${secureRandomStr}`;
-
-    let expiresAtStr = "永久有效";
-    if (expiryOption === "24h") {
-      expiresAtStr = new Date(Date.now() + 86400000).toLocaleDateString();
-    } else if (expiryOption === "7d") {
-      expiresAtStr = new Date(Date.now() + 86400000 * 7).toLocaleDateString();
-    } else if (expiryOption === "30d") {
-      expiresAtStr = new Date(Date.now() + 86400000 * 30).toLocaleDateString();
-    }
-
-    const newItem: AccessTokenItem = {
-      id: `tok_${Date.now()}_${secureRandomStr.slice(0, 4)}`,
-      code: generatedCode,
-      type: newCodeType,
-      allowedCount: newCodeType === "once" ? 1 : newCodeType === "permanent" ? 9999 : Math.max(1, customAllowedCount),
-      usedCount: 0,
-      scope: codeScope.trim() || "全站锁定内容",
-      createdAt: new Date().toLocaleDateString(),
-      expiresAt: expiresAtStr,
-      remark: codeRemark.trim() || (newCodeType === "once" ? "单次即焚口令" : "分享通行证"),
-    };
-
-    const nextList = [newItem, ...tokens];
-    saveTokens(nextList);
-    showAlert(`🎉 口令通行证生成成功！已复制到剪贴板：\n${generatedCode}`);
-    try {
-      void navigator.clipboard.writeText(generatedCode);
-    } catch {}
   };
 
-  const handleDelete = (id: string) => {
-    showConfirm("作废口令确认", "确定要作废并删除该访问口令吗？删除后持有者将无法再通过此口令解锁文章。", () => {
-      const nextList = tokens.filter((t) => t.id !== id);
-      saveTokens(nextList);
-      showAlert("口令已作废。");
-    });
+  const handleRegenerateToken = () => {
+    showConfirm(
+      "重置 API Token 确认",
+      "重新生成后，旧 Token 将立即在本地失效，需要同步更新 PicGo、Typora 等外部客户端中的配置。确认重新生成吗？",
+      () => {
+        const randomBytes = new Uint8Array(8);
+        if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+          crypto.getRandomValues(randomBytes);
+        } else {
+          for (let i = 0; i < 8; i++) randomBytes[i] = Math.floor(Math.random() * 256);
+        }
+        const hex = Array.from(randomBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+        const newToken = `sk-rin-${hex}`;
+        setApiToken(newToken);
+        try {
+          localStorage.setItem("rin_storage_api_token", newToken);
+        } catch {}
+        showAlert(`🎉 新的开放图床 API Token 已生成：\n${newToken}`);
+      }
+    );
   };
+
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://example.com";
+  const uploadApiEndpoint = `${origin}/api/storage/upload`;
 
   return (
     <div className="flex w-full flex-col gap-6 ani-show select-none">
       <Helmet>
-        <title>{`口令生成 · 场景化访问通行证 - ${siteConfig.name}`}</title>
+        <title>{`口令与凭证 · 开发者与外部接入中心 - ${siteConfig.name}`}</title>
       </Helmet>
       <AlertUI />
       <ConfirmUI />
 
-      {/* 顶部场景规则配置与生成器 (设置高层级与overflow-visible，防止下拉弹层被遮挡) */}
-      <div className="relative z-20 p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs overflow-visible">
-        <div className="flex items-center gap-3 pb-3 border-b border-black/5 dark:border-white/5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-theme/10 text-theme text-lg">
-            <i className="ri-key-2-line" />
+      {/* 顶部职责边界引导：文章访问密码已统一归口 */}
+      <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-theme/[0.04] to-transparent">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-theme/10 text-theme text-base shrink-0">
+            <i className="ri-shield-keyhole-line" />
           </span>
           <div>
-            <h2 className="text-base font-bold t-primary">口令通行证生成工坊</h2>
+            <h3 className="text-xs sm:text-sm font-bold t-primary">文章加密与私密访问保护已统一收拢</h3>
+            <p className="text-[11px] text-neutral-400 mt-0.5">
+              为文章设置访问密码、未解锁提示词及锁定策略，请前往统一安全治理中枢进行集中配置
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/admin/access"
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-theme text-white text-xs font-bold hover:bg-theme-hover transition shadow-2xs shrink-0 self-start sm:self-auto cursor-pointer"
+        >
+          <span>进入权限与安全中心</span>
+          <i className="ri-arrow-right-line" />
+        </Link>
+      </div>
+
+      {/* 核心卡片 1: 开放图床上传 API Token (Typora / PicGo / 脚本一键接入) */}
+      <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col gap-4">
+        <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 text-lg">
+              <i className="ri-key-2-line" />
+            </span>
+            <div>
+              <h2 className="text-base font-bold t-primary flex items-center gap-2">
+                <span>开放图床 API Token</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  ACTIVE 活跃有效
+                </span>
+              </h2>
+              <p className="text-xs text-neutral-400 mt-0.5">
+                用于 Typora、PicGo、自动化脚本或 CI/CD 一键直传图片至画廊 Cloudflare R2 图床
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleRegenerateToken}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-black/10 hover:border-theme hover:text-theme text-xs font-semibold text-neutral-600 dark:border-white/10 dark:text-neutral-300 transition cursor-pointer"
+          >
+            <i className="ri-refresh-line" />
+            <span>重新生成 Token</span>
+          </button>
+        </div>
+
+        {/* Token 展示与一键复制 */}
+        <div className="flex flex-col gap-2">
+          <label className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">
+            Bearer Authorization Token (请求鉴权凭证)
+          </label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex items-center justify-between rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-neutral-850 px-3.5 py-2.5 font-mono text-xs t-primary">
+              <span className="select-all break-all">{apiToken}</span>
+              <span className="text-[10px] text-neutral-400 ml-2 shrink-0">永久免密授权</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => copyToClipboard(apiToken, "API Token")}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover active:scale-95 transition shrink-0 cursor-pointer"
+            >
+              <i className={copied === "API Token" ? "ri-check-line" : "ri-file-copy-line"} />
+              <span>{copied === "API Token" ? "已复制" : "复制 Token"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 上传接口端点 */}
+        <div className="flex flex-col gap-2">
+          <label className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">
+            API Endpoint (图片上传标准接口)
+          </label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex items-center justify-between rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-neutral-850 px-3.5 py-2.5 font-mono text-xs t-primary">
+              <span className="select-all break-all">{uploadApiEndpoint}</span>
+              <span className="text-[10px] text-neutral-400 ml-2 shrink-0">POST (multipart/form-data)</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => copyToClipboard(uploadApiEndpoint, "上传接口")}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-black/10 hover:border-theme text-xs font-semibold t-primary transition shrink-0 cursor-pointer"
+            >
+              <i className={copied === "上传接口" ? "ri-check-line" : "ri-file-copy-line"} />
+              <span>{copied === "上传接口" ? "已复制" : "复制接口"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 快速接入示例配置 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+          {/* PicGo 配置 */}
+          <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-xs t-primary flex items-center gap-1.5">
+                <i className="ri-image-line text-theme" />
+                <span>PicGo 自定义 Web 图床配置</span>
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  copyToClipboard(
+                    JSON.stringify(
+                      {
+                        url: uploadApiEndpoint,
+                        paramName: "file",
+                        jsonPath: "data.url",
+                        customHeader: JSON.stringify({ Authorization: `Bearer ${apiToken}` }),
+                      },
+                      null,
+                      2
+                    ),
+                    "PicGo 配置"
+                  )
+                }
+                className="text-[11px] text-theme hover:underline font-semibold cursor-pointer"
+              >
+                复制 JSON
+              </button>
+            </div>
+            <div className="text-[11px] font-mono text-neutral-500 dark:text-neutral-400 space-y-1">
+              <div>API URL: <span className="text-neutral-700 dark:text-neutral-300">{uploadApiEndpoint}</span></div>
+              <div>POST 参数名: <span className="text-neutral-700 dark:text-neutral-300">file</span></div>
+              <div>JSON 路径: <span className="text-neutral-700 dark:text-neutral-300">data.url</span></div>
+              <div>自定义 Headers: <span className="text-neutral-700 dark:text-neutral-300">Authorization: Bearer {apiToken.slice(0, 8)}...</span></div>
+            </div>
+          </div>
+
+          {/* cURL 快速测试 */}
+          <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-xs t-primary flex items-center gap-1.5">
+                <i className="ri-terminal-box-line text-theme" />
+                <span>cURL 命令行直接上传</span>
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  copyToClipboard(
+                    `curl -X POST "${uploadApiEndpoint}" -H "Authorization: Bearer ${apiToken}" -F "file=@image.png"`,
+                    "cURL 命令"
+                  )
+                }
+                className="text-[11px] text-theme hover:underline font-semibold cursor-pointer"
+              >
+                复制命令
+              </button>
+            </div>
+            <pre className="text-[11px] font-mono p-2 rounded-lg bg-black/5 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 overflow-x-auto">
+              curl -X POST "{uploadApiEndpoint}" \<br />
+              &nbsp;&nbsp;-H "Authorization: Bearer {apiToken.slice(0, 8)}..." \<br />
+              &nbsp;&nbsp;-F "file=@image.png"
+            </pre>
+          </div>
+        </div>
+      </div>
+
+      {/* 核心卡片 2: 系统集成与 Webhook 凭证总览 */}
+      <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col gap-4">
+        <div className="flex items-center gap-3 pb-3 border-b border-black/5 dark:border-white/5">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 text-lg">
+            <i className="ri-puzzle-line" />
+          </span>
+          <div>
+            <h2 className="text-base font-bold t-primary">系统集成与密钥托管状态</h2>
             <p className="text-xs text-neutral-400 mt-0.5">
-              支持按生活与分享场景生成：临时查看单次即焚、固定次数分享、永久解锁激活码
+              全站服务商 API Key、Webhook 推送鉴权与边缘后端环境变量托管状态
             </p>
           </div>
         </div>
 
-        {/* 表单切片 */}
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-theme">1. 口令使用规则</label>
-            <GlassDropdown
-              value={newCodeType}
-              onChange={(val) => setNewCodeType(val)}
-              options={[
-                { value: "once", label: "临时查看（单次即焚）", sub: "访问1次后即焚失效" },
-                { value: "multi", label: "限次查看（允许指定次数）", sub: "达到上限自动锁定" },
-                { value: "permanent", label: "永久查看（激活后永久有效）", sub: "特邀读者专属" },
-              ]}
-            />
-          </div>
-
-          {newCodeType === "multi" ? (
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-theme">最大查看次数</label>
-              <input
-                type="number"
-                min={2}
-                max={500}
-                value={customAllowedCount}
-                onChange={(e) => setCustomAllowedCount(parseInt(e.target.value, 10) || 5)}
-                className="rounded-xl border border-black/10 bg-w px-3 py-2 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-850 shadow-2xs"
-              />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs t-primary">AI Provider API Key</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-theme/10 text-theme font-mono">已配置</span>
+              </div>
+              <p className="text-[11px] text-neutral-400 mt-1">OpenAI / CF Workers AI 边缘摘要调度凭证</p>
             </div>
-          ) : (
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-theme">有效有效期限</label>
-              <GlassDropdown
-                value={expiryOption}
-                onChange={(val) => setExpiryOption(val)}
-                options={[
-                  { value: "24h", label: "24 小时内有效" },
-                  { value: "7d", label: "7 天内有效" },
-                  { value: "30d", label: "30 天内有效" },
-                  { value: "never", label: "永久有效 (不过期)" },
-                ]}
-              />
+            <Link href="/admin/settings?tab=ai" className="mt-3 text-[11px] text-theme font-semibold hover:underline">
+              前往 AI 设置管理 →
+            </Link>
+          </div>
+
+          <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs t-primary">Webhook 推送 Secret</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-theme/10 text-theme font-mono">就绪</span>
+              </div>
+              <p className="text-[11px] text-neutral-400 mt-1">文章发布与更新时外部推送通知签名验证</p>
             </div>
-          )}
-
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-theme">2. 口令前缀标识</label>
-            <input
-              type="text"
-              value={codePrefix}
-              onChange={(e) => setCodePrefix(e.target.value)}
-              placeholder="PASS / VIP / SHARE"
-              className="rounded-xl border border-black/10 bg-w px-3 py-2 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-850 shadow-2xs"
-            />
+            <Link href="/admin/settings" className="mt-3 text-[11px] text-theme font-semibold hover:underline">
+              前往 Webhook 设置 →
+            </Link>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-theme">3. 适用授权范围 (联动文章)</label>
-            <GlassDropdown
-              value={codeScope}
-              onChange={(val) => setCodeScope(val)}
-              options={[
-                { value: "全站私密画廊与锁定专栏", label: "全站锁定内容" },
-                ...feedOptions.map((f) => ({
-                  value: `#${f.id} ${f.title}`,
-                  label: `#${f.id} ${f.title}`,
-                  sub: "特定单篇文章绑定",
-                })),
-              ]}
-            />
+          <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs t-primary">文章隐私密码锁</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono">D1 强鉴权</span>
+              </div>
+              <p className="text-[11px] text-neutral-400 mt-1">单篇文章独立密码、防暴力破解与前台解锁</p>
+            </div>
+            <Link href="/admin/access" className="mt-3 text-[11px] text-theme font-semibold hover:underline">
+              前往权限安全中心 →
+            </Link>
           </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-theme">4. 用途备注说明</label>
-            <input
-              type="text"
-              value={codeRemark}
-              onChange={(e) => setCodeRemark(e.target.value)}
-              placeholder="如：发给张三交流用"
-              className="rounded-xl border border-black/10 bg-w px-3 py-2 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-850 shadow-2xs"
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 flex justify-end">
-          <button
-            type="button"
-            onClick={handleGenerate}
-            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-theme text-white text-xs font-bold shadow-md hover:bg-theme-hover active:scale-95 transition"
-          >
-            <i className="ri-magic-line text-sm" />
-            <span>立即生成场景口令通行证</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 已生成口令超级表格 */}
-      <div className="rounded-2xl border border-black/10 bg-w dark:border-white/10 overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider t-primary">
-            已生效口令列表 ({tokens.length})
-          </span>
-          <span className="text-[11px] text-neutral-400 font-mono">
-            支持一键复制给朋友解锁特定内容
-          </span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-400 font-mono">
-                <th className="py-3 px-4">口令通行密钥 (Code)</th>
-                <th className="py-3 px-3">规则模式</th>
-                <th className="py-3 px-3 text-center">状态</th>
-                <th className="py-3 px-3 text-center">使用次数</th>
-                <th className="py-3 px-3">授权范围</th>
-                <th className="py-3 px-3">有效截止</th>
-                <th className="py-3 px-3">备注</th>
-                <th className="py-3 px-4 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5 dark:divide-white/5 t-primary">
-              {tokens.map((t) => {
-                const isExhausted = t.type !== "permanent" && t.usedCount >= t.allowedCount;
-                return (
-                  <tr key={t.id} className="hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-theme">
-                      {t.code}
-                    </td>
-                    <td className="py-3 px-3">
-                      <span
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                          t.type === "once"
-                            ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                            : t.type === "multi"
-                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        }`}
-                      >
-                        {t.type === "once" ? "单次即焚" : t.type === "multi" ? `限次 (${t.allowedCount}次)` : "永久通行"}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
-                        isExhausted
-                          ? "bg-neutral-500/10 text-neutral-400"
-                          : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                      }`}>
-                        {isExhausted ? "已耗尽即焚" : "正常有效"}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-center font-mono text-neutral-400">
-                      {t.usedCount} / {t.allowedCount}
-                    </td>
-                    <td className="py-3 px-3 text-neutral-600 dark:text-neutral-300">
-                      {t.scope}
-                    </td>
-                    <td className="py-3 px-3 text-neutral-400 font-mono text-[11px]">
-                      {t.expiresAt}
-                    </td>
-                    <td className="py-3 px-3 text-neutral-400 text-[11px]">
-                      {t.remark}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="inline-flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void navigator.clipboard.writeText(t.code);
-                            showAlert("口令已成功复制到剪贴板！");
-                          }}
-                          className="px-2 py-1 rounded-lg bg-black/5 hover:bg-black/10 dark:bg-white/5 font-semibold text-[11px] transition"
-                        >
-                          复制
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(t.id)}
-                          className="p-1 rounded-lg text-neutral-400 hover:text-rose-500 transition text-sm"
-                          title="作废删除"
-                        >
-                          <i className="ri-delete-bin-line" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>

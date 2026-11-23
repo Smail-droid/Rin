@@ -478,7 +478,7 @@ export function HashtagsPage() {
       ) : null}
 
       <Waiting for={hashtags}>
-        <main className="w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col justify-center items-center mb-10 ani-show">
+        <main className="w-full max-w-4xl mx-auto px-1.5 sm:px-6 flex flex-col justify-center items-center mb-10 ani-show">
           {/* 顶栏信息、统计与视图模式切换 */}
           {siteConfig.pageHeaderMode === "hidden" ? null : siteConfig.pageHeaderMode === "banner" ? (
             <div className="w-full relative rounded-3xl overflow-hidden mb-6 p-6 sm:p-7 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ani-show">
@@ -1007,44 +1007,48 @@ export function HashtagsPage() {
                   </table>
                 </div>
 
-                {/* 分页控制条 */}
-                <div className="px-4 py-3 border-t border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="text-neutral-400">每页</span>
+                {/* 分页控制条 (移动端单行紧凑自适应，杜绝多行挤压) */}
+                <div className="px-3 sm:px-4 py-2.5 border-t border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between text-xs select-none gap-2">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-neutral-400 hidden sm:inline">每页</span>
                     <select
                       value={pageSize}
                       onChange={(e) => {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-xs outline-none focus:border-theme"
+                      className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-1.5 sm:px-2 py-1 text-xs outline-none focus:border-theme cursor-pointer"
                     >
-                      <option value={15}>15 条</option>
-                      <option value={20}>20 条</option>
-                      <option value={50}>50 条</option>
-                      <option value={100}>100 条</option>
+                      <option value={15}>15 条/页</option>
+                      <option value={20}>20 条/页</option>
+                      <option value={50}>50 条/页</option>
+                      <option value={100}>100 条/页</option>
                     </select>
                   </div>
 
-                  <div className="flex items-center gap-1 font-mono">
+                  <div className="flex items-center gap-1 font-mono shrink-0">
                     <button
                       type="button"
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage <= 1}
-                      className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme disabled:opacity-40 transition"
+                      className="px-2 sm:px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-0.5 text-xs"
+                      title="上一页"
                     >
-                      上一页
+                      <i className="ri-arrow-left-s-line" />
+                      <span className="hidden sm:inline">上一页</span>
                     </button>
-                    <span className="px-2 text-neutral-500">
+                    <span className="px-1.5 sm:px-2 text-neutral-500 text-[11px] sm:text-xs whitespace-nowrap">
                       {currentPage} / {totalPages}
                     </span>
                     <button
                       type="button"
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage >= totalPages}
-                      className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme disabled:opacity-40 transition"
+                      className="px-2 sm:px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-0.5 text-xs"
+                      title="下一页"
                     >
-                      下一页
+                      <span className="hidden sm:inline">下一页</span>
+                      <i className="ri-arrow-right-s-line" />
                     </button>
                   </div>
                 </div>

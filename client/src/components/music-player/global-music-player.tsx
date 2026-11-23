@@ -172,6 +172,11 @@ export function GlobalMusicPlayer() {
     initY: 0,
   });
   const hasMovedRef = useRef(false);
+  const touchStartTimeRef = useRef(0);
+  const justExpandedAtRef = useRef(0);
+  // 交互因果锁：只有在卡片已展开后、用户在收起按钮上有意识地按下(pointerdown)或无障碍激活，才允许收起
+  // 彻底阻断任何由折叠微标轻触(tap)后延迟穿透的合成 Ghost Click
+  const collapseTriggerArmRef = useRef(false);
 
   // 视口边界保护与初始化 (卡片尺寸：宽 228px，高 54px)
   const getSafePosition = (x: number, y: number) => {
@@ -232,28 +237,36 @@ export function GlobalMusicPlayer() {
   }, [showPlaylistDrawer]);
 
   const handleCollapsedPointerDown = (e: React.PointerEvent) => {
+    touchStartTimeRef.current = Date.now();
+    const cx = Number.isFinite(e.clientX) ? e.clientX : 0;
+    const cy = Number.isFinite(e.clientY) ? e.clientY : 0;
     dragStartRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
+      startX: cx,
+      startY: cy,
       initX: position?.x ?? 20,
       initY: position?.y ?? (typeof window !== "undefined" ? window.innerHeight - 76 : 500),
     };
     hasMovedRef.current = false;
-    try {
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    } catch {}
+    // 不在按下瞬间强行捕获，避免破坏移动端原生轻触 (tap) 的识别流
   };
 
   const handleCollapsedPointerMove = (e: React.PointerEvent) => {
-    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-
-    const deltaX = e.clientX - dragStartRef.current.startX;
-    const deltaY = e.clientY - dragStartRef.current.startY;
+    const cx = Number.isFinite(e.clientX) ? e.clientX : 0;
+    const cy = Number.isFinite(e.clientY) ? e.clientY : 0;
+    const deltaX = cx - dragStartRef.current.startX;
+    const deltaY = cy - dragStartRef.current.startY;
     const dist = Math.hypot(deltaX, deltaY);
 
-    if (dist > 7) {
-      hasMovedRef.current = true;
-      setIsDragging(true);
+    // 触控设备增加防抖容差（10px），鼠标设为 5px
+    const threshold = e.pointerType === "touch" ? 10 : 5;
+    if (dist > threshold) {
+      if (!hasMovedRef.current) {
+        hasMovedRef.current = true;
+        setIsDragging(true);
+        try {
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        } catch {}
+      }
       const nextX = dragStartRef.current.initX + deltaX;
       const nextY = dragStartRef.current.initY + deltaY;
       setPosition(getSafePosition(nextX, nextY));
@@ -271,17 +284,45 @@ export function GlobalMusicPlayer() {
     setIsDragging(false);
 
     if (wasDragging) {
+      // 确认发生明显位移（拖拽），保存位置，绝不触发展开
       if (position) {
         try {
           localStorage.setItem("rin_music_player_pos", JSON.stringify(position));
         } catch {}
       }
     } else {
+      // 未发生位移（轻触点击），立即零延迟展开，并严密上锁收起触发器
+      collapseTriggerArmRef.current = false;
       setIsExpanded(true);
+      justExpandedAtRef.current = Date.now();
       try {
         localStorage.setItem("rin_music_expanded", "true");
       } catch {}
     }
+  };
+
+  const handleCollapsedPointerCancel = (e: React.PointerEvent) => {
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch {}
+    setIsDragging(false);
+    hasMovedRef.current = false;
+  };
+
+  const handleCollapsedClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (hasMovedRef.current) {
+      e.preventDefault();
+      return;
+    }
+    collapseTriggerArmRef.current = false;
+    setIsExpanded(true);
+    justExpandedAtRef.current = Date.now();
+    try {
+      localStorage.setItem("rin_music_expanded", "true");
+    } catch {}
   };
 
   // 展开态下的拖拽处理 (排除按钮、滑块、进度条)
@@ -357,6 +398,16 @@ export function GlobalMusicPlayer() {
       e.stopPropagation();
       e.preventDefault();
     }
+    // 物理级交互因果防御：必须是在展开状态下、针对收起按钮发起的真实交互，杜绝任何外部或历史穿透事件
+    const isKeyboardActivation = !!e && (e.detail === 0 || (e.nativeEvent as any)?.pointerType === "");
+    if (!collapseTriggerArmRef.current && !isKeyboardActivation) {
+      return;
+    }
+    // 第二重时间防抖冗余保障
+    if (Date.now() - justExpandedAtRef.current < 400) {
+      return;
+    }
+    collapseTriggerArmRef.current = false;
     setIsDragging(false);
     setIsExpanded(false);
     setShowPlaylistDrawer(false);
@@ -450,12 +501,15 @@ export function GlobalMusicPlayer() {
 
           <button
             type="button"
+            onClick={handleCollapsedClick}
             onPointerDown={handleCollapsedPointerDown}
             onPointerMove={handleCollapsedPointerMove}
             onPointerUp={handleCollapsedPointerUp}
+            onPointerCancel={handleCollapsedPointerCancel}
             onDoubleClick={handleResetPosition}
             aria-label="展开音乐播放器"
-            className={`relative flex h-10 w-10 items-center justify-center rounded-full bg-transparent border-0 p-0 shadow-none hover:scale-120 active:scale-95 transition-transform duration-200 cursor-grab active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-theme/60 outline-none select-none ${
+            style={{ touchAction: "none" }}
+            className={`relative flex h-10 w-10 items-center justify-center rounded-full bg-transparent border-0 p-0 shadow-none hover:scale-120 active:scale-95 transition-transform duration-200 cursor-grab active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-theme/60 outline-none select-none touch-none ${
               isDragging ? "scale-110" : ""
             }`}
             title="点击展开播放器 (按住可拖动，双击复位)"
@@ -487,6 +541,10 @@ export function GlobalMusicPlayer() {
           {/* 1. 左侧：54px × 54px 正方形封面 (点击秒速收缩为纯透明音符) */}
           <button
             type="button"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              collapseTriggerArmRef.current = true;
+            }}
             onClick={handleCollapse}
             aria-label="收起为微光音符图标"
             className="collapse-trigger relative h-[54px] w-[54px] shrink-0 bg-neutral-900 rounded-l-xl overflow-hidden cursor-pointer group/cover border-0 p-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-theme/60"
@@ -671,6 +729,10 @@ export function GlobalMusicPlayer() {
 
                 <button
                   type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    collapseTriggerArmRef.current = true;
+                  }}
                   onClick={handleCollapse}
                   aria-label="收起为微光徽标"
                   className="collapse-trigger p-0.5 text-neutral-400 hover:text-theme transition cursor-pointer focus-visible:ring-2 focus-visible:ring-theme/50 rounded-md"

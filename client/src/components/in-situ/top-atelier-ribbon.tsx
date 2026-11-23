@@ -102,7 +102,7 @@ function IconTag({ className = "h-3.5 w-3.5" }: { className?: string }) {
  * 🌸 画廊微光在场工坊微控制岛（In-Situ Live Studio）：
  * - 彻底消灭半屏抽屉，所见即管理；
  * - 访客可用：独立氛围开关（樱花 / 细雨 / 萤火）；
- * - 管理员可用：现场直调版式、主题色、调色盘、AI 导读现场总开关，以及全屏创作/图床/音廊/设置直达；
+ * - 管理员可用：现场直调版式、主题色、调色盘、AI 导读现场总开关，以及全屏创作/图床/音廊直达；
  * - 调色采用 rAF 硬件加速，零卡顿流转。
  */
 export function TopAtelierRibbon() {
@@ -435,16 +435,6 @@ export function TopAtelierRibbon() {
           >
             <IconTag />
             <span className="hidden md:inline">{t("hashtags", { defaultValue: "标签" })}</span>
-          </Link>
-
-          {/* 后台设置直达 */}
-          <Link
-            href="/admin/settings"
-            title={t("nav.settings_title", { defaultValue: "进入系统综合设置大盘" })}
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
-          >
-            <i className="ri-settings-3-line text-xs" />
-            <span className="hidden sm:inline">{t("settings.title", { defaultValue: "设置" })}</span>
           </Link>
         </>
       ) : null}

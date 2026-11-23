@@ -169,7 +169,7 @@ export function TimelinePage() {
             </Helmet>
 
             <Waiting for={!loading}>
-                <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-2 mb-16 ani-show select-none">
+                <main className="w-full max-w-5xl mx-auto px-1.5 sm:px-6 py-2 mb-16 ani-show select-none">
                     {/* Header */}
                     {siteConfig.pageHeaderMode === "hidden" ? null : siteConfig.pageHeaderMode === "banner" ? (
                         <div className="relative w-full rounded-3xl overflow-hidden mb-6 p-6 sm:p-7 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 shadow-xs flex items-center justify-between gap-4 ani-show">

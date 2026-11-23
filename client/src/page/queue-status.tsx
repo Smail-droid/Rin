@@ -1,15 +1,12 @@
 import { Modal, SettingsBadge, Spinner } from "@rin/ui";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link } from "wouter";
 import type { QueueStatusItem, QueueStatusResponse } from "../api/client";
 import { client } from "../app/runtime";
 import { useAlert, useConfirm } from "../components/dialog";
-import { ImageWithFallback } from "../components/image-with-fallback";
-import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
 import { useApiResource } from "../hooks/use-api-resource";
 import { useSiteConfig } from "../hooks/useSiteConfig";
-import { getAuthToken } from "../utils/auth";
 
 // 探针微波动 SVG 折线组件
 function ProbeSparkline({
@@ -89,38 +86,6 @@ export function QueueStatusPage() {
   // 状态详情清单弹窗 (Modal)
   const [statusModalType, setStatusModalType] = useState<"pending" | "processing" | "completed" | "failed" | null>(null);
 
-  // 大图预览状态
-  const [previewCover, setPreviewCover] = useState<{ title: string; url: string } | null>(null);
-
-  // 更换封面状态
-  const [coverTarget, setCoverTarget] = useState<QueueStatusItem | null>(null);
-  const [newCoverUrl, setNewCoverUrl] = useState<string>("");
-  const [isUploadingCover, setIsUploadingCover] = useState<boolean>(false);
-  const [isR2PickerOpen, setIsR2PickerOpen] = useState<boolean>(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // 文章独立访问权限配置状态
-  interface ArticlePermissionConfig {
-    mode: "public" | "password" | "token";
-    password?: string;
-    tip?: string;
-  }
-
-  const [permissionTarget, setPermissionTarget] = useState<QueueStatusItem | null>(null);
-  const [articlePermissions, setArticlePermissions] = useState<Record<number, ArticlePermissionConfig>>(() => {
-    try {
-      const saved = localStorage.getItem("rin_article_permissions");
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return {
-      20: { mode: "token", tip: "需要持有特约读者通行证方可阅读" },
-    };
-  });
-
-  const [currentPermMode, setCurrentPermMode] = useState<"public" | "password" | "token">("public");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [currentTip, setCurrentTip] = useState("");
-
   const { showAlert, AlertUI } = useAlert();
   const { showConfirm, ConfirmUI } = useConfirm();
 
@@ -134,7 +99,7 @@ export function QueueStatusPage() {
     }
   };
 
-  // 排序与过滤计算（置顶文章永远优先排在最前）
+  // 排序与过滤计算
   const filteredAndSortedItems = useMemo(() => {
     let list = items;
 
@@ -153,14 +118,8 @@ export function QueueStatusPage() {
       });
     }
 
-    // 排序：置顶文章 (top > 0) 固定优先，之后按选定的字段排序
+    // 排序
     return [...list].sort((a, b) => {
-      const topA = a.top ?? 0;
-      const topB = b.top ?? 0;
-      if (topA !== topB) {
-        return topB - topA;
-      }
-
       if (sortField === "id") {
         return sortOrder === "asc" ? a.id - b.id : b.id - a.id;
       }
@@ -232,28 +191,6 @@ export function QueueStatusPage() {
     setSelectedIds(next);
   };
 
-  // 置顶 / 取消置顶
-  const handleToggleTop = async (item: QueueStatusItem) => {
-    const nextTop = (item.top && item.top > 0) ? 0 : 1;
-    setActingId(item.id);
-    setActingType("top");
-    try {
-      const { error } = await client.feed.setTop(item.id, nextTop);
-      if (error) {
-        showAlert(typeof error === "string" ? error : (error.value as string) || "操作失败");
-      } else {
-        showAlert(nextTop > 0 ? `文章 #${item.id}「${item.title || ""}」已置顶！` : `文章 #${item.id} 已取消置顶！`, () => {
-          void reload();
-        });
-      }
-    } catch (e: any) {
-      showAlert(e.message || "操作失败");
-    } finally {
-      setActingId(null);
-      setActingType(null);
-    }
-  };
-
   // 取消/中止排队或处理中的任务
   const handleCancelTask = (item: QueueStatusItem) => {
     showConfirm(
@@ -298,23 +235,23 @@ export function QueueStatusPage() {
     }
   };
 
-  // 单项删除
-  const handleSingleDelete = (item: QueueStatusItem) => {
+  // 单项重置状态为空闲 (清空异常报错并移出队列监控，绝不影响文章内容)
+  const handleResetTaskStatus = (item: QueueStatusItem) => {
     showConfirm(
-      "删除任务确认",
-      `确定要从监控列表中移除文章 #${item.id}「${item.title || "无标题"}」的任务记录吗？`,
+      "重置任务状态确认",
+      `确定要将文章 #${item.id}「${item.title || "无标题"}」的任务调度状态重置为空闲吗？\n\n注意：此操作仅清空队列调度状态与错误标记，绝不会删除文章本身或正文内容。`,
       async () => {
         setActingId(item.id);
         setActingType("delete");
         try {
           const { error } = await client.config.deleteQueueTask(item.id);
           if (error) {
-            showAlert(typeof error === "string" ? error : (error.value as string) || "删除失败");
+            showAlert(typeof error === "string" ? error : (error.value as string) || "重置失败");
           } else {
-            showAlert("任务记录已清除！", () => void reload());
+            showAlert("任务调度状态已重置为空闲！", () => void reload());
           }
         } catch (e: any) {
-          showAlert(e.message || "删除失败");
+          showAlert(e.message || "重置失败");
         } finally {
           setActingId(null);
           setActingType(null);
@@ -341,12 +278,12 @@ export function QueueStatusPage() {
     }
   };
 
-  // 批量删除
-  const handleBatchDelete = () => {
+  // 批量重置状态为空闲
+  const handleBatchResetStatus = () => {
     if (selectedIds.size === 0) return;
     showConfirm(
-      "批量删除确认",
-      `确定要从队列监控中批量删除选中的 ${selectedIds.size} 个任务吗？`,
+      "批量重置确认",
+      `确定要将选中的 ${selectedIds.size} 项任务调度状态重置为空闲吗？\n\n注意：此操作仅清空后台队列调度记录，绝不会删除或修改文章正文。`,
       async () => {
         setBatchLoading(true);
         let count = 0;
@@ -355,7 +292,7 @@ export function QueueStatusPage() {
             const { error: err } = await client.config.deleteQueueTask(id);
             if (!err) count++;
           }
-          showAlert(`批量删除完成，已移除 ${count} 个任务！`);
+          showAlert(`批量重置完成，已重置 ${count} 项任务状态为空闲！`);
           setSelectedIds(new Set());
           void reload();
         } finally {
@@ -363,120 +300,6 @@ export function QueueStatusPage() {
         }
       }
     );
-  };
-
-  // 打开更换封面弹窗
-  const handleOpenCoverModal = (item: QueueStatusItem) => {
-    setCoverTarget(item);
-    setNewCoverUrl(item.coverImage || "");
-  };
-
-  // 本地图片上传
-  const handleCoverFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      showAlert("请选择图片格式文件");
-      return;
-    }
-
-    setIsUploadingCover(true);
-    try {
-      const { data: uploadRes, error } = await client.storage.upload(file);
-      if (error || !uploadRes?.url) {
-        showAlert(typeof error === "string" ? error : (error?.value as string) || "图片上传失败");
-      } else {
-        setNewCoverUrl(uploadRes.url);
-      }
-    } catch (err: any) {
-      showAlert(err.message || "图片上传异常");
-    } finally {
-      setIsUploadingCover(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  // 确认更换文章封面
-  const handleSaveCover = async () => {
-    if (!coverTarget) return;
-    const finalUrl = newCoverUrl.trim();
-    if (!finalUrl) {
-      showAlert("请输入封面图片链接或上传本地图片");
-      return;
-    }
-
-    try {
-      const { error } = await client.feed.setCover(coverTarget.id, finalUrl);
-      if (error) {
-        showAlert(typeof error === "string" ? error : (error.value as string) || "更换封面失败");
-      } else {
-        showAlert(`文章 #${coverTarget.id} 封面已成功更换！`, () => {
-          setCoverTarget(null);
-          void reload();
-        });
-      }
-    } catch (err: any) {
-      showAlert(err.message || "更新异常");
-    }
-  };
-
-  const openPermissionModal = async (item: QueueStatusItem) => {
-    setPermissionTarget(item);
-    setCurrentPermMode("public");
-    setCurrentPassword("");
-    setCurrentTip("");
-    try {
-      const token = getAuthToken() || "";
-      const res = await fetch(`/api/feed/permission/${item.id}`, {
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        credentials: "include",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCurrentPermMode(data.mode || "public");
-        setCurrentPassword(data.password || "");
-        setCurrentTip(data.tip || "");
-      }
-    } catch {}
-  };
-
-  // 保存访问控制权限至服务端 D1
-  const handleSavePermission = async () => {
-    if (!permissionTarget) return;
-    try {
-      const token = getAuthToken() || "";
-      const res = await fetch(`/api/feed/permission/${permissionTarget.id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          mode: currentPermMode,
-          password: currentPassword.trim(),
-          tip: currentTip.trim(),
-        }),
-      });
-      if (res.ok) {
-        const next = {
-          ...articlePermissions,
-          [permissionTarget.id]: {
-            mode: currentPermMode,
-            password: currentPassword.trim(),
-            tip: currentTip.trim(),
-          },
-        };
-        setArticlePermissions(next);
-        showAlert(`文章 #${permissionTarget.id}「${permissionTarget.title}」访问权限策略已更新并保存至云端！`);
-        setPermissionTarget(null);
-      } else {
-        showAlert("保存权限失败，请检查登录凭证");
-      }
-    } catch (err: any) {
-      showAlert(err.message || "更新权限异常");
-    }
   };
 
   // 详情弹窗中的任务列表
@@ -488,11 +311,28 @@ export function QueueStatusPage() {
   return (
     <div className="flex w-full flex-col gap-5 ani-show">
       <Helmet>
-        <title>{`文章管理与任务队列看板 - ${siteConfig.name}`}</title>
+        <title>{`异步流水线与 AI 队列调度看板 - ${siteConfig.name}`}</title>
       </Helmet>
 
       <AlertUI />
       <ConfirmUI />
+
+      {/* 职责隔离引导横幅：明确队列与概览的分工界限 */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 text-xs select-none">
+        <div className="flex items-center gap-2 t-secondary">
+          <i className="ri-information-line text-theme text-sm shrink-0" />
+          <span>
+            本看板专职监控 <strong>Cloudflare Queue 异步流水线</strong> 与 AI 导读调度状态。
+          </span>
+        </div>
+        <Link
+          href="/admin/dashboard"
+          className="inline-flex items-center gap-1 text-theme hover:underline font-bold shrink-0"
+        >
+          <span>管理文章发布、置顶与权限请前往「画廊概览中枢」</span>
+          <i className="ri-arrow-right-line" />
+        </Link>
+      </div>
 
       {/* ====================================================================
           1. 顶部 5 大探针任务看板卡片 (支持实时联动与查看详情清单)
@@ -741,18 +581,20 @@ export function QueueStatusPage() {
             </button>
             <button
               type="button"
-              onClick={handleBatchDelete}
+              onClick={handleBatchResetStatus}
               disabled={batchLoading}
-              className="px-3 py-1.5 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 transition disabled:opacity-50"
+              className="px-3 py-1.5 rounded-xl bg-neutral-600 hover:bg-neutral-700 text-white font-bold transition disabled:opacity-50 flex items-center gap-1"
+              title="仅重置任务调度状态为空闲，绝不删除文章"
             >
-              批量删除记录
+              <i className="ri-eraser-line text-xs" />
+              <span>批量重置为空闲</span>
             </button>
           </div>
         </div>
       )}
 
       {/* ====================================================================
-          3. 文章管理表格 (封面预览、排版优化、列顺序前移、表头排序、固定置顶)
+          3. 异步任务调度明细表 (专注于流水线状态、任务类型、报错排查与调度重试)
           ==================================================================== */}
       <div className="rounded-2xl border border-black/10 bg-w dark:border-white/10 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
@@ -769,14 +611,14 @@ export function QueueStatusPage() {
                   />
                 </th>
 
-                {/* 2. ID (支持表头点击升降序) */}
+                {/* 2. 任务/文章 ID */}
                 <th
                   onClick={() => handleToggleSort("id")}
                   className="py-3 px-3 w-20 cursor-pointer hover:text-theme transition"
                   title="点击切换 ID 升降序"
                 >
                   <div className="flex items-center gap-1">
-                    <span>ID</span>
+                    <span>任务ID</span>
                     {sortField === "id" ? (
                       <i className={sortOrder === "asc" ? "ri-arrow-up-s-line text-theme text-sm" : "ri-arrow-down-s-line text-theme text-sm"} />
                     ) : (
@@ -785,17 +627,26 @@ export function QueueStatusPage() {
                   </div>
                 </th>
 
-                {/* 3. 精简为「文章标题」（含封面缩略图与快捷更换） */}
-                <th className="py-3 px-3 min-w-[260px]">文章标题</th>
+                {/* 3. 关联文章 */}
+                <th className="py-3 px-3 min-w-[220px]">关联文章</th>
 
-                {/* 4. 「最后更新时间」列前移至标题之后 (支持表头点击升降序) */}
+                {/* 4. 任务类型 */}
+                <th className="py-3 px-3 w-32 text-center">任务流水线</th>
+
+                {/* 5. 调度状态 */}
+                <th className="py-3 px-3 w-28 text-center">调度状态</th>
+
+                {/* 6. 异常排查与诊断信息 */}
+                <th className="py-3 px-3 min-w-[200px]">诊断与调度日志</th>
+
+                {/* 7. 调度更新时间 */}
                 <th
                   onClick={() => handleToggleSort("updatedAt")}
-                  className="py-3 px-3 w-48 cursor-pointer hover:text-theme transition"
+                  className="py-3 px-3 w-40 cursor-pointer hover:text-theme transition"
                   title="点击切换最后更新时间升降序"
                 >
                   <div className="flex items-center gap-1">
-                    <span>最后更新时间</span>
+                    <span>调度时间</span>
                     {sortField === "updatedAt" ? (
                       <i className={sortOrder === "asc" ? "ri-arrow-up-s-line text-theme text-sm" : "ri-arrow-down-s-line text-theme text-sm"} />
                     ) : (
@@ -804,26 +655,23 @@ export function QueueStatusPage() {
                   </div>
                 </th>
 
-                {/* 5. 当前状态 */}
-                <th className="py-3 px-3 w-28 text-center">当前状态</th>
-
-                {/* 6. 操作栏 */}
-                <th className="py-3 px-3 w-48 text-right pr-5">操作</th>
+                {/* 8. 队列操作 */}
+                <th className="py-3 px-3 w-44 text-right pr-5">流水线操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5 dark:divide-white/5 t-primary">
               {loading && items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-neutral-400">
+                  <td colSpan={8} className="py-12 text-center text-neutral-400">
                     <Spinner label="正在读取数据..." />
-                    <span className="ml-2">正在从边缘加载文章队列…</span>
+                    <span className="ml-2">正在从边缘加载任务调度队列…</span>
                   </td>
                 </tr>
               ) : paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-neutral-400">
-                    <i className="ri-inbox-line text-2xl block mb-1 opacity-50" />
-                    <span>暂无符合条件的数据</span>
+                  <td colSpan={8} className="py-12 text-center text-neutral-400">
+                    <i className="ri-checkbox-circle-line text-2xl block mb-1 opacity-50 text-emerald-500" />
+                    <span>暂无符合条件的流水线任务</span>
                   </td>
                 </tr>
               ) : (
@@ -848,7 +696,7 @@ export function QueueStatusPage() {
                       } ${isSelected ? "bg-theme/[0.04]" : ""}`}
                     >
                       {/* Checkbox */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-3 px-4 text-center">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -857,98 +705,36 @@ export function QueueStatusPage() {
                         />
                       </td>
 
-                      {/* ID */}
-                      <td className="py-3.5 px-3 font-mono font-bold text-neutral-400">
+                      {/* 任务/文章 ID */}
+                      <td className="py-3 px-3 font-mono font-bold text-neutral-400">
                         #{item.id}
                       </td>
 
-                      {/* 文章标题（整合封面缩略图、大图预览、快捷更换与置顶标识） */}
-                      <td className="py-3.5 px-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          {/* 封面缩略图容器 (悬浮显示更换图标，点击预览大图) */}
-                          <div className="relative group/cover flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 overflow-hidden shadow-2xs">
-                            {item.coverImage ? (
-                              <ImageWithFallback
-                                src={item.coverImage}
-                                alt={item.title || "cover"}
-                                className="h-full w-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                                onClick={() => setPreviewCover({ title: item.title || `文章 #${item.id}`, url: item.coverImage! })}
-                              />
-                            ) : (
-                              <div
-                                onClick={() => handleOpenCoverModal(item)}
-                                className="h-full w-full flex flex-col items-center justify-center text-neutral-400 hover:text-theme cursor-pointer"
-                                title="点击设置封面"
-                              >
-                                <i className="ri-image-add-line text-base" />
-                              </div>
-                            )}
-
-                            {/* 悬浮遮罩：快捷更换封面入口 */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenCoverModal(item);
-                              }}
-                              className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover/cover:opacity-100 transition-opacity backdrop-blur-[1px]"
-                              title="快捷更换此文章封面"
-                            >
-                              <i className="ri-image-edit-line text-sm" />
-                            </button>
-                          </div>
-
-                          {/* 标题主体与徽标 (纯净无多余数字拼接) */}
-                          <div className="flex flex-col min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {/* 仅置顶文章展示「置顶」Badge，严格布尔三元运算，绝对无多余数字 0 或 1 */}
-                              {isTop ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold text-xs shrink-0 border border-amber-500/25 shadow-2xs">
-                                  <i className="ri-pushpin-2-fill text-xs" />
-                                  <span>置顶</span>
-                                </span>
-                              ) : null}
-
-                              {/* 标题文字字号调整为 14px~15px / text-[15px] font-medium，纯净展示标题 */}
-                              <Link
-                                href={`/writing?id=${item.id}`}
-                                className="text-[15px] font-medium tracking-tight truncate t-primary hover:text-theme cursor-pointer transition max-w-xs sm:max-w-md lg:max-w-lg"
-                                title="点击直接在撰写工坊编辑此文章"
-                              >
-                                {item.title ? String(item.title).trim() : "无标题文章"}
-                              </Link>
-                            </div>
-
-                            {/* 异常错误或访问权限策略提示 */}
-                            {item.aiSummaryError ? (
-                              <span className="text-[11px] text-rose-500 truncate mt-0.5" title={item.aiSummaryError || ""}>
-                                ⚠ 任务报错: {item.aiSummaryError}
-                              </span>
-                            ) : (
-                              <div className="flex items-center gap-1.5 mt-0.5 font-mono text-[10px]">
-                                {articlePermissions[item.id]?.mode === "password" && (
-                                  <span className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold">
-                                    🔐 独立密码访问
-                                  </span>
-                                )}
-                                {articlePermissions[item.id]?.mode === "token" && (
-                                  <span className="px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold">
-                                    🎟️ 通行证保护
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                      {/* 关联文章 */}
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Link
+                            href={`/feed/${item.id}`}
+                            target="_blank"
+                            className="text-xs font-semibold truncate t-primary hover:text-theme cursor-pointer transition max-w-xs sm:max-w-md"
+                            title="在新窗口查看前台文章"
+                          >
+                            {item.title ? String(item.title).trim() : "无标题文章"}
+                          </Link>
+                          <i className="ri-external-link-line text-neutral-400 text-[10px] shrink-0" />
                         </div>
                       </td>
 
-                      {/* 最后更新时间 (字号微调放大至 13px，文本对比度提升为中深色) */}
-                      <td className="py-3.5 px-3 font-mono text-[13px] text-neutral-600 dark:text-neutral-300 font-medium whitespace-nowrap">
-                        {new Date(item.updatedAt).toLocaleString()}
+                      {/* 任务流水线类型 */}
+                      <td className="py-3 px-3 text-center">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 font-mono text-[11px] text-neutral-600 dark:text-neutral-300">
+                          <i className="ri-sparkling-line text-theme" />
+                          <span>AI 导读摘要</span>
+                        </span>
                       </td>
 
-                      {/* 当前状态 */}
-                      <td className="py-3.5 px-3 text-center">
+                      {/* 调度状态 */}
+                      <td className="py-3 px-3 text-center">
                         <SettingsBadge tone={statusTone}>
                           {item.aiSummaryStatus === "completed"
                             ? "已完成"
@@ -962,46 +748,63 @@ export function QueueStatusPage() {
                         </SettingsBadge>
                       </td>
 
-                      {/* 操作栏 */}
-                      <td className="py-3.5 px-3 text-right pr-5 whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5">
-                          {/* 1. 置顶 / 取消置顶 */}
-                          <button
-                            type="button"
-                            onClick={() => handleToggleTop(item)}
-                            disabled={isActing && actingType === "top"}
-                            className={`inline-flex items-center gap-0.5 px-2 py-1 rounded-lg text-[11px] font-semibold transition ${
-                              isTop
-                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25"
-                                : "bg-black/5 hover:bg-black/10 dark:bg-white/5 text-neutral-600 dark:text-neutral-400 hover:text-theme"
-                            }`}
-                            title={isTop ? "点击取消置顶" : "点击置顶此文章"}
-                          >
-                            <i className={isTop ? "ri-pushpin-2-fill text-amber-500" : "ri-pushpin-2-line"} />
-                            <span>{isTop ? "取消置顶" : "置顶"}</span>
-                          </button>
+                      {/* 诊断与调度日志 */}
+                      <td className="py-3 px-3">
+                        {item.aiSummaryError ? (
+                          <div className="flex items-center gap-1.5 text-rose-500 font-mono text-[11px]" title={item.aiSummaryError}>
+                            <i className="ri-error-warning-line shrink-0" />
+                            <span className="truncate max-w-xs">{item.aiSummaryError}</span>
+                          </div>
+                        ) : item.aiSummaryStatus === "processing" ? (
+                          <div className="flex items-center gap-1.5 text-sky-500 font-mono text-[11px]">
+                            <i className="ri-loader-4-line animate-spin shrink-0" />
+                            <span>Worker 正在消费生成...</span>
+                          </div>
+                        ) : item.aiSummaryStatus === "pending" ? (
+                          <div className="flex items-center gap-1.5 text-amber-500 font-mono text-[11px]">
+                            <i className="ri-time-line shrink-0" />
+                            <span>队列等待消费...</span>
+                          </div>
+                        ) : item.aiSummaryStatus === "completed" ? (
+                          <span className="text-[11px] text-neutral-400 font-mono">
+                            摘要生成完成 · 已同步前台
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-neutral-400 font-mono">
+                            就绪空闲
+                          </span>
+                        )}
+                      </td>
 
-                          {/* 2. 针对排队与正在处理任务：取消任务 / 中止 */}
+                      {/* 调度时间 */}
+                      <td className="py-3 px-3 font-mono text-xs text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+                        {new Date(item.updatedAt).toLocaleString()}
+                      </td>
+
+                      {/* 流水线操作 */}
+                      <td className="py-3 px-3 text-right pr-5 whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5">
+                          {/* 1. 排队中 / 正在处理：中止 */}
                           {(item.aiSummaryStatus === "pending" || item.aiSummaryStatus === "processing") && (
                             <button
                               type="button"
                               onClick={() => handleCancelTask(item)}
                               disabled={isActing && actingType === "cancel"}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white font-semibold text-[11px] transition"
-                              title="中止此任务并移出排队队列"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white font-semibold text-[11px] transition cursor-pointer"
+                              title="中止此任务并移出队列"
                             >
                               <i className="ri-stop-circle-line" />
                               <span>中止</span>
                             </button>
                           )}
 
-                          {/* 3. 针对失败任务：优化「重试」入口；已完成任务：重新生成 */}
+                          {/* 2. 失败任务：重试；已完成任务：重新生成 */}
                           {(item.aiSummaryStatus === "failed" || item.aiSummaryStatus === "completed") && (
                             <button
                               type="button"
                               onClick={() => handleSingleRetry(item)}
                               disabled={isActing || batchLoading}
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold transition text-[11px] ${
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold transition text-[11px] cursor-pointer ${
                                 item.aiSummaryStatus === "failed"
                                   ? "bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white"
                                   : "bg-theme/10 hover:bg-theme/20 text-theme"
@@ -1013,40 +816,15 @@ export function QueueStatusPage() {
                             </button>
                           )}
 
-                          {/* 4. 撰写编辑 */}
-                          <Link
-                            href={`/writing?id=${item.id}`}
-                            className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-200 font-semibold transition text-[11px]"
-                            title="在撰写工坊直接修改与编辑此文章"
-                          >
-                            <i className="ri-edit-line text-xs" />
-                            <span>编辑</span>
-                          </Link>
-
-                          {/* 5. 访问控制 */}
+                          {/* 3. 清理状态并重置为空闲 (明确非删除文章) */}
                           <button
                             type="button"
-                            onClick={() => openPermissionModal(item)}
-                            className={`inline-flex items-center gap-0.5 px-2 py-1 rounded-lg font-semibold transition text-[11px] cursor-pointer ${
-                              articlePermissions[item.id]?.mode && articlePermissions[item.id].mode !== "public"
-                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold"
-                                : "bg-black/5 hover:bg-black/10 dark:bg-white/5 text-neutral-600 dark:text-neutral-300"
-                            }`}
-                            title="配置此文章访问限制"
-                          >
-                            <i className="ri-shield-keyhole-line text-xs" />
-                            <span>{articlePermissions[item.id]?.mode && articlePermissions[item.id].mode !== "public" ? "已设限" : "权限"}</span>
-                          </button>
-
-                          {/* 6. 删除记录 */}
-                          <button
-                            type="button"
-                            onClick={() => handleSingleDelete(item)}
+                            onClick={() => handleResetTaskStatus(item)}
                             disabled={isActing || batchLoading}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition disabled:opacity-50"
-                            title="删除此任务记录"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition disabled:opacity-50 cursor-pointer"
+                            title="重置此任务调度状态为空闲 (不影响文章正文)"
                           >
-                            <i className="ri-delete-bin-line text-xs" />
+                            <i className="ri-eraser-line text-xs" />
                           </button>
                         </div>
                       </td>
@@ -1273,278 +1051,6 @@ export function QueueStatusPage() {
         </Modal>
       )}
 
-      {/* 4.2 封面大图预览 Modal */}
-      {previewCover && (
-        <Modal
-          isOpen={!!previewCover}
-          onRequestClose={() => setPreviewCover(null)}
-          contentLabel="封面大图预览"
-          panelClassName="p-3 sm:p-4 max-w-[94vw] sm:max-w-2xl w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl"
-        >
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
-              <h4 className="font-bold text-xs t-primary truncate">{previewCover.title}</h4>
-              <button
-                onClick={() => setPreviewCover(null)}
-                className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
-              >
-                <i className="ri-close-line text-lg" />
-              </button>
-            </div>
-            <div className="relative max-h-[70vh] flex items-center justify-center rounded-xl overflow-hidden bg-black/5 dark:bg-white/5 p-1">
-              <img
-                src={previewCover.url}
-                alt={previewCover.title}
-                className="max-h-[65vh] w-auto object-contain rounded-lg shadow-lg"
-              />
-            </div>
-            <div className="flex items-center justify-between text-[11px] text-neutral-400 font-mono">
-              <span className="truncate max-w-md">{previewCover.url}</span>
-              <a
-                href={previewCover.url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-theme hover:underline flex items-center gap-1 shrink-0 ml-2"
-              >
-                <span>原图外链</span>
-                <i className="ri-external-link-line" />
-              </a>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* 4.3 快捷更换封面 Modal */}
-      {coverTarget && (
-        <Modal
-          isOpen={!!coverTarget}
-          onRequestClose={() => !isUploadingCover && setCoverTarget(null)}
-          contentLabel="快捷更换文章封面"
-          panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-md w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl"
-        >
-          <div className="flex flex-col gap-4 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
-              <div>
-                <h3 className="text-sm font-bold t-primary">快捷更换文章封面</h3>
-                <p className="text-[11px] text-neutral-400 truncate max-w-xs mt-0.5">
-                  #{coverTarget.id} {coverTarget.title || "无标题文章"}
-                </p>
-              </div>
-              <button
-                onClick={() => setCoverTarget(null)}
-                disabled={isUploadingCover}
-                className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
-              >
-                <i className="ri-close-line text-lg" />
-              </button>
-            </div>
-
-            {/* 封面预览区 */}
-            <div className="flex flex-col items-center justify-center p-3 rounded-xl border border-dashed border-black/15 dark:border-white/15 bg-black/[0.02] dark:bg-white/[0.02]">
-              {newCoverUrl.trim() ? (
-                <div className="relative h-36 w-full rounded-lg overflow-hidden group/img">
-                  <img
-                    src={newCoverUrl}
-                    alt="cover preview"
-                    className="h-full w-full object-cover rounded-lg shadow-inner"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">封面实时预览</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-8 flex flex-col items-center justify-center text-neutral-400">
-                  <i className="ri-image-line text-3xl mb-1 opacity-40" />
-                  <span>暂无封面，请输入链接或选择本地图片</span>
-                </div>
-              )}
-            </div>
-
-            {/* 图片链接输入 */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
-                图片网络 URL
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newCoverUrl}
-                  onChange={(e) => setNewCoverUrl(e.target.value)}
-                  placeholder="https://example.com/cover.jpg"
-                  className="flex-1 rounded-xl border border-black/10 bg-transparent px-3 py-1.5 text-xs outline-none focus:border-theme dark:border-white/10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsR2PickerOpen(true)}
-                  disabled={isUploadingCover}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-theme/10 hover:bg-theme/20 text-theme text-xs font-semibold shrink-0 transition"
-                  title="从 Cloudflare R2 存储桶媒体相册中点选已有图片"
-                >
-                  <i className="ri-folder-image-line" />
-                  <span>R2 相册</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingCover}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/5 text-xs font-semibold shrink-0 transition"
-                >
-                  {isUploadingCover ? (
-                    <>
-                      <i className="ri-loader-4-line animate-spin" />
-                      <span>上传中...</span>
-                    </>
-                  ) : (
-                    <>
-                      <i className="ri-upload-cloud-line" />
-                      <span>本地图床</span>
-                    </>
-                  )}
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCoverFileSelected}
-                  className="hidden"
-                />
-              </div>
-            </div>
-
-            {/* 底部按钮 */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/5">
-              <button
-                type="button"
-                onClick={() => setCoverTarget(null)}
-                disabled={isUploadingCover}
-                className="px-3.5 py-1.5 rounded-xl text-neutral-500 hover:bg-black/5 font-semibold"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveCover}
-                disabled={isUploadingCover || !newCoverUrl.trim()}
-                className="px-5 py-1.5 rounded-xl bg-theme text-white font-bold shadow-xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition"
-              >
-                更新封面
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* R2 存储桶图片选择器 */}
-      <R2MediaPickerModal
-        isOpen={isR2PickerOpen}
-        onClose={() => setIsR2PickerOpen(false)}
-        onSelect={(selectedUrl) => setNewCoverUrl(selectedUrl)}
-        title="选择 R2 存储桶封面图片"
-      />
-
-      {/* 4.4 文章访问控制与密码/口令配置弹窗 */}
-      {permissionTarget && (
-        <Modal
-          isOpen={!!permissionTarget}
-          onRequestClose={() => setPermissionTarget(null)}
-          contentLabel={`文章 #${permissionTarget.id} 访问权限配置`}
-          panelClassName="p-4 sm:p-6 max-w-[94vw] sm:max-w-lg w-full"
-        >
-          <div className="flex flex-col gap-4 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
-              <div>
-                <h3 className="text-sm font-bold t-primary flex items-center gap-2">
-                  <span>文章访问权限与场景锁定:</span>
-                  <span className="text-theme font-mono">#{permissionTarget.id}</span>
-                </h3>
-                <p className="text-[11px] text-neutral-400 mt-0.5 truncate max-w-sm">
-                  {permissionTarget.title || "无标题文章"}
-                </p>
-              </div>
-            </div>
-
-            {/* 三大约束模式选择卡片 */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-theme">选择访问保护场景</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {[
-                  { id: "public", label: "公开访问", desc: "所有人均可自由浏览" },
-                  { id: "password", label: "独立密码锁", desc: "输入指定密码解锁" },
-                  { id: "token", label: "口令通行证", desc: "输入通行密钥验证" },
-                ].map((mode) => (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    onClick={() => setCurrentPermMode(mode.id as any)}
-                    className={`p-3 rounded-xl border text-left flex flex-col justify-between transition select-none ${
-                      currentPermMode === mode.id
-                        ? "border-theme bg-theme/10 ring-1 ring-theme/30"
-                        : "border-black/10 dark:border-white/10 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
-                    }`}
-                  >
-                    <span className={`font-bold text-xs ${currentPermMode === mode.id ? "text-theme" : "t-primary"}`}>
-                      {mode.label}
-                    </span>
-                    <span className="text-[10px] text-neutral-400 mt-1">
-                      {mode.desc}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 密码模式下的专属配置 */}
-            {currentPermMode === "password" && (
-              <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 ani-show">
-                <label className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
-                  设置该文章的查看密码
-                </label>
-                <input
-                  type="text"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="输入解锁密码（如 80hou-vip）..."
-                  className="rounded-lg border border-black/10 bg-w px-3 py-1.5 text-xs outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-800"
-                />
-              </div>
-            )}
-
-            {/* 提示语说明 */}
-            {currentPermMode !== "public" && (
-              <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 ani-show">
-                <label className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
-                  前台读者未解锁时的提示说明
-                </label>
-                <input
-                  type="text"
-                  value={currentTip}
-                  onChange={(e) => setCurrentTip(e.target.value)}
-                  placeholder="如：本文为特约架构文档，需凭口令或联系博主获取凭证查阅。"
-                  className="rounded-lg border border-black/10 bg-w px-3 py-1.5 text-xs outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-800"
-                />
-              </div>
-            )}
-
-            {/* 底部确认操作 */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/5">
-              <button
-                type="button"
-                onClick={() => setPermissionTarget(null)}
-                className="px-3.5 py-1.5 rounded-xl border border-black/10 text-neutral-600 dark:border-white/10 dark:text-neutral-300 font-semibold"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={handleSavePermission}
-                className="px-4 py-1.5 rounded-xl bg-theme text-white font-bold shadow-xs hover:bg-theme-hover transition"
-              >
-                保存策略
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }

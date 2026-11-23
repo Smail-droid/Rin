@@ -92,14 +92,14 @@ export function Header({ children }: { children?: React.ReactNode }) {
               }`
         } z-30 w-full border-b border-theme/15 dark:border-white/[0.08] bg-white/75 dark:bg-[#121622]/75 backdrop-blur-xl shadow-[0_2px_16px_rgba(var(--theme-rgb),0.05)] select-none`}
       >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+        <div className="max-w-6xl mx-auto px-2.5 sm:px-6 h-13 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-6 min-w-0">
             <BrandLink
               siteConfig={siteConfig}
               compact
-              className="flex items-center gap-2.5 group shrink-0"
+              className="flex items-center gap-2 group shrink-0 min-w-0"
               avatarClassName="h-7 w-7 sm:h-8 sm:w-8 rounded-xl shadow-2xs shrink-0 group-hover:scale-105 transition-transform"
-              titleClassName="text-base sm:text-lg font-bold tracking-tight text-neutral-800 dark:text-neutral-100 group-hover:text-theme transition-colors"
+              titleClassName="text-sm sm:text-lg font-bold tracking-tight text-neutral-800 dark:text-neutral-100 group-hover:text-theme transition-colors truncate max-w-[120px] sm:max-w-none"
               showDescription={false}
             />
             <span className="hidden md:inline-block h-1.5 w-1.5 rounded-full bg-theme/30 shrink-0" />
@@ -113,11 +113,18 @@ export function Header({ children }: { children?: React.ReactNode }) {
               />
             </nav>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {children}
-            <HeaderActions profile={profile} plain className="flex items-center gap-1.5" />
+            <HeaderActions profile={profile} plain className="flex items-center gap-1 sm:gap-1.5" />
           </div>
         </div>
+        {/* 移动端专属：横向轻滑全量导航条 (零点击一滑直达文章、日常、长河、标签、友链、关于) */}
+        <nav className="flex md:hidden items-center overflow-x-auto scrollbar-none px-2.5 py-1 gap-1 border-t border-theme/10 dark:border-white/5 bg-white/70 dark:bg-[#121622]/70 backdrop-blur-md">
+          <NavBar
+            menu={false}
+            itemClassName="px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap shrink-0 rounded-full text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-theme/10 transition-colors"
+          />
+        </nav>
       </header>
     );
   }
@@ -135,15 +142,15 @@ export function Header({ children }: { children?: React.ReactNode }) {
               }`
         } z-30 w-full bg-transparent border-0 shadow-none select-none pt-2 sm:pt-3`}
       >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3">
+        <div className="max-w-6xl mx-auto px-2.5 sm:px-6 flex items-center justify-between gap-2 sm:gap-3">
           {/* 左岛：Logo 与站点品牌 */}
-          <div className="flex items-center px-3.5 py-1.5 rounded-full border border-theme/20 dark:border-white/10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl shadow-[0_4px_20px_-4px_rgba(var(--theme-rgb),0.12)] shrink-0">
+          <div className="flex items-center px-2.5 sm:px-3.5 py-1.5 rounded-full border border-theme/20 dark:border-white/10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl shadow-[0_4px_20px_-4px_rgba(var(--theme-rgb),0.12)] shrink-0 min-w-0">
             <BrandLink
               siteConfig={siteConfig}
               compact
-              className="flex items-center gap-2.5 shrink-0"
-              avatarClassName="h-7 w-7 rounded-xl shadow-xs shrink-0"
-              titleClassName="text-sm sm:text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100"
+              className="flex items-center gap-2 shrink-0"
+              avatarClassName="h-6 w-6 sm:h-7 sm:w-7 rounded-xl shadow-xs shrink-0"
+              titleClassName="text-xs sm:text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100 truncate max-w-[100px] sm:max-w-none"
               showDescription={false}
             />
           </div>
@@ -162,10 +169,20 @@ export function Header({ children }: { children?: React.ReactNode }) {
           </div>
 
           {/* 右岛：功能按钮与控制微胶囊 */}
-          <div className="flex items-center px-2.5 py-1.5 rounded-full border border-theme/20 dark:border-white/10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl shadow-[0_4px_20px_-4px_rgba(var(--theme-rgb),0.12)] gap-1.5 shrink-0">
+          <div className="flex items-center px-1.5 sm:px-2.5 py-1.5 rounded-full border border-theme/20 dark:border-white/10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl shadow-[0_4px_20px_-4px_rgba(var(--theme-rgb),0.12)] gap-1 sm:gap-1.5 shrink-0">
             {children}
-            <HeaderActions profile={profile} plain className="flex items-center gap-1.5" />
+            <HeaderActions profile={profile} plain className="flex items-center gap-1 sm:gap-1.5" />
           </div>
+        </div>
+
+        {/* 移动端专属：悬浮微光手账导航核心 */}
+        <div className="flex md:hidden max-w-6xl mx-auto px-2 pt-1.5 pb-0.5">
+          <nav className="w-full flex items-center overflow-x-auto scrollbar-none rounded-full border border-theme/20 dark:border-white/15 bg-white/85 dark:bg-neutral-900/85 backdrop-blur-xl px-2.5 py-1 shadow-[0_4px_20px_-4px_rgba(var(--theme-rgb),0.15)] gap-1">
+            <NavBar
+              menu={false}
+              itemClassName="px-2.5 py-0.5 rounded-full text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-theme/10 hover:text-theme transition-all whitespace-nowrap shrink-0"
+            />
+          </nav>
         </div>
       </header>
     );
@@ -183,14 +200,14 @@ export function Header({ children }: { children?: React.ReactNode }) {
             }`
       } z-30 w-full bg-transparent border-0 shadow-none select-none`}
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 sm:h-18 flex items-center justify-between gap-4">
+      <div className="max-w-6xl mx-auto px-2.5 sm:px-6 h-14 sm:h-18 flex items-center justify-between gap-2 sm:gap-4">
         {/* 左侧：Logo 与博客名称 */}
         <BrandLink
           siteConfig={siteConfig}
           compact
-          className="flex items-center gap-2.5 sm:gap-3 shrink-0"
-          avatarClassName="h-8 w-8 sm:h-9 sm:w-9 rounded-2xl shadow-xs shrink-0"
-          titleClassName="text-base sm:text-lg font-bold tracking-tight text-neutral-900 dark:text-neutral-100"
+          className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0"
+          avatarClassName="h-7 w-7 sm:h-9 sm:w-9 rounded-xl sm:rounded-2xl shadow-xs shrink-0"
+          titleClassName="text-sm sm:text-lg font-bold tracking-tight text-neutral-900 dark:text-neutral-100 truncate max-w-[120px] sm:max-w-none"
           showDescription={false}
         />
 
@@ -208,11 +225,19 @@ export function Header({ children }: { children?: React.ReactNode }) {
         </div>
 
         {/* 右侧：动作与工具 (搜索、多语言、用户头像) */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {children}
-          <HeaderActions profile={profile} plain className="flex items-center gap-2" />
+          <HeaderActions profile={profile} plain className="flex items-center gap-1 sm:gap-2" />
         </div>
       </div>
+
+      {/* 移动端专属：去容器化自然横向轻滑导航条 */}
+      <nav className="flex md:hidden items-center overflow-x-auto scrollbar-none px-2.5 py-1 gap-1 border-t border-black/5 dark:border-white/5 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-md">
+        <NavBar
+          menu={false}
+          itemClassName="px-2 py-0.5 text-xs font-medium tracking-wide whitespace-nowrap shrink-0 transition-colors"
+        />
+      </nav>
     </header>
   );
 }

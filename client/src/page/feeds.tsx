@@ -2150,15 +2150,14 @@ export function FeedsPage() {
 
             <main
                 style={{
-                    paddingLeft: `${paddingSide}px`,
-                    paddingRight: `${paddingSide}px`,
+                    ["--gallery-padding" as any]: `${paddingSide}px`,
                     maxWidth: getMainMaxWidth(),
                 }}
-                className="w-full mx-auto py-4 sm:py-6 mb-16 transition-all duration-300"
+                className="w-full mx-auto px-1 sm:px-[var(--gallery-padding)] py-3 sm:py-6 mb-16 transition-all duration-300"
             >
                 {/* Atelier Mood Bar & Page Header */}
                 {siteConfig.pageHeaderMode === "banner" ? (
-                    <div className="relative w-full rounded-3xl overflow-hidden mb-6 p-6 sm:p-8 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 dark:via-purple-900/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ani-show">
+                    <div className="relative w-full rounded-2xl sm:rounded-3xl overflow-hidden mb-4 sm:mb-6 p-4 sm:p-8 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 dark:via-purple-900/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ani-show">
                         <div className="flex items-center gap-4">
                             {siteConfig.avatar && (
                                 <img
@@ -2991,12 +2990,22 @@ export function FeedsPage() {
                                     <p className="text-[10px] sm:text-[11px] text-neutral-400 truncate hidden sm:block">支持输入数字直接跳位排序、展示上限与色彩方案联动</p>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => setIsTagSettingsOpen(false)}
-                                className="h-7 w-7 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 transition flex items-center justify-center cursor-pointer shrink-0"
-                            >
-                                <i className="ri-close-line text-lg font-bold" />
-                            </button>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsTagSettingsOpen(false)}
+                                    className="sm:hidden px-3 py-1 rounded-lg bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 transition"
+                                >
+                                    完成
+                                </button>
+                                <button
+                                    onClick={() => setIsTagSettingsOpen(false)}
+                                    className="h-7 w-7 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 transition flex items-center justify-center cursor-pointer"
+                                    title="关闭"
+                                >
+                                    <i className="ri-close-line text-lg font-bold" />
+                                </button>
+                            </div>
                         </div>
 
                         {/* 顶部总开关与预设控制区 */}
@@ -3136,7 +3145,7 @@ export function FeedsPage() {
                         </div>
 
                         {/* 高密超级表格 (自适应纵向撑满，移动端 8~10 行尽览无阻) */}
-                        <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10 bg-w flex-1 min-h-[220px] overflow-y-auto scrollbar-thin">
+                        <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10 bg-w flex-1 min-h-[140px] sm:min-h-[220px] overflow-y-auto scrollbar-thin">
                             <table className="w-full text-left text-xs border-collapse min-w-full sm:min-w-[480px]">
                                 <thead>
                                     <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-500 dark:text-neutral-400 font-mono text-[11px] sm:text-xs sticky top-0 bg-white dark:bg-neutral-900 z-10">
@@ -3327,7 +3336,7 @@ export function FeedsPage() {
                             </table>
                         </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-black/5 dark:border-white/5">
+                        <div className="flex items-center justify-between pt-2.5 pb-1 border-t border-black/5 dark:border-white/5 shrink-0 bg-white/95 dark:bg-neutral-900/95 sticky bottom-0 z-10">
                             <button
                                 type="button"
                                 onClick={handleResetTagsConfig}
@@ -3338,7 +3347,7 @@ export function FeedsPage() {
                             <button
                                 type="button"
                                 onClick={() => setIsTagSettingsOpen(false)}
-                                className="px-5 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover transition"
+                                className="px-5 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-xs hover:bg-theme-hover active:scale-95 transition cursor-pointer"
                             >
                                 完成
                             </button>

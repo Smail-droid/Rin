@@ -391,12 +391,18 @@ a.toc-link {
 .is-active-link::before {
   @apply bg-theme;
 }
-/* 覆盖默认容器宽度，使宽屏能够平铺展开 4 列卡片 */
+/* 覆盖默认容器宽度，使宽屏能够平铺展开 4 列卡片，移动端紧凑贴合撑满 */
 .wauto {
   width: 100% !important;
   max-width: 1440px !important;
-  padding-left: 1rem;
-  padding-right: 1rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+@media (min-width: 640px) {
+  .wauto {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }
 
 /* Surface & Clean Glassmorphism (隔离表单输入控件，杜绝输入框出现发虚厚重黑影) */

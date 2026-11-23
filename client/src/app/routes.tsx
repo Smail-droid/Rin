@@ -202,11 +202,11 @@ export function AppRoutes() {
         <Redirect to="/gallery" />
       </AdminRoute>
 
-      <AppRoute path="/gallery" paddingClassName="mx-3 sm:mx-6">
+      <AppRoute path="/gallery" paddingClassName="px-1.5 sm:px-4 md:px-6">
         <GalleryPageWithAuth />
       </AppRoute>
 
-      <AppRoute path="/music" paddingClassName="mx-3 sm:mx-6">
+      <AppRoute path="/music" paddingClassName="px-1.5 sm:px-4 md:px-6">
         <AdminMusicPage />
       </AppRoute>
 
@@ -366,7 +366,7 @@ function TocRoute({
   const { TOC, cleanup } = useTableOfContents(".toc-content");
 
   return (
-    <AppRoute path={path} headerComponent={TOCHeader({ TOC })} paddingClassName="mx-4">
+    <AppRoute path={path} headerComponent={TOCHeader({ TOC })} paddingClassName="px-1 sm:px-4">
       {(params) => children(params, TOC, cleanup)}
     </AppRoute>
   );

@@ -1002,7 +1002,7 @@ export function FriendsPage() {
     };
 
     return (
-        <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="min-h-screen py-6 sm:py-10 px-1.5 sm:px-6 lg:px-8 max-w-7xl mx-auto">
             <Helmet>
                 <title>{`${t("friends.starry_title", { defaultValue: "星标友链" })} - ${siteConfig.name}`}</title>
             </Helmet>

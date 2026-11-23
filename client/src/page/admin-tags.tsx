@@ -774,43 +774,47 @@ export function AdminTagsPage() {
         {/* ====================================================================
             3. 紧凑底部数据分页栏 (共X条 / 20条/页 / 数字翻页器)
             ==================================================================== */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] text-xs select-none">
-          {/* 左侧总数统计 */}
-          <div className="text-neutral-500 dark:text-neutral-400 font-mono">
-            共 <span className="font-bold text-theme">{totalItems}</span> 条记录
+        <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2.5 border-t border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] text-xs select-none">
+          {/* 左侧总数统计与每页选择 */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-neutral-500 dark:text-neutral-400 font-mono hidden md:inline">
+              共 <span className="font-bold text-theme">{totalItems}</span> 条记录
+            </span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number.parseInt(e.target.value, 10));
+                setCurrentPage(1);
+              }}
+              className="rounded-lg border border-black/10 bg-w px-1.5 sm:px-2 py-1 text-xs t-primary outline-none dark:border-white/10 dark:bg-neutral-900 cursor-pointer"
+            >
+              <option value={10}>10 条/页</option>
+              <option value={20}>20 条/页</option>
+              <option value={50}>50 条/页</option>
+              <option value={100}>100 条/页</option>
+            </select>
           </div>
 
-          {/* 右侧密度与翻页器 */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* 每页条数下拉选择 */}
-            <div className="flex items-center gap-1">
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number.parseInt(e.target.value, 10));
-                  setCurrentPage(1);
-                }}
-                className="rounded-lg border border-black/10 bg-w px-2 py-1 text-xs t-primary outline-none dark:border-white/10 dark:bg-neutral-900 cursor-pointer"
-              >
-                <option value={10}>10 条/页</option>
-                <option value={20}>20 条/页</option>
-                <option value={50}>50 条/页</option>
-                <option value={100}>100 条/页</option>
-              </select>
-            </div>
+          {/* 右侧翻页器：移动端紧凑单行，桌面端展开数字按钮 */}
+          <div className="flex items-center gap-1 shrink-0 font-mono">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="flex h-7 px-2 items-center justify-center rounded-lg border border-black/10 hover:border-theme text-neutral-600 dark:text-neutral-300 dark:border-white/10 disabled:opacity-30 disabled:pointer-events-none transition gap-0.5"
+              title="上一页"
+            >
+              <i className="ri-arrow-left-s-line" />
+              <span className="hidden sm:inline text-xs">上一页</span>
+            </button>
 
-            {/* 数字翻页按钮组 */}
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage <= 1}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-black/10 hover:border-theme text-neutral-600 dark:text-neutral-300 dark:border-white/10 disabled:opacity-40 transition"
-                title="上一页"
-              >
-                <i className="ri-arrow-left-s-line" />
-              </button>
+            {/* 移动端紧凑文字页码 */}
+            <span className="sm:hidden px-1.5 text-[11px] text-neutral-500 whitespace-nowrap">
+              {currentPage} / {totalPages}
+            </span>
 
+            {/* 桌面端数字按钮 */}
+            <div className="hidden sm:flex items-center gap-1">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
                 if (
                   page === 1 ||
@@ -841,17 +845,18 @@ export function AdminTagsPage() {
                 }
                 return null;
               })}
-
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage >= totalPages}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-black/10 hover:border-theme text-neutral-600 dark:text-neutral-300 dark:border-white/10 disabled:opacity-40 transition"
-                title="下一页"
-              >
-                <i className="ri-arrow-right-s-line" />
-              </button>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="flex h-7 px-2 items-center justify-center rounded-lg border border-black/10 hover:border-theme text-neutral-600 dark:text-neutral-300 dark:border-white/10 disabled:opacity-30 disabled:pointer-events-none transition gap-0.5"
+              title="下一页"
+            >
+              <span className="hidden sm:inline text-xs">下一页</span>
+              <i className="ri-arrow-right-s-line" />
+            </button>
           </div>
         </div>
       </div>
