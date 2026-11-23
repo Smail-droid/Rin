@@ -304,10 +304,10 @@ export function TopAtelierRibbon() {
                 ? t("ambience.close_mode", { mode: item.label, defaultValue: `关闭${item.label}氛围` })
                 : t("ambience.open_mode", { mode: item.label, defaultValue: `开启${item.label}氛围` })
             }
-            className={`inline-flex items-center gap-1 py-0.5 text-xs transition-all duration-200 cursor-pointer ${
+            className={`inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs transition-all duration-200 cursor-pointer ${
               active
-                ? "text-theme font-semibold glow-theme"
-                : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                ? "text-theme font-semibold glow-theme bg-theme/10 dark:bg-theme/15 border border-theme/25 shadow-2xs"
+                : "text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30"
             }`}
           >
             {item.icon}
@@ -319,14 +319,14 @@ export function TopAtelierRibbon() {
       {/* 2. 管理员专属：现场直调与全屏直达 */}
       {isAdmin ? (
         <>
-          <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/10 rounded-full" aria-hidden="true" />
+          <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/15 rounded-full" aria-hidden="true" />
 
           {/* 版式一键即切 */}
           <button
             type="button"
             onClick={handleCycleVariant}
             title={t("variant.switch_title", { current: currentVariantLabel, defaultValue: `切换文章版式（当前：${currentVariantLabel}）` })}
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme transition-all duration-200 cursor-pointer font-medium"
+            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer font-medium"
           >
             <IconLayout />
             <span>{currentVariantLabel}</span>
@@ -337,7 +337,7 @@ export function TopAtelierRibbon() {
             type="button"
             onClick={handleCyclePalette}
             title={t("palette.switch_title", { current: currentPaletteName, defaultValue: `切换画廊主题色（当前：${currentPaletteName}）` })}
-            className="inline-flex items-center gap-1.5 py-0.5 text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme transition-all duration-200 cursor-pointer font-medium"
+            className="inline-flex items-center gap-1.5 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer font-medium"
           >
             <span
               className="h-2.5 w-2.5 rounded-full shrink-0 ring-1 ring-black/10 dark:ring-white/15"
@@ -350,7 +350,7 @@ export function TopAtelierRibbon() {
           {/* 自由彩虹调色 */}
           <label
             title={t("palette.custom_title", { defaultValue: "自由取色实时调控" })}
-            className="relative inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
+            className="relative inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer"
           >
             <span
               className="h-2.5 w-2.5 rounded-full bg-gradient-to-tr from-rose-500 via-amber-400 via-emerald-400 to-sky-500 shrink-0"
@@ -381,10 +381,10 @@ export function TopAtelierRibbon() {
                 ? t("ai_summary.disable_hint", { defaultValue: "点击即刻关闭全站文章导读" })
                 : t("ai_summary.enable_hint", { defaultValue: "点击即刻开启全站文章导读" })
             }
-            className={`inline-flex items-center gap-1 py-0.5 text-xs transition-all duration-200 cursor-pointer ${
+            className={`inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs transition-all duration-200 cursor-pointer ${
               siteConfig.aiSummaryEnabled
-                ? "text-theme font-bold"
-                : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                ? "text-theme font-bold bg-theme/10 dark:bg-theme/15 border border-theme/25 shadow-2xs"
+                : "text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30"
             }`}
           >
             <i className="ri-sparkling-2-line" />
@@ -395,13 +395,13 @@ export function TopAtelierRibbon() {
             </span>
           </button>
 
-          <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/10 rounded-full" aria-hidden="true" />
+          <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/15 rounded-full" aria-hidden="true" />
 
           {/* 全屏创作直达 */}
           <Link
             href="/writing"
             title={t("nav.write_title", { defaultValue: "进入全屏沉浸创作台" })}
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-theme hover:brightness-110 font-bold transition-all duration-200 cursor-pointer"
+            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-theme hover:brightness-110 font-bold bg-theme/10 dark:bg-theme/15 border border-theme/25 transition-all duration-200 cursor-pointer shadow-2xs"
           >
             <IconQuill />
             <span>{t("writing", { defaultValue: "撰写" })}</span>
@@ -411,7 +411,7 @@ export function TopAtelierRibbon() {
           <Link
             href="/gallery"
             title={t("nav.gallery_title", { defaultValue: "进入全宽图床画廊" })}
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
+            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer"
           >
             <IconGallery />
             <span className="hidden sm:inline">{t("gallery_title", { defaultValue: "图床" })}</span>
@@ -421,7 +421,7 @@ export function TopAtelierRibbon() {
           <Link
             href="/music"
             title={t("nav.music_title", { defaultValue: "进入沉浸音廊工作台" })}
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
+            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer"
           >
             <IconMusic />
             <span className="hidden sm:inline">{t("music_title", { defaultValue: "音廊" })}</span>
@@ -431,7 +431,7 @@ export function TopAtelierRibbon() {
           <Link
             href="/hashtags"
             title={t("nav.tags_title", { defaultValue: "标签体系管理" })}
-            className="inline-flex items-center gap-1 py-0.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-theme transition-all duration-200 cursor-pointer"
+            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer"
           >
             <IconTag />
             <span className="hidden md:inline">{t("hashtags", { defaultValue: "标签" })}</span>

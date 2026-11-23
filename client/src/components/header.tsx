@@ -118,11 +118,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
             <HeaderActions profile={profile} plain className="flex items-center gap-1 sm:gap-1.5" />
           </div>
         </div>
-        {/* 移动端专属：横向轻滑全量导航条 (零点击一滑直达文章、日常、长河、标签、友链、关于) */}
-        <nav className="flex md:hidden items-center overflow-x-auto scrollbar-none px-2.5 py-1 gap-1 border-t border-theme/10 dark:border-white/5 bg-white/70 dark:bg-[#121622]/70 backdrop-blur-md">
+        {/* 移动端专属：横向轻滑全量导航条 (日系二次元轻透手账胶囊条，暗黑通透微光) */}
+        <nav className="flex md:hidden items-center overflow-x-auto scrollbar-none px-3 py-1.5 gap-1.5 border-t border-theme/15 dark:border-white/10 bg-white/80 dark:bg-[#141824]/85 backdrop-blur-xl shadow-xs dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
           <NavBar
             menu={false}
-            itemClassName="px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap shrink-0 rounded-full text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-theme/10 transition-colors"
+            mobile={true}
           />
         </nav>
       </header>
@@ -177,10 +177,10 @@ export function Header({ children }: { children?: React.ReactNode }) {
 
         {/* 移动端专属：悬浮微光手账导航核心 */}
         <div className="flex md:hidden max-w-6xl mx-auto px-2 pt-1.5 pb-0.5">
-          <nav className="w-full flex items-center overflow-x-auto scrollbar-none rounded-full border border-theme/20 dark:border-white/15 bg-white/85 dark:bg-neutral-900/85 backdrop-blur-xl px-2.5 py-1 shadow-[0_4px_20px_-4px_rgba(var(--theme-rgb),0.15)] gap-1">
+          <nav className="w-full flex items-center overflow-x-auto scrollbar-none rounded-full border border-theme/25 dark:border-white/15 bg-white/85 dark:bg-[#141824]/90 backdrop-blur-xl px-2.5 py-1.5 shadow-[0_4px_20px_-4px_rgba(var(--theme-rgb),0.2)] gap-1.5">
             <NavBar
               menu={false}
-              itemClassName="px-2.5 py-0.5 rounded-full text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-theme/10 hover:text-theme transition-all whitespace-nowrap shrink-0"
+              mobile={true}
             />
           </nav>
         </div>
@@ -231,11 +231,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
         </div>
       </div>
 
-      {/* 移动端专属：去容器化自然横向轻滑导航条 */}
-      <nav className="flex md:hidden items-center overflow-x-auto scrollbar-none px-2.5 py-1 gap-1 border-t border-black/5 dark:border-white/5 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-md">
+      {/* 移动端专属：日系二次元微光横向轻滑导航条 (轻透手账胶囊、告别死黑一片) */}
+      <nav className="flex md:hidden items-center overflow-x-auto scrollbar-none px-3 py-1.5 gap-1.5 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-[#141824]/85 backdrop-blur-xl shadow-xs dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
         <NavBar
           menu={false}
-          itemClassName="px-2 py-0.5 text-xs font-medium tracking-wide whitespace-nowrap shrink-0 transition-colors"
+          mobile={true}
         />
       </nav>
     </header>
