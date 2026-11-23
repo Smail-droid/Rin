@@ -164,11 +164,13 @@ export function TopAtelierRibbon() {
       const next = { ...parsed, ...updates };
       sessionStorage.setItem("config", JSON.stringify(next));
       window.dispatchEvent(new Event("rin:config-updated"));
-      await client.config.update("client", updates);
+      if (isAdmin) {
+        await client.config.update("client", updates);
+      }
     } catch (err) {
       console.error("Failed to persist config:", err);
     }
-  }, []);
+  }, [isAdmin]);
 
   const commitCustomColor = useCallback(
     (hex: string) => {
@@ -260,7 +262,9 @@ export function TopAtelierRibbon() {
       parsed["ai_summary.enabled"] = nextVal;
       sessionStorage.setItem("config", JSON.stringify(parsed));
       window.dispatchEvent(new Event("rin:config-updated"));
-      await client.config.update("server", { "ai_summary.enabled": nextVal });
+      if (isAdmin) {
+        await client.config.update("server", { "ai_summary.enabled": nextVal });
+      }
     } catch (err) {
       console.error("Failed to toggle AI summary:", err);
     }
@@ -316,85 +320,86 @@ export function TopAtelierRibbon() {
         );
       })}
 
-      {/* 2. 管理员专属：现场直调与全屏直达 */}
+      <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/15 rounded-full" aria-hidden="true" />
+
+      {/* 2. 全员可用：现场直调版式、主题色、自由调色与 AI 导读 */}
+      {/* 版式一键即切 */}
+      <button
+        type="button"
+        onClick={handleCycleVariant}
+        title={t("variant.switch_title", { current: currentVariantLabel, defaultValue: `切换文章版式（当前：${currentVariantLabel}）` })}
+        className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer font-medium"
+      >
+        <IconLayout />
+        <span>{currentVariantLabel}</span>
+      </button>
+
+      {/* 预设色盘一键即切 */}
+      <button
+        type="button"
+        onClick={handleCyclePalette}
+        title={t("palette.switch_title", { current: currentPaletteName, defaultValue: `切换画廊主题色（当前：${currentPaletteName}）` })}
+        className="inline-flex items-center gap-1.5 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer font-medium"
+      >
+        <span
+          className="h-2.5 w-2.5 rounded-full shrink-0 ring-1 ring-black/10 dark:ring-white/15"
+          style={{ backgroundColor: liveColorHex }}
+          aria-hidden="true"
+        />
+        <span>{currentPaletteName}</span>
+      </button>
+
+      {/* 自由彩虹调色 */}
+      <label
+        title={t("palette.custom_title", { defaultValue: "自由取色实时调控" })}
+        className="relative inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer"
+      >
+        <span
+          className="h-2.5 w-2.5 rounded-full bg-gradient-to-tr from-rose-500 via-amber-400 via-emerald-400 to-sky-500 shrink-0"
+          aria-hidden="true"
+        />
+        <span className="hidden sm:inline">{t("palette.custom_label", { defaultValue: "调色" })}</span>
+        <input
+          ref={colorInputRef}
+          type="color"
+          aria-label={t("palette.custom_aria", { defaultValue: "自由调色盘选色" })}
+          defaultValue={liveColorHex}
+          onInput={(e) => handleLiveColorInput((e.target as HTMLInputElement).value)}
+          onBlur={(e) => {
+            if (pendingColorRef.current) {
+              commitCustomColor(normalizeThemeColor(e.target.value));
+            }
+          }}
+          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+        />
+      </label>
+
+      {/* 现场 AI 导读总开关 (点一下现场立即生效，无需穿门) */}
+      <button
+        type="button"
+        onClick={handleToggleAISummary}
+        title={
+          siteConfig.aiSummaryEnabled
+            ? t("ai_summary.disable_hint", { defaultValue: "点击即刻关闭全站文章导读" })
+            : t("ai_summary.enable_hint", { defaultValue: "点击即刻开启全站文章导读" })
+        }
+        className={`inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs transition-all duration-200 cursor-pointer ${
+          siteConfig.aiSummaryEnabled
+            ? "text-theme font-bold bg-theme/10 dark:bg-theme/15 border border-theme/25 shadow-2xs"
+            : "text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30"
+        }`}
+      >
+        <i className="ri-sparkling-2-line" />
+        <span>
+          {siteConfig.aiSummaryEnabled
+            ? t("ai_summary.status_on", { defaultValue: "导读:开" })
+            : t("ai_summary.status_off", { defaultValue: "导读:关" })}
+        </span>
+      </button>
+
+      {/* 3. 管理员专属：全屏创作与管理直达 */}
       {isAdmin ? (
         <>
-          <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/15 rounded-full" aria-hidden="true" />
-
-          {/* 版式一键即切 */}
-          <button
-            type="button"
-            onClick={handleCycleVariant}
-            title={t("variant.switch_title", { current: currentVariantLabel, defaultValue: `切换文章版式（当前：${currentVariantLabel}）` })}
-            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer font-medium"
-          >
-            <IconLayout />
-            <span>{currentVariantLabel}</span>
-          </button>
-
-          {/* 预设色盘一键即切 */}
-          <button
-            type="button"
-            onClick={handleCyclePalette}
-            title={t("palette.switch_title", { current: currentPaletteName, defaultValue: `切换画廊主题色（当前：${currentPaletteName}）` })}
-            className="inline-flex items-center gap-1.5 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer font-medium"
-          >
-            <span
-              className="h-2.5 w-2.5 rounded-full shrink-0 ring-1 ring-black/10 dark:ring-white/15"
-              style={{ backgroundColor: liveColorHex }}
-              aria-hidden="true"
-            />
-            <span>{currentPaletteName}</span>
-          </button>
-
-          {/* 自由彩虹调色 */}
-          <label
-            title={t("palette.custom_title", { defaultValue: "自由取色实时调控" })}
-            className="relative inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer"
-          >
-            <span
-              className="h-2.5 w-2.5 rounded-full bg-gradient-to-tr from-rose-500 via-amber-400 via-emerald-400 to-sky-500 shrink-0"
-              aria-hidden="true"
-            />
-            <span className="hidden sm:inline">{t("palette.custom_label", { defaultValue: "调色" })}</span>
-            <input
-              ref={colorInputRef}
-              type="color"
-              aria-label={t("palette.custom_aria", { defaultValue: "自由调色盘选色" })}
-              defaultValue={liveColorHex}
-              onInput={(e) => handleLiveColorInput((e.target as HTMLInputElement).value)}
-              onBlur={(e) => {
-                if (pendingColorRef.current) {
-                  commitCustomColor(normalizeThemeColor(e.target.value));
-                }
-              }}
-              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-            />
-          </label>
-
-          {/* 现场 AI 导读总开关 (点一下现场立即生效，无需穿门) */}
-          <button
-            type="button"
-            onClick={handleToggleAISummary}
-            title={
-              siteConfig.aiSummaryEnabled
-                ? t("ai_summary.disable_hint", { defaultValue: "点击即刻关闭全站文章导读" })
-                : t("ai_summary.enable_hint", { defaultValue: "点击即刻开启全站文章导读" })
-            }
-            className={`inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs transition-all duration-200 cursor-pointer ${
-              siteConfig.aiSummaryEnabled
-                ? "text-theme font-bold bg-theme/10 dark:bg-theme/15 border border-theme/25 shadow-2xs"
-                : "text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30"
-            }`}
-          >
-            <i className="ri-sparkling-2-line" />
-            <span>
-              {siteConfig.aiSummaryEnabled
-                ? t("ai_summary.status_on", { defaultValue: "导读:开" })
-                : t("ai_summary.status_off", { defaultValue: "导读:关" })}
-            </span>
-          </button>
-
           <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/15 rounded-full" aria-hidden="true" />
 
           {/* 全屏创作直达 */}

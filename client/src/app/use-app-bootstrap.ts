@@ -156,7 +156,15 @@ export function useAppBootstrap() {
       .get("client")
       .then(({ data }) => {
         if (data && typeof data === "object") {
-          updateClientConfig(data as Record<string, unknown>, true);
+          let merged = data as Record<string, unknown>;
+          try {
+            const visitorCached = sessionStorage.getItem("config");
+            if (visitorCached) {
+              const parsed = JSON.parse(visitorCached);
+              merged = { ...merged, ...parsed };
+            }
+          } catch {}
+          updateClientConfig(merged, true);
         }
       })
       .catch(() => {});
