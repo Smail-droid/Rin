@@ -6,10 +6,12 @@ import { Link } from "wouter";
 import { client } from "../app/runtime";
 import { useAlert, useConfirm } from "../components/dialog";
 import { Waiting } from "../components/loading";
+import { GALLERY_CONTAINER_CLASS, PageHeader } from "../components/page-header";
+import { SolidTagIcon, getTagColorTheme } from "../components/hashtag";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { ProfileContext } from "../state/profile";
 import { siteName } from "../utils/constants";
-import { SolidTagIcon, getTagColorTheme } from "../components/hashtag";
+import { emitToast } from "../utils/toast";
 
 type Hashtag = {
   id: number;
@@ -20,6 +22,8 @@ type Hashtag = {
   updatedAt: string | Date;
   singleFeedId?: number | null;
 };
+
+type CloudStyle = "hairline" | "washi" | "minimal" | "pill";
 
 const getTagFeeds = (t: Hashtag): number => t.feeds ?? t.count ?? 0;
 
@@ -64,6 +68,13 @@ const TAG_BOOKMARK_STYLES = [
   },
 ];
 
+const CLOUD_STYLE_OPTIONS: Array<{ id: CloudStyle; label: string }> = [
+  { id: "hairline", label: "素雅描边" },
+  { id: "washi", label: "晶透书签" },
+  { id: "minimal", label: "极简排印" },
+  { id: "pill", label: "微光胶囊" },
+];
+
 export function HashtagsPage() {
   const { t } = useTranslation();
   const siteConfig = useSiteConfig();
@@ -74,19 +85,23 @@ export function HashtagsPage() {
 
   const [hashtags, setHashtags] = useState<Hashtag[]>();
 
-  // 视图模式：书签星云 (cloud) / 高密单屏超级数据表格 (datagrid)
+  // 视图模式：云图 (cloud) / 表格 (datagrid)
   const [viewMode, setViewMode] = useState<"cloud" | "datagrid">("cloud");
 
-  // 星云流展示风格：微光胶囊 (pill) / 晶透书签 (washi) / 极简排印 (minimal)
-  const [cloudStyle, setCloudStyle] = useState<"pill" | "washi" | "minimal">(() => {
+  // 云图风格：素雅描边 (hairline) / 晶透书签 (washi) / 极简排印 (minimal) / 微光胶囊 (pill)
+  const [cloudStyle, setCloudStyle] = useState<CloudStyle>(() => {
     try {
-      return (localStorage.getItem("rin_tag_cloud_style") as any) || "pill";
+      const saved = localStorage.getItem("rin_tag_cloud_style");
+      if (saved === "hairline" || saved === "washi" || saved === "minimal" || saved === "pill") {
+        return saved;
+      }
+      return "hairline";
     } catch {
-      return "pill";
+      return "hairline";
     }
   });
 
-  const handleCloudStyleChange = (st: "pill" | "washi" | "minimal") => {
+  const handleCloudStyleChange = (st: CloudStyle) => {
     setCloudStyle(st);
     try {
       localStorage.setItem("rin_tag_cloud_style", st);
@@ -95,13 +110,12 @@ export function HashtagsPage() {
 
   // 排序与筛选状态
   const [sortBy, setSortBy] = useState<"latest" | "popular" | "custom">("latest");
-  const [showEmptyTags, setShowEmptyTags] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterMode, setFilterMode] = useState<"all" | "linked" | "unlinked">("all");
   const [isCleaning, setIsCleaning] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
 
   // 新建与编辑状态
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [creating, setCreating] = useState(false);
   const [editingTag, setEditingTag] = useState<{ id: number; name: string } | null>(null);
@@ -123,29 +137,25 @@ export function HashtagsPage() {
   const [savingAssociation, setSavingAssociation] = useState(false);
   const [feedSearchQuery, setFeedSearchQuery] = useState("");
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(""), 3500);
-  };
-
   const loadTags = useCallback(async () => {
     try {
       const { data } = await client.tag.list();
       if (data && Array.isArray(data)) {
+        const list = [...(data as Hashtag[])];
         try {
           const savedOrderStr = localStorage.getItem("rin_admin_tags_order");
           if (savedOrderStr) {
             const orderIds: number[] = JSON.parse(savedOrderStr);
             const orderMap = new Map<number, number>();
             orderIds.forEach((id, idx) => orderMap.set(id, idx));
-            data.sort((a, b) => {
+            list.sort((a, b) => {
               const idxA = orderMap.has(a.id) ? orderMap.get(a.id)! : 999999;
               const idxB = orderMap.has(b.id) ? orderMap.get(b.id)! : 999999;
               return idxA - idxB;
             });
           }
         } catch {}
-        setHashtags(data as Hashtag[]);
+        setHashtags(list);
       }
     } catch (err: any) {
       console.error("加载标签列表失败:", err);
@@ -155,6 +165,8 @@ export function HashtagsPage() {
   useEffect(() => {
     void loadTags();
   }, [loadTags]);
+
+  const effectiveViewMode = isAdmin ? viewMode : "cloud";
 
   // 统计数据
   const unlinkedCount = useMemo(() => {
@@ -168,7 +180,9 @@ export function HashtagsPage() {
   // 新建标签
   const handleCreateTag = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const trimmed = newTagName.trim();
+    const formEl = e?.currentTarget || (e?.target as HTMLFormElement | null);
+    const domVal = formEl?.querySelector?.("input")?.value || "";
+    const trimmed = newTagName.trim() || domVal.trim();
     if (!trimmed) {
       showAlert("请输入想要添加的标签名称~");
       return;
@@ -178,8 +192,9 @@ export function HashtagsPage() {
       const { data, error } = await client.tag.create(trimmed);
       if (data) {
         setNewTagName("");
+        setIsCreateOpen(false);
         await loadTags();
-        showToast(`✨ 标签 “#${trimmed}” 添加成功！`);
+        emitToast(`标签 “#${trimmed}” 添加成功`, "success");
       } else if (error) {
         showAlert(String(error.value || "创建标签失败"));
       }
@@ -215,7 +230,7 @@ export function HashtagsPage() {
           prev ? prev.map((item) => (item.id === editingTag.id ? { ...item, name: trimmed } : item)) : []
         );
         setEditingTag(null);
-        showToast(`✓ 标签已重命名为 “#${trimmed}”`);
+        emitToast(`标签已重命名为 “#${trimmed}”`, "success");
       } else if (error) {
         showAlert(String(error.value || "更新标签失败"));
       }
@@ -238,7 +253,7 @@ export function HashtagsPage() {
           if (error) {
             showAlert(String(error.value || "删除标签失败"));
           } else {
-            showToast(`✓ 已删除标签 #${name}`);
+            emitToast(`已删除标签 #${name}`, "success");
             await loadTags();
           }
         } catch (err: any) {
@@ -253,14 +268,15 @@ export function HashtagsPage() {
   // 批量删除
   const handleBatchDelete = () => {
     if (selectedIds.size === 0) return;
+    const targetCount = selectedIds.size;
     showConfirm(
-      `批量删除 ${selectedIds.size} 个标签确认`,
+      `批量删除 ${targetCount} 个标签确认`,
       "将批量永久移除选中的标签体系，关联文章的该标签将被同步解除。",
       async () => {
         try {
           await Promise.all(Array.from(selectedIds).map((id) => client.tag.delete(id)));
           setSelectedIds(new Set());
-          showToast(`✓ 成功批量删除 ${selectedIds.size} 个标签！`);
+          emitToast(`已批量删除 ${targetCount} 个标签`, "success");
           await loadTags();
         } catch (err: any) {
           showAlert(err.message || "批量删除标签异常");
@@ -280,13 +296,13 @@ export function HashtagsPage() {
         try {
           const res = await client.tag.deleteUnlinked();
           if (res.data?.success) {
-            showToast(`✓ 成功清理 ${res.data.count} 个无文章孤儿标签！`);
+            emitToast(`已清理 ${res.data.count} 个空标签`, "success");
           } else {
-            showToast("✓ 清理完成");
+            emitToast("空标签清理完成", "success");
           }
           await loadTags();
         } catch (err: any) {
-          showToast("清理失败: " + (err?.message || "未知错误"));
+          showAlert("清理失败: " + (err?.message || "未知错误"));
         } finally {
           setIsCleaning(false);
         }
@@ -309,7 +325,7 @@ export function HashtagsPage() {
 
     try {
       localStorage.setItem("rin_admin_tags_order", JSON.stringify(list.map((t) => t.id)));
-      showToast(`✓ 标签已调至第 ${targetNum} 位`);
+      emitToast(`标签已调至第 ${targetNum} 位`, "success");
     } catch {}
   };
 
@@ -348,7 +364,7 @@ export function HashtagsPage() {
         body: JSON.stringify({ feedIds: Array.from(associatedFeedIds) }),
       });
       if (res.ok) {
-        showToast(`🎉 标签「${associatingTag.name}」文章关联已更新！`);
+        emitToast(`标签「${associatingTag.name}」文章关联已更新`, "success");
         setAssociatingTag(null);
         await loadTags();
       } else {
@@ -371,25 +387,6 @@ export function HashtagsPage() {
     setAssociatedFeedIds(next);
   };
 
-  // 数据表格全选与单选
-  const toggleSelectAll = () => {
-    if (selectedIds.size === paginatedTags.length && paginatedTags.length > 0) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(paginatedTags.map((t) => t.id)));
-    }
-  };
-
-  const toggleSelectOne = (id: number) => {
-    const next = new Set(selectedIds);
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
-    }
-    setSelectedIds(next);
-  };
-
   const handleSortField = (field: "id" | "name" | "feeds") => {
     if (sortField === field) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -399,10 +396,28 @@ export function HashtagsPage() {
     }
   };
 
-  // 书签星云模式下的过滤与排序
+  // 云图模式下的过滤与排序（统一复用 searchQuery 与 filterMode）
   const sortedHashtagsForCloud = useMemo(() => {
     if (!hashtags) return [];
-    const list = showEmptyTags ? [...hashtags] : hashtags.filter((h) => getTagFeeds(h) > 0);
+    let list = [...hashtags];
+
+    if (isAdmin) {
+      if (filterMode === "linked") {
+        list = list.filter((h) => getTagFeeds(h) > 0);
+      } else if (filterMode === "unlinked") {
+        list = list.filter((h) => getTagFeeds(h) === 0);
+      }
+    } else {
+      list = list.filter((h) => getTagFeeds(h) > 0);
+    }
+
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (h) => h.name.toLowerCase().includes(q) || String(h.id).includes(q)
+      );
+    }
+
     return list.sort((a, b) => {
       if (sortBy === "popular") {
         const feedsA = getTagFeeds(a);
@@ -412,9 +427,9 @@ export function HashtagsPage() {
       if (sortBy === "latest") {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
-      return 0; // 自定义顺序按当前数组顺序
+      return 0;
     });
-  }, [hashtags, showEmptyTags, sortBy]);
+  }, [hashtags, isAdmin, filterMode, searchQuery, sortBy]);
 
   // 数据表格模式下的过滤与分页
   const sortedAndFilteredTags = useMemo(() => {
@@ -451,10 +466,33 @@ export function HashtagsPage() {
 
   const totalItems = sortedAndFilteredTags.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
   const paginatedTags = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
+    const start = (safeCurrentPage - 1) * pageSize;
     return sortedAndFilteredTags.slice(start, start + pageSize);
-  }, [sortedAndFilteredTags, currentPage, pageSize]);
+  }, [sortedAndFilteredTags, safeCurrentPage, pageSize]);
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginatedTags.length && paginatedTags.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedTags.map((t) => t.id)));
+    }
+  };
+
+  const toggleSelectOne = (id: number) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedIds(next);
+  };
+
+  const startItem = totalItems === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1;
+  const endItem = Math.min(safeCurrentPage * pageSize, totalItems);
 
   return (
     <>
@@ -469,382 +507,393 @@ export function HashtagsPage() {
       <AlertUI />
       <ConfirmUI />
 
-      {/* Toast 提示条 */}
-      {toastMessage ? (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-2xl bg-neutral-900/90 text-white dark:bg-white/95 dark:text-neutral-900 border border-theme/30 backdrop-blur-md shadow-2xl text-xs font-bold ani-show flex items-center gap-2">
-          <i className="ri-checkbox-circle-fill text-theme" />
-          <span>{toastMessage}</span>
-        </div>
-      ) : null}
-
       <Waiting for={hashtags}>
-        <main className="w-full max-w-4xl mx-auto px-1.5 sm:px-6 flex flex-col justify-center items-center mb-10 ani-show">
-          {/* 顶栏信息、统计与视图模式切换 */}
-          {siteConfig.pageHeaderMode === "hidden" ? null : siteConfig.pageHeaderMode === "banner" ? (
-            <div className="w-full relative rounded-3xl overflow-hidden mb-6 p-6 sm:p-7 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ani-show">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary">{t("hashtags_index", { defaultValue: "标签索引" })}</h1>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                  {t("hashtags_desc", { count: hashtags?.length || 0, feeds: totalFeedsCount, defaultValue: `万象归卷，随引而遇。共 ${hashtags?.length || 0} 个话题 · 关联 ${totalFeedsCount} 篇次` })}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                {isAdmin && (
-                  <div className="flex items-center gap-1 rounded-full bg-white/80 dark:bg-neutral-800/80 p-1 border border-black/5 dark:border-white/10 text-xs shadow-2xs backdrop-blur-md">
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("cloud")}
-                      className={`rounded-full px-3 py-1 transition select-none cursor-pointer flex items-center gap-1.5 ${
-                        viewMode === "cloud"
-                          ? "bg-theme text-white shadow-2xs font-bold"
-                          : "text-neutral-600 dark:text-neutral-300 hover:text-theme"
-                      }`}
-                    >
-                      <i className="ri-bookmark-3-line" />
-                      <span>{t("hashtags_view_cloud", { defaultValue: "星云流" })}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("datagrid")}
-                      className={`rounded-full px-3 py-1 transition select-none cursor-pointer flex items-center gap-1.5 ${
-                        viewMode === "datagrid"
-                          ? "bg-theme text-white shadow-2xs font-bold"
-                          : "text-neutral-600 dark:text-neutral-300 hover:text-theme"
-                      }`}
-                    >
-                      <i className="ri-table-line" />
-                      <span>{t("hashtags_view_datagrid", { defaultValue: "超级数据盘" })}</span>
-                    </button>
-                  </div>
-                )}
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 dark:bg-neutral-800/80 px-3.5 py-1.5 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 backdrop-blur-md"
-                >
-                  <i className="ri-arrow-left-line" />
-                  <span>{t("back_to_gallery", { defaultValue: "返回画廊" })}</span>
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="w-full text-start py-4 border-b border-black/10 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1
-                  className={`text-2xl sm:text-3xl font-bold tracking-tight t-primary art-title-${
-                    siteConfig.hashtagsTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"
-                  }`}
-                >
-                  {t("hashtags_index", { defaultValue: "标签索引" })}
-                </h1>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex items-center gap-2 flex-wrap font-mono">
-                  <span>万象归卷，随引而遇。</span>
-                  <span>·</span>
-                  <span>共 {hashtags?.length || 0} 个话题</span>
-                  <span>·</span>
-                  <span>关联 {totalFeedsCount} 篇次</span>
-                  {unlinkedCount > 0 ? (
-                    <>
-                      <span>·</span>
-                      <span className="text-amber-600 dark:text-amber-400 font-semibold">
-                        含 {unlinkedCount} 个空标签
-                      </span>
-                    </>
-                  ) : null}
-                </p>
-              </div>
+        <main className={`${GALLERY_CONTAINER_CLASS} py-6 sm:py-8 mb-16 ani-show`}>
+          <PageHeader
+            eyebrow={`HASHTAG ARCHIVE · ${hashtags?.length || 0}`}
+            title={t("hashtags_index", { defaultValue: "标签索引" })}
+            subtitle={`万象归卷，随引而遇 · 共 ${hashtags?.length || 0} 个话题，关联 ${totalFeedsCount} 篇次`}
+            mode={siteConfig.pageHeaderMode}
+            titleFont={siteConfig.themeTitleFont as any}
+            titleEffect={siteConfig.themeTitleEffect}
+            bannerUrl={siteConfig.pageHeaderBannerUrl}
+          />
 
-              <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
-                {/* 视图模式切换 */}
+          {/* 单层均衡控制工具栏 */}
+          <section
+            data-hashtags-toolbar="true"
+            className="w-full mb-6 pb-4 border-b border-[rgb(var(--rin-hairline-rgb)/0.8)] space-y-2.5"
+          >
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+              {/* 左侧：检索 + 分段筛选/排序 */}
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <div className="relative w-full sm:w-52">
+                  <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-[rgb(var(--rin-ink-muted-rgb))] text-xs pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    placeholder="搜索标签或 ID..."
+                    className="w-full rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] pl-8 pr-7 py-1.5 text-xs text-[rgb(var(--rin-ink-rgb))] placeholder:text-[rgb(var(--rin-ink-muted-rgb))] outline-none focus:border-theme/55 transition-colors"
+                  />
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setCurrentPage(1);
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))] cursor-pointer"
+                      aria-label="清空搜索"
+                    >
+                      <i className="ri-close-circle-line text-xs" />
+                    </button>
+                  ) : null}
+                </div>
+
                 {isAdmin ? (
-                  <div className="flex items-center gap-1 rounded-full bg-neutral-100 p-1 dark:bg-white/5 border border-black/5 dark:border-white/5 text-xs shadow-2xs">
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("cloud")}
-                      className={`rounded-full px-3 py-1 transition select-none cursor-pointer flex items-center gap-1.5 ${
-                        viewMode === "cloud"
-                          ? "bg-white text-theme shadow-xs dark:bg-neutral-800 dark:text-white font-bold scale-105"
-                          : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
-                      }`}
-                    >
-                      <i className="ri-bookmark-3-line" />
-                      <span>星云流</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("datagrid")}
-                      className={`rounded-full px-3 py-1 transition select-none cursor-pointer flex items-center gap-1.5 ${
-                        viewMode === "datagrid"
-                          ? "bg-white text-theme shadow-xs dark:bg-neutral-800 dark:text-white font-bold scale-105"
-                          : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
-                      }`}
-                    >
-                      <i className="ri-table-line" />
-                      <span>超级数据盘</span>
-                    </button>
-                  </div>
+                  <>
+                    <div className="inline-flex items-center rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] p-0.5 text-xs">
+                      {[
+                        { id: "all" as const, label: "全部" },
+                        { id: "linked" as const, label: "有文章" },
+                        { id: "unlinked" as const, label: "空标签" },
+                      ].map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => {
+                            setFilterMode(f.id);
+                            setCurrentPage(1);
+                          }}
+                          className={`rounded-full px-2.5 py-1 text-[11px] transition cursor-pointer select-none whitespace-nowrap ${
+                            filterMode === f.id
+                              ? "bg-theme text-white font-semibold shadow-2xs"
+                              : "text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))]"
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {effectiveViewMode === "cloud" ? (
+                      <div className="inline-flex items-center rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] p-0.5 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setSortBy("latest")}
+                          className={`rounded-full px-2.5 py-1 text-[11px] transition cursor-pointer select-none whitespace-nowrap ${
+                            sortBy === "latest"
+                              ? "bg-theme/15 text-theme font-semibold"
+                              : "text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))]"
+                          }`}
+                        >
+                          {t("sort_latest", { defaultValue: "最新" })}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSortBy("popular")}
+                          className={`rounded-full px-2.5 py-1 text-[11px] transition cursor-pointer select-none whitespace-nowrap ${
+                            sortBy === "popular"
+                              ? "bg-theme/15 text-theme font-semibold"
+                              : "text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))]"
+                          }`}
+                        >
+                          {t("sort_popular", { defaultValue: "热门" })}
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
                 ) : (
-                  <div className="flex items-center gap-1 rounded-full bg-neutral-100 p-1 dark:bg-white/5 border border-black/5 dark:border-white/5 text-xs shadow-2xs">
+                  <div className="inline-flex items-center rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] p-0.5 text-xs">
                     <button
                       type="button"
                       onClick={() => setSortBy("latest")}
-                      className={`rounded-full px-3 py-1 transition select-none cursor-pointer ${
+                      className={`rounded-full px-3 py-1 text-[11px] transition cursor-pointer select-none whitespace-nowrap inline-flex items-center gap-1 ${
                         sortBy === "latest"
-                          ? "bg-white text-theme shadow-xs dark:bg-neutral-800 dark:text-white font-bold scale-105"
-                          : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
+                          ? "bg-theme text-white font-semibold shadow-2xs"
+                          : "text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))]"
                       }`}
                     >
-                      <i className="ri-time-line mr-1" />
-                      <span>{t("sort_latest")}</span>
+                      <i className="ri-time-line text-xs" />
+                      <span>{t("sort_latest", { defaultValue: "最新" })}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setSortBy("popular")}
-                      className={`rounded-full px-3 py-1 transition select-none cursor-pointer ${
+                      className={`rounded-full px-3 py-1 text-[11px] transition cursor-pointer select-none whitespace-nowrap inline-flex items-center gap-1 ${
                         sortBy === "popular"
-                          ? "bg-white text-theme shadow-xs dark:bg-neutral-800 dark:text-white font-bold scale-105"
-                          : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
+                          ? "bg-theme text-white font-semibold shadow-2xs"
+                          : "text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))]"
                       }`}
                     >
-                      <i className="ri-fire-line mr-1 text-rose-500" />
-                      <span>{t("sort_popular")}</span>
+                      <i className="ri-fire-line text-xs" />
+                      <span>{t("sort_popular", { defaultValue: "热门" })}</span>
                     </button>
                   </div>
                 )}
+              </div>
 
-                <Link
-                  href="/"
-                  className="group inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-w px-3.5 py-1.5 text-xs font-bold t-primary shadow-xs hover:border-theme transition active:scale-95"
-                >
-                  <i className="ri-arrow-left-line text-theme transition-transform group-hover:-translate-x-1" />
-                  <span>返回画廊</span>
-                </Link>
+              {/* 右侧：视图切换 + 云图风格 + 管理员紧凑操作组 */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {isAdmin ? (
+                  <div className="inline-flex items-center rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] p-0.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("cloud")}
+                      className={`rounded-full px-2.5 py-1 text-[11px] transition cursor-pointer select-none inline-flex items-center gap-1 whitespace-nowrap ${
+                        viewMode === "cloud"
+                          ? "bg-theme text-white font-semibold shadow-2xs"
+                          : "text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))]"
+                      }`}
+                    >
+                      <i className="ri-bookmark-3-line text-xs" />
+                      <span>{t("hashtags_view_cloud_short", { defaultValue: "云图" })}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("datagrid")}
+                      className={`rounded-full px-2.5 py-1 text-[11px] transition cursor-pointer select-none inline-flex items-center gap-1 whitespace-nowrap ${
+                        viewMode === "datagrid"
+                          ? "bg-theme text-white font-semibold shadow-2xs"
+                          : "text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))]"
+                      }`}
+                    >
+                      <i className="ri-table-line text-xs" />
+                      <span>{t("hashtags_view_table_short", { defaultValue: "表格" })}</span>
+                    </button>
+                  </div>
+                ) : null}
+
+                {effectiveViewMode === "cloud" ? (
+                  <div
+                    role="group"
+                    aria-label="云图风格"
+                    className="inline-flex items-center rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] p-0.5 text-xs"
+                  >
+                    {CLOUD_STYLE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleCloudStyleChange(opt.id)}
+                        className={`rounded-full px-2.5 py-1 text-[11px] transition cursor-pointer select-none whitespace-nowrap ${
+                          cloudStyle === opt.id
+                            ? "bg-theme/15 text-theme font-semibold"
+                            : "text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))]"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
+                {isAdmin ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreateOpen((prev) => !prev)}
+                      aria-expanded={isCreateOpen}
+                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition cursor-pointer whitespace-nowrap ${
+                        isCreateOpen
+                          ? "border-theme/45 bg-theme/10 text-theme font-semibold"
+                          : "border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-rgb))] hover:border-theme/45 hover:text-theme"
+                      }`}
+                    >
+                      <span>{isCreateOpen ? "收起新建" : "+ 新建标签"}</span>
+                    </button>
+
+                    {unlinkedCount > 0 ? (
+                      <button
+                        type="button"
+                        onClick={handleCleanUnlinkedTags}
+                        disabled={isCleaning}
+                        className="inline-flex items-center gap-1 rounded-full border border-rose-300/60 dark:border-rose-500/35 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 px-3 py-1.5 text-xs font-medium transition cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                        title="一键彻底清理未关联任何文章的孤儿标签"
+                      >
+                        <i className={`ri-delete-bin-line text-xs ${isCleaning ? "animate-spin" : ""}`} />
+                        <span>{isCleaning ? "清理中..." : `清理空标签 (${unlinkedCount})`}</span>
+                      </button>
+                    ) : null}
+
+                    {selectedIds.size > 0 ? (
+                      <button
+                        type="button"
+                        onClick={handleBatchDelete}
+                        className="inline-flex items-center gap-1 rounded-full bg-rose-600 text-white hover:bg-rose-700 px-3 py-1.5 text-xs font-semibold shadow-2xs active:scale-95 transition cursor-pointer whitespace-nowrap"
+                      >
+                        <i className="ri-delete-bin-6-line text-xs" />
+                        <span>批量删除 ({selectedIds.size})</span>
+                      </button>
+                    ) : null}
+                  </>
+                ) : null}
               </div>
             </div>
-          )}
 
-          {/* 管理员前台创作与快捷操作栏 */}
-          {isAdmin ? (
-            <div className="w-full mt-4 p-4 rounded-2xl bg-white/70 dark:bg-neutral-900/60 border border-theme/20 shadow-xs backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-              {/* 快速新建标签输入栏 */}
-              <form onSubmit={handleCreateTag} className="flex items-center gap-2 flex-1 max-w-md">
-                <div className="relative flex-1">
-                  <i className="ri-hashtag absolute left-2.5 top-2 text-neutral-400 text-xs" />
+            {/* 管理员按需展开的紧凑内联新建条 */}
+            {isAdmin && isCreateOpen ? (
+              <form
+                onSubmit={handleCreateTag}
+                className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-[rgb(var(--rin-hairline-rgb)/0.6)] text-xs ani-show-fast"
+              >
+                <div className="relative flex-1 min-w-[200px] max-w-sm">
+                  <i className="ri-hashtag absolute left-3 top-1/2 -translate-y-1/2 text-[rgb(var(--rin-ink-muted-rgb))] text-xs pointer-events-none" />
                   <input
                     type="text"
                     value={newTagName}
                     onChange={(e) => setNewTagName(e.target.value)}
-                    placeholder="创建新标签名称（回车即刻创建）..."
-                    className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.015] dark:bg-white/[0.02] pl-7 pr-3 py-1.5 text-xs t-primary outline-hidden focus:border-theme"
+                    placeholder="输入新标签名称（回车创建）..."
+                    autoFocus
+                    className="w-full rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] pl-8 pr-3 py-1.5 text-xs text-[rgb(var(--rin-ink-rgb))] placeholder:text-[rgb(var(--rin-ink-muted-rgb))] outline-none focus:border-theme/55"
                   />
                 </div>
                 <button
                   type="submit"
-                  disabled={creating || !newTagName.trim()}
-                  className="px-3.5 py-1.5 rounded-xl bg-theme text-white font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-40 transition cursor-pointer flex items-center gap-1 shrink-0"
+                  disabled={creating}
+                  className="rounded-full bg-theme px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-theme-hover active:scale-95 disabled:opacity-40 transition cursor-pointer inline-flex items-center gap-1"
                 >
-                  {creating ? <i className="ri-loader-4-line animate-spin text-xs" /> : <i className="ri-add-line text-xs" />}
-                  <span>新建</span>
+                  {creating ? <i className="ri-loader-4-line animate-spin text-xs" /> : <i className="ri-check-line text-xs" />}
+                  <span>{creating ? "创建中..." : "确认创建"}</span>
                 </button>
-              </form>
-
-              {/* 快捷批量与清理操作 */}
-              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
-                  onClick={() => setShowEmptyTags((prev) => !prev)}
-                  className={`px-3 py-1.5 rounded-xl font-medium border transition cursor-pointer select-none flex items-center gap-1.5 ${
-                    showEmptyTags
-                      ? "bg-theme text-white border-theme shadow-2xs font-bold"
-                      : "bg-white dark:bg-neutral-800 border-black/10 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:border-theme"
-                  }`}
+                  onClick={() => {
+                    setIsCreateOpen(false);
+                    setNewTagName("");
+                  }}
+                  className="rounded-full px-3 py-1.5 text-xs text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))] transition cursor-pointer"
                 >
-                  <i className={showEmptyTags ? "ri-eye-line" : "ri-eye-off-line"} />
-                  <span>{showEmptyTags ? "已透出空标签" : "透出0篇空标签"}</span>
+                  取消
                 </button>
+              </form>
+            ) : null}
+          </section>
 
-                {unlinkedCount > 0 ? (
-                  <button
-                    type="button"
-                    onClick={handleCleanUnlinkedTags}
-                    disabled={isCleaning}
-                    className="px-3 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold transition shadow-2xs hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-                    title="一键彻底清理未关联任何文章的孤儿标签"
-                  >
-                    <i className={`ri-delete-bin-line ${isCleaning ? "animate-spin" : ""}`} />
-                    <span>{isCleaning ? "清理中..." : `清理空标签 (${unlinkedCount})`}</span>
-                  </button>
-                ) : null}
-
-                {selectedIds.size > 0 ? (
-                  <button
-                    type="button"
-                    onClick={handleBatchDelete}
-                    className="px-3 py-1.5 rounded-xl bg-rose-600 text-white font-bold shadow-2xs hover:bg-rose-700 active:scale-95 transition cursor-pointer flex items-center gap-1"
-                  >
-                    <i className="ri-delete-bin-6-line" />
-                    <span>批量删除 ({selectedIds.size})</span>
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-
-          {/* 视图 1：星云流 (Artistic Cloud) */}
-          {viewMode === "cloud" ? (
-            <div className="w-full mt-4 pb-14">
-              {/* 风格切换微托盘 */}
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-black/5 dark:border-white/5">
-                <span className="text-xs text-neutral-400 font-medium">标签呈现风格:</span>
-                <div className="inline-flex items-center gap-1 rounded-full bg-neutral-100 p-0.5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-xs shadow-2xs">
-                  {[
-                    { id: "pill" as const, label: "微光胶囊", icon: "ri-capsule-line" },
-                    { id: "washi" as const, label: "晶透书签", icon: "ri-bookmark-3-line" },
-                    { id: "minimal" as const, label: "极简排印", icon: "ri-text" },
-                  ].map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => handleCloudStyleChange(s.id)}
-                      className={`rounded-full px-2.5 py-1 transition select-none cursor-pointer flex items-center gap-1 text-[11px] ${
-                        cloudStyle === s.id
-                          ? "bg-white text-theme shadow-2xs font-bold dark:bg-neutral-800 dark:text-white"
-                          : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 font-medium"
-                      }`}
-                    >
-                      <i className={s.icon} />
-                      <span>{s.label}</span>
-                    </button>
-                  ))}
+          {/* 视图 1：标签云图 (Cloud View) */}
+          {effectiveViewMode === "cloud" ? (
+            <div className="w-full pb-12">
+              {sortedHashtagsForCloud.length === 0 ? (
+                <div className="py-20 text-center text-sm text-[rgb(var(--rin-ink-muted-rgb))]">
+                  暂无匹配的标签
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                  {sortedHashtagsForCloud.map((hashtag, index) => {
+                    const rot = TAG_ROTATIONS[index % TAG_ROTATIONS.length];
+                    const feedCount = getTagFeeds(hashtag);
+                    const isSingleArticle = feedCount === 1 && Boolean(hashtag.singleFeedId);
+                    const isEmptyTag = feedCount === 0;
 
-              {/* 标签流 */}
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                {sortedHashtagsForCloud?.map((hashtag, index) => {
-                  const rot = TAG_ROTATIONS[index % TAG_ROTATIONS.length];
-                  const feedCount = getTagFeeds(hashtag);
-                  const isSingleArticle = feedCount === 1 && Boolean(hashtag.singleFeedId);
-                  const isEmptyTag = feedCount === 0;
+                    const bookmarkStyle = isEmptyTag
+                      ? {
+                          card: "bg-neutral-100/80 text-neutral-400 border-dashed border-neutral-300 dark:bg-neutral-800/40 dark:text-neutral-500 dark:border-neutral-700/60",
+                          dot: "bg-neutral-300 dark:bg-neutral-600",
+                        }
+                      : TAG_BOOKMARK_STYLES[index % TAG_BOOKMARK_STYLES.length];
 
-                  const bookmarkStyle = isEmptyTag
-                    ? {
-                        card: "bg-neutral-100/80 text-neutral-400 border-dashed border-neutral-300 dark:bg-neutral-800/40 dark:text-neutral-500 dark:border-neutral-700/60",
-                        dot: "bg-neutral-300 dark:bg-neutral-600",
-                      }
-                    : TAG_BOOKMARK_STYLES[index % TAG_BOOKMARK_STYLES.length];
+                    const targetHref = isSingleArticle
+                      ? `/feed/${hashtag.singleFeedId}`
+                      : `/hashtag/${encodeURIComponent(hashtag.name)}`;
+                    const tagTheme = getTagColorTheme(hashtag.name);
 
-                  const targetHref = isSingleArticle
-                    ? `/feed/${hashtag.singleFeedId}`
-                    : `/hashtag/${encodeURIComponent(hashtag.name)}`;
-                  const tagTheme = getTagColorTheme(hashtag.name);
+                    if (cloudStyle === "hairline") {
+                      return (
+                        <Link
+                          key={hashtag.id || index}
+                          href={targetHref}
+                          className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-rgb))] hover:border-theme/50 hover:text-theme shadow-2xs transition-all select-none cursor-pointer group ${
+                            isEmptyTag ? "opacity-65 border-dashed" : ""
+                          }`}
+                          title={isSingleArticle ? "包含 1 篇文章，点击直达正文" : `包含 ${feedCount} 篇文章`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full shrink-0 ${
+                              isEmptyTag ? "bg-neutral-300 dark:bg-neutral-600" : tagTheme.dotClass
+                            }`}
+                          />
+                          <span className="text-xs font-medium tracking-tight">{hashtag.name}</span>
+                          <span className="text-[10px] font-mono text-[rgb(var(--rin-ink-muted-rgb))]">
+                            {feedCount}
+                          </span>
+                        </Link>
+                      );
+                    }
 
-                  if (cloudStyle === "pill") {
+                    if (cloudStyle === "pill") {
+                      return (
+                        <Link
+                          key={hashtag.id || index}
+                          href={targetHref}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-2xs hover:scale-105 active:scale-95 transition-all select-none cursor-pointer group ${
+                            isEmptyTag ? bookmarkStyle.card : tagTheme.badgeClass
+                          }`}
+                          title={isSingleArticle ? "包含 1 篇文章，点击直达正文" : `包含 ${feedCount} 篇文章`}
+                        >
+                          <SolidTagIcon color={isEmptyTag ? undefined : tagTheme.iconColor} className="w-3.5 h-3.5 shrink-0" />
+                          <span className="font-bold tracking-tight text-xs">{hashtag.name}</span>
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-black/5 dark:bg-white/10 opacity-80">
+                            {feedCount}
+                          </span>
+                        </Link>
+                      );
+                    }
+
+                    if (cloudStyle === "minimal") {
+                      return (
+                        <Link
+                          key={hashtag.id || index}
+                          href={targetHref}
+                          className="inline-flex items-baseline gap-1 text-sm font-medium text-[rgb(var(--rin-ink-rgb))] hover:text-theme transition-all select-none cursor-pointer group px-2.5 py-1 hover:bg-theme/5 rounded-lg"
+                          title={isSingleArticle ? "包含 1 篇文章，点击直达正文" : `包含 ${feedCount} 篇文章`}
+                        >
+                          <span className="text-theme font-bold">#</span>
+                          <span className="font-semibold">{hashtag.name}</span>
+                          <span className="text-[10px] font-mono text-[rgb(var(--rin-ink-muted-rgb))] ml-0.5">
+                            ({feedCount})
+                          </span>
+                        </Link>
+                      );
+                    }
+
                     return (
                       <Link
                         key={hashtag.id || index}
                         href={targetHref}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-2xs hover:scale-105 active:scale-95 transition-all select-none cursor-pointer group ${tagTheme.badgeClass}`}
+                        className={`inline-flex items-center gap-1.5 pl-2.5 pr-2.5 py-1.5 rounded-md rounded-r-2xl border shadow-2xs text-xs font-medium transform ${rot} hover:rotate-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 select-none cursor-pointer ${
+                          isEmptyTag ? bookmarkStyle.card : tagTheme.badgeClass
+                        }`}
                         title={isSingleArticle ? "包含 1 篇文章，点击直达正文" : `包含 ${feedCount} 篇文章`}
                       >
-                        <SolidTagIcon color={tagTheme.iconColor} className="w-3.5 h-3.5 shrink-0" />
-                        <span className="font-bold tracking-tight text-xs">{hashtag.name}</span>
-                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-black/5 dark:bg-white/10 opacity-80">
+                        <SolidTagIcon color={isEmptyTag ? undefined : tagTheme.iconColor} className="w-3.5 h-3.5 shrink-0" />
+                        <span className="font-bold tracking-tight">{hashtag.name}</span>
+                        <span className="text-[10px] font-mono font-semibold opacity-70 px-1 py-0.2 rounded-full bg-black/5 dark:bg-white/10">
                           {feedCount}
                         </span>
                       </Link>
                     );
-                  }
-
-                  if (cloudStyle === "minimal") {
-                    return (
-                      <Link
-                        key={hashtag.id || index}
-                        href={targetHref}
-                        className="inline-flex items-baseline gap-1 text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:text-theme transition-all select-none cursor-pointer group px-2.5 py-1 hover:bg-theme/5 rounded-lg"
-                        title={isSingleArticle ? "包含 1 篇文章，点击直达正文" : `包含 ${feedCount} 篇文章`}
-                      >
-                        <span className="text-theme font-bold">#</span>
-                        <span className="font-semibold">{hashtag.name}</span>
-                        <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 ml-0.5">
-                          ({feedCount})
-                        </span>
-                      </Link>
-                    );
-                  }
-
-                  return (
-                    <Link
-                      key={hashtag.id || index}
-                      href={targetHref}
-                      className={`inline-flex items-center gap-1.5 pl-2.5 pr-2.5 py-1.5 rounded-md rounded-r-2xl border shadow-2xs text-xs font-medium transform ${rot} hover:rotate-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 select-none cursor-pointer ${isEmptyTag ? bookmarkStyle.card : tagTheme.badgeClass}`}
-                      title={isSingleArticle ? "包含 1 篇文章，点击直达正文" : `包含 ${feedCount} 篇文章`}
-                    >
-                      <SolidTagIcon color={isEmptyTag ? undefined : tagTheme.iconColor} className="w-3.5 h-3.5 shrink-0" />
-                      <span className="font-bold tracking-tight">{hashtag.name}</span>
-                      <span className="text-[10px] font-mono font-semibold opacity-70 px-1 py-0.2 rounded-full bg-black/5 dark:bg-white/10">
-                        {feedCount}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
+                  })}
+                </div>
+              )}
             </div>
           ) : (
-            /* 视图 2：高密单屏超级数据表格 (Dense DataGrid) */
-            <div className="w-full mt-6 pb-16 flex flex-col gap-3">
-              {/* 表格搜索与过滤工具栏 */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="搜索标签名称或ID..."
-                      className="rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.015] dark:bg-white/[0.02] pl-8 pr-3 py-1.5 text-xs outline-hidden focus:border-theme w-48 sm:w-64"
-                    />
-                    <i className="ri-search-line absolute left-2.5 top-2 text-neutral-400" />
-                  </div>
-
-                  <div className="flex items-center rounded-xl bg-black/5 dark:bg-white/5 p-1 border border-black/5 dark:border-white/5">
-                    {[
-                      { id: "all", label: "全部" },
-                      { id: "linked", label: "有文章" },
-                      { id: "unlinked", label: "空标签" },
-                    ].map((f) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => setFilterMode(f.id as any)}
-                        className={`px-2.5 py-1 rounded-lg transition font-medium cursor-pointer ${
-                          filterMode === f.id
-                            ? "bg-white text-theme shadow-2xs font-bold dark:bg-neutral-800"
-                            : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-                        }`}
-                      >
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="text-[11px] text-neutral-400 font-mono">
-                  显示第 {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, totalItems)} 项（共 {totalItems} 项）
-                </div>
-              </div>
-
-              {/* 超级数据表格主体 */}
-              <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white/95 dark:bg-neutral-900/90 shadow-xs overflow-hidden">
+            /* 视图 2：管理数据表格 (DataGrid View) */
+            <div className="w-full pb-14">
+              <div className="rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="border-b border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] text-neutral-500 font-semibold select-none">
+                      <tr className="border-b border-[rgb(var(--rin-hairline-rgb)/0.8)] bg-black/[0.015] dark:bg-white/[0.02] text-[rgb(var(--rin-ink-muted-rgb))] font-semibold select-none">
                         <th className="py-2.5 px-3.5 w-10 text-center">
                           <input
                             type="checkbox"
                             checked={selectedIds.size === paginatedTags.length && paginatedTags.length > 0}
                             onChange={toggleSelectAll}
                             className="rounded accent-theme cursor-pointer"
+                            aria-label="全选当前页标签"
                           />
                         </th>
                         <th
@@ -878,178 +927,196 @@ export function HashtagsPage() {
                         <th className="py-2.5 px-4 w-36 text-right">操作</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                      {paginatedTags.map((tag, idx) => {
-                        const globalIndex = (currentPage - 1) * pageSize + idx + 1;
-                        const isChecked = selectedIds.has(tag.id);
-                        const isEditingThis = editingTag?.id === tag.id;
+                    <tbody className="divide-y divide-[rgb(var(--rin-hairline-rgb)/0.6)]">
+                      {paginatedTags.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-12 text-center text-xs text-[rgb(var(--rin-ink-muted-rgb))]">
+                            暂无匹配的标签记录
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedTags.map((tag, idx) => {
+                          const globalIndex = (safeCurrentPage - 1) * pageSize + idx + 1;
+                          const isChecked = selectedIds.has(tag.id);
+                          const isEditingThis = editingTag?.id === tag.id;
+                          const feedCount = getTagFeeds(tag);
 
-                        return (
-                          <tr
-                            key={tag.id}
-                            className={`hover:bg-theme/[0.02] dark:hover:bg-white/[0.02] transition-colors ${
-                              isChecked ? "bg-theme/[0.04]" : ""
-                            }`}
-                          >
-                            <td className="py-2.5 px-3.5 text-center">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => toggleSelectOne(tag.id)}
-                                className="rounded accent-theme cursor-pointer"
-                              />
-                            </td>
-                            <td className="py-2.5 px-3 font-mono text-[11px] text-neutral-400">
-                              #{tag.id}
-                            </td>
-                            <td className="py-2.5 px-3">
-                              {isEditingThis ? (
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="text"
-                                    value={editingName}
-                                    onChange={(e) => setEditingName(e.target.value)}
-                                    className="rounded-lg border border-theme px-2 py-0.5 text-xs outline-none bg-transparent"
-                                    autoFocus
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") handleSaveEdit();
-                                      if (e.key === "Escape") setEditingTag(null);
-                                    }}
-                                  />
+                          return (
+                            <tr
+                              key={tag.id}
+                              className={`hover:bg-theme/[0.02] dark:hover:bg-white/[0.02] transition-colors ${
+                                isChecked ? "bg-theme/[0.04]" : ""
+                              }`}
+                            >
+                              <td className="py-2.5 px-3.5 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => toggleSelectOne(tag.id)}
+                                  className="rounded accent-theme cursor-pointer"
+                                />
+                              </td>
+                              <td className="py-2.5 px-3 font-mono text-[11px] text-[rgb(var(--rin-ink-muted-rgb))]">
+                                #{tag.id}
+                              </td>
+                              <td className="py-2.5 px-3">
+                                {isEditingThis ? (
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="text"
+                                      value={editingName}
+                                      onChange={(e) => setEditingName(e.target.value)}
+                                      className="rounded-lg border border-theme px-2 py-0.5 text-xs outline-none bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-rgb))]"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") handleSaveEdit();
+                                        if (e.key === "Escape") setEditingTag(null);
+                                      }}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={handleSaveEdit}
+                                      disabled={savingId === tag.id}
+                                      className="text-theme font-bold hover:underline cursor-pointer"
+                                    >
+                                      保存
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingTag(null)}
+                                      className="text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))] cursor-pointer"
+                                    >
+                                      取消
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <Link
+                                    href={`/hashtag/${encodeURIComponent(tag.name)}`}
+                                    className="font-semibold text-[rgb(var(--rin-ink-rgb))] hover:text-theme transition flex items-center gap-1.5"
+                                  >
+                                    <SolidTagIcon color={getTagColorTheme(tag.name).iconColor} className="w-3.5 h-3.5 shrink-0" />
+                                    <span>{tag.name}</span>
+                                    {feedCount === 0 ? (
+                                      <span className="text-[10px] text-[rgb(var(--rin-ink-muted-rgb))] font-normal">
+                                        (空)
+                                      </span>
+                                    ) : null}
+                                  </Link>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-mono">
+                                <span
+                                  className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                                    feedCount > 0
+                                      ? "bg-theme/10 text-theme"
+                                      : "bg-black/5 dark:bg-white/5 text-[rgb(var(--rin-ink-muted-rgb))]"
+                                  }`}
+                                >
+                                  {feedCount} 篇
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <input
+                                  type="number"
+                                  defaultValue={globalIndex}
+                                  onBlur={(e) => handleMoveTagToIndex(globalIndex - 1, e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      handleMoveTagToIndex(globalIndex - 1, (e.target as HTMLInputElement).value);
+                                    }
+                                  }}
+                                  className="w-14 rounded-md border border-[rgb(var(--rin-hairline-rgb))] px-1.5 py-0.5 text-center font-mono text-[11px] outline-none focus:border-theme bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-rgb))]"
+                                  title="输入目标数字回车直接调序"
+                                />
+                              </td>
+                              <td className="py-2.5 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
                                   <button
                                     type="button"
-                                    onClick={handleSaveEdit}
-                                    disabled={savingId === tag.id}
-                                    className="text-theme font-bold hover:underline"
+                                    onClick={() => handleStartEdit(tag)}
+                                    className="p-1 rounded-md text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme hover:bg-theme/10 transition cursor-pointer"
+                                    title="重命名"
                                   >
-                                    保存
+                                    <i className="ri-edit-line text-sm" />
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => setEditingTag(null)}
-                                    className="text-neutral-400 hover:text-neutral-600"
+                                    onClick={() => handleOpenAssociation(tag)}
+                                    className="p-1 rounded-md text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme hover:bg-theme/10 transition cursor-pointer"
+                                    title="管理关联文章"
                                   >
-                                    取消
+                                    <i className="ri-link text-sm" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteTag(tag.id, tag.name)}
+                                    className="p-1 rounded-md text-[rgb(var(--rin-ink-muted-rgb))] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                    title="删除标签"
+                                  >
+                                    <i className="ri-delete-bin-line text-sm" />
                                   </button>
                                 </div>
-                              ) : (
-                                <Link
-                                  href={`/hashtag/${encodeURIComponent(tag.name)}`}
-                                  className="font-bold text-neutral-800 dark:text-neutral-200 hover:text-theme transition flex items-center gap-1.5"
-                                >
-                                  <SolidTagIcon color={getTagColorTheme(tag.name).iconColor} className="w-3.5 h-3.5 shrink-0" />
-                                  <span>{tag.name}</span>
-                                  {getTagFeeds(tag) === 0 ? (
-                                    <span className="text-[10px] text-neutral-400 font-normal scale-90">
-                                      (空)
-                                    </span>
-                                  ) : null}
-                                </Link>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-3 text-center font-mono">
-                              <span
-                                className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                                  getTagFeeds(tag) > 0
-                                    ? "bg-theme/10 text-theme"
-                                    : "bg-neutral-100 text-neutral-400 dark:bg-neutral-800"
-                                }`}
-                              >
-                                {getTagFeeds(tag)} 篇
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-center">
-                              <input
-                                type="number"
-                                defaultValue={globalIndex}
-                                onBlur={(e) => handleMoveTagToIndex(globalIndex - 1, e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    handleMoveTagToIndex(globalIndex - 1, (e.target as HTMLInputElement).value);
-                                  }
-                                }}
-                                className="w-14 rounded-md border border-black/10 dark:border-white/10 px-1.5 py-0.5 text-center font-mono text-[11px] outline-none focus:border-theme bg-transparent"
-                                title="输入目标数字回车直接调序"
-                              />
-                            </td>
-                            <td className="py-2.5 px-4 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartEdit(tag)}
-                                  className="p-1 rounded-md text-neutral-500 hover:text-theme hover:bg-theme/10 transition"
-                                  title="重命名"
-                                >
-                                  <i className="ri-edit-line text-sm" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenAssociation(tag)}
-                                  className="p-1 rounded-md text-neutral-500 hover:text-theme hover:bg-theme/10 transition"
-                                  title="管理关联文章"
-                                >
-                                  <i className="ri-link text-sm" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteTag(tag.id, tag.name)}
-                                  className="p-1 rounded-md text-neutral-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
-                                  title="删除标签"
-                                >
-                                  <i className="ri-delete-bin-line text-sm" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
 
-                {/* 分页控制条 (移动端单行紧凑自适应，杜绝多行挤压) */}
-                <div className="px-3 sm:px-4 py-2.5 border-t border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between text-xs select-none gap-2">
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-neutral-400 hidden sm:inline">每页</span>
+                {/* 底部统一分页脚注栏 */}
+                <div
+                  data-hashtags-pagination-footer="true"
+                  className="px-3 sm:px-4 py-2.5 border-t border-[rgb(var(--rin-hairline-rgb)/0.8)] bg-black/[0.015] dark:bg-white/[0.02] flex flex-wrap items-center justify-between text-xs select-none gap-2"
+                >
+                  <div className="text-[11px] text-[rgb(var(--rin-ink-muted-rgb))] font-mono">
+                    {totalItems === 0
+                      ? "共 0 项"
+                      : `显示第 ${startItem} - ${endItem} 项 (共 ${totalItems} 项)`}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
                     <select
                       value={pageSize}
                       onChange={(e) => {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-1.5 sm:px-2 py-1 text-xs outline-none focus:border-theme cursor-pointer"
+                      aria-label="每页条数"
+                      className="rounded-lg border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-rgb))] px-2 py-1 text-xs outline-none focus:border-theme cursor-pointer"
                     >
                       <option value={15}>15 条/页</option>
                       <option value={20}>20 条/页</option>
                       <option value={50}>50 条/页</option>
                       <option value={100}>100 条/页</option>
                     </select>
-                  </div>
 
-                  <div className="flex items-center gap-1 font-mono shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage <= 1}
-                      className="px-2 sm:px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-0.5 text-xs"
-                      title="上一页"
-                    >
-                      <i className="ri-arrow-left-s-line" />
-                      <span className="hidden sm:inline">上一页</span>
-                    </button>
-                    <span className="px-1.5 sm:px-2 text-neutral-500 text-[11px] sm:text-xs whitespace-nowrap">
-                      {currentPage} / {totalPages}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage >= totalPages}
-                      className="px-2 sm:px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:border-theme disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-0.5 text-xs"
-                      title="下一页"
-                    >
-                      <span className="hidden sm:inline">下一页</span>
-                      <i className="ri-arrow-right-s-line" />
-                    </button>
+                    <div className="flex items-center gap-1 font-mono shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={safeCurrentPage <= 1}
+                        className="px-2 sm:px-2.5 py-1 rounded-lg border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] hover:border-theme disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-0.5 text-xs cursor-pointer"
+                        title="上一页"
+                      >
+                        <i className="ri-arrow-left-s-line" />
+                        <span className="hidden sm:inline">上一页</span>
+                      </button>
+                      <span className="px-1.5 sm:px-2 text-[rgb(var(--rin-ink-muted-rgb))] text-[11px] sm:text-xs whitespace-nowrap">
+                        {safeCurrentPage} / {totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={safeCurrentPage >= totalPages}
+                        className="px-2 sm:px-2.5 py-1 rounded-lg border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] hover:border-theme disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-0.5 text-xs cursor-pointer"
+                        title="下一页"
+                      >
+                        <span className="hidden sm:inline">下一页</span>
+                        <i className="ri-arrow-right-s-line" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1059,21 +1126,21 @@ export function HashtagsPage() {
       </Waiting>
 
       {/* 关联/解绑文章弹窗 */}
-      {associatingTag && (
+      {associatingTag ? (
         <Modal
           isOpen={!!associatingTag}
           onRequestClose={() => setAssociatingTag(null)}
           contentLabel={`管理标签「${associatingTag.name}」关联文章`}
-          panelClassName="p-6 max-w-xl w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
+          panelClassName="p-6 max-w-xl w-full bg-[rgb(var(--rin-elevated-rgb))] border border-[rgb(var(--rin-hairline-rgb))] rounded-2xl shadow-2xl"
         >
           <div className="flex flex-col gap-3.5 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+            <div className="flex items-center justify-between pb-2 border-b border-[rgb(var(--rin-hairline-rgb)/0.6)]">
               <div>
                 <h3 className="text-sm font-bold t-primary flex items-center gap-2">
                   <span>管理关联文章:</span>
                   <span className="text-theme font-mono">#{associatingTag.name}</span>
                 </h3>
-                <p className="text-[11px] text-neutral-400 mt-0.5">
+                <p className="text-[11px] text-[rgb(var(--rin-ink-muted-rgb))] mt-0.5">
                   勾选文章即挂载此标签，取消勾选即从该文章解绑
                 </p>
               </div>
@@ -1089,9 +1156,9 @@ export function HashtagsPage() {
                 value={feedSearchQuery}
                 onChange={(e) => setFeedSearchQuery(e.target.value)}
                 placeholder="快速筛选文章标题..."
-                className="w-full rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] py-1.5 pl-8 pr-3 text-xs outline-none focus:border-theme"
+                className="w-full rounded-xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-rgb))] py-1.5 pl-8 pr-3 text-xs outline-none focus:border-theme"
               />
-              <i className="ri-search-line absolute left-2.5 top-2 text-neutral-400" />
+              <i className="ri-search-line absolute left-2.5 top-2 text-[rgb(var(--rin-ink-muted-rgb))]" />
             </div>
 
             {/* 文章列表 */}
@@ -1100,7 +1167,7 @@ export function HashtagsPage() {
                 <Spinner />
               </div>
             ) : (
-              <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1 divide-y divide-black/5 dark:divide-white/5">
+              <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1 divide-y divide-[rgb(var(--rin-hairline-rgb)/0.5)]">
                 {allFeeds
                   .filter(
                     (f) =>
@@ -1125,13 +1192,13 @@ export function HashtagsPage() {
                           />
                           <span
                             className={`font-medium truncate ${
-                              isChecked ? "text-theme font-bold" : "text-neutral-700 dark:text-neutral-200"
+                              isChecked ? "text-theme font-bold" : "text-[rgb(var(--rin-ink-rgb))]"
                             }`}
                           >
                             {feed.title}
                           </span>
                         </div>
-                        <span className="font-mono text-[10px] text-neutral-400 shrink-0 ml-2">
+                        <span className="font-mono text-[10px] text-[rgb(var(--rin-ink-muted-rgb))] shrink-0 ml-2">
                           {new Date(feed.createdAt).toLocaleDateString()}
                         </span>
                       </label>
@@ -1141,11 +1208,11 @@ export function HashtagsPage() {
             )}
 
             {/* 弹窗底部操作条 */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/5">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[rgb(var(--rin-hairline-rgb)/0.6)]">
               <button
                 type="button"
                 onClick={() => setAssociatingTag(null)}
-                className="px-3.5 py-1.5 rounded-xl text-neutral-500 hover:bg-black/5 font-semibold transition"
+                className="px-3.5 py-1.5 rounded-xl text-[rgb(var(--rin-ink-muted-rgb))] hover:bg-black/5 dark:hover:bg-white/5 font-semibold transition cursor-pointer"
               >
                 取消
               </button>
@@ -1153,14 +1220,14 @@ export function HashtagsPage() {
                 type="button"
                 onClick={handleSaveAssociation}
                 disabled={savingAssociation}
-                className="px-4 py-1.5 rounded-xl bg-theme text-white font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition"
+                className="px-4 py-1.5 rounded-xl bg-theme text-white font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition cursor-pointer"
               >
                 {savingAssociation ? "保存中..." : "保存关联"}
               </button>
             </div>
           </div>
         </Modal>
-      )}
+      ) : null}
     </>
   );
 }

@@ -224,6 +224,7 @@ export async function buildServerConfigResponse(
   configObj["ai_summary.prompt_tech"] = aiConfig.prompt_tech || "";
   configObj["ai_summary.prompt_format"] = aiConfig.prompt_format || "";
   configObj["ai_summary.prompt_summary"] = aiConfig.prompt_summary || "";
+  configObj["ai_summary.prompt_presets"] = aiConfig.prompt_presets || "";
 
   return maskSensitiveFields(configObj);
 }

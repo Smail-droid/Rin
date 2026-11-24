@@ -35,13 +35,14 @@ const mockLayout = mock(() => {});
 
 mock.module("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? key,
     i18n: { changeLanguage: mock() },
   }),
 }));
 
 mock.module("react-modal", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  default: ({ isOpen, children }: { isOpen?: boolean; children: React.ReactNode }) =>
+    isOpen ? <div role="dialog">{children}</div> : null,
 }));
 
 mock.module("@monaco-editor/react", () => ({

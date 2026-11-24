@@ -16,7 +16,10 @@ const AI_PROVIDER_URLS: Record<string, string> = {
     claude: "https://api.anthropic.com/v1",
     gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
     deepseek: "https://api.deepseek.com/v1",
+    zhipu: "https://open.bigmodel.cn/api/paas/v4",
 };
+
+const ANTHROPIC_VERSION = "2023-06-01";
 
 // Cloudflare Worker AI models mapping (short name -> full model ID)
 export const WORKER_AI_MODELS: Record<string, string> = {
@@ -44,14 +47,83 @@ export function normalizeExternalAIBaseUrl(apiUrl: string): string {
     return apiUrl
         .trim()
         .replace(/\/+$/g, "")
-        .replace(/\/chat\/completions$/i, "");
+        .replace(/\/chat\/completions$/i, "")
+        .replace(/\/messages$/i, "");
+}
+
+export function isAnthropicNativeEndpoint(provider: string, apiUrl: string): boolean {
+    const trimmed = (apiUrl || AI_PROVIDER_URLS[provider] || "").trim().replace(/\/+$/g, "");
+    if (!trimmed) {
+        return provider === "claude";
+    }
+    const lower = trimmed.toLowerCase();
+    if (/\/chat\/completions$/i.test(lower) || lower.includes("/openai") || lower.includes("openrouter.ai")) {
+        return false;
+    }
+    if (lower.includes("anthropic.com") || /\/messages$/i.test(lower)) {
+        return true;
+    }
+    return provider === "claude";
+}
+
+export function isGeminiNativeEndpoint(provider: string, apiUrl: string): boolean {
+    const trimmed = (apiUrl || AI_PROVIDER_URLS[provider] || "").trim().replace(/\/+$/g, "");
+    if (!trimmed) return false;
+    const lower = trimmed.toLowerCase();
+    if (lower.includes("/openai") || /\/chat\/completions$/i.test(lower)) {
+        return false;
+    }
+    return (provider === "gemini" || lower.includes("generativelanguage.googleapis.com"))
+        && /\/v\d+(beta)?(\/models.*)?$/i.test(lower);
+}
+
+export function normalizeModelsEndpoint(provider: string, apiUrl?: string): string {
+    const rawBase = (apiUrl || AI_PROVIDER_URLS[provider] || AI_PROVIDER_URLS.openai).trim().replace(/\/+$/, "");
+    if (!rawBase) {
+        return `${AI_PROVIDER_URLS.openai}/models`;
+    }
+    if (/\/chat\/completions$/i.test(rawBase)) {
+        return rawBase.replace(/\/chat\/completions$/i, "/models");
+    }
+    if (/\/messages$/i.test(rawBase)) {
+        return rawBase.replace(/\/messages$/i, "/models");
+    }
+    if (/\/models$/i.test(rawBase)) {
+        return rawBase;
+    }
+    if (/\/v\d+(beta)?(\/openai)?$/i.test(rawBase)) {
+        return `${rawBase}/models`;
+    }
+    if (provider === "claude" && rawBase.includes("anthropic.com")) {
+        return `${rawBase}/v1/models`;
+    }
+    return `${rawBase}/v1/models`;
 }
 
 export function buildExternalAIChatCompletionsUrl(
     provider: string,
     apiUrl: string,
 ): string {
-    const normalizedApiUrl = normalizeExternalAIBaseUrl(apiUrl || AI_PROVIDER_URLS[provider] || "");
+    const rawUrl = (apiUrl || AI_PROVIDER_URLS[provider] || "").trim().replace(/\/+$/g, "");
+    if (!rawUrl) {
+        throw new Error("API URL not configured");
+    }
+
+    if (isAnthropicNativeEndpoint(provider, rawUrl)) {
+        const base = normalizeExternalAIBaseUrl(rawUrl);
+        if (/\/v\d+(beta)?$/i.test(base) || /\/anthropic/i.test(base)) {
+            return `${base}/messages`;
+        }
+        try {
+            const parsed = new URL(base);
+            if (parsed.pathname === "" || parsed.pathname === "/") {
+                return `${base}/v1/messages`;
+            }
+        } catch {}
+        return `${base}/messages`;
+    }
+
+    const normalizedApiUrl = normalizeExternalAIBaseUrl(rawUrl);
     if (!normalizedApiUrl) {
         throw new Error("API URL not configured");
     }
@@ -108,10 +180,22 @@ async function executeWorkerAI(
     return extractAIText(response);
 }
 
+function extractAnthropicText(data: any): string | null {
+    if (!data || !Array.isArray(data.content)) {
+        return null;
+    }
+    const textBlock = data.content.find((block: any) => block?.type === "text" && typeof block.text === "string");
+    if (textBlock) {
+        return textBlock.text.trim() || null;
+    }
+    const fallbackText = data.content[0]?.text;
+    return typeof fallbackText === "string" ? fallbackText.trim() || null : null;
+}
+
 /**
  * Execute external AI API request
  */
-async function executeExternalAI(
+export async function executeExternalAI(
     config: {
         provider: string;
         model: string;
@@ -126,6 +210,89 @@ async function executeExternalAI(
         throw new Error("API key not configured");
     }
 
+    if (isAnthropicNativeEndpoint(provider, api_url)) {
+        const finalApiUrl = buildExternalAIChatCompletionsUrl(provider, api_url);
+        const systemParts = messages
+            .filter((m) => m.role === "system")
+            .map((m) => m.content.trim())
+            .filter(Boolean);
+        const nonSystemMessages = messages
+            .filter((m) => m.role !== "system")
+            .map((m) => ({ role: m.role, content: m.content }));
+        const payloadMessages = nonSystemMessages.length > 0
+            ? nonSystemMessages
+            : [{ role: "user" as const, content: systemParts.join("\n\n") || "Hello" }];
+
+        const response = await fetch(finalApiUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": ANTHROPIC_VERSION,
+            },
+            body: JSON.stringify({
+                model,
+                max_tokens: 1024,
+                temperature: 0.3,
+                ...(systemParts.length > 0 ? { system: systemParts.join("\n\n") } : {}),
+                messages: payloadMessages,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json() as any;
+        return extractAnthropicText(data);
+    }
+
+    if (isGeminiNativeEndpoint(provider, api_url)) {
+        const base = normalizeExternalAIBaseUrl(api_url).replace(/\/models.*$/i, "");
+        const finalApiUrl = `${base}/models/${encodeURIComponent(model)}:generateContent`;
+        const systemParts = messages
+            .filter((m) => m.role === "system")
+            .map((m) => m.content.trim())
+            .filter(Boolean);
+        const contents = messages
+            .filter((m) => m.role !== "system")
+            .map((m) => ({
+                role: m.role === "assistant" ? "model" : "user",
+                parts: [{ text: m.content }],
+            }));
+
+        const response = await fetch(finalApiUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": api_key,
+            },
+            body: JSON.stringify({
+                ...(systemParts.length > 0
+                    ? { systemInstruction: { parts: [{ text: systemParts.join("\n\n") }] } }
+                    : {}),
+                contents,
+                generationConfig: {
+                    temperature: 0.3,
+                    maxOutputTokens: 1024,
+                },
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json() as any;
+        const text = data.candidates?.[0]?.content?.parts
+            ?.map((part: any) => (typeof part?.text === "string" ? part.text : ""))
+            .join("")
+            .trim();
+        return text || null;
+    }
+
     const finalApiUrl = buildExternalAIChatCompletionsUrl(provider, api_url);
 
     const response = await fetch(finalApiUrl, {
@@ -137,7 +304,7 @@ async function executeExternalAI(
         body: JSON.stringify({
             model: model,
             messages,
-            max_tokens: 500,
+            max_tokens: 1024,
             temperature: 0.3,
         }),
     });
@@ -514,31 +681,47 @@ export async function fetchExternalAIModels(
         throw new Error("请先填写 API Key");
     }
 
-    const defaultUrls: Record<string, string> = {
-        openai: "https://api.openai.com/v1",
-        deepseek: "https://api.deepseek.com/v1",
-        gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
-    };
+    const effectiveUrl = (apiUrl || AI_PROVIDER_URLS[provider] || AI_PROVIDER_URLS.openai).trim();
+    const endpoint = normalizeModelsEndpoint(provider, effectiveUrl);
+    const useAnthropicHeaders = isAnthropicNativeEndpoint(provider, effectiveUrl);
+    const useGeminiNativeHeaders = isGeminiNativeEndpoint(provider, effectiveUrl);
 
-    const baseUrl = (apiUrl || defaultUrls[provider] || "https://api.openai.com/v1").trim().replace(/\/+$/, "");
-    let endpoint = "";
-    if (baseUrl.endsWith("/chat/completions")) {
-        endpoint = baseUrl.replace(/\/chat\/completions$/, "/models");
-    } else if (baseUrl.endsWith("/models")) {
-        endpoint = baseUrl;
-    } else if (baseUrl.endsWith("/v1")) {
-        endpoint = `${baseUrl}/models`;
-    } else {
-        endpoint = `${baseUrl}/v1/models`;
-    }
-
-    const res = await fetch(endpoint, {
-        headers: {
-            Authorization: `Bearer ${apiKey}`,
+    const headers: Record<string, string> = useAnthropicHeaders
+        ? {
+            "x-api-key": apiKey,
+            "anthropic-version": ANTHROPIC_VERSION,
             "Content-Type": "application/json",
-        },
+        }
+        : useGeminiNativeHeaders
+            ? {
+                "x-goog-api-key": apiKey,
+                "Content-Type": "application/json",
+            }
+            : {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+            };
+
+    let res = await fetch(endpoint, {
+        headers,
         signal: AbortSignal.timeout(15000),
     });
+
+    // Clean fallback for custom Claude relays that speak OpenAI-style Bearer on /models
+    if (
+        !res.ok &&
+        useAnthropicHeaders &&
+        !effectiveUrl.toLowerCase().includes("anthropic.com") &&
+        (res.status === 400 || res.status === 401 || res.status === 403)
+    ) {
+        res = await fetch(endpoint, {
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+            },
+            signal: AbortSignal.timeout(15000),
+        });
+    }
 
     if (!res.ok) {
         const text = await res.text();
@@ -548,7 +731,11 @@ export async function fetchExternalAIModels(
     const json = (await res.json()) as any;
     const rawList = Array.isArray(json.data) ? json.data : Array.isArray(json.models) ? json.models : [];
     const models = rawList
-        .map((item: any) => (typeof item === "string" ? item : item.id || item.name))
+        .map((item: any) => {
+            const rawId = typeof item === "string" ? item : item.id || item.name;
+            if (typeof rawId !== "string") return "";
+            return useGeminiNativeHeaders ? rawId.replace(/^models\//, "") : rawId;
+        })
         .filter(Boolean)
         .sort((a: string, b: string) => a.localeCompare(b));
 

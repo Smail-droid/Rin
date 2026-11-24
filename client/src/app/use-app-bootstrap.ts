@@ -9,6 +9,8 @@ import {
   applyThemeFontFamily,
   applyThemeFontSize,
   applyThemeOpacity,
+  applyThemeTitleEffect,
+  applyThemeTitleFont,
   applyThemeWallpaper,
 } from "../utils/theme-color";
 import { readBootstrappedClientConfig } from "./bootstrap-config";
@@ -26,6 +28,8 @@ type AppliedDomSnapshot = {
   opacity?: unknown;
   fontFamily?: string;
   fontSize?: unknown;
+  titleFont?: string;
+  titleEffect?: string;
   wallpaper?: string;
   wallpaperOpacity?: number;
   customCursor?: boolean;
@@ -60,6 +64,23 @@ function applyDomConfigIncremental(nextConfig: Record<string, unknown>, prev: Ap
   if (fontSize !== prev.fontSize) {
     applyThemeFontSize(fontSize);
     prev.fontSize = fontSize;
+  }
+
+  const titleFont = typeof nextConfig["theme.title_font"] === "string" ? nextConfig["theme.title_font"] : "serif";
+  if (titleFont !== prev.titleFont) {
+    applyThemeTitleFont(titleFont);
+    prev.titleFont = titleFont;
+  }
+
+  const titleEffect =
+    typeof nextConfig["theme.title_effect"] === "string"
+      ? nextConfig["theme.title_effect"]
+      : typeof nextConfig["atelier.title_style"] === "string"
+      ? nextConfig["atelier.title_style"]
+      : "clean";
+  if (titleEffect !== prev.titleEffect) {
+    applyThemeTitleEffect(titleEffect);
+    prev.titleEffect = titleEffect;
   }
 
   const wallpaper = typeof nextConfig["theme.wallpaper"] === "string" ? nextConfig["theme.wallpaper"] : undefined;

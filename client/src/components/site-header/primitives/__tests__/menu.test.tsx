@@ -6,8 +6,9 @@ import { Menu } from "../menu";
 
 mock.module("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? key,
     i18n: {
+      language: "zh-CN",
       changeLanguage: mock(),
     },
   }),
@@ -32,22 +33,6 @@ mock.module("reactjs-popup", () => ({
       {open ? children : null}
     </>
   ),
-}));
-
-mock.module("react-modal", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
-
-mock.module("../../../app/runtime", () => ({
-  client: {
-    user: {
-      logout: mock(),
-    },
-  },
-}));
-
-mock.module("../../../utils/auth", () => ({
-  removeAuthToken: mock(),
 }));
 
 mock.module("../nav-bar", () => ({

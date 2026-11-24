@@ -16,11 +16,14 @@ export const CLIENT_CONFIG_DEFAULTS = new Map(
     "feed.card_variant": "default",
     "storage.allow_public_upload": false,
     "storage.gallery_show_in_nav": false,
-    "theme.color": "#fc466b",
-    "theme.secondary_color": "#ff85a1",
+    "theme.color": "#d87a90",
+    "theme.secondary_color": "#e7a1b0",
     "theme.opacity": 100,
+    "theme.font_family": "sans",
     "theme.font_size": 16,
-    "theme.preset": "sakura",
+    "theme.title_font": "serif",
+    "theme.title_effect": "clean",
+    "theme.preset": "sakura_paper",
     "theme.ambience": "none",
     "theme.custom_color_enabled": false,
     "theme.wallpaper": "none",
@@ -105,6 +108,7 @@ export const AI_CONFIG_KEYS = [
   `${AI_CONFIG_PREFIX}prompt_tech`,
   `${AI_CONFIG_PREFIX}prompt_format`,
   `${AI_CONFIG_PREFIX}prompt_summary`,
+  `${AI_CONFIG_PREFIX}prompt_presets`,
 ] as const;
 
 export const DEFAULT_AI_PROMPT_PRESETS = [
@@ -141,6 +145,7 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
   prompt_tech: DEFAULT_PROMPT_TECH,
   prompt_format: DEFAULT_PROMPT_FORMAT,
   prompt_summary: DEFAULT_PROMPT_SUMMARY,
+  prompt_presets: "",
 };
 
 export class ConfigWrapper {

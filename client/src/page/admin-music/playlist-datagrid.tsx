@@ -9,6 +9,7 @@ interface CustomGroupItem {
 }
 
 interface PlaylistDataGridProps {
+  isAdmin?: boolean;
   displayedPlaylist: MusicTrack[];
   fullPlaylist: MusicTrack[];
   currentTrack: MusicTrack | null;
@@ -42,6 +43,7 @@ interface PlaylistDataGridProps {
 }
 
 export function PlaylistDataGrid({
+  isAdmin = false,
   displayedPlaylist,
   fullPlaylist,
   currentTrack,
@@ -141,13 +143,15 @@ export function PlaylistDataGrid({
             </button>
           ))}
 
-          <button
-            type="button"
-            onClick={() => setShowNewGroupInput(!showNewGroupInput)}
-            className="px-2.5 py-1 rounded-xl text-theme hover:bg-theme/10 transition text-xs font-bold"
-          >
-            + 新建分组
-          </button>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => setShowNewGroupInput(!showNewGroupInput)}
+              className="px-2.5 py-1 rounded-xl text-theme hover:bg-theme/10 transition text-xs font-bold"
+            >
+              + 新建分组
+            </button>
+          ) : null}
 
           {/* 歌单即时搜索框 */}
           <div className="relative w-36 sm:w-48 ml-1">
@@ -171,63 +175,65 @@ export function PlaylistDataGrid({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap justify-between md:justify-end">
-          <button
-            type="button"
-            onClick={onToggleSelectAll}
-            className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 text-xs font-semibold hover:bg-black/5 transition"
-          >
-            全选
-          </button>
-          <button
-            type="button"
-            onClick={onInvertSelect}
-            className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 text-xs font-semibold hover:bg-black/5 transition"
-          >
-            反选
-          </button>
-          <button
-            type="button"
-            onClick={onBatchMoveToTop}
-            disabled={!selectedTrackIds.size}
-            className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 text-xs font-semibold hover:bg-black/5 transition disabled:opacity-30"
-            title="将已选曲目置顶至第 1 位"
-          >
-            置顶
-          </button>
-          <button
-            type="button"
-            onClick={onBatchPersistR2}
-            disabled={persistR2Status === "saving"}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
-              persistR2Status === "done" ? "bg-emerald-500 text-white font-bold" : "bg-theme/10 hover:bg-theme/20 text-theme"
-            }`}
-          >
-            {persistR2Status === "saving" && <i className="ri-loader-4-line animate-spin" />}
-            {persistR2Status === "done" && <i className="ri-check-line" />}
-            <span>{persistR2Status === "saving" ? "转存中..." : persistR2Status === "done" ? "已转存 ✓" : "全部转存音廊"}</span>
-          </button>
-          <button
-            type="button"
-            onClick={onBatchDelete}
-            disabled={!selectedTrackIds.size}
-            className="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 disabled:opacity-30 transition flex items-center gap-1 text-xs font-semibold"
-          >
-            <i className="ri-delete-bin-line" />
-            <span>删除</span>
-          </button>
-          <button
-            type="button"
-            onClick={onResetPlaylist}
-            className="px-2.5 py-1 rounded-lg text-neutral-400 hover:text-theme text-xs transition"
-          >
-            重置
-          </button>
-        </div>
+        {isAdmin ? (
+          <div className="flex items-center gap-2 flex-wrap justify-between md:justify-end">
+            <button
+              type="button"
+              onClick={onToggleSelectAll}
+              className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 text-xs font-semibold hover:bg-black/5 transition"
+            >
+              全选
+            </button>
+            <button
+              type="button"
+              onClick={onInvertSelect}
+              className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 text-xs font-semibold hover:bg-black/5 transition"
+            >
+              反选
+            </button>
+            <button
+              type="button"
+              onClick={onBatchMoveToTop}
+              disabled={!selectedTrackIds.size}
+              className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 text-xs font-semibold hover:bg-black/5 transition disabled:opacity-30"
+              title="将已选曲目置顶至第 1 位"
+            >
+              置顶
+            </button>
+            <button
+              type="button"
+              onClick={onBatchPersistR2}
+              disabled={persistR2Status === "saving"}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+                persistR2Status === "done" ? "bg-emerald-500 text-white font-bold" : "bg-theme/10 hover:bg-theme/20 text-theme"
+              }`}
+            >
+              {persistR2Status === "saving" && <i className="ri-loader-4-line animate-spin" />}
+              {persistR2Status === "done" && <i className="ri-check-line" />}
+              <span>{persistR2Status === "saving" ? "转存中..." : persistR2Status === "done" ? "已转存 ✓" : "全部转存音廊"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onBatchDelete}
+              disabled={!selectedTrackIds.size}
+              className="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 disabled:opacity-30 transition flex items-center gap-1 text-xs font-semibold"
+            >
+              <i className="ri-delete-bin-line" />
+              <span>删除</span>
+            </button>
+            <button
+              type="button"
+              onClick={onResetPlaylist}
+              className="px-2.5 py-1 rounded-lg text-neutral-400 hover:text-theme text-xs transition"
+            >
+              重置
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {/* 新建分组快速输入框 */}
-      {showNewGroupInput && (
+      {isAdmin && showNewGroupInput ? (
         <div className="flex items-center gap-2 p-3 rounded-2xl bg-theme/5 border border-theme/20 text-xs ani-show max-w-md">
           <input
             type="text"
@@ -245,40 +251,46 @@ export function PlaylistDataGrid({
             将已选项归入此组
           </button>
         </div>
-      )}
+      ) : null}
 
       {/* 播放列表超级表格 */}
       <div className="overflow-x-auto rounded-2xl border border-black/10 dark:border-white/10 bg-w max-h-[60vh] overflow-y-auto">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] text-neutral-400 font-mono text-[11px]">
-              <th className="py-2.5 px-2.5 w-8 text-center">
-                <input
-                  type="checkbox"
-                  checked={selectedTrackIds.size === displayedPlaylist.length && displayedPlaylist.length > 0}
-                  onChange={onToggleSelectAll}
-                  className="accent-theme cursor-pointer"
-                />
-              </th>
-              <th className="py-2.5 px-2 w-14 text-center">序号(跳位)</th>
+              {isAdmin ? (
+                <th className="py-2.5 px-2.5 w-8 text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedTrackIds.size === displayedPlaylist.length && displayedPlaylist.length > 0}
+                    onChange={onToggleSelectAll}
+                    className="accent-theme cursor-pointer"
+                  />
+                </th>
+              ) : null}
+              <th className="py-2.5 px-2 w-14 text-center">{isAdmin ? "序号(跳位)" : "#"}</th>
               <th className="py-2.5 px-2">曲目 / 歌手</th>
               <th className="py-2.5 px-2 w-20">分组</th>
               <th className="py-2.5 px-2 w-20">音源</th>
-              <th className="py-2.5 px-2 w-16 text-center">状态</th>
-              <th className="py-2.5 px-2 text-right pr-4 w-28">操作</th>
+              {isAdmin ? (
+                <>
+                  <th className="py-2.5 px-2 w-16 text-center">状态</th>
+                  <th className="py-2.5 px-2 text-right pr-4 w-28">操作</th>
+                </>
+              ) : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-black/5 dark:divide-white/5">
             {finalPlaylist.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-16 text-center text-neutral-400">
-                  {searchQuery ? `未找到匹配 “${searchQuery}” 的曲目` : "播放列表为空，请在上方「音廊资产」或「曲库探索」中收录"}
+                <td colSpan={isAdmin ? 7 : 4} className="py-16 text-center text-neutral-400">
+                  {searchQuery ? `未找到匹配 “${searchQuery}” 的曲目` : isAdmin ? "播放列表为空，请在上方「音廊资产」或「曲库探索」中收录" : "播放列表暂无曲目"}
                 </td>
               </tr>
             ) : (
               finalPlaylist.map((track, idx) => {
                 const isCur = currentTrack?.id === track.id;
-                const isSel = selectedTrackIds.has(track.id);
+                const isSel = isAdmin && selectedTrackIds.has(track.id);
                 const isR2 = track.source === "r2" || track.url.includes("/api/blob/music/");
 
                 return (
@@ -292,59 +304,67 @@ export function PlaylistDataGrid({
                         : "hover:bg-black/[0.015] dark:hover:bg-white/[0.015]"
                     }`}
                   >
-                    <td className="py-2 px-2.5 text-center">
-                      <input
-                        type="checkbox"
-                        checked={isSel}
-                        onChange={(e) => onSelectTrack(track.id, e.target.checked)}
-                        className="accent-theme cursor-pointer"
-                      />
-                    </td>
+                    {isAdmin ? (
+                      <td className="py-2 px-2.5 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSel}
+                          onChange={(e) => onSelectTrack(track.id, e.target.checked)}
+                          className="accent-theme cursor-pointer"
+                        />
+                      </td>
+                    ) : null}
 
-                    {/* 序号数字直接输入换位 + 快捷上下移动 */}
+                    {/* 序号数字直接输入换位 + 快捷上下移动（访客只读展示纯序号） */}
                     <td className="py-2 px-2 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        {isCur && isPlaying && <span className="text-theme font-bold text-xs">▶</span>}
-                        <div className="flex items-center gap-0.5">
-                          <input
-                            type="number"
-                            min={1}
-                            max={fullPlaylist.length}
-                            defaultValue={idx + 1}
-                            key={`${track.id}_${idx}`}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
+                      {isAdmin ? (
+                        <div className="flex items-center justify-center gap-1">
+                          {isCur && isPlaying ? <span className="text-theme font-bold text-xs">▶</span> : null}
+                          <div className="flex items-center gap-0.5">
+                            <input
+                              type="number"
+                              min={1}
+                              max={fullPlaylist.length}
+                              defaultValue={idx + 1}
+                              key={`${track.id}_${idx}`}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  onMoveTrackToIndex(idx, e.currentTarget.value);
+                                }
+                              }}
+                              onBlur={(e) => {
                                 onMoveTrackToIndex(idx, e.currentTarget.value);
-                              }
-                            }}
-                            onBlur={(e) => {
-                              onMoveTrackToIndex(idx, e.currentTarget.value);
-                            }}
-                            className="w-10 text-center rounded-md bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme/40 focus:border-theme focus:bg-w text-xs font-mono font-bold outline-none transition py-0.5"
-                            title="输入数字后敲回车，直接调整到该序号并顺延"
-                          />
-                          <div className="flex flex-col">
-                            <button
-                              type="button"
-                              disabled={idx === 0}
-                              onClick={() => onMoveTrackToIndex(idx, String(idx))}
-                              className="text-neutral-400 hover:text-theme disabled:opacity-20 leading-none"
-                              title="上移一位"
-                            >
-                              <i className="ri-arrow-up-s-fill text-[10px]" />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={idx === fullPlaylist.length - 1}
-                              onClick={() => onMoveTrackToIndex(idx, String(idx + 2))}
-                              className="text-neutral-400 hover:text-theme disabled:opacity-20 leading-none"
-                              title="下移一位"
-                            >
-                              <i className="ri-arrow-down-s-fill text-[10px]" />
-                            </button>
+                              }}
+                              className="w-10 text-center rounded-md bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme/40 focus:border-theme focus:bg-w text-xs font-mono font-bold outline-none transition py-0.5"
+                              title="输入数字后敲回车，直接调整到该序号并顺延"
+                            />
+                            <div className="flex flex-col">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => onMoveTrackToIndex(idx, String(idx))}
+                                className="text-neutral-400 hover:text-theme disabled:opacity-20 leading-none"
+                                title="上移一位"
+                              >
+                                <i className="ri-arrow-up-s-fill text-[10px]" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === fullPlaylist.length - 1}
+                                onClick={() => onMoveTrackToIndex(idx, String(idx + 2))}
+                                className="text-neutral-400 hover:text-theme disabled:opacity-20 leading-none"
+                                title="下移一位"
+                              >
+                                <i className="ri-arrow-down-s-fill text-[10px]" />
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ) : (
+                        <span className={`font-mono text-xs tabular-nums ${isCur ? "text-theme font-bold" : "text-neutral-400"}`}>
+                          {isCur && isPlaying ? "▶" : idx + 1}
+                        </span>
+                      )}
                     </td>
 
                     {/* 曲目名与艺术家 (前置播放/暂停按键) */}
@@ -406,51 +426,54 @@ export function PlaylistDataGrid({
                       </span>
                     </td>
 
-                    {/* 转存状态图标 */}
-                    <td className="py-2 px-2 text-center">
-                      {isR2 ? (
-                        <span title="已永久转存至云端音廊" className="inline-flex items-center justify-center text-emerald-500 select-none">
-                          <i className="ri-checkbox-circle-fill text-sm" />
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => onSingleTrackPersist(track)}
-                          disabled={persistingTrackId === track.id}
-                          className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/5 transition inline-flex items-center justify-center select-none"
-                          title="下载并永久固化至云端音廊"
-                        >
-                          {persistingTrackId === track.id ? (
-                            <i className="ri-loader-4-line animate-spin text-xs text-theme" />
+                    {/* 转存状态图标 & 操作列（仅管理员可见） */}
+                    {isAdmin ? (
+                      <>
+                        <td className="py-2 px-2 text-center">
+                          {isR2 ? (
+                            <span title="已永久转存至云端音廊" className="inline-flex items-center justify-center text-emerald-500 select-none">
+                              <i className="ri-checkbox-circle-fill text-sm" />
+                            </span>
                           ) : (
-                            <i className="ri-download-cloud-line text-sm" />
+                            <button
+                              type="button"
+                              onClick={() => onSingleTrackPersist(track)}
+                              disabled={persistingTrackId === track.id}
+                              className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 dark:hover:bg-white/5 transition inline-flex items-center justify-center select-none"
+                              title="下载并永久固化至云端音廊"
+                            >
+                              {persistingTrackId === track.id ? (
+                                <i className="ri-loader-4-line animate-spin text-xs text-theme" />
+                              ) : (
+                                <i className="ri-download-cloud-line text-sm" />
+                              )}
+                            </button>
                           )}
-                        </button>
-                      )}
-                    </td>
+                        </td>
 
-                    {/* 操作 (置顶与删除) */}
-                    <td className="py-2 px-2 text-right pr-4">
-                      <div className="inline-flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => onMoveToTop(track.id)}
-                          className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 transition"
-                          title="置顶至第 1 位"
-                        >
-                          <i className="ri-vertical-align-top text-xs" />
-                        </button>
+                        <td className="py-2 px-2 text-right pr-4">
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => onMoveToTop(track.id)}
+                              className="p-1 rounded-md text-neutral-400 hover:text-theme hover:bg-black/5 transition"
+                              title="置顶至第 1 位"
+                            >
+                              <i className="ri-vertical-align-top text-xs" />
+                            </button>
 
-                        <button
-                          type="button"
-                          onClick={() => onDeleteTrack(track)}
-                          className="p-1 rounded-md text-neutral-400 hover:text-red-500 hover:bg-black/5 transition"
-                          title="移出播放列表"
-                        >
-                          <i className="ri-delete-bin-line text-xs" />
-                        </button>
-                      </div>
-                    </td>
+                            <button
+                              type="button"
+                              onClick={() => onDeleteTrack(track)}
+                              className="p-1 rounded-md text-neutral-400 hover:text-red-500 hover:bg-black/5 transition"
+                              title="移出播放列表"
+                            >
+                              <i className="ri-delete-bin-line text-xs" />
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : null}
                   </tr>
                 );
               })

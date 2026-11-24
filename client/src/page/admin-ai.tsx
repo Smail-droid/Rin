@@ -1,5 +1,5 @@
 import { Spinner } from "@rin/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Button } from "../components/button";
 import { useAlert } from "../components/dialog";
@@ -20,8 +20,16 @@ export function AdminAIPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [draft, setDraft] = useState<SettingsDraft>({ clientConfig: {}, serverConfig: {} });
   const [hasStoredAiApiKey, setHasStoredAiApiKey] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     loadSettingsConfigState()
@@ -37,6 +45,7 @@ export function AdminAIPage() {
 
   const handleAIChange = (updates: Partial<AISettingsValue>) => {
     const flatUpdates = buildAIConfigUpdates(updates);
+    setSaveStatus("idle");
     setDraft((curr) => {
       let next = curr;
       for (const [key, value] of Object.entries(flatUpdates)) {
@@ -48,12 +57,18 @@ export function AdminAIPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveStatus("saving");
     try {
       const state = await saveSettingsConfigState(draft);
       setDraft(state.draft);
       setHasStoredAiApiKey(Boolean(state.hasStoredAiApiKey || (aiValue.apiKey && aiValue.apiKey.trim().length > 0)));
-      showAlert("AI 配置与提示词保存成功！");
+      setSaveStatus("saved");
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        setSaveStatus((curr) => (curr === "saved" ? "idle" : curr));
+      }, 2500);
     } catch (err: any) {
+      setSaveStatus("error");
       showAlert(err.message || "保存配置失败");
     } finally {
       setSaving(false);
@@ -81,8 +96,13 @@ export function AdminAIPage() {
           </div>
 
           <div className="flex items-center gap-3 self-end sm:self-auto">
+            {saveStatus === "saved" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                已保存 ✓
+              </span>
+            )}
             <Button
-              title={saving ? "保存中…" : "保存"}
+              title={saving ? "保存中…" : saveStatus === "saved" ? "已保存 ✓" : "保存"}
               onClick={handleSave}
               disabled={loading || saving}
               className="py-2 px-5 shadow-sm text-xs font-bold"

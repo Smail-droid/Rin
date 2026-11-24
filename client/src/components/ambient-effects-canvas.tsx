@@ -101,6 +101,8 @@ export function AmbientEffectsCanvas({ mode }: { mode: AmbienceMode }) {
     };
 
     updateAvoidRects();
+    const initialRecheckTimer = window.setTimeout(updateAvoidRects, 350);
+    window.addEventListener("rin:config-updated", updateAvoidRects);
 
     // 滚动防抖采样避让区域
     let scrollThrottleTimer: number | null = null;
@@ -206,9 +208,12 @@ export function AmbientEffectsCanvas({ mode }: { mode: AmbienceMode }) {
 
     const drawPetal = (size: number) => {
       ctx.beginPath();
-      ctx.moveTo(0, -size * 0.65);
-      ctx.bezierCurveTo(size * 0.85, -size * 0.95, size * 0.95, size * 0.35, 0, size * 0.85);
-      ctx.bezierCurveTo(-size * 0.95, size * 0.35, -size * 0.85, -size * 0.95, 0, -size * 0.65);
+      // 樱花瓣特征：顶部微凹 V 形缺口 + 两侧饱满圆弧 + 底部细尖花蒂
+      ctx.moveTo(0, -size * 0.42);
+      ctx.bezierCurveTo(size * 0.25, -size * 0.85, size * 0.92, -size * 0.72, size * 0.72, size * 0.12);
+      ctx.bezierCurveTo(size * 0.56, size * 0.56, size * 0.2, size * 0.78, 0, size * 0.9);
+      ctx.bezierCurveTo(-size * 0.2, size * 0.78, -size * 0.56, size * 0.56, -size * 0.72, size * 0.12);
+      ctx.bezierCurveTo(-size * 0.92, -size * 0.72, -size * 0.25, -size * 0.85, 0, -size * 0.42);
       ctx.closePath();
       ctx.fill();
     };
@@ -432,6 +437,8 @@ export function AmbientEffectsCanvas({ mode }: { mode: AmbienceMode }) {
 
     return () => {
       cancelAnimationFrame(animId);
+      window.clearTimeout(initialRecheckTimer);
+      window.removeEventListener("rin:config-updated", updateAvoidRects);
       window.removeEventListener("resize", syncCanvasSize);
       window.removeEventListener("colorSchemeChange", syncTheme);
       window.removeEventListener("scroll", handleScroll);

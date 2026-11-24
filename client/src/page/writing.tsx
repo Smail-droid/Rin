@@ -1,6 +1,6 @@
 import i18n from 'i18next';
 import _ from 'lodash';
-import {useCallback, useEffect, useMemo, useState} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Helmet} from "react-helmet";
 import {useTranslation} from "react-i18next";
 import {useSearch} from "wouter";
@@ -16,6 +16,7 @@ import { renderMermaidElements } from "../utils/render-mermaid";
 import { MarkdownEditor } from '../components/markdown_editor';
 import { Markdown } from "../components/markdown";
 import { WritingAICopilotDrawer } from "../components/writing-ai-copilot-drawer";
+import { emitToast } from "../utils/toast";
 
 function getFileIcon(key: string, contentType?: string) {
   const ext = key.split(".").pop()?.toLowerCase() || "";
@@ -46,6 +47,7 @@ async function publish({
   draft,
   createdAt,
   onCompleted,
+  onSuccess,
   showAlert
 }: {
   title: string;
@@ -57,6 +59,7 @@ async function publish({
   alias?: string;
   createdAt?: Date;
   onCompleted?: () => void;
+  onSuccess?: () => void;
   showAlert: ShowAlertType;
 }) {
   const t = i18n.t
@@ -79,10 +82,12 @@ async function publish({
     showAlert(error.value as string);
   }
   if (data) {
-    showAlert(t("publish.success"), () => {
-      Cache.with().clear();
+    Cache.with().clear();
+    emitToast(t("publish.success"), "success");
+    onSuccess?.();
+    setTimeout(() => {
       window.location.href = "/feed/" + data.insertedId;
-    });
+    }, 600);
   }
 }
 
@@ -97,6 +102,7 @@ async function update({
   draft,
   createdAt,
   onCompleted,
+  onSuccess,
   showAlert
 }: {
   id: number;
@@ -109,6 +115,7 @@ async function update({
   draft?: boolean;
   createdAt?: Date;
   onCompleted?: () => void;
+  onSuccess?: () => void;
   showAlert: ShowAlertType;
 }) {
   const t = i18n.t
@@ -131,10 +138,12 @@ async function update({
   if (error) {
     showAlert(error.value as string);
   } else {
-    showAlert(t("update.success"), () => {
-      Cache.with(id).clear();
+    Cache.with(id).clear();
+    emitToast(t("update.success"), "success");
+    onSuccess?.();
+    setTimeout(() => {
       window.location.href = "/feed/" + id;
-    });
+    }, 600);
   }
 }
 
@@ -168,6 +177,11 @@ export function WritingPage({ id: propId }: { id?: number }) {
   const [content, setContent] = cache.useCache("content", "");
   const [createdAt, setCreatedAt] = useState<Date | undefined>(new Date());
   const [publishing, setPublishing] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState(false);
+  const [copiedSummary, setCopiedSummary] = useState(false);
+  const [appliedSummary, setAppliedSummary] = useState(false);
+  const [copiedBody, setCopiedBody] = useState(false);
+  const feedbackTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [pipelineStages, setPipelineStages] = useState<string[]>([]);
   const [autoRunOnPublish, setAutoRunOnPublish] = useState(false);
@@ -247,7 +261,20 @@ export function WritingPage({ id: propId }: { id?: number }) {
   useEffect(() => {
     const handleToggle = () => setCopilotOpen((p) => !p);
     window.addEventListener("toggle-ai-copilot", handleToggle);
-    return () => window.removeEventListener("toggle-ai-copilot", handleToggle);
+    const timers = feedbackTimersRef.current;
+    return () => {
+      window.removeEventListener("toggle-ai-copilot", handleToggle);
+      for (const timer of timers) clearTimeout(timer);
+      timers.clear();
+    };
+  }, []);
+
+  const scheduleFeedbackReset = useCallback((fn: () => void, ms = 2000) => {
+    const timer = setTimeout(() => {
+      feedbackTimersRef.current.delete(timer);
+      fn();
+    }, ms);
+    feedbackTimersRef.current.add(timer);
   }, []);
 
   const togglePipelineStage = (stage: string) => {
@@ -328,6 +355,7 @@ export function WritingPage({ id: propId }: { id?: number }) {
         .map((tag) => tag.trim()) || [];
 
     setPublishing(true);
+    setPublishSuccess(false);
     if (id !== undefined) {
       update({
         id,
@@ -341,6 +369,9 @@ export function WritingPage({ id: propId }: { id?: number }) {
         createdAt,
         onCompleted: () => {
           setPublishing(false);
+        },
+        onSuccess: () => {
+          setPublishSuccess(true);
         },
         showAlert,
       });
@@ -356,6 +387,9 @@ export function WritingPage({ id: propId }: { id?: number }) {
         createdAt,
         onCompleted: () => {
           setPublishing(false);
+        },
+        onSuccess: () => {
+          setPublishSuccess(true);
         },
         showAlert,
       });
@@ -396,11 +430,17 @@ export function WritingPage({ id: propId }: { id?: number }) {
     return (
       <button
         onClick={publishButton}
-        className={`inline-flex items-center justify-center gap-1.5 rounded-xl bg-theme px-4 py-2 text-xs font-bold text-white shadow-2xs hover:bg-theme-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 transition-all ${className ?? ""}`}
+        className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-2xs active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 transition-all ${
+          publishSuccess ? "bg-emerald-600" : "bg-theme hover:bg-theme-hover"
+        } ${className ?? ""}`}
         disabled={publishing}
       >
-        {publishing && <Loading type="spin" height={14} width={14} />}
-        <span>{t('publish.title') || "发布文章"}</span>
+        {publishing ? (
+          <Loading type="spin" height={14} width={14} />
+        ) : publishSuccess ? (
+          <i className="ri-check-line text-sm" />
+        ) : null}
+        <span>{publishSuccess ? "✓ 已保存" : t('publish.title') || "发布文章"}</span>
       </button>
     );
   }
@@ -717,26 +757,32 @@ export function WritingPage({ id: propId }: { id?: number }) {
                   <button
                     type="button"
                     onClick={() => {
-                      navigator.clipboard.writeText(pipelinePreviewData.summary || "");
-                      showAlert("已复制 AI 摘要纯文本到剪贴板！");
+                      void navigator.clipboard.writeText(pipelinePreviewData.summary || "");
+                      setCopiedSummary(true);
+                      scheduleFeedbackReset(() => setCopiedSummary(false), 2000);
+                      emitToast("已复制 AI 摘要纯文本到剪贴板！", "success");
                     }}
                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-theme/30 bg-w text-[11px] font-semibold text-theme hover:bg-theme/10 transition"
                   >
-                    <i className="ri-file-copy-line" />
-                    <span>仅复制摘要</span>
+                    <i className={copiedSummary ? "ri-check-line text-emerald-500" : "ri-file-copy-line"} />
+                    <span>{copiedSummary ? "✓ 已复制" : "仅复制摘要"}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => {
                       if (pipelinePreviewData.summary) {
                         setSummary(pipelinePreviewData.summary);
-                        showAlert("已将 AI 摘要填入文章简介！");
+                        setAppliedSummary(true);
+                        scheduleFeedbackReset(() => setAppliedSummary(false), 2000);
+                        emitToast("已将 AI 摘要填入文章简介！", "success");
                       }
                     }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-theme text-white text-[11px] font-semibold hover:bg-theme-hover transition"
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-white text-[11px] font-semibold transition ${
+                      appliedSummary ? "bg-emerald-600" : "bg-theme hover:bg-theme-hover"
+                    }`}
                   >
                     <i className="ri-check-line" />
-                    <span>设为文章简介</span>
+                    <span>{appliedSummary ? "✓ 已设为简介" : "设为文章简介"}</span>
                   </button>
                 </div>
               </div>
@@ -757,14 +803,16 @@ export function WritingPage({ id: propId }: { id?: number }) {
                 type="button"
                 onClick={() => {
                   if (pipelinePreviewData?.result) {
-                    navigator.clipboard.writeText(pipelinePreviewData.result);
-                    showAlert("已复制正文纯 Markdown 内容到剪贴板！");
+                    void navigator.clipboard.writeText(pipelinePreviewData.result);
+                    setCopiedBody(true);
+                    scheduleFeedbackReset(() => setCopiedBody(false), 2000);
+                    emitToast("已复制正文纯 Markdown 内容到剪贴板！", "success");
                   }
                 }}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-black/10 bg-w text-[11px] font-semibold t-primary hover:bg-neutral-100 dark:border-white/10 dark:hover:bg-white/5 transition"
               >
-                <i className="ri-file-copy-line" />
-                <span>仅复制正文</span>
+                <i className={copiedBody ? "ri-check-line text-emerald-500" : "ri-file-copy-line"} />
+                <span>{copiedBody ? "✓ 已复制" : "仅复制正文"}</span>
               </button>
             </div>
 

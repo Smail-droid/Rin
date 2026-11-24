@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 import { client, endpoint } from "../app/runtime";
 import { defaultClientConfig, defaultServerConfig } from "../state/config";
 import { headersWithAuth } from "../utils/auth";
+import { emitToast } from "../utils/toast";
 
 const MASKED_SECRET = "••••••••";
 
@@ -97,7 +98,7 @@ export async function uploadFavicon(file: File, t: TFunction, showAlert: (messag
   });
 
   if (response.ok) {
-    showAlert(t("settings.favicon.update.success"));
+    emitToast(t("settings.favicon.update.success"), "success");
     return;
   }
 
@@ -118,20 +119,47 @@ export function buildAIConfigUpdates(updates: Record<string, unknown>) {
   if (updates.enabled !== undefined) flatUpdates["ai_summary.enabled"] = String(updates.enabled);
   if (updates.provider !== undefined) flatUpdates["ai_summary.provider"] = updates.provider;
   if (updates.model !== undefined) flatUpdates["ai_summary.model"] = updates.model;
-  if (updates.api_url !== undefined) flatUpdates["ai_summary.api_url"] = updates.api_url;
-  if (updates.api_key !== undefined) flatUpdates["ai_summary.api_key"] = updates.api_key;
-  if (updates.system_prompt !== undefined) flatUpdates["ai_summary.system_prompt"] = updates.system_prompt;
-  if (updates.pipeline_stages !== undefined) flatUpdates["ai_summary.pipeline_stages"] = updates.pipeline_stages;
-  if (updates.prompt_tech !== undefined) flatUpdates["ai_summary.prompt_tech"] = updates.prompt_tech;
-  if (updates.prompt_format !== undefined) flatUpdates["ai_summary.prompt_format"] = updates.prompt_format;
-  if (updates.prompt_summary !== undefined) flatUpdates["ai_summary.prompt_summary"] = updates.prompt_summary;
+
+  const apiUrl = updates.apiUrl !== undefined ? updates.apiUrl : updates.api_url;
+  if (apiUrl !== undefined) flatUpdates["ai_summary.api_url"] = apiUrl;
+
+  const apiKey = updates.apiKey !== undefined ? updates.apiKey : updates.api_key;
+  if (apiKey !== undefined) flatUpdates["ai_summary.api_key"] = apiKey;
+
+  const systemPrompt = updates.systemPrompt !== undefined ? updates.systemPrompt : updates.system_prompt;
+  if (systemPrompt !== undefined) flatUpdates["ai_summary.system_prompt"] = systemPrompt;
+
+  const pipelineStages = updates.pipelineStages !== undefined ? updates.pipelineStages : updates.pipeline_stages;
+  if (pipelineStages !== undefined) flatUpdates["ai_summary.pipeline_stages"] = pipelineStages;
+
+  const promptTech = updates.promptTech !== undefined ? updates.promptTech : updates.prompt_tech;
+  if (promptTech !== undefined) flatUpdates["ai_summary.prompt_tech"] = promptTech;
+
+  const promptFormat = updates.promptFormat !== undefined ? updates.promptFormat : updates.prompt_format;
+  if (promptFormat !== undefined) flatUpdates["ai_summary.prompt_format"] = promptFormat;
+
+  const promptSummary = updates.promptSummary !== undefined ? updates.promptSummary : updates.prompt_summary;
+  if (promptSummary !== undefined) flatUpdates["ai_summary.prompt_summary"] = promptSummary;
+
+  const promptPresets = updates.promptPresets !== undefined ? updates.promptPresets : updates.prompt_presets;
+  if (promptPresets !== undefined) {
+    flatUpdates["ai_summary.prompt_presets"] =
+      typeof promptPresets === "string" ? promptPresets : JSON.stringify(promptPresets);
+  }
+
   return flatUpdates;
+}
+
+function normalizePromptPresetsString(raw: unknown): string {
+  if (typeof raw === "string") return raw;
+  if (Array.isArray(raw) || (raw && typeof raw === "object")) return JSON.stringify(raw);
+  return "";
 }
 
 export async function loadAIConfigState() {
   const { data } = await client.config.get("server");
   return {
-    enabled: data?.["ai_summary.enabled"] === "true",
+    enabled: data?.["ai_summary.enabled"] === true || data?.["ai_summary.enabled"] === "true",
     provider: data?.["ai_summary.provider"] ?? "openai",
     model: data?.["ai_summary.model"] ?? "gpt-4o-mini",
     apiKeySet: data?.["ai_summary.api_key"] === "••••••••",
@@ -141,6 +169,7 @@ export async function loadAIConfigState() {
     promptTech: String(data?.["ai_summary.prompt_tech"] ?? ""),
     promptFormat: String(data?.["ai_summary.prompt_format"] ?? ""),
     promptSummary: String(data?.["ai_summary.prompt_summary"] ?? ""),
+    promptPresets: normalizePromptPresetsString(data?.["ai_summary.prompt_presets"]),
   };
 }
 
@@ -214,6 +243,7 @@ export function buildAIConfigDraftValue(
     promptTech: String(serverConfig["ai_summary.prompt_tech"] ?? ""),
     promptFormat: String(serverConfig["ai_summary.prompt_format"] ?? ""),
     promptSummary: String(serverConfig["ai_summary.prompt_summary"] ?? ""),
+    promptPresets: normalizePromptPresetsString(serverConfig["ai_summary.prompt_presets"]),
   };
 }
 

@@ -7,7 +7,7 @@ import {
   SearchableSelect,
 } from "@rin/ui";
 import * as Switch from "@radix-ui/react-switch";
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import ReactLoading from "react-loading";
 import { client } from "../app/runtime";
@@ -32,6 +32,7 @@ export type AISettingsValue = {
   promptTech?: string;
   promptFormat?: string;
   promptSummary?: string;
+  promptPresets?: string;
 };
 
 // 提示词多版本预设项规范 (支持多阶段、多版本自由组合切换)
@@ -79,6 +80,17 @@ const DEFAULT_PROMPT_PRESETS: PromptPresetItem[] = [
   },
 ];
 
+function parsePromptPresetsValue(raw?: string): PromptPresetItem[] | null {
+  if (!raw || !raw.trim()) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+  } catch {}
+  return null;
+}
+
 export function AISummarySettings({
   value,
   onChange,
@@ -86,7 +98,7 @@ export function AISummarySettings({
 }: {
   value: AISettingsValue;
   onChange: (updates: Partial<AISettingsValue>) => void;
-  onSave?: () => void;
+  onSave?: () => void | Promise<void>;
 }) {
   const { t } = useTranslation();
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
@@ -94,31 +106,56 @@ export function AISummarySettings({
   const { showAlert, AlertUI } = useAlert();
   const providerFields = getAIProviderFields(value.provider);
 
-  // 提示词多版本预设库状态 (支持动态新增/选择/组合启用)
+  const [promptSaveState, setPromptSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const promptSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [fetchModelsNotice, setFetchModelsNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (promptSaveTimerRef.current) clearTimeout(promptSaveTimerRef.current);
+    };
+  }, []);
+
+  // 提示词多版本预设库状态 (优先以服务端 ai_summary.prompt_presets 为准，localStorage 仅作空值兜底种子)
   const [promptPresets, setPromptPresets] = useState<PromptPresetItem[]>(() => {
+    const fromServer = parsePromptPresetsValue(value.promptPresets);
+    if (fromServer) return fromServer;
     try {
       const saved = localStorage.getItem("rin_ai_prompt_presets");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
+      const fromLocal = saved ? parsePromptPresetsValue(saved) : null;
+      if (fromLocal) return fromLocal;
     } catch {}
     return DEFAULT_PROMPT_PRESETS;
   });
 
+  useEffect(() => {
+    const fromServer = parsePromptPresetsValue(value.promptPresets);
+    if (fromServer) {
+      setPromptPresets(fromServer);
+      try {
+        localStorage.setItem("rin_ai_prompt_presets", JSON.stringify(fromServer));
+      } catch {}
+    }
+  }, [value.promptPresets]);
+
   const [editingPresetId, setEditingPresetId] = useState<string>("preset_tech_std");
 
-  const savePresets = (next: PromptPresetItem[]) => {
+  const savePresets = (next: PromptPresetItem[], extraUpdates: Partial<AISettingsValue> = {}) => {
     setPromptPresets(next);
+    const serialized = JSON.stringify(next);
     try {
-      localStorage.setItem("rin_ai_prompt_presets", JSON.stringify(next));
+      localStorage.setItem("rin_ai_prompt_presets", serialized);
     } catch {}
 
-    // 同步更新启用的阶段至 value
+    // 同步更新启用的阶段与预设序列化值至 value
     const enabledStagesList = next
       .filter((p) => p.enabled && p.stage !== "custom")
       .map((p) => p.stage);
-    onChange({ pipelineStages: enabledStagesList.join(",") });
+    onChange({
+      promptPresets: serialized,
+      pipelineStages: enabledStagesList.join(","),
+      ...extraUpdates,
+    });
   };
 
   const handleTogglePreset = (id: string) => {
@@ -157,12 +194,14 @@ export function AISummarySettings({
 
   const handlePromptTextChange = (text: string) => {
     const next = promptPresets.map((p) => (p.id === currentEditingPreset.id ? { ...p, prompt: text } : p));
-    savePresets(next);
-
-    // 同步到当前活动阶段的配置项中
-    if (currentEditingPreset.stage === "tech") onChange({ promptTech: text });
-    else if (currentEditingPreset.stage === "format") onChange({ promptFormat: text });
-    else if (currentEditingPreset.stage === "summary") onChange({ promptSummary: text, systemPrompt: text });
+    const extraUpdates: Partial<AISettingsValue> = {};
+    if (currentEditingPreset.stage === "tech") extraUpdates.promptTech = text;
+    else if (currentEditingPreset.stage === "format") extraUpdates.promptFormat = text;
+    else if (currentEditingPreset.stage === "summary") {
+      extraUpdates.promptSummary = text;
+      extraUpdates.systemPrompt = text;
+    }
+    savePresets(next, extraUpdates);
   };
 
   const handleProviderChange = (nextProvider: string) => {
@@ -224,15 +263,16 @@ export function AISummarySettings({
 
   const handleFetchRemoteModels = async () => {
     setFetchingModels(true);
+    setFetchModelsNotice(null);
     try {
       const { data, error } = await client.config.fetchAIModels({
         provider: value.provider,
         api_url: value.apiUrl,
-        api_key: value.apiKey,
+        ...(value.apiKey.trim() ? { api_key: value.apiKey.trim() } : {}),
       });
       if (data?.success && Array.isArray(data.models)) {
         setFetchedModelList(data.models);
-        showAlert(`🎉 成功从端点拉取 ${data.models.length} 个可用模型！请在下方下拉选择。`);
+        setFetchModelsNotice(`已从端点拉取 ${data.models.length} 个可用模型`);
       } else {
         showAlert(`拉取失败：${data?.error || error?.value || "请检查接口地址与密钥"}`);
       }
@@ -314,7 +354,7 @@ export function AISummarySettings({
                   <button
                     type="button"
                     onClick={handleFetchRemoteModels}
-                    disabled={fetchingModels || (value.provider !== "worker-ai" && !value.apiKey && !value.apiKeySet)}
+                    disabled={fetchingModels || (value.provider !== "worker-ai" && !value.apiKey.trim() && !value.apiKeySet)}
                     className="text-[10px] font-bold text-theme hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   >
                     {fetchingModels ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-refresh-line" />}
@@ -336,6 +376,11 @@ export function AISummarySettings({
                   allowCustomValue
                   customValueLabel={(nextValue) => `使用自定义: ${nextValue}`}
                 />
+                {fetchModelsNotice && (
+                  <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                    ✓ {fetchModelsNotice}
+                  </p>
+                )}
               </div>
 
               {/* API 密钥 */}
@@ -496,13 +541,27 @@ export function AISummarySettings({
                   {onSave && (
                     <button
                       type="button"
-                      onClick={() => {
-                        onSave();
-                        showAlert("提示词已即时生效保存！");
+                      disabled={promptSaveState === "saving"}
+                      onClick={async () => {
+                        setPromptSaveState("saving");
+                        try {
+                          await onSave();
+                          setPromptSaveState("saved");
+                          if (promptSaveTimerRef.current) clearTimeout(promptSaveTimerRef.current);
+                          promptSaveTimerRef.current = setTimeout(() => {
+                            setPromptSaveState((curr) => (curr === "saved" ? "idle" : curr));
+                          }, 2500);
+                        } catch {
+                          setPromptSaveState("idle");
+                        }
                       }}
-                      className="px-3 py-1 rounded-lg bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover transition"
+                      className={`px-3 py-1 rounded-lg text-white text-xs font-bold shadow-2xs transition disabled:opacity-50 ${
+                        promptSaveState === "saved"
+                          ? "bg-emerald-600 hover:bg-emerald-600"
+                          : "bg-theme hover:bg-theme-hover"
+                      }`}
                     >
-                      保存提示词
+                      {promptSaveState === "saving" ? "保存中…" : promptSaveState === "saved" ? "✓ 已保存" : "保存提示词"}
                     </button>
                   )}
                 </div>

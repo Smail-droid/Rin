@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link } from "wouter";
 import { Waiting } from "../components/loading";
+import { PageHeader, GALLERY_CONTAINER_CLASS } from "../components/page-header";
 import { client } from "../app/runtime";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { siteName } from "../utils/constants";
@@ -94,17 +95,20 @@ export function TimelinePage() {
                         });
                     });
                 }
-                if (momentRes.data && Array.isArray(momentRes.data)) {
-                    momentRes.data.forEach((m: any) => {
-                        combined.push({
-                            id: `m_${m.id}`,
-                            type: "moment",
-                            title: m.content?.slice(0, 36) || t("moments.default_entry_title", { defaultValue: "生活记事" }),
-                            content: m.content,
-                            createdAt: m.createdAt,
-                        });
+                const momentList = Array.isArray((momentRes.data as any)?.data)
+                    ? (momentRes.data as any).data
+                    : Array.isArray(momentRes.data)
+                    ? momentRes.data
+                    : [];
+                momentList.forEach((m: any) => {
+                    combined.push({
+                        id: `m_${m.id}`,
+                        type: "moment",
+                        title: m.content?.slice(0, 36) || t("moments.default_entry_title", { defaultValue: "生活记事" }),
+                        content: m.content,
+                        createdAt: m.createdAt,
                     });
-                }
+                });
                 setTimelineItems(combined);
             })
             .catch((err) => {
@@ -169,25 +173,16 @@ export function TimelinePage() {
             </Helmet>
 
             <Waiting for={!loading}>
-                <main className="w-full max-w-5xl mx-auto px-1.5 sm:px-6 py-2 mb-16 ani-show select-none">
-                    {/* Header */}
-                    {siteConfig.pageHeaderMode === "hidden" ? null : siteConfig.pageHeaderMode === "banner" ? (
-                        <div className="relative w-full rounded-3xl overflow-hidden mb-6 p-6 sm:p-7 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 shadow-xs flex items-center justify-between gap-4 ani-show">
-                            <div>
-                                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary">{t("timeline_title", { defaultValue: "时光长河" })}</h1>
-                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{t("timeline_desc", { defaultValue: "流年有声，岁序常易。静候每一程漫行与落笔。" })}</p>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="mb-6 pb-3 border-b border-black/5 dark:border-white/5">
-                            <h1 className={`text-xl sm:text-2xl font-bold tracking-tight t-primary art-title-${siteConfig.timelineTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"}`}>
-                                {t("timeline_title", { defaultValue: "时光长河" })}
-                            </h1>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                                {t("timeline_desc", { defaultValue: "流年有声，岁序常易。静候每一程漫行与落笔。" })}
-                            </p>
-                        </div>
-                    )}
+                <main className={`${GALLERY_CONTAINER_CLASS} py-6 sm:py-8 mb-16 ani-show select-none`}>
+                    <PageHeader
+                        eyebrow={`CHRONICLE · ${timelineItems.length}`}
+                        title={t("timeline_title", { defaultValue: "时光长河" })}
+                        subtitle={t("timeline_desc", { defaultValue: "流年有声，岁序常易。静候每一程漫行与落笔。" })}
+                        mode={siteConfig.pageHeaderMode}
+                        titleFont={siteConfig.themeTitleFont as any}
+                        titleEffect={siteConfig.themeTitleEffect}
+                        bannerUrl={siteConfig.pageHeaderBannerUrl}
+                    />
 
                     {/* Timeline River Container */}
                     <div className="relative">
@@ -206,24 +201,24 @@ export function TimelinePage() {
                                         <button
                                             type="button"
                                             onClick={() => toggleMonthCollapse(key)}
-                                            className="group inline-flex items-center gap-2.5 rounded-2xl bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 px-4 py-1.5 shadow-xs hover:shadow-md hover:border-theme/40 transition-all cursor-pointer"
+                                            className="group inline-flex items-center gap-2.5 rounded-2xl bg-[rgb(var(--rin-surface-rgb))] border border-[rgb(var(--rin-hairline-rgb))] px-4 py-1.5 shadow-xs hover:shadow-md hover:border-theme/40 transition-all cursor-pointer dark:shadow-none"
                                             title={isCollapsed ? "点击展开该月记事" : "点击折叠该月记事"}
                                         >
                                             <div className="flex items-center gap-1 text-theme font-bold">
                                                 <i className="ri-calendar-event-line text-sm" />
-                                                <span className="text-sm sm:text-base font-extrabold font-mono tracking-wider t-primary">
+                                                <span className="text-sm sm:text-base font-extrabold font-mono tracking-wider text-[rgb(var(--rin-ink-rgb))]">
                                                     {group.label}
                                                 </span>
                                             </div>
 
-                                            <span className="h-3 w-[1px] bg-black/10 dark:bg-white/10" />
+                                            <span className="h-3 w-[1px] bg-[rgb(var(--rin-hairline-rgb))]" />
 
-                                            <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
+                                            <span className="text-xs text-[rgb(var(--rin-ink-muted-rgb))] font-medium">
                                                 {group.month}月份 · {monthItems.length} 篇记事
                                             </span>
 
                                             <i
-                                                className={`ri-arrow-down-s-line text-sm text-neutral-400 group-hover:text-theme transition-transform duration-200 ${
+                                                className={`ri-arrow-down-s-line text-sm text-[rgb(var(--rin-ink-muted-rgb))] group-hover:text-theme transition-transform duration-200 ${
                                                     isCollapsed ? "rotate-[-90deg]" : "rotate-0 text-theme"
                                                 }`}
                                             />
@@ -242,10 +237,10 @@ export function TimelinePage() {
                                                     <Link
                                                         key={item.id}
                                                         href={isFeed ? `/feed/${item.id}` : "/moments"}
-                                                        className={`group block rounded-2xl border border-black/10 bg-white p-3.5 shadow-2xs hover:shadow-xl transition-all duration-300 transform ${rot} hover:rotate-0 hover:scale-[1.02] hover:z-20 dark:border-white/10 dark:bg-neutral-900 select-none`}
+                                                        className={`group block rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] p-3.5 shadow-2xs hover:shadow-xl hover:border-theme/40 transition-all duration-300 transform ${rot} hover:rotate-0 hover:scale-[1.02] hover:z-20 dark:hover:shadow-[0_12px_30px_rgba(0,0,0,0.4)] select-none`}
                                                     >
                                                         {/* Top Date & ID Header */}
-                                                        <div className="flex items-center justify-between text-xs text-neutral-400 dark:text-neutral-500 mb-1.5">
+                                                        <div className="flex items-center justify-between text-xs text-[rgb(var(--rin-ink-muted-rgb))] mb-1.5">
                                                             <div className="inline-flex items-center gap-1.5 font-mono font-semibold text-theme">
                                                                 <i className={isFeed ? "ri-article-line text-xs" : "ri-chat-smile-2-line text-xs text-emerald-500"} />
                                                                 <span>{exactDate}</span>
@@ -259,10 +254,10 @@ export function TimelinePage() {
 
                                                         {/* Article / Moment Title With Inline Arrow */}
                                                         <div className="flex items-start justify-between gap-2">
-                                                            <h2 className="text-sm font-bold t-primary group-hover:text-theme transition-colors line-clamp-2 leading-snug flex-1">
+                                                            <h2 className="text-sm font-bold text-[rgb(var(--rin-ink-rgb))] group-hover:text-theme transition-colors line-clamp-2 leading-snug flex-1">
                                                                 {item.title || (isFeed ? t("unlisted") : "生活随笔记录")}
                                                             </h2>
-                                                            <span className="text-neutral-400 group-hover:text-theme group-hover:translate-x-1 transition-all shrink-0 text-base font-bold leading-snug">
+                                                            <span className="text-[rgb(var(--rin-ink-muted-rgb))] group-hover:text-theme group-hover:translate-x-1 transition-all shrink-0 text-base font-bold leading-snug">
                                                                 &rarr;
                                                             </span>
                                                         </div>

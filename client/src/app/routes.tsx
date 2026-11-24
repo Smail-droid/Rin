@@ -5,7 +5,6 @@ import { Redirect, Route, Switch } from "wouter";
 import { AdminLayout } from "../components/admin-layout";
 import Footer from "../components/footer";
 import { Header } from "../components/header";
-import { TopAtelierRibbon } from "../components/in-situ/top-atelier-ribbon";
 import { Padding } from "../components/padding";
 import { GlobalReadingProgress } from "../components/global-reading-progress";
 import { Tips, TipsPage } from "../components/tips";
@@ -292,7 +291,6 @@ function AppRoute({
           <>
             <GlobalReadingProgress />
             <Header>{headerComponent}</Header>
-            <TopAtelierRibbon />
             <Padding className={paddingClassName}>
               <Suspense fallback={<RouteLoadingFallback />}>
                 {resolvedContent}

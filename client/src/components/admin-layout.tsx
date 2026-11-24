@@ -15,6 +15,7 @@ export type NavItem = {
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/dashboard", icon: "ri-dashboard-3-line", label: "概览" },
   { href: "/admin/settings", icon: "ri-equalizer-line", label: "设置" },
+  { href: "/admin/ai", icon: "ri-sparkling-2-line", label: "AI 助手" },
   { href: "/admin/tokens", icon: "ri-key-2-line", label: "口令" },
   { href: "/admin/access", icon: "ri-lock-password-line", label: "权限" },
   { href: "/admin/ops", icon: "ri-pulse-line", label: "运维" },

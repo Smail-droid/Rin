@@ -124,8 +124,9 @@ export function AdminMusicPage() {
   const [customArtist, setCustomArtist] = useState("");
   const [customUrl, setCustomUrl] = useState("");
 
-  // 加载音廊 R2 文件列表与容量统计
+  // 加载音廊 R2 文件列表与容量统计（仅管理员拉取资产明细，避免访客看到 0 首 / MB 错位）
   const loadR2Files = async () => {
+    if (!isAdmin) return;
     setLoadingR2(true);
     try {
       const [files, stats] = await Promise.all([
@@ -142,8 +143,12 @@ export function AdminMusicPage() {
   };
 
   useEffect(() => {
+    if (!isAdmin) {
+      if (activeTab === "gallery") setActiveTab("playlist");
+      return;
+    }
     void loadR2Files();
-  }, []);
+  }, [isAdmin]);
 
   // 上传队列深模块状态机
   const uploadQueue = useAudioUploadQueue(r2Files, loadR2Files);
@@ -728,7 +733,9 @@ export function AdminMusicPage() {
                 </span>
               </div>
               <p className="text-[10px] text-neutral-400 font-mono mt-0.5">
-                {r2Files.length} 首 · {(r2Stats ? (r2Stats.musicBytes / (1024 * 1024)).toFixed(1) : "0")} MB
+                {isAdmin
+                  ? `${r2Files.length} 首 · ${r2Stats ? (r2Stats.musicBytes / (1024 * 1024)).toFixed(1) : "0"} MB`
+                  : `${player.playlist.length} 首曲目 · 公开试听`}
               </p>
             </div>
           </div>
@@ -755,7 +762,7 @@ export function AdminMusicPage() {
             <button
               type="button"
               onClick={() => {
-                if (r2Files.length > 0) {
+                if (isAdmin && r2Files.length > 0) {
                   const randomFile = r2Files[Math.floor(Math.random() * r2Files.length)];
                   const found = player.playlist.find((t) => t.url === randomFile.url);
                   if (found) player.play(found);
@@ -766,6 +773,9 @@ export function AdminMusicPage() {
                       if (f) player.play(f);
                     }, 80);
                   }
+                } else if (player.playlist.length > 0) {
+                  const randomTrack = player.playlist[Math.floor(Math.random() * player.playlist.length)];
+                  if (randomTrack) player.play(randomTrack);
                 }
               }}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5 transition cursor-pointer"
@@ -977,7 +987,7 @@ export function AdminMusicPage() {
       />
 
       {/* 4. 视界 A: 音廊资产 */}
-      {activeTab === "gallery" && (
+      {isAdmin && activeTab === "gallery" && (
         <div
           onDragEnter={uploadQueue.handleDragEnter}
           onDragOver={uploadQueue.handleDragOver}
@@ -1056,6 +1066,7 @@ export function AdminMusicPage() {
       {activeTab === "playlist" && (
         <div className="flex flex-col gap-3.5 ani-show">
           <PlaylistDataGrid
+            isAdmin={isAdmin}
             displayedPlaylist={displayedPlaylist}
             fullPlaylist={player.playlist}
             currentTrack={player.currentTrack}
@@ -1103,6 +1114,7 @@ export function AdminMusicPage() {
         {/* 6. 视界 C: 曲库探索 */}
         {activeTab === "explore" && (
           <ExploreView
+            isAdmin={isAdmin}
             autoPersistR2={autoPersistR2}
             setAutoPersistR2={setAutoPersistR2}
             searchMode={searchMode}

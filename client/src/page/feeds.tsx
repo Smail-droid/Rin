@@ -11,6 +11,19 @@ import { useAlert } from "../components/dialog";
 import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
 import { VectorIcon } from "../components/vector-icon";
 import { SolidTagIcon, getTagColorTheme } from "../components/hashtag";
+import { parseImageUrlMetadata } from "../utils/image-upload";
+import { drawBlurhashToCanvas } from "../utils/blurhash";
+import { useImageLoadState } from "../utils/use-image-load-state";
+import { PageHeader, GALLERY_CONTAINER_CLASS } from "../components/page-header";
+import type { FeedCardVariant } from "../components/feed-card-options";
+import { emitToast } from "../utils/toast";
+
+const VARIANT_CYCLE: Array<{ id: FeedCardVariant; labelKey: string; defaultLabel: string }> = [
+    { id: "default", labelKey: "variant.polaroid", defaultLabel: "拍立得" },
+    { id: "poster", labelKey: "variant.poster", defaultLabel: "画册" },
+    { id: "editorial", labelKey: "variant.editorial", defaultLabel: "杂志" },
+    { id: "compact", labelKey: "variant.compact", defaultLabel: "列表" },
+];
 
 const ArticleAccessModal = lazy(() =>
     import("../components/article-access-modal").then((m) => ({ default: m.ArticleAccessModal }))
@@ -75,9 +88,78 @@ const TAPE_COLORS = [
 ];
 
 /**
- * Pure Cover Art Card (No repetitive title/summary - the cover image IS the art!)
+ * 原图自然比例画幅容器（支持 BlurHash 占位、宽高比防塌陷与零强裁呈现）
  */
-function AtelierPhotoCard({
+function AtelierCoverImage({
+    src,
+    index,
+    roundedClass = "rounded-2xl",
+    imgClassName = "block w-full h-auto transition-all duration-500 ease-out group-hover:scale-[1.03]",
+    onBroken,
+}: {
+    src: string;
+    index: number;
+    roundedClass?: string;
+    imgClassName?: string;
+    onBroken?: () => void;
+}) {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const { src: cleanSrc, blurhash, width, height } = parseImageUrlMetadata(src);
+    const { failed, imageRef, loaded, onError, onLoad } = useImageLoadState(cleanSrc);
+    const aspectRatio = width && height ? `${width} / ${height}` : undefined;
+
+    useEffect(() => {
+        if (!blurhash || !canvasRef.current) return;
+        try {
+            drawBlurhashToCanvas(canvasRef.current, blurhash);
+        } catch {}
+    }, [blurhash]);
+
+    useEffect(() => {
+        if (failed) {
+            onBroken?.();
+        }
+    }, [failed, onBroken]);
+
+    return (
+        <div
+            data-cover-frame
+            style={{ aspectRatio }}
+            className={`relative w-full overflow-hidden ${roundedClass} ${
+                !loaded && !failed
+                    ? `bg-neutral-100 dark:bg-neutral-800/70 ${aspectRatio ? "" : "min-h-48 animate-pulse"}`
+                    : "bg-neutral-100/60 dark:bg-neutral-800/40"
+            }`}
+        >
+            {blurhash && !loaded ? (
+                <canvas
+                    ref={canvasRef}
+                    aria-hidden="true"
+                    className="absolute inset-0 h-full w-full scale-110 object-cover blur-sm"
+                />
+            ) : null}
+            <img
+                ref={imageRef}
+                src={cleanSrc}
+                alt=""
+                width={width}
+                height={height}
+                loading={index < 8 ? "eager" : "lazy"}
+                decoding="async"
+                onLoad={onLoad}
+                onError={onError}
+                className={`${imgClassName} ${
+                    failed ? "opacity-0" : blurhash && !loaded ? "opacity-0" : loaded ? "opacity-100" : "opacity-0"
+                }`}
+            />
+        </div>
+    );
+}
+
+/**
+ * Pure Cover Art Card (Config-driven 4 variants with natural aspect ratio & legible titles)
+ */
+export function AtelierPhotoCard({
     feed,
     index,
     tiltOffset = 0,
@@ -116,6 +198,9 @@ function AtelierPhotoCard({
     const siteConfig = useSiteConfig();
     const [, setLocation] = useLocation();
     const [imageError, setImageError] = useState(false);
+    useEffect(() => {
+        setImageError(false);
+    }, [feed.avatar]);
     const tiltStyle = getTiltStyle(index, tiltOffset, siteConfig.galleryTiltDegree);
     const tapeColor = TAPE_COLORS[(index + tiltOffset) % TAPE_COLORS.length];
     const readingTime = feed.readingTime || Math.max(1, Math.ceil((feed.summary?.length || 100) / 100));
@@ -129,8 +214,9 @@ function AtelierPhotoCard({
 
     const hasImage = Boolean(feed.avatar) && !imageError;
     const variant = siteConfig.feedCardVariant || "default";
+    const safeHashtags: Array<{ id?: number; name: string }> = Array.isArray(feed.hashtags) ? feed.hashtags : [];
 
-    // 1. 紧凑文章列表 (Compact - 表格级高密单行，日期左置、标题满宽、操作悬浮显现)
+    // 1. 紧凑文章列表 (Compact - 表格级高密单行，日期左置、标题满宽、标签克制右置、操作悬浮显现)
     if (variant === "compact") {
         const dateObj = new Date(feed.createdAt);
         const shortDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
@@ -150,11 +236,11 @@ function AtelierPhotoCard({
                     } ${isDragOver ? "ring-2 ring-inset ring-theme/40" : ""}`}
                 >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <span className="hidden sm:inline-block w-[84px] shrink-0 font-mono text-[11px] tabular-nums text-neutral-400">
+                        <span className="hidden sm:inline-block w-[84px] shrink-0 font-mono text-[11px] tabular-nums text-[rgb(var(--rin-ink-muted-rgb))]">
                             {shortDate}
                         </span>
                         {feed.top === 1 ? (
-                            <span className="shrink-0 rounded-md bg-theme/10 px-1.5 py-0.5 text-[10px] font-semibold text-theme">
+                            <span className="shrink-0 rounded-md bg-theme/15 border border-theme/20 px-1.5 py-0.5 text-[10px] font-semibold text-theme">
                                 {t("article.top.title")}
                             </span>
                         ) : null}
@@ -163,12 +249,19 @@ function AtelierPhotoCard({
                                 {t("draft")}
                             </span>
                         ) : null}
-                        <h2 className="text-[13px] sm:text-sm font-medium text-neutral-800 dark:text-neutral-100 line-clamp-1 sm:truncate group-hover:text-theme transition-colors flex-1 min-w-0">
+                        <h2 className="text-[13px] sm:text-sm font-medium text-[rgb(var(--rin-ink-rgb))] line-clamp-1 sm:truncate group-hover:text-theme transition-colors flex-1 min-w-0">
                             {feed.title}
                         </h2>
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 text-[11px] text-neutral-400">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 text-[11px] text-[rgb(var(--rin-ink-muted-rgb))]">
+                        {safeHashtags.length > 0 ? (
+                            <div className="hidden md:flex items-center gap-2 text-[11px] text-[rgb(var(--rin-ink-muted-rgb))]">
+                                {safeHashtags.slice(0, 2).map((tag, i) => (
+                                    <span key={tag.id ?? i}>#{tag.name}</span>
+                                ))}
+                            </div>
+                        ) : null}
                         <div className="flex items-center gap-2 font-mono text-[11px] tabular-nums">
                             <span className="sm:hidden">{shortDate}</span>
                             <span>{readingTime} 分钟</span>
@@ -348,13 +441,11 @@ function AtelierPhotoCard({
                     ) : null}
 
                     {hasImage ? (
-                        <img
+                        <AtelierCoverImage
                             src={feed.avatar}
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                            onError={() => setImageError(true)}
-                            className="block w-full h-auto transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                            index={index}
+                            roundedClass="rounded-none"
+                            onBroken={() => setImageError(true)}
                         />
                     ) : (
                         <div className="w-full min-h-48 bg-gradient-to-br from-theme/85 via-theme-secondary/75 to-neutral-900 p-5 flex items-start justify-end">
@@ -362,9 +453,9 @@ function AtelierPhotoCard({
                         </div>
                     )}
 
-                    {/* 贴底轻盈铭牌：克制高度，完整让位给原图画作 */}
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent px-3.5 pt-8 pb-2.5 text-white">
-                        <div className="flex items-center justify-between gap-2 text-[10px] font-mono text-white/75 mb-0.5">
+                    {/* 贴底轻盈铭牌：克制高度，完整让位给原图画作，2行标题防长题截断 */}
+                    <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/35 to-transparent px-3.5 pt-10 pb-3 text-white">
+                        <div className="flex items-center justify-between gap-2 text-[10px] font-mono text-white/80 mb-0.5">
                             <span className="flex items-center gap-1.5">
                                 <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
                                 {feed.top === 1 ? <span className="px-1.5 py-0.2 rounded bg-theme/90 text-white font-sans font-semibold">置顶</span> : null}
@@ -372,7 +463,7 @@ function AtelierPhotoCard({
                             </span>
                             <span>{readingTime} 分钟</span>
                         </div>
-                        <h2 className="text-sm font-bold leading-snug line-clamp-1 tracking-tight drop-shadow-2xs">
+                        <h2 className="text-sm font-bold leading-snug line-clamp-2 tracking-tight drop-shadow-2xs">
                             {feed.title}
                         </h2>
                     </div>
@@ -397,14 +488,14 @@ function AtelierPhotoCard({
                         isDragging ? "opacity-35" : ""
                     } ${isDragOver ? "bg-theme/[0.04] rounded-xl px-3" : ""}`}
                 >
-                    {/* 左侧 60% 文字主区：刊号元信息 + 大号衬线标题 + 3 行摘要 */}
+                    {/* 左侧 60% 文字主区：刊号元信息 + 标题 + 摘要 + 纯标签 */}
                     <div className="flex-1 min-w-0 flex flex-col gap-2">
-                        <div className="flex items-center gap-2.5 text-[11px] font-mono text-neutral-400">
+                        <div className="flex items-center gap-2.5 text-[11px] font-mono text-[rgb(var(--rin-ink-muted-rgb))]">
                             <span className="tabular-nums">{new Date(feed.createdAt).toLocaleDateString()}</span>
                             <span>·</span>
                             <span>{readingTime} 分钟阅读</span>
                             {feed.top === 1 ? (
-                                <span className="px-1.5 py-0.5 rounded bg-theme/10 text-theme font-sans font-semibold text-[10px]">
+                                <span className="px-1.5 py-0.5 rounded bg-theme/15 text-theme font-sans font-semibold text-[10px]">
                                     置顶
                                 </span>
                             ) : null}
@@ -415,14 +506,22 @@ function AtelierPhotoCard({
                             ) : null}
                         </div>
 
-                        <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-50 group-hover:text-theme transition-colors leading-snug">
+                        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[rgb(var(--rin-ink-rgb))] group-hover:text-theme transition-colors leading-snug">
                             {feed.title}
                         </h2>
 
-                        {siteConfig.aiSummaryEnabled && feed.summary ? (
-                            <p className="line-clamp-3 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 max-w-2xl">
+                        {feed.summary ? (
+                            <p className="line-clamp-3 text-sm leading-relaxed text-[rgb(var(--rin-ink-muted-rgb))] max-w-2xl">
                                 {feed.summary}
                             </p>
+                        ) : null}
+
+                        {safeHashtags.length > 0 ? (
+                            <div className="flex items-center gap-2.5 flex-wrap text-[11px] text-[rgb(var(--rin-ink-muted-rgb))]">
+                                {safeHashtags.slice(0, 3).map((tag, i) => (
+                                    <span key={tag.id ?? i}>#{tag.name}</span>
+                                ))}
+                            </div>
                         ) : null}
 
                         <div className="flex items-center justify-between pt-1.5">
@@ -441,7 +540,7 @@ function AtelierPhotoCard({
                                             onEditCover?.(feed);
                                         }}
                                         title="更换封面"
-                                        className="h-6 w-6 rounded-md border border-neutral-200 dark:border-white/10 flex items-center justify-center text-neutral-500 hover:text-theme hover:border-theme transition"
+                                        className="h-6 w-6 rounded-md border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] flex items-center justify-center text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme hover:border-theme transition"
                                     >
                                         <i className="ri-image-edit-line text-xs" />
                                     </button>
@@ -453,7 +552,7 @@ function AtelierPhotoCard({
                                             setLocation(`/writing/${feed.id}`);
                                         }}
                                         title="全屏编辑文章"
-                                        className="h-6 w-6 rounded-md border border-neutral-200 dark:border-white/10 flex items-center justify-center text-neutral-500 hover:text-theme hover:border-theme transition"
+                                        className="h-6 w-6 rounded-md border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] flex items-center justify-center text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme hover:border-theme transition"
                                     >
                                         <i className="ri-edit-line text-xs" />
                                     </button>
@@ -464,11 +563,11 @@ function AtelierPhotoCard({
 
                     {/* 右侧 40% 配图：简洁无杂饰的 16:10 摄影构图 */}
                     {hasImage ? (
-                        <div className="w-full sm:w-56 md:w-72 shrink-0 aspect-[16/10] overflow-hidden rounded-xl border border-neutral-200/70 dark:border-white/10 bg-neutral-100 dark:bg-neutral-800">
+                        <div className="w-full sm:w-56 md:w-72 shrink-0 aspect-[16/10] overflow-hidden rounded-xl border border-[rgb(var(--rin-hairline-rgb))] bg-neutral-100 dark:bg-neutral-800">
                             <img
-                                src={feed.avatar}
+                                src={parseImageUrlMetadata(feed.avatar).src}
                                 alt=""
-                                loading="lazy"
+                                loading={index < 6 ? "eager" : "lazy"}
                                 decoding="async"
                                 onError={() => setImageError(true)}
                                 className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
@@ -490,10 +589,10 @@ function AtelierPhotoCard({
             onDragOver={onDragOver}
             onDrop={onDrop}
             onDragEnd={onDragEnd}
-            className={`group relative break-inside-avoid block w-full mb-5 sm:mb-6 rounded-[26px] border bg-white p-3 pb-3.5 shadow-md hover:shadow-2xl transition-all duration-400 transform hover:!rotate-0 hover:scale-[1.03] hover:z-30 dark:bg-neutral-900 ${
+            className={`group relative break-inside-avoid block w-full mb-5 sm:mb-6 rounded-[26px] border bg-[rgb(var(--rin-surface-rgb))] p-3 pb-3.5 shadow-md hover:shadow-2xl transition-all duration-400 transform hover:!rotate-0 hover:scale-[1.03] hover:z-30 ${
                 isDragging ? "opacity-35 scale-95 border-theme border-dashed ring-2 ring-theme/40" : ""
             } ${
-                isDragOver ? "ring-4 ring-theme/40 border-theme scale-[1.02] shadow-xl" : "border-black/10 dark:border-white/10"
+                isDragOver ? "ring-4 ring-theme/40 border-theme scale-[1.02] shadow-xl" : "border-[rgb(var(--rin-hairline-rgb))]"
             }`}
             style={tiltStyle}
         >
@@ -590,61 +689,62 @@ function AtelierPhotoCard({
 
             <div className="relative w-full overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-800/60 shadow-inner">
                 {hasImage ? (
-                    <img
+                    <AtelierCoverImage
                         src={feed.avatar}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        fetchPriority={index < 2 ? "high" : "low"}
-                        onError={() => setImageError(true)}
-                        className="w-full h-auto block object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                        index={index}
+                        roundedClass="rounded-2xl"
+                        imgClassName="w-full h-auto block transition-all duration-500 ease-out group-hover:scale-[1.03]"
+                        onBroken={() => setImageError(true)}
                     />
                 ) : (
-                    <div className="flex flex-col items-center justify-center p-8 min-h-60 bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200 dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-950 text-center">
-                        <i className="ri-quill-pen-line text-3xl mb-3 opacity-60 text-theme" />
-                        <h2 className="text-xl font-bold t-primary line-clamp-3 leading-snug">
-                            {feed.title}
-                        </h2>
+                    <div className="flex flex-col items-center justify-center p-8 min-h-52 bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200 dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-950 text-center">
+                        <i className="ri-quill-pen-line text-3xl mb-2.5 opacity-60 text-theme" />
+                        <span className="text-xs font-medium text-neutral-400">图文随笔</span>
                     </div>
                 )}
-
-                <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-between text-white text-xs">
-                    <span className="font-medium truncate max-w-[70%] drop-shadow-xs">
-                        {feed.title}
-                    </span>
-                    <span className="shrink-0 inline-flex items-center gap-1 bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-full text-[11px] font-semibold">
-                        <i className="ri-time-line text-xs" />
-                        <span>{t("reading_time", { minutes: readingTime, defaultValue: `${readingTime} 分钟阅读` })}</span>
-                    </span>
-                </div>
             </div>
 
-            <div className="mt-2.5 flex items-center justify-between px-1 text-[11px] text-neutral-400 dark:text-neutral-500 font-medium">
-                <span>{new Date(feed.createdAt).toLocaleDateString()}</span>
-                {canManage ? (
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            onToggleTop?.(feed.id, feed.top === 1 ? 0 : 1);
-                        }}
-                        title={feed.top === 1 ? "点击取消置顶此文章" : "点击置顶此文章至首位"}
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold transition select-none ${
-                            feed.top === 1
-                                ? "bg-theme text-white shadow-2xs hover:bg-theme-hover"
-                                : "bg-black/5 dark:bg-white/5 text-neutral-500 hover:text-theme hover:bg-theme/10"
-                        }`}
-                    >
-                        <i className={feed.top === 1 ? "ri-pushpin-fill text-xs" : "ri-pushpin-line text-xs"} />
-                        <span>{feed.top === 1 ? "已置顶" : "置顶"}</span>
-                    </button>
-                ) : feed.top === 1 ? (
-                    <span className="text-theme font-semibold flex items-center gap-0.5">
-                        <i className="ri-pushpin-line" />
-                        <span>{t("article.top.title")}</span>
-                    </span>
+            {/* 拍立得白边下方：自然落位可读标题、纯标签与时间刻度，移动端与桌面端均零遮挡可读 */}
+            <div className="mt-2.5 px-1 space-y-1.5">
+                <h2 className="text-[13px] sm:text-sm font-bold leading-snug text-[rgb(var(--rin-ink-rgb))] group-hover:text-theme transition-colors line-clamp-2">
+                    {feed.title}
+                </h2>
+                {safeHashtags.length > 0 ? (
+                    <div className="flex items-center gap-2 flex-wrap text-[11px] text-[rgb(var(--rin-ink-muted-rgb))]">
+                        {safeHashtags.slice(0, 2).map((tag, i) => (
+                            <span key={tag.id ?? i}>#{tag.name}</span>
+                        ))}
+                    </div>
                 ) : null}
+                <div className="pt-1 border-t border-[rgb(var(--rin-hairline-rgb))] flex items-center justify-between text-[11px] text-[rgb(var(--rin-ink-muted-rgb))] font-medium">
+                    <span className="font-mono tabular-nums">
+                        {new Date(feed.createdAt).toLocaleDateString()} · {readingTime} 分钟
+                    </span>
+                    {canManage ? (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onToggleTop?.(feed.id, feed.top === 1 ? 0 : 1);
+                            }}
+                            title={feed.top === 1 ? "点击取消置顶此文章" : "点击置顶此文章至首位"}
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold transition select-none ${
+                                feed.top === 1
+                                    ? "bg-theme text-white shadow-2xs hover:bg-theme-hover"
+                                    : "bg-black/5 dark:bg-white/5 text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme hover:bg-theme/10"
+                            }`}
+                        >
+                            <i className={feed.top === 1 ? "ri-pushpin-fill text-xs" : "ri-pushpin-line text-xs"} />
+                            <span>{feed.top === 1 ? "已置顶" : "置顶"}</span>
+                        </button>
+                    ) : feed.top === 1 ? (
+                        <span className="text-theme font-semibold flex items-center gap-0.5">
+                            <i className="ri-pushpin-line" />
+                            <span>{t("article.top.title")}</span>
+                        </span>
+                    ) : null}
+                </div>
             </div>
         </Link>
     );
@@ -759,11 +859,9 @@ function StickyNoteItem({
 
         return (
             <div
-                className={`group relative flex items-center justify-between gap-3 px-4 py-3 my-2.5 mx-1 sm:mx-2 rounded-2xl border-2 border-dashed transition-all duration-300 text-xs ${
-                    isEditorial
-                        ? "border-l-3 border-l-theme border-y-transparent border-r-transparent bg-gradient-to-r from-theme/[0.04] via-theme/[0.015] to-transparent hover:from-theme/[0.07] dark:from-theme/[0.07] dark:to-transparent pr-3 rounded-r-2xl"
-                        : "border-theme/35 dark:border-theme/30 bg-gradient-to-r from-theme/[0.035] via-theme/[0.015] to-transparent hover:border-theme/60 hover:bg-theme/[0.06] backdrop-blur-md shadow-2xs"
-                } ${dragStyleClasses}`}
+                className={`group relative flex items-center justify-between gap-3 px-4 py-2.5 ${
+                    isEditorial ? "my-3" : "mx-2 my-1.5"
+                } rounded-xl border border-dashed border-theme/30 bg-theme/[0.04] dark:bg-theme/[0.08] backdrop-blur-xs hover:border-theme/55 hover:bg-theme/[0.07] dark:hover:bg-theme/[0.12] transition-all duration-200 text-xs ${dragStyleClasses}`}
                 {...dragHandlers}
             >
                 <Link href={meta.url} className="flex items-center gap-3 min-w-0 flex-1">
@@ -772,14 +870,14 @@ function StickyNoteItem({
                     </span>
                     <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-neutral-800 dark:text-neutral-100 group-hover:text-theme transition-colors shrink-0">
+                            <span className="font-bold text-xs text-[rgb(var(--rin-ink-rgb))] group-hover:text-theme transition-colors shrink-0">
                                 {meta.title}
                             </span>
                             <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-theme/10 text-theme font-medium scale-90 origin-left">
                                 {t("notes.badge", { defaultValue: "便签" })}
                             </span>
                         </div>
-                        <span className="truncate text-neutral-500 dark:text-neutral-400 text-[11px] mt-0.5">
+                        <span className="truncate text-[rgb(var(--rin-ink-muted-rgb))] text-[11px] mt-0.5">
                             {meta.desc}
                         </span>
                     </div>
@@ -927,8 +1025,8 @@ function StickyNoteItem({
             <div
                 {...dragHandlers}
                 onClick={() => setLocation(spec.url)}
-                className={`group relative break-inside-avoid mb-5 flex flex-col items-center justify-center rounded-full aspect-square w-32 sm:w-36 mx-auto shadow-sm hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer select-none overflow-hidden border border-neutral-200/80 dark:border-white/10 ${
-                    hasBg ? "bg-neutral-900" : "bg-w"
+                className={`group relative break-inside-avoid mb-5 flex flex-col items-center justify-center rounded-full aspect-square w-32 sm:w-36 mx-auto shadow-sm hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer select-none overflow-hidden border border-[rgb(var(--rin-hairline-rgb))] ${
+                    hasBg ? "bg-neutral-900" : "bg-[rgb(var(--rin-surface-rgb))]"
                 } text-center ${dragStyleClasses}`}
             >
                 {hasBg ? (
@@ -966,8 +1064,8 @@ function StickyNoteItem({
             <div
                 {...dragHandlers}
                 onClick={() => setLocation(spec.url)}
-                className={`group relative break-inside-avoid mb-4 flex items-center justify-between px-3.5 py-2 rounded-full shadow-2xs hover:shadow-md transition-all duration-300 hover:scale-[1.01] cursor-pointer select-none overflow-hidden border border-neutral-200/80 dark:border-white/10 ${
-                    hasBg ? "bg-neutral-900 min-h-[50px]" : "bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md hover:border-theme/40"
+                className={`group relative break-inside-avoid mb-4 flex items-center justify-between px-3.5 py-2 rounded-full shadow-2xs hover:shadow-md transition-all duration-300 hover:scale-[1.01] cursor-pointer select-none overflow-hidden border border-[rgb(var(--rin-hairline-rgb))] ${
+                    hasBg ? "bg-neutral-900 min-h-[50px]" : "bg-[rgb(var(--rin-surface-rgb)/0.85)] backdrop-blur-md hover:border-theme/40"
                 } ${dragStyleClasses}`}
             >
                 {hasBg ? (
@@ -992,11 +1090,11 @@ function StickyNoteItem({
                                 <VectorIcon name={spec.icon} fallback={spec.fallbackIcon} />
                             </span>
                             <div className="min-w-0 flex flex-col">
-                                <span className={`font-bold text-xs truncate ${hasBg ? "text-white" : "t-primary"}`}>
+                                <span className={`font-bold text-xs truncate ${hasBg ? "text-white" : "text-[rgb(var(--rin-ink-rgb))]"}`}>
                                     {spec.title}
                                 </span>
                                 {spec.shortSub && (
-                                    <span className={`text-[10px] truncate ${hasBg ? "text-white/70" : "text-neutral-400"}`}>
+                                    <span className={`text-[10px] truncate ${hasBg ? "text-white/70" : "text-[rgb(var(--rin-ink-muted-rgb))]"}`}>
                                         {spec.shortSub}
                                     </span>
                                 )}
@@ -1079,7 +1177,7 @@ function StickyNoteItem({
             onClick={type === "search" ? undefined : () => setLocation(spec.url)}
             className={`group relative break-inside-avoid mb-5 block w-full rounded-2xl p-3.5 shadow-2xs hover:shadow-md transition-all duration-300 transform ${
                 siteConfig.feedCardVariant === "poster" ? "" : `${spec.tiltClass} hover:rotate-0`
-            } hover:scale-[1.01] cursor-pointer select-none overflow-hidden border border-neutral-200/80 dark:border-white/10 bg-w ${dragStyleClasses}`}
+            } hover:scale-[1.01] cursor-pointer select-none overflow-hidden border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] ${dragStyleClasses}`}
         >
             <div className="absolute -top-1.5 left-5 w-7 h-2.5 bg-theme/20 dark:bg-theme/30 rounded-xs rotate-[-4deg] pointer-events-none" />
             {renderAdminControls(type)}
@@ -1089,9 +1187,9 @@ function StickyNoteItem({
                     <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-theme/10 text-theme text-sm shrink-0">
                         <VectorIcon name={spec.icon} fallback={spec.fallbackIcon} />
                     </span>
-                    <p className="font-bold text-sm t-primary truncate">{spec.title}</p>
+                    <p className="font-bold text-sm text-[rgb(var(--rin-ink-rgb))] truncate">{spec.title}</p>
                 </div>
-                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed line-clamp-2">
+                <p className="text-[11px] text-[rgb(var(--rin-ink-muted-rgb))] leading-relaxed line-clamp-2">
                     {spec.desc}
                 </p>
 
@@ -1162,10 +1260,10 @@ function NextDeckFlipCard({
         try {
             const { data, error } = await client.storage.upload(file);
             if (data?.url) {
-                showAlert(`✨ 图片上传成功！直链已自动生成并复制到剪贴板：\n${data.url}`);
                 try {
                     await navigator.clipboard.writeText(data.url);
                 } catch {}
+                emitToast("图片上传成功，直链已复制到剪贴板", "success");
             } else {
                 showAlert(`上传失败：${error?.value || "网络错误"}`);
             }
@@ -1183,16 +1281,16 @@ function NextDeckFlipCard({
             <div
                 className={`group flex items-center justify-between gap-3 transition-colors text-xs ${
                     isEditorial
-                        ? "py-4 pl-4 border-l-2 border-theme-secondary/70 bg-theme-secondary/[0.04] pr-3 my-2 rounded-r-xl"
-                        : "px-4 py-2.5 bg-neutral-50/70 dark:bg-white/[0.02] hover:bg-theme/[0.04]"
+                        ? "py-3 px-4 my-3 rounded-xl border border-dashed border-theme/30 bg-theme/[0.04] dark:bg-theme/[0.08]"
+                        : "px-4 py-2.5 bg-theme/[0.025] dark:bg-white/[0.02] hover:bg-theme/[0.05]"
                 }`}
             >
                 <Link href={deckUrl} className="flex items-center gap-3 min-w-0 flex-1">
                     <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-theme/10 text-theme shrink-0">
                         <i className="ri-gallery-line" />
                     </span>
-                    <span className="font-semibold text-neutral-800 dark:text-neutral-100 shrink-0">图库相册</span>
-                    <span className="truncate text-neutral-500 dark:text-neutral-400">{deckDesc}</span>
+                    <span className="font-semibold text-[rgb(var(--rin-ink-rgb))] shrink-0">图库相册</span>
+                    <span className="truncate text-[rgb(var(--rin-ink-muted-rgb))]">{deckDesc}</span>
                 </Link>
                 <div className="flex items-center gap-2 shrink-0">
                     <Link href={deckUrl} className="text-[11px] font-medium text-theme hover:underline">
@@ -1247,8 +1345,10 @@ function NextDeckFlipCard({
                 isDragging
                     ? "border-theme ring-4 ring-theme/30 bg-theme/10 scale-105"
                     : deckHasBg
-                    ? "bg-neutral-900 border-black/10 dark:border-white/10"
-                    : "p-4 bg-w border-dashed border-theme/35"
+                    ? "bg-neutral-900 border-[rgb(var(--rin-hairline-rgb))]"
+                    : canManage
+                    ? "p-4 bg-[rgb(var(--rin-surface-rgb))] border-dashed border-theme/35"
+                    : "p-5 bg-[rgb(var(--rin-surface-rgb))] border-[rgb(var(--rin-hairline-rgb))]"
             }`}
         >
             {deckHasBg ? (
@@ -1466,6 +1566,7 @@ export function FeedsPage() {
     const isCentered = siteConfig.galleryAlign !== "fluid";
     const paddingSide = Math.max(0, siteConfig.galleryPadding ?? 24);
     const gapSize = Math.max(12, siteConfig.galleryCardGap ?? 24);
+    const isWideGallery = isCentered && (siteConfig.galleryColumns === "4" || siteConfig.galleryColumns === "5");
 
     const getColumnsClass = (cols: string) => {
         switch (cols) {
@@ -1486,16 +1587,51 @@ export function FeedsPage() {
     const getMainMaxWidth = () => {
         if (!isCentered) return "100%";
         switch (siteConfig.galleryColumns) {
-            case "2":
-                return "1080px";
-            case "3":
-                return "1440px";
             case "4":
                 return "1820px";
             case "5":
                 return "2200px";
             default:
-                return "1820px";
+                return undefined;
+        }
+    };
+
+    const currentVariant = siteConfig.feedCardVariant || "default";
+    const currentVariantMeta = VARIANT_CYCLE.find((v) => v.id === currentVariant) || VARIANT_CYCLE[0];
+    const currentVariantLabel = t(currentVariantMeta.labelKey, {
+        defaultValue: currentVariantMeta.defaultLabel,
+    });
+
+    const handleCycleVariant = async () => {
+        const idx = VARIANT_CYCLE.findIndex((v) => v.id === currentVariant);
+        const next = VARIANT_CYCLE[(idx + 1) % VARIANT_CYCLE.length];
+        const updates = { "feed.card_variant": next.id };
+        try {
+            const cached = sessionStorage.getItem("config");
+            const parsed = cached ? JSON.parse(cached) : {};
+            sessionStorage.setItem("config", JSON.stringify({ ...parsed, ...updates }));
+            window.dispatchEvent(new Event("rin:config-updated"));
+            if (profile?.permission) {
+                await client.config.update("client", updates);
+            }
+        } catch (err) {
+            console.error("Failed to switch layout variant:", err);
+        }
+    };
+
+    const handleToggleAISummary = async () => {
+        const nextVal = !siteConfig.aiSummaryEnabled;
+        try {
+            const cached = sessionStorage.getItem("config");
+            const parsed = cached ? JSON.parse(cached) : {};
+            parsed["ai_summary.enabled"] = nextVal;
+            sessionStorage.setItem("config", JSON.stringify(parsed));
+            window.dispatchEvent(new Event("rin:config-updated"));
+            if (profile?.permission) {
+                await client.config.update("server", { "ai_summary.enabled": nextVal });
+            }
+        } catch (err) {
+            console.error("Failed to toggle AI summary:", err);
         }
     };
 
@@ -1657,7 +1793,7 @@ export function FeedsPage() {
                         ),
                     },
                 }));
-                showAlert(`文章 #${editingCoverFeed.id}「${editingCoverFeed.title}」封面已成功更换！`);
+                emitToast(`文章 #${editingCoverFeed.id}「${editingCoverFeed.title}」封面已成功更换！`, "success");
                 setEditingCoverFeed(null);
             }
         } catch (err: any) {
@@ -2149,165 +2285,140 @@ export function FeedsPage() {
             </Helmet>
 
             <main
-                style={{
-                    ["--gallery-padding" as any]: `${paddingSide}px`,
-                    maxWidth: getMainMaxWidth(),
-                }}
-                className="w-full mx-auto px-1 sm:px-[var(--gallery-padding)] py-3 sm:py-6 mb-16 transition-all duration-300"
+                style={
+                    isCentered && !isWideGallery
+                        ? undefined
+                        : ({
+                              ["--gallery-padding" as any]: `${paddingSide}px`,
+                              maxWidth: getMainMaxWidth(),
+                          } as React.CSSProperties)
+                }
+                className={
+                    isCentered && !isWideGallery
+                        ? `${GALLERY_CONTAINER_CLASS} py-6 sm:py-8 mb-16 transition-all duration-300`
+                        : "w-full mx-auto px-4 sm:px-[var(--gallery-padding)] py-6 sm:py-8 mb-16 transition-all duration-300"
+                }
             >
-                {/* Atelier Mood Bar & Page Header */}
-                {siteConfig.pageHeaderMode === "banner" ? (
-                    <div className="relative w-full rounded-2xl sm:rounded-3xl overflow-hidden mb-4 sm:mb-6 p-4 sm:p-8 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 dark:via-purple-900/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ani-show">
-                        <div className="flex items-center gap-4">
-                            {siteConfig.avatar && (
-                                <img
-                                    src={siteConfig.avatar}
-                                    alt=""
-                                    className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover border-2 border-white dark:border-neutral-800 shadow-sm shrink-0"
-                                />
-                            )}
-                            <div>
-                                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary flex items-center gap-2">
-                                    <span>{siteConfig.atelierTitle || siteConfig.name || "画廊随想"}</span>
-                                    <span className="text-xs font-normal text-neutral-400 font-mono">({currentFeeds.size})</span>
-                                </h1>
-                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 max-w-lg">
-                                    {siteConfig.description || "记录生活闪光与技术沉淀，让每一次漫步都有迹可循。"}
-                                </p>
-                            </div>
-                        </div>
-                        {profile?.permission && (
-                            <div className="flex items-center gap-1 rounded-full bg-white/70 dark:bg-neutral-800/70 p-1 border border-black/5 dark:border-white/10 text-xs self-start sm:self-auto backdrop-blur-md shrink-0">
-                                <Link
-                                    href="/?type=normal"
-                                    className={`rounded-full px-3 py-1 transition ${
-                                        listState === "normal"
-                                            ? "bg-theme text-white shadow-2xs font-bold"
-                                            : "text-neutral-600 dark:text-neutral-300 hover:text-theme"
-                                    }`}
-                                >
-                                    {t("article.title")}
-                                </Link>
-                                <Link
-                                    href="/?type=draft"
-                                    className={`rounded-full px-3 py-1 transition ${
-                                        listState === "draft"
-                                            ? "bg-theme text-white shadow-2xs font-bold"
-                                            : "text-neutral-600 dark:text-neutral-300 hover:text-theme"
-                                    }`}
-                                >
-                                    {t("draft_bin")}
-                                </Link>
-                                <Link
-                                    href="/?type=unlisted"
-                                    className={`rounded-full px-3 py-1 transition ${
-                                        listState === "unlisted"
-                                            ? "bg-theme text-white shadow-2xs font-bold"
-                                            : "text-neutral-600 dark:text-neutral-300 hover:text-theme"
-                                    }`}
-                                >
-                                    {t("unlisted")}
-                                </Link>
-                            </div>
-                        )}
-                    </div>
-                ) : siteConfig.pageHeaderMode === "hidden" ? (
-                    profile?.permission ? (
-                        <div className="flex justify-end mb-3">
-                            <div className="inline-flex items-center gap-1 rounded-full bg-neutral-100 p-1 dark:bg-white/5 text-xs border border-black/5 dark:border-white/5 shadow-2xs">
-                                <Link
-                                    href="/?type=normal"
-                                    className={`rounded-full px-2.5 py-0.5 transition ${
-                                        listState === "normal"
-                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
-                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
-                                    }`}
-                                >
-                                    {t("article.title")}
-                                </Link>
-                                <Link
-                                    href="/?type=draft"
-                                    className={`rounded-full px-2.5 py-0.5 transition ${
-                                        listState === "draft"
-                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
-                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
-                                    }`}
-                                >
-                                    {t("draft_bin")}
-                                </Link>
-                                <Link
-                                    href="/?type=unlisted"
-                                    className={`rounded-full px-2.5 py-0.5 transition ${
-                                        listState === "unlisted"
-                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
-                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
-                                    }`}
-                                >
-                                    {t("unlisted")}
-                                </Link>
-                            </div>
-                        </div>
-                    ) : null
-                ) : (
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-2 border-b border-black/5 dark:border-white/5">
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary flex items-center gap-2">
-                                <span className={`transition-all duration-300 art-title-${siteConfig.atelierTitleStyle || "aurora_flow"}`}>
-                                    {listState === "draft" ? t("draft_bin") : listState === "unlisted" ? t("unlisted") : (siteConfig.atelierTitle || t("atelier.title", { defaultValue: "画廊随想" }))}
+                <PageHeader
+                    eyebrow={
+                        listState === "draft"
+                            ? "DRAFT ARCHIVE"
+                            : listState === "unlisted"
+                            ? "UNLISTED ESSAYS"
+                            : `GALLERY ESSAYS · ${currentFeeds.size}`
+                    }
+                    title={
+                        listState === "draft"
+                            ? t("draft_bin")
+                            : listState === "unlisted"
+                            ? t("unlisted")
+                            : siteConfig.atelierTitle || t("atelier.title", { defaultValue: "画廊随想" })
+                    }
+                    subtitle={siteConfig.description}
+                    mode={siteConfig.pageHeaderMode}
+                    titleFont={siteConfig.themeTitleFont as any}
+                    titleEffect={siteConfig.themeTitleEffect}
+                    avatar={siteConfig.avatar}
+                    bannerUrl={siteConfig.pageHeaderBannerUrl}
+                    actions={
+                        <>
+                            <button
+                                type="button"
+                                onClick={handleCycleVariant}
+                                title={t("variant.switch_title", {
+                                    current: currentVariantLabel,
+                                    defaultValue: `切换文章版式（当前：${currentVariantLabel}）`,
+                                })}
+                                className="inline-flex items-center gap-1.5 rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] px-3 py-1.5 text-xs font-medium text-[rgb(var(--rin-ink-rgb))] shadow-2xs transition hover:border-theme/45 hover:text-theme cursor-pointer whitespace-nowrap"
+                            >
+                                <i className="ri-layout-masonry-line text-xs text-theme" />
+                                <span>{currentVariantLabel}</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleToggleAISummary}
+                                aria-pressed={siteConfig.aiSummaryEnabled}
+                                title={
+                                    siteConfig.aiSummaryEnabled
+                                        ? t("ai_summary.disable_hint", { defaultValue: "点击即刻关闭全站文章导读" })
+                                        : t("ai_summary.enable_hint", { defaultValue: "点击即刻开启全站文章导读" })
+                                }
+                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium shadow-2xs transition cursor-pointer whitespace-nowrap ${
+                                    siteConfig.aiSummaryEnabled
+                                        ? "border-theme/30 bg-theme/10 text-theme font-semibold"
+                                        : "border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-muted-rgb))] hover:border-theme/40 hover:text-theme"
+                                }`}
+                            >
+                                <i className="ri-sparkling-2-line text-xs" />
+                                <span>
+                                    {siteConfig.aiSummaryEnabled
+                                        ? t("ai_summary.status_on", { defaultValue: "导读:开" })
+                                        : t("ai_summary.status_off", { defaultValue: "导读:关" })}
                                 </span>
-                                <span className="text-sm font-normal text-neutral-400 dark:text-neutral-500 font-mono">
-                                    ({currentFeeds.size})
-                                </span>
-                            </h1>
-                            {Boolean(profile?.permission) && streamOrder.length > 0 && (
+                            </button>
+
+                            {profile?.permission ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsTagSettingsOpen(true)}
+                                    title="管理画廊首页推荐标签展示与顺序 (Dense DataGrid)"
+                                    className="inline-flex items-center gap-1.5 rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] px-3 py-1.5 text-xs font-medium text-[rgb(var(--rin-ink-muted-rgb))] shadow-2xs transition hover:border-theme/45 hover:text-theme cursor-pointer whitespace-nowrap"
+                                >
+                                    <i className="ri-price-tag-3-line text-xs text-theme" />
+                                    <span>标签管理</span>
+                                </button>
+                            ) : null}
+
+                            {profile?.permission && streamOrder.length > 0 ? (
                                 <button
                                     type="button"
                                     onClick={resetStreamOrder}
                                     title={t("notes.reset_order_title", { defaultValue: "恢复文章与便签为默认排布次序" })}
-                                    className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 shadow-2xs border border-amber-500/20 transition select-none active:scale-95"
+                                    className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 shadow-2xs transition select-none active:scale-95 cursor-pointer whitespace-nowrap"
                                 >
                                     <i className="ri-restart-line text-xs" />
                                     <span>{t("notes.reset_order", { defaultValue: "恢复默认排序" })}</span>
                                 </button>
-                            )}
-                        </div>
+                            ) : null}
 
-                        {profile?.permission && (
-                            <div className="flex items-center gap-1 rounded-full bg-neutral-100 p-1 dark:bg-white/5 text-xs self-start sm:self-auto">
-                                <Link
-                                    href="/?type=normal"
-                                    className={`rounded-full px-3 py-1 transition ${
-                                        listState === "normal"
-                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
-                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
-                                    }`}
-                                >
-                                    {t("article.title")}
-                                </Link>
-                                <Link
-                                    href="/?type=draft"
-                                    className={`rounded-full px-3 py-1 transition ${
-                                        listState === "draft"
-                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
-                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
-                                    }`}
-                                >
-                                    {t("draft_bin")}
-                                </Link>
-                                <Link
-                                    href="/?type=unlisted"
-                                    className={`rounded-full px-3 py-1 transition ${
-                                        listState === "unlisted"
-                                            ? "bg-white text-neutral-900 shadow-2xs dark:bg-neutral-800 dark:text-white font-bold"
-                                            : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400"
-                                    }`}
-                                >
-                                    {t("unlisted")}
-                                </Link>
-                            </div>
-                        )}
-                    </div>
-                )}
+                            {profile?.permission ? (
+                                <div className="inline-flex items-center gap-0.5 rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] p-1 text-xs shadow-2xs">
+                                    <Link
+                                        href="/?type=normal"
+                                        className={`rounded-full px-3 py-1 transition whitespace-nowrap ${
+                                            listState === "normal"
+                                                ? "bg-theme text-white shadow-2xs font-bold"
+                                                : "text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme"
+                                        }`}
+                                    >
+                                        {t("article.title")}
+                                    </Link>
+                                    <Link
+                                        href="/?type=draft"
+                                        className={`rounded-full px-3 py-1 transition whitespace-nowrap ${
+                                            listState === "draft"
+                                                ? "bg-theme text-white shadow-2xs font-bold"
+                                                : "text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme"
+                                        }`}
+                                    >
+                                        {t("draft_bin")}
+                                    </Link>
+                                    <Link
+                                        href="/?type=unlisted"
+                                        className={`rounded-full px-3 py-1 transition whitespace-nowrap ${
+                                            listState === "unlisted"
+                                                ? "bg-theme text-white shadow-2xs font-bold"
+                                                : "text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme"
+                                        }`}
+                                    >
+                                        {t("unlisted")}
+                                    </Link>
+                                </div>
+                            ) : null}
+                        </>
+                    }
+                />
 
                 {/* 🏷️ Floating Washi Tape Charms (Scattered delicately around the whitespace) */}
                 {displayTags.length > 0 && listState === "normal" ? (
@@ -2342,33 +2453,8 @@ export function FeedsPage() {
                                 </Link>
                             );
                         })}
-                        {Boolean(profile?.permission) && (
-                            <button
-                                type="button"
-                                onClick={() => setIsTagSettingsOpen(true)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-neutral-800/80 hover:bg-theme/10 hover:text-theme text-xs font-semibold t-primary border border-black/10 dark:border-white/10 shadow-2xs transition select-none active:scale-95 cursor-pointer"
-                                title="管理画廊首页推荐标签展示与顺序 (Dense DataGrid)"
-                            >
-                                <i className="ri-settings-3-line text-xs" />
-                                <span>设置首页标签</span>
-                            </button>
-                        )}
                     </div>
-                ) : (
-                    listState === "normal" && Boolean(profile?.permission) && (
-                        <div className="flex justify-center my-4 select-none ani-show">
-                            <button
-                                type="button"
-                                onClick={() => setIsTagSettingsOpen(true)}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-dashed border-theme/40 text-theme text-xs font-semibold hover:bg-theme/5 transition cursor-pointer"
-                                title="所有首页推荐标签已被隐藏，点击重新配置或启用"
-                            >
-                                <i className="ri-price-tag-3-line text-xs" />
-                                <span>首页标签已全部隐藏 · 点击管理标签</span>
-                            </button>
-                        </div>
-                    )
-                )}
+                ) : null}
 
                 {/* Main Atelier Canvas: Staggered, Organic Columns with Large Posters */}
                 {status === "loading" && currentFeedData.length === 0 ? (
@@ -2379,7 +2465,7 @@ export function FeedsPage() {
                         {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                             <div
                                 key={i}
-                                className="break-inside-avoid rounded-3xl border border-black/5 bg-white p-3 dark:border-white/5 dark:bg-neutral-900 animate-pulse"
+                                className="break-inside-avoid rounded-3xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] p-3 animate-pulse"
                             >
                                 <div className="h-72 w-full rounded-2xl bg-neutral-200 dark:bg-neutral-800 mb-2" />
                                 <div className="h-4 w-1/3 rounded bg-neutral-200 dark:bg-neutral-800" />
@@ -2390,6 +2476,11 @@ export function FeedsPage() {
                     <EmptyFeedsState listState={listState} canWrite={Boolean(profile?.permission)} />
                 ) : (
                     <div
+                        data-content-zone={
+                            siteConfig.feedCardVariant === "compact" || siteConfig.feedCardVariant === "editorial"
+                                ? "true"
+                                : undefined
+                        }
                         style={
                             siteConfig.feedCardVariant === "poster" || siteConfig.feedCardVariant === "default"
                                 ? { columnGap: `${gapSize}px` }
@@ -2397,9 +2488,9 @@ export function FeedsPage() {
                         }
                         className={`${
                             siteConfig.feedCardVariant === "compact"
-                                ? "max-w-4xl mx-auto rounded-2xl border border-neutral-200/80 dark:border-white/10 bg-white/95 dark:bg-neutral-900/90 divide-y divide-neutral-100 dark:divide-white/[0.06] overflow-hidden shadow-2xs"
+                                ? "w-full rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] divide-y divide-[rgb(var(--rin-hairline-rgb)/0.65)] overflow-hidden shadow-2xs"
                                 : siteConfig.feedCardVariant === "editorial"
-                                ? "max-w-4xl mx-auto divide-y divide-neutral-200/80 dark:divide-white/10"
+                                ? "w-full divide-y divide-[rgb(var(--rin-hairline-rgb))]"
                                 : siteConfig.feedCardVariant === "poster"
                                 ? `${getColumnsClass(siteConfig.galleryColumns)} space-y-5`
                                 : `${getColumnsClass(siteConfig.galleryColumns)} space-y-6`
@@ -2500,7 +2591,7 @@ export function FeedsPage() {
                                 const nextPage = Math.floor(currentFeedData.length / limit) + 1;
                                 fetchFeeds(listState, nextPage, true);
                             }}
-                            className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-w px-6 py-2.5 text-xs font-bold t-primary shadow-xs hover:border-theme hover:text-theme hover:scale-105 active:scale-95 transition-all dark:border-white/10 select-none"
+                            className="inline-flex items-center gap-2 rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] px-6 py-2.5 text-xs font-bold text-[rgb(var(--rin-ink-rgb))] shadow-xs hover:border-theme hover:text-theme hover:scale-105 active:scale-95 transition-all select-none"
                         >
                             <i className="ri-arrow-down-line text-theme text-sm" />
                             <span>浏览下一页画廊相片</span>
@@ -2768,7 +2859,7 @@ export function FeedsPage() {
                                         try {
                                             localStorage.setItem("rin_gallery_stream_order", JSON.stringify(next));
                                         } catch {}
-                                        showAlert(`✓ 已成功将此便签与目标文章对调位置！`);
+                                        emitToast("已成功将此便签与目标文章对调位置！", "success");
                                     }
                                     e.target.value = "";
                                 }}
@@ -3267,7 +3358,7 @@ export function FeedsPage() {
                                                                 className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold text-xs border cursor-pointer hover:opacity-80 transition select-none ${getTagColorClass(idx)}`}
                                                                 title="点击就地修改展示别名"
                                                             >
-                                                                <span>🏷️</span>
+                                                                <i className="ri-price-tag-3-line text-xs" />
                                                                 <span>#{currentAlias || t.name}</span>
                                                             </span>
                                                             <button

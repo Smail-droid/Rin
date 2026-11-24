@@ -281,6 +281,7 @@ export interface AIConfig {
   prompt_tech?: string;
   prompt_format?: string;
   prompt_summary?: string;
+  prompt_presets?: string;
 }
 
 // ============================================================================

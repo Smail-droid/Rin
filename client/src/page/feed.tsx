@@ -19,7 +19,9 @@ import { Tips } from "../components/tips";
 import { renderMermaidElements } from "../utils/render-mermaid";
 import { AdjacentSection } from "../components/adjacent_feed.tsx";
 import { stripImageUrlMetadata } from "../utils/image-upload";
+import { normalizeBlobUrl } from "../utils/url";
 import { GalleryComments } from "../components/gallery-comments";
+import { emitToast } from "../utils/toast";
 import { Modal } from "@rin/ui";
 
 const ArticleAccessModal = lazy(() =>
@@ -33,6 +35,30 @@ function extractFirstMarkdownImageUrl(content: string) {
   }
 
   return stripImageUrlMetadata(match[1]);
+}
+
+function normalizeImageCompareKey(rawUrl?: string): string {
+  const clean = stripImageUrlMetadata(rawUrl);
+  if (!clean) return "";
+  const normalized = normalizeBlobUrl(clean) || clean;
+  const blobIdx = normalized.indexOf("/api/blob/");
+  return blobIdx !== -1 ? normalized.slice(blobIdx) : normalized;
+}
+
+function stripLeadingDuplicateImage(content: string, coverImage?: string): string {
+  if (!content || !coverImage) return content;
+  const coverKey = normalizeImageCompareKey(coverImage);
+  if (!coverKey) return content;
+
+  const trimmed = content.trimStart();
+  const leadingMdImage = /^!{1,2}\[[^\]]*\]\((\S+?)(?:\s+"[^"]*")?\)[ \t]*(?:\r?\n)*/.exec(trimmed);
+  if (leadingMdImage) {
+    const firstKey = normalizeImageCompareKey(leadingMdImage[1]);
+    if (firstKey === coverKey) {
+      return trimmed.slice(leadingMdImage[0].length);
+    }
+  }
+  return content;
 }
 
 // 弹幕与诗意字幕纯文本清洗函数（彻底去除 Emoji、漫游精选/访客等前缀、URL链接）
@@ -101,6 +127,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
           content: editContent,
         });
         setIsQuickEditOpen(false);
+        emitToast(t("update.success"), "success");
       }
     } catch (e: any) {
       showAlert(e.message || "更新失败");
@@ -157,6 +184,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
   const handleCopyLink = () => {
     void navigator.clipboard.writeText(window.location.href);
     setCopiedLink(true);
+    emitToast("文章链接已复制到剪贴板", "success");
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
@@ -164,6 +192,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
     const md = `[${title}](${window.location.href})`;
     void navigator.clipboard.writeText(md);
     setCopiedMarkdown(true);
+    emitToast("Markdown 引用已复制到剪贴板", "success");
     setTimeout(() => setCopiedMarkdown(false), 2000);
   };
   const profile = useContext(ProfileContext);
@@ -211,8 +240,8 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
         if (commentRes.data && Array.isArray(commentRes.data)) {
           commentRes.data.forEach((c: any) => {
             const clean = cleanCaptionText(c.content || "");
-            if (clean && clean.length >= 2) {
-              commentsList.push(clean.slice(0, 36));
+            if (clean && clean.length >= 4) {
+              commentsList.push(clean.slice(0, 32));
             }
           });
         }
@@ -248,16 +277,16 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
           ...shuffledComments.slice(3, 6),
         ];
 
-        // 3. 随机字号池与垂直纵向分布 (随机 12px ~ 15px，错开高度绝不重叠)
-        const fontSizes = ["text-xs", "text-[13px]", "text-sm", "text-[15px] font-extrabold"];
-        const verticalPositions = ["15%", "35%", "55%", "75%"];
-        const leftColors = ["#f472b6", "#c084fc", "#38bdf8", "#ffffff", "#ffd166", "#4ade80"];
-        const rightColors = ["#ffd166", "#4ade80", "#38bdf8", "#f472b6", "#c084fc", "#ffffff"];
+        // 3. 柔和微光字号与克制低饱和配色（告别高饱和霓虹硬黑描边）
+        const fontSizes = ["text-xs", "text-[12.5px]", "text-[13px]"];
+        const verticalPositions = ["16%", "38%", "60%", "78%"];
+        const leftColors = ["rgba(255,255,255,0.88)", "rgba(253,164,175,0.92)", "rgba(186,230,253,0.92)", "rgba(233,213,255,0.9)"];
+        const rightColors = ["rgba(255,255,255,0.88)", "rgba(186,230,253,0.92)", "rgba(253,230,138,0.88)", "rgba(253,164,175,0.92)"];
         
-        // 显著随机手绘错落大倾角 (随机 -6.5° ~ +6.5°)
+        // 轻柔微倾角 (-3° ~ +3°)，保持画廊安静氛围
         const randomRots = [
-          "rotate-[-5.5deg]", "rotate-[4.8deg]", "rotate-[-6.2deg]", "rotate-[5.2deg]",
-          "rotate-[-3.8deg]", "rotate-[6deg]", "rotate-[-4.5deg]", "rotate-[3.5deg]"
+          "rotate-[-2.5deg]", "rotate-[2.2deg]", "rotate-[-1.8deg]", "rotate-[2.8deg]",
+          "rotate-[-2deg]", "rotate-[1.5deg]", "rotate-[-2.8deg]", "rotate-[2deg]"
         ];
 
         // 提速后的灵动流速 (加快游动节奏，深入中心才消散，字号与倾角完全随机)
@@ -300,7 +329,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
             if (error) {
               showAlert(error.value as string);
             } else {
-              showAlert(t("delete.success"));
+              emitToast(t("delete.success"), "success");
               setLocation("/");
             }
           });
@@ -321,7 +350,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
             if (error) {
               showAlert(error.value as string);
             } else {
-              showAlert(isUnTop ? t("article.top.success") : t("article.untop.success"));
+              emitToast(isUnTop ? t("article.top.success") : t("article.untop.success"), "success");
               setTop(topNew);
             }
           });
@@ -470,9 +499,9 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                                   } ease-in-out infinite`,
                                   animationDelay: dm.delay,
                                   color: dm.color,
-                                  textShadow: "0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.85)",
+                                  textShadow: "0 1px 6px rgba(0,0,0,0.45)",
                                 }}
-                                className={`absolute left-0 transform ${dm.rot} ${dm.size} font-extrabold tracking-wide whitespace-nowrap pointer-events-auto hover:[animation-play-state:paused] hover:scale-105 transition-transform cursor-default`}
+                                className={`absolute left-0 transform ${dm.rot} ${dm.size} font-medium tracking-wide whitespace-nowrap pointer-events-auto hover:[animation-play-state:paused] hover:scale-105 transition-transform cursor-default`}
                                 title={t("danmaku.reader_inspiration", { defaultValue: "画廊随想读者灵感 · 悬停定格" })}
                               >
                                 {dm.text}
@@ -492,9 +521,9 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                                   } ease-in-out infinite`,
                                   animationDelay: dm.delay,
                                   color: dm.color,
-                                  textShadow: "0 2px 8px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.85)",
+                                  textShadow: "0 1px 6px rgba(0,0,0,0.45)",
                                 }}
-                                className={`absolute right-0 transform ${dm.rot} ${dm.size} font-extrabold tracking-wide whitespace-nowrap pointer-events-auto hover:[animation-play-state:paused] hover:scale-105 transition-transform cursor-default`}
+                                className={`absolute right-0 transform ${dm.rot} ${dm.size} font-medium tracking-wide whitespace-nowrap pointer-events-auto hover:[animation-play-state:paused] hover:scale-105 transition-transform cursor-default`}
                                 title={t("danmaku.reader_comment", { defaultValue: "画廊随想读者留言 · 悬停定格" })}
                               >
                                 {dm.text}
@@ -803,7 +832,12 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                     </form>
                   </div>
                 ) : (
-                  <Markdown content={feed.content} />
+                  <Markdown
+                    content={stripLeadingDuplicateImage(
+                      feed.content,
+                      (feed as any).avatar || (feed.content ? extractFirstMarkdownImageUrl(feed.content) : undefined),
+                    )}
+                  />
                 )}
                 <div className="mt-6 flex flex-col gap-2">
                   <div className="flex min-w-0 flex-row items-center">
@@ -880,7 +914,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                   <div className="p-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-xs space-y-3 ani-show">
                     <div className="flex items-center justify-between pb-1.5 border-b border-black/5 dark:border-white/5">
                       <div className="flex items-center gap-1.5 text-xs font-bold t-primary">
-                        <span className="text-theme">🏷️</span>
+                        <i className="ri-price-tag-3-line text-theme text-sm" />
                         <span>灵感标签漫游</span>
                       </div>
                       <Link href="/hashtags" className="text-[11px] text-neutral-400 hover:text-theme transition">

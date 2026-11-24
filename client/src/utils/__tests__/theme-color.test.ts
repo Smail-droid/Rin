@@ -6,9 +6,13 @@ import {
   MULTI_COLOR_PALETTES,
   THEME_PRESETS,
   applyThemeColor,
+  applyThemeFontFamily,
   applyThemeOpacity,
   applyThemePalette,
+  applyThemeTitleEffect,
+  applyThemeTitleFont,
   applyThemeWallpaper,
+  getContrastRatio,
   normalizeThemeColor,
   normalizeThemeOpacity,
 } from "../theme-color";
@@ -42,6 +46,8 @@ describe("theme-color utils", () => {
   describe("THEME_PRESETS", () => {
     it("includes required high-aesthetic themes", () => {
       const ids = THEME_PRESETS.map((p) => p.id);
+      expect(ids).toContain("sakura_paper");
+      expect(ids).toContain("warm_wheat");
       expect(ids).toContain("paper_ink");
       expect(ids).toContain("cyber_cold");
       expect(ids).toContain("aoi_sora");
@@ -49,6 +55,8 @@ describe("theme-color utils", () => {
       expect(ids).toContain("sakura");
 
       const names = THEME_PRESETS.map((p) => p.name);
+      expect(names).toContain("樱雪纸墨");
+      expect(names).toContain("暖麦护眼");
       expect(names).toContain("极简纸墨");
       expect(names).toContain("赛博冷萃");
       expect(names).toContain("和风青空");
@@ -126,6 +134,122 @@ describe("theme-color utils", () => {
       applyThemeWallpaper("none", 0);
       expect(document.body.classList.contains("no-wallpaper")).toBe(true);
       expect(document.body.classList.contains("has-wallpaper")).toBe(false);
+    });
+
+    it("caps CSS gradient wallpaper opacity more gently in dark mode than light mode", () => {
+      document.documentElement.setAttribute("data-color-mode", "light");
+      applyThemeWallpaper("radial-gradient(circle, rgba(252,70,107,0.12), transparent)", 35);
+      expect(document.documentElement.style.getPropertyValue("--rin-wallpaper-opacity")).toBe("0.28");
+
+      document.documentElement.setAttribute("data-color-mode", "dark");
+      applyThemeWallpaper("radial-gradient(circle, rgba(252,70,107,0.12), transparent)", 35);
+      expect(document.documentElement.style.getPropertyValue("--rin-wallpaper-opacity")).toBe("0.14");
+
+      document.documentElement.setAttribute("data-color-mode", "light");
+    });
+
+    it("applies coordinated sakura_paper semantic surface tokens in light and dark modes with WCAG AA contrast", () => {
+      const sakuraPaper = MULTI_COLOR_PALETTES.find((p) => p.id === "sakura_paper")!;
+      expect(sakuraPaper).toBeDefined();
+      expect(sakuraPaper.primary).toBe("#D87A90");
+
+      document.documentElement.setAttribute("data-color-mode", "light");
+      applyThemePalette(sakuraPaper);
+
+      expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("216 122 144");
+      expect(document.documentElement.style.getPropertyValue("--rin-canvas-rgb")).toBe("253 251 252");
+      expect(document.documentElement.style.getPropertyValue("--rin-surface-rgb")).toBe("255 255 255");
+      expect(document.documentElement.style.getPropertyValue("--rin-elevated-rgb")).toBe("255 255 255");
+      expect(document.documentElement.style.getPropertyValue("--rin-ink-rgb")).toBe("45 38 40");
+      expect(document.documentElement.style.getPropertyValue("--rin-text-rgb")).toBe("45 38 40");
+      expect(document.documentElement.style.getPropertyValue("--rin-ink-muted-rgb")).toBe("142 130 134");
+      expect(document.documentElement.style.getPropertyValue("--rin-hairline-rgb")).toBe("232 213 219");
+
+      document.documentElement.setAttribute("data-color-mode", "dark");
+      applyThemePalette(sakuraPaper);
+
+      expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("228 143 163");
+      expect(document.documentElement.style.getPropertyValue("--rin-canvas-rgb")).toBe("20 18 21");
+      expect(document.documentElement.style.getPropertyValue("--rin-surface-rgb")).toBe("28 25 29");
+      expect(document.documentElement.style.getPropertyValue("--rin-ink-rgb")).toBe("244 239 241");
+      expect(document.documentElement.style.getPropertyValue("--rin-text-rgb")).toBe("244 239 241");
+      expect(document.documentElement.style.getPropertyValue("--rin-ink-muted-rgb")).toBe("161 152 156");
+
+      for (const palette of MULTI_COLOR_PALETTES) {
+        expect(getContrastRatio(palette.inkLight, palette.tintLight)).toBeGreaterThanOrEqual(4.5);
+        expect(getContrastRatio(palette.inkLight, palette.surfaceLight)).toBeGreaterThanOrEqual(4.5);
+        expect(getContrastRatio(palette.inkDark, palette.tintDark)).toBeGreaterThanOrEqual(4.5);
+        expect(getContrastRatio(palette.inkDark, palette.surfaceDark)).toBeGreaterThanOrEqual(4.5);
+        if (palette.id !== "paper_ink") {
+          expect(getContrastRatio(palette.primaryDark, palette.surfaceDark)).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+
+      document.documentElement.setAttribute("data-color-mode", "light");
+    });
+
+    it("uses sakura_paper as calm fallback when applyThemeColor receives undefined", () => {
+      document.documentElement.setAttribute("data-color-mode", "light");
+      applyThemeColor(undefined);
+      expect(document.documentElement.style.getPropertyValue("--theme-rgb")).toBe("216 122 144");
+      expect(document.documentElement.style.getPropertyValue("--rin-canvas-rgb")).toBe("253 251 252");
+      expect(document.documentElement.style.getPropertyValue("--rin-ink-rgb")).toBe("45 38 40");
+    });
+
+    it("supports warm_wheat and all core theme palettes cleanly", () => {
+      const ids = MULTI_COLOR_PALETTES.map((p) => p.id);
+      for (const id of [
+        "sakura_paper",
+        "warm_wheat",
+        "sakura",
+        "aoi_sora",
+        "midnight_deep",
+        "violet_twilight",
+        "mint_soda",
+        "paper_ink",
+      ]) {
+        expect(ids).toContain(id);
+      }
+
+      const wheat = MULTI_COLOR_PALETTES.find((p) => p.id === "warm_wheat")!;
+      document.documentElement.setAttribute("data-color-mode", "light");
+      applyThemePalette(wheat);
+      expect(document.documentElement.style.getPropertyValue("--rin-canvas-rgb")).not.toBe("255 255 255");
+      expect(document.documentElement.style.getPropertyValue("--rin-ink-rgb")).toBe(
+        document.documentElement.style.getPropertyValue("--rin-text-rgb")
+      );
+    });
+  });
+
+  describe("orthogonal typography & title effects", () => {
+    it("applies sans, serif, kai, and mono stacks to title and body fonts", () => {
+      applyThemeTitleFont("serif");
+      expect(document.documentElement.style.getPropertyValue("--rin-title-font-family")).toContain("Noto Serif SC");
+      expect(document.documentElement.getAttribute("data-title-font")).toBe("serif");
+
+      applyThemeTitleFont("kai");
+      expect(document.documentElement.style.getPropertyValue("--rin-title-font-family")).toContain("LXGW WenKai");
+      expect(document.documentElement.getAttribute("data-title-font")).toBe("kai");
+
+      applyThemeTitleFont("mono");
+      expect(document.documentElement.style.getPropertyValue("--rin-title-font-family")).toContain("monospace");
+      expect(document.documentElement.getAttribute("data-title-font")).toBe("mono");
+
+      applyThemeTitleFont("sans");
+      expect(document.documentElement.style.getPropertyValue("--rin-title-font-family")).toContain("sans-serif");
+      expect(document.documentElement.getAttribute("data-title-font")).toBe("sans");
+
+      applyThemeFontFamily("kai");
+      expect(document.documentElement.style.getPropertyValue("--rin-font-family")).toContain("LXGW WenKai");
+    });
+
+    it("applies all 5 title effects independently of title font", () => {
+      applyThemeTitleFont("serif");
+      for (const effect of ["clean", "soft_glow", "editorial_rule", "tactile_ink", "neon_prism"] as const) {
+        applyThemeTitleEffect(effect);
+        expect(document.documentElement.getAttribute("data-title-effect")).toBe(effect);
+        expect(document.documentElement.getAttribute("data-title-font")).toBe("serif");
+      }
     });
   });
 });

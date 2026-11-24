@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAlert } from "../components/dialog";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { client } from "../app/runtime";
 import { getAuthToken } from "../utils/auth";
+import { emitToast } from "../utils/toast";
 import { Modal } from "@rin/ui";
 
 export type LockMode = "public" | "password";
@@ -33,6 +34,22 @@ export function AdminAccessPage() {
 
   // 真实文章列表与其云端 D1 锁定状态
   const [articles, setArticles] = useState<RealArticleAccessRule[]>([]);
+  const [savedArticleId, setSavedArticleId] = useState<number | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    };
+  }, []);
+
+  const markRowSaved = (articleId: number) => {
+    setSavedArticleId(articleId);
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => {
+      setSavedArticleId((curr) => (curr === articleId ? null : curr));
+    }, 2200);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -92,7 +109,8 @@ export function AdminAccessPage() {
         setArticles((prev) =>
           prev.map((a) => (a.id === art.id ? { ...a, isLocked: false, lockMode: "public", lockTip: "" } : a))
         );
-        showAlert(`已成功解除文章 #${art.id} 的访问锁定，当前对全网访客完全公开！`);
+        markRowSaved(art.id);
+        emitToast(`已解除文章 #${art.id} 的访问锁定，恢复公开阅读`, "success");
       } else {
         showAlert("解除锁定失败，请检查鉴权凭证");
       }
@@ -161,9 +179,8 @@ export function AdminAccessPage() {
           )
         );
         setModalOpen(false);
-        showAlert(
-          `文章 #${currentArticle.id} 权限锁定策略已保存至云端 D1 数据库，即时生效！`
-        );
+        markRowSaved(currentArticle.id);
+        emitToast(`文章 #${currentArticle.id} 权限锁定策略已保存并即时生效`, "success");
       } else {
         showAlert("保存策略失败，请检查登录凭据");
       }
@@ -314,6 +331,11 @@ export function AdminAccessPage() {
                     </td>
                     <td className="py-2.5 px-3 text-right pr-4">
                       <div className="inline-flex items-center gap-1.5">
+                        {savedArticleId === art.id && (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
+                            ✓ 已保存
+                          </span>
+                        )}
                         {art.isLocked ? (
                           <>
                             <button

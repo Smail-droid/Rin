@@ -1,6 +1,13 @@
 const DEFAULT_THEME_COLOR = "#fc466b";
+const DEFAULT_CALM_PRESET_ID = "sakura_paper";
+const DEFAULT_CALM_PRIMARY_COLOR = "#d87a90";
+const DEFAULT_CALM_SECONDARY_COLOR = "#e7a1b0";
 const DEFAULT_SECONDARY_COLOR = "#ff85a1";
 export const DEFAULT_THEME_OPACITY = 100;
+
+export type TitleFont = "sans" | "serif" | "kai" | "mono";
+export type TitleEffect = "clean" | "soft_glow" | "editorial_rule" | "tactile_ink" | "neon_prism";
+export type ThemeFontFamily = TitleFont;
 
 export interface ThemePreset {
   id: string;
@@ -20,8 +27,17 @@ export interface MultiColorPalette {
   secondary: string;
   accent: string;
   tintLight: string;
+  surfaceLight: string;
+  elevatedLight: string;
+  inkLight: string;
+  inkMutedLight: string;
+  hairlineLight: string;
   tintDark: string;
   surfaceDark: string;
+  elevatedDark: string;
+  inkDark: string;
+  inkMutedDark: string;
+  hairlineDark: string;
   description: string;
 }
 
@@ -37,6 +53,28 @@ export interface WallpaperPreset {
     backgroundSize?: string;
   };
 }
+
+export const TITLE_FONT_STACKS: Record<TitleFont, string> = {
+  sans: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, Cantarell, sans-serif',
+  serif: '"Noto Serif SC", "Source Han Serif CN", "Source Han Serif CN VF", "Songti SC", "STSong", serif',
+  kai: '"LXGW WenKai", "LXGW WenKai Lite", "Kaiti SC", "STKaiti", "BiauKai", serif',
+  mono: 'ui-monospace, SFMono-Regular, "Fira Code", Menlo, Monaco, Consolas, monospace',
+};
+
+export const TITLE_FONT_OPTIONS: Array<{ id: TitleFont; label: string; description: string }> = [
+  { id: "serif", label: "思源宋体", description: "人文画廊刊物衬线" },
+  { id: "kai", label: "霞鹜文楷", description: "温润手账楷书气息" },
+  { id: "sans", label: "现代黑体", description: "利落几何无衬线" },
+  { id: "mono", label: "极客等宽", description: "清晰索引编目等宽" },
+];
+
+export const TITLE_EFFECT_OPTIONS: Array<{ id: TitleEffect; label: string; description: string }> = [
+  { id: "clean", label: "纯墨极简", description: "克制纯净，无多余装饰" },
+  { id: "soft_glow", label: "柔和微光", description: "主题色轻盈光晕" },
+  { id: "editorial_rule", label: "刊号细线", description: "舒展字距与主题底线" },
+  { id: "tactile_ink", label: "复古压印", description: "纸面凹凸触觉立体墨感" },
+  { id: "neon_prism", label: "霓虹棱镜", description: "双色主题流光渐变" },
+];
 
 /** 5 款清新轻量 CSS 背景纹理预设 */
 export const WALLPAPER_PRESETS: WallpaperPreset[] = [
@@ -81,18 +119,69 @@ export const WALLPAPER_PRESETS: WallpaperPreset[] = [
   },
 ];
 
-/** 8 套明快清新的精选主题色盘（浅色画布一律保持纯白清亮，告别发粉发灰昏沉感） */
+/** 多层语义协调主题色盘（Canvas / Surface / Elevated / Ink / Ink Muted / Hairline / Accent） */
 export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
   {
+    id: "sakura_paper",
+    name: "樱雪纸墨",
+    primary: "#D87A90",
+    primaryDark: "#E48FA3",
+    secondary: "#E7A1B0",
+    accent: "#F4DCE2",
+    tintLight: "#FDFBFC",
+    surfaceLight: "#FFFFFF",
+    elevatedLight: "#FFFFFF",
+    inkLight: "#2D2628",
+    inkMutedLight: "#8E8286",
+    hairlineLight: "#E8D5DB",
+    tintDark: "#141215",
+    surfaceDark: "#1C191D",
+    elevatedDark: "#242026",
+    inkDark: "#F4EFF1",
+    inkMutedDark: "#A1989C",
+    hairlineDark: "#352C31",
+    description: "莫兰迪樱雪暖纸，低饱和温润画廊默认调性",
+  },
+  {
+    id: "warm_wheat",
+    name: "暖麦护眼",
+    primary: "#B87A4B",
+    primaryDark: "#DDA16E",
+    secondary: "#D6A374",
+    accent: "#F3E4D2",
+    tintLight: "#FAF6EE",
+    surfaceLight: "#FFFCF7",
+    elevatedLight: "#FFFFFF",
+    inkLight: "#2E2720",
+    inkMutedLight: "#7B6E60",
+    hairlineLight: "#E6DAC8",
+    tintDark: "#151310",
+    surfaceDark: "#1E1A16",
+    elevatedDark: "#28231D",
+    inkDark: "#F3EDE4",
+    inkMutedDark: "#A89E92",
+    hairlineDark: "#383028",
+    description: "温润麦穗纸底与棕墨文字，长文阅读护眼舒适",
+  },
+  {
     id: "sakura",
-    name: "春日樱落",
+    name: "经典蔷薇",
     primary: "#fc466b",
-    primaryDark: "#fb5678",
+    primaryDark: "#fb6f8d",
     secondary: "#ff85a1",
     accent: "#ffd0da",
     tintLight: "#ffffff",
+    surfaceLight: "#ffffff",
+    elevatedLight: "#ffffff",
+    inkLight: "#262023",
+    inkMutedLight: "#71686c",
+    hairlineLight: "#ede4e7",
     tintDark: "#14151a",
     surfaceDark: "#1d1f27",
+    elevatedDark: "#262933",
+    inkDark: "#f5f1f3",
+    inkMutedDark: "#a49ba0",
+    hairlineDark: "#323542",
     description: "经典蔷薇樱粉，明快灵动",
   },
   {
@@ -102,9 +191,18 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#38bdf8",
     secondary: "#38bdf8",
     accent: "#bae6fd",
-    tintLight: "#ffffff",
+    tintLight: "#f8fbfd",
+    surfaceLight: "#ffffff",
+    elevatedLight: "#ffffff",
+    inkLight: "#1e293b",
+    inkMutedLight: "#64748b",
+    hairlineLight: "#dce8f2",
     tintDark: "#11161f",
     surfaceDark: "#1a212d",
+    elevatedDark: "#222b3a",
+    inkDark: "#eff6ff",
+    inkMutedDark: "#94a3b8",
+    hairlineDark: "#2c3749",
     description: "澄澈晴空天蓝，清透辽阔",
   },
   {
@@ -114,9 +212,18 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#818cf8",
     secondary: "#818cf8",
     accent: "#c7d2fe",
-    tintLight: "#ffffff",
+    tintLight: "#fafaff",
+    surfaceLight: "#ffffff",
+    elevatedLight: "#ffffff",
+    inkLight: "#1e1e2e",
+    inkMutedLight: "#666882",
+    hairlineLight: "#e2e3f3",
     tintDark: "#131420",
     surfaceDark: "#1c1e2e",
+    elevatedDark: "#25283c",
+    inkDark: "#f1f2fb",
+    inkMutedDark: "#9ca0bd",
+    hairlineDark: "#2f334d",
     description: "星夜靛蓝紫，沉静有质感",
   },
   {
@@ -126,9 +233,18 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#a78bfa",
     secondary: "#c084fc",
     accent: "#ddd6fe",
-    tintLight: "#ffffff",
+    tintLight: "#fcfaff",
+    surfaceLight: "#ffffff",
+    elevatedLight: "#ffffff",
+    inkLight: "#251f33",
+    inkMutedLight: "#6f6785",
+    hairlineLight: "#e8e0f5",
     tintDark: "#161321",
     surfaceDark: "#201c2f",
+    elevatedDark: "#2a253d",
+    inkDark: "#f5f2fc",
+    inkMutedDark: "#a89ec0",
+    hairlineDark: "#36304e",
     description: "晚霞梦幻紫韵，轻盈浪漫",
   },
   {
@@ -138,9 +254,18 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#2dd4bf",
     secondary: "#2dd4bf",
     accent: "#99f6e4",
-    tintLight: "#ffffff",
+    tintLight: "#f7fcfb",
+    surfaceLight: "#ffffff",
+    elevatedLight: "#ffffff",
+    inkLight: "#1b2b29",
+    inkMutedLight: "#5f7572",
+    hairlineLight: "#d8ece9",
     tintDark: "#10191a",
     surfaceDark: "#182527",
+    elevatedDark: "#213235",
+    inkDark: "#edf7f6",
+    inkMutedDark: "#94aeab",
+    hairlineDark: "#293d40",
     description: "清凉薄荷气泡，清爽透气",
   },
   {
@@ -150,9 +275,18 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#34d399",
     secondary: "#34d399",
     accent: "#a7f3d0",
-    tintLight: "#ffffff",
+    tintLight: "#f8fcfa",
+    surfaceLight: "#ffffff",
+    elevatedLight: "#ffffff",
+    inkLight: "#1c2b24",
+    inkMutedLight: "#5d7368",
+    hairlineLight: "#d9ece2",
     tintDark: "#101915",
     surfaceDark: "#18251f",
+    elevatedDark: "#203129",
+    inkDark: "#eef7f2",
+    inkMutedDark: "#95afa2",
+    hairlineDark: "#293e34",
     description: "生机翡翠嫩绿，自然治愈",
   },
   {
@@ -162,9 +296,18 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#fbbf24",
     secondary: "#fbbf24",
     accent: "#fde68a",
-    tintLight: "#ffffff",
+    tintLight: "#fffcf7",
+    surfaceLight: "#ffffff",
+    elevatedLight: "#ffffff",
+    inkLight: "#2c2418",
+    inkMutedLight: "#766957",
+    hairlineLight: "#efe2cd",
     tintDark: "#181611",
     surfaceDark: "#242019",
+    elevatedDark: "#2f2a21",
+    inkDark: "#faf4ea",
+    inkMutedDark: "#b0a493",
+    hairlineDark: "#3e372b",
     description: "暖阳晚霞流金，明朗治愈",
   },
   {
@@ -174,16 +317,27 @@ export const MULTI_COLOR_PALETTES: MultiColorPalette[] = [
     primaryDark: "#6366f1",
     secondary: "#71717a",
     accent: "#e4e4e7",
-    tintLight: "#ffffff",
+    tintLight: "#fafafa",
+    surfaceLight: "#ffffff",
+    elevatedLight: "#ffffff",
+    inkLight: "#18181b",
+    inkMutedLight: "#71717a",
+    hairlineLight: "#e4e4e7",
     tintDark: "#141518",
     surfaceDark: "#1e2026",
+    elevatedDark: "#272a32",
+    inkDark: "#f4f4f5",
+    inkMutedDark: "#a1a1aa",
+    hairlineDark: "#2e313b",
     description: "纯粹纸墨黑白，经典耐看",
   },
 ];
 
-/** 18 套完整高颜值明快主题预设（完整还原经典调色板体验） */
+/** 20 套完整高颜值主题预设（以樱雪纸墨为温润默认，完整保留经典调色板） */
 export const THEME_PRESETS: ThemePreset[] = [
-  { id: "sakura", name: "春日樱落", color: "#fc466b", secondary: "#ff85a1", previewBg: "#fff1f3", accent: "#ffd0da", description: "经典蔷薇绯红，生机与浪漫交织" },
+  { id: "sakura_paper", name: "樱雪纸墨", color: "#D87A90", secondary: "#E7A1B0", previewBg: "#FDFBFC", accent: "#F4DCE2", description: "莫兰迪樱雪暖纸与温润墨棕，静谧画廊默认皮肤" },
+  { id: "warm_wheat", name: "暖麦护眼", color: "#B87A4B", secondary: "#D6A374", previewBg: "#FAF6EE", accent: "#F3E4D2", description: "温和麦穗纸底与棕墨排印，久读不刺眼" },
+  { id: "sakura", name: "经典蔷薇", color: "#fc466b", secondary: "#ff85a1", previewBg: "#fff1f3", accent: "#ffd0da", description: "经典蔷薇绯红，生机与浪漫交织" },
   { id: "paper_ink", name: "极简纸墨", color: "#27272a", secondary: "#71717a", previewBg: "#f4f4f5", accent: "#e4e4e7", description: "极简纯粹纸墨，水墨书卷雅致风范" },
   { id: "cyber_cold", name: "赛博冷萃", color: "#00c4ff", secondary: "#38bdf8", previewBg: "#e0f7ff", accent: "#70e1ff", description: "冰蓝电光冷萃，通透未来科技质感" },
   { id: "aoi_sora", name: "和风青空", color: "#0ea5e9", secondary: "#38bdf8", previewBg: "#e0f2fe", accent: "#7dd3fc", description: "海风拂过澄澈天际，辽阔明亮" },
@@ -287,6 +441,14 @@ export function getRelativeLuminance(hex: string): number {
   return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
 }
 
+export function getContrastRatio(hex1: string, hex2: string): number {
+  const l1 = getRelativeLuminance(hex1);
+  const l2 = getRelativeLuminance(hex2);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 export function normalizeThemeColor(value: string | undefined | null) {
   return normalizeHex(value, "#fc466b");
 }
@@ -304,21 +466,28 @@ export function normalizeThemeOpacity(value: unknown): number {
   return DEFAULT_THEME_OPACITY;
 }
 
-let currentThemeColorHex = DEFAULT_THEME_COLOR;
-let currentSecondaryColorHex = DEFAULT_SECONDARY_COLOR;
-let currentPaletteId: string | undefined = "sakura";
+let currentThemeColorHex = DEFAULT_CALM_PRIMARY_COLOR;
+let currentSecondaryColorHex = DEFAULT_CALM_SECONDARY_COLOR;
+let currentPaletteId: string | undefined = DEFAULT_CALM_PRESET_ID;
+let currentWallpaperUrl: string | undefined | null = "none";
+let currentWallpaperOpacity: number | undefined = 35;
+
+function findPaletteById(id: string): MultiColorPalette | undefined {
+  return MULTI_COLOR_PALETTES.find((p) => p.id === id);
+}
 
 /** 根据预设 ID 或主色自动匹配对应的色盘（兼容历史预设 ID 平滑迁移） */
 export function findPaletteByIdOrColor(presetId?: string | null, colorHex?: string | null): MultiColorPalette | undefined {
   if (presetId) {
-    const byId = MULTI_COLOR_PALETTES.find((p) => p.id === presetId);
+    const byId = findPaletteById(presetId);
     if (byId) return byId;
-    if (presetId === "rose_mist" || presetId === "cherry_peach") return MULTI_COLOR_PALETTES[0];
-    if (presetId === "sea_mist" || presetId === "sea_salt" || presetId === "cyber_cold") return MULTI_COLOR_PALETTES[1];
-    if (presetId === "wisteria_dusk" || presetId === "twilight_nebula") return MULTI_COLOR_PALETTES[3];
-    if (presetId === "moss_tea" || presetId === "forest_sun") return MULTI_COLOR_PALETTES[5];
-    if (presetId === "amber_latte" || presetId === "sunset_caramel") return MULTI_COLOR_PALETTES[6];
-    if (presetId === "kyoto_ink") return MULTI_COLOR_PALETTES[7];
+    if (presetId === "default") return findPaletteById("sakura_paper");
+    if (presetId === "rose_mist" || presetId === "cherry_peach") return findPaletteById("sakura");
+    if (presetId === "sea_mist" || presetId === "sea_salt" || presetId === "cyber_cold") return findPaletteById("aoi_sora");
+    if (presetId === "wisteria_dusk" || presetId === "twilight_nebula") return findPaletteById("violet_twilight");
+    if (presetId === "moss_tea" || presetId === "forest_sun") return findPaletteById("forest_mist");
+    if (presetId === "amber_latte" || presetId === "sunset_caramel") return findPaletteById("golden_sunset");
+    if (presetId === "kyoto_ink") return findPaletteById("paper_ink");
   }
   if (colorHex) {
     const norm = normalizeHex(colorHex);
@@ -333,6 +502,7 @@ export function findPaletteByIdOrColor(presetId?: string | null, colorHex?: stri
 if (typeof window !== "undefined") {
   window.addEventListener("colorSchemeChange", () => {
     applyThemeColor(currentThemeColorHex, currentSecondaryColorHex, currentPaletteId);
+    applyThemeWallpaper(currentWallpaperUrl, currentWallpaperOpacity);
   });
 }
 
@@ -347,47 +517,74 @@ export function applyThemeColor(
   secondaryValue?: string | null,
   presetId?: string | null
 ) {
-  const color = normalizeHex(value);
-  const matchedPalette = findPaletteByIdOrColor(presetId, color);
-  const matchedPreset = THEME_PRESETS.find((p) => p.id === presetId || p.color.toLowerCase() === color);
+  const effectivePresetId = presetId || (!value ? DEFAULT_CALM_PRESET_ID : undefined);
+  const color = normalizeHex(value, effectivePresetId === DEFAULT_CALM_PRESET_ID ? DEFAULT_CALM_PRIMARY_COLOR : DEFAULT_THEME_COLOR);
+  const matchedPalette = findPaletteByIdOrColor(effectivePresetId, color);
+  const matchedPreset = THEME_PRESETS.find((p) => p.id === effectivePresetId || p.color.toLowerCase() === color);
   const secondary = secondaryValue
     ? normalizeHex(secondaryValue, DEFAULT_SECONDARY_COLOR)
     : matchedPreset?.secondary || matchedPalette?.secondary || toHexFromShade(color, 0.28);
 
   currentThemeColorHex = color;
   currentSecondaryColorHex = secondary;
-  currentPaletteId = presetId || matchedPalette?.id;
+  currentPaletteId = effectivePresetId || matchedPalette?.id;
 
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   const isDark = root.getAttribute("data-color-mode") === "dark" || root.classList.contains("dark");
+  const defaultPalette = findPaletteById(DEFAULT_CALM_PRESET_ID) || MULTI_COLOR_PALETTES[0];
 
-  // 保持色彩鲜活通透；仅当主色在暗黑模式下极度接近纯黑（如 #27272a）时平滑提亮，避免融进黑夜背景
+  const canvasHex = isDark
+    ? matchedPalette?.tintDark || defaultPalette.tintDark
+    : matchedPalette?.tintLight || defaultPalette.tintLight;
+  const surfaceHex = isDark
+    ? matchedPalette?.surfaceDark || defaultPalette.surfaceDark
+    : matchedPalette?.surfaceLight || defaultPalette.surfaceLight;
+  const elevatedHex = isDark
+    ? matchedPalette?.elevatedDark || defaultPalette.elevatedDark
+    : matchedPalette?.elevatedLight || defaultPalette.elevatedLight;
+  const inkHex = isDark
+    ? matchedPalette?.inkDark || defaultPalette.inkDark
+    : matchedPalette?.inkLight || defaultPalette.inkLight;
+  const inkMutedHex = isDark
+    ? matchedPalette?.inkMutedDark || defaultPalette.inkMutedDark
+    : matchedPalette?.inkMutedLight || defaultPalette.inkMutedLight;
+  const hairlineHex = isDark
+    ? matchedPalette?.hairlineDark || defaultPalette.hairlineDark
+    : matchedPalette?.hairlineLight || defaultPalette.hairlineLight;
+
+  // 保持色彩鲜活通透；暗黑模式下优先使用色盘配套的明度提亮主色，避免极暗主色融入黑夜背景
   let effectiveHex = color;
   if (isDark) {
-    if (matchedPalette && getRelativeLuminance(color) < 0.04) {
+    if (matchedPalette && (getRelativeLuminance(color) < 0.04 || color.toLowerCase() === matchedPalette.primary.toLowerCase())) {
       effectiveHex = matchedPalette.primaryDark;
     } else if (getRelativeLuminance(color) < 0.04) {
       effectiveHex = "#6366f1";
+    } else if (getContrastRatio(color, surfaceHex) < 4.5) {
+      effectiveHex = toHexFromShade(color, 0.36);
     }
   }
 
   const effectiveRgb = hexToRgb(effectiveHex);
   const secRgb = hexToRgb(secondary);
+  const inkRgbStr = toCssRgb(hexToRgb(inkHex));
+  const inkMutedRgbStr = toCssRgb(hexToRgb(inkMutedHex));
 
   setRootVarIfChanged(root, "--theme-rgb", toCssRgb(effectiveRgb));
   setRootVarIfChanged(root, "--theme-hover-rgb", toCssRgb(shade(effectiveHex, isDark ? 0.14 : -0.14)));
   setRootVarIfChanged(root, "--theme-active-rgb", toCssRgb(shade(effectiveHex, isDark ? 0.22 : -0.24)));
   setRootVarIfChanged(root, "--theme-secondary-rgb", toCssRgb(secRgb));
 
-  // 浅色画布一律保持纯白清亮（杜绝整页蒙上灰粉雾），深色画布保持通透深炭夜
-  if (isDark) {
-    setRootVarIfChanged(root, "--rin-canvas-rgb", matchedPalette ? toCssRgb(hexToRgb(matchedPalette.tintDark)) : "20 21 26");
-    setRootVarIfChanged(root, "--rin-surface-rgb", matchedPalette ? toCssRgb(hexToRgb(matchedPalette.surfaceDark)) : "29 31 39");
-  } else {
-    setRootVarIfChanged(root, "--rin-canvas-rgb", "255 255 255");
-    setRootVarIfChanged(root, "--rin-surface-rgb", "255 255 255");
-  }
+  // 六层语义表面与墨色令牌同步驱动
+  setRootVarIfChanged(root, "--rin-canvas-rgb", toCssRgb(hexToRgb(canvasHex)));
+  setRootVarIfChanged(root, "--rin-surface-rgb", toCssRgb(hexToRgb(surfaceHex)));
+  setRootVarIfChanged(root, "--rin-elevated-rgb", toCssRgb(hexToRgb(elevatedHex)));
+  setRootVarIfChanged(root, "--rin-ink-rgb", inkRgbStr);
+  setRootVarIfChanged(root, "--rin-ink-muted-rgb", inkMutedRgbStr);
+  setRootVarIfChanged(root, "--rin-hairline-rgb", toCssRgb(hexToRgb(hairlineHex)));
+  // 向后兼容别名：保持 --rin-text-rgb 与 --rin-ink-rgb 同步
+  setRootVarIfChanged(root, "--rin-text-rgb", inkRgbStr);
+  setRootVarIfChanged(root, "--rin-text-muted-rgb", inkMutedRgbStr);
 }
 
 function toHexFromShade(hex: string, ratio: number): string {
@@ -413,25 +610,120 @@ export function applyThemeOpacity(value: unknown) {
   root.style.setProperty("--rin-glass-border-alpha", opacity >= 98 ? "0.08" : `${(0.08 + (1 - alpha) * 0.12).toFixed(2)}`);
 }
 
+const HUMANISTIC_FONT_SHEETS: Partial<Record<TitleFont, { id: string; href: string }>> = {
+  serif: {
+    id: "rin-font-noto-serif-sc",
+    href: "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&display=swap",
+  },
+  kai: {
+    id: "rin-font-lxgw-wenkai",
+    href: "https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css",
+  },
+};
+
+export function ensureHumanisticFontLoaded(font: string | undefined | null) {
+  if (typeof document === "undefined" || !document.head) return;
+  const normalized = font === "serif" || font === "kai" ? font : null;
+  if (!normalized) return;
+
+  const meta = HUMANISTIC_FONT_SHEETS[normalized];
+  if (!meta) return;
+
+  if (document.getElementById(meta.id)) return;
+  const existingHrefMatch = document.querySelector(`link[rel="stylesheet"][href="${meta.href}"]`);
+  if (existingHrefMatch) return;
+
+  const link = document.createElement("link");
+  link.id = meta.id;
+  link.rel = "stylesheet";
+  link.href = meta.href;
+  link.media = "print";
+  link.onload = () => {
+    link.media = "all";
+  };
+  document.head.appendChild(link);
+}
+
+export function normalizeTitleFont(font: string | undefined | null): TitleFont {
+  if (font === "sans" || font === "serif" || font === "kai" || font === "mono") {
+    return font;
+  }
+  return "serif";
+}
+
+export function normalizeTitleEffect(effect: string | undefined | null): TitleEffect {
+  switch (effect) {
+    case "clean":
+    case "soft_glow":
+    case "editorial_rule":
+    case "tactile_ink":
+    case "neon_prism":
+      return effect;
+    case "classic_clean":
+      return "clean";
+    case "glass_glow":
+    case "starlight_cosmic":
+      return "soft_glow";
+    case "aurora_flow":
+    case "golden_sunset":
+    case "candy_dream":
+      return "editorial_rule";
+    case "ink_calligraphy":
+    case "emboss_3d":
+    case "gothic_metal":
+      return "tactile_ink";
+    case "cyber_neon":
+    case "vaporwave_80s":
+    case "pixel_arcade":
+      return "neon_prism";
+    default:
+      return "clean";
+  }
+}
+
 export function applyThemeFontFamily(family: string | undefined | null) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  if (family === "serif") {
-    root.style.setProperty(
-      "--rin-font-family",
-      '"Noto Serif SC", "Source Han Serif CN VF", "Songti SC", "STSong", serif'
-    );
-  } else if (family === "mono") {
-    root.style.setProperty(
-      "--rin-font-family",
-      'ui-monospace, SFMono-Regular, "Fira Code", Menlo, Monaco, Consolas, monospace'
-    );
-  } else {
-    root.style.setProperty(
-      "--rin-font-family",
-      'Cantarell, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif'
-    );
-  }
+  const resolved: ThemeFontFamily =
+    family === "serif" || family === "kai" || family === "mono" ? family : "sans";
+
+  ensureHumanisticFontLoaded(resolved);
+  root.style.setProperty("--rin-font-family", TITLE_FONT_STACKS[resolved]);
+  root.setAttribute("data-body-font", resolved);
+}
+
+export function applyThemeTitleFont(font: string | undefined | null): TitleFont {
+  const resolved = normalizeTitleFont(font);
+  if (typeof document === "undefined") return resolved;
+
+  const root = document.documentElement;
+  ensureHumanisticFontLoaded(resolved);
+  root.style.setProperty("--rin-title-font-family", TITLE_FONT_STACKS[resolved]);
+  root.setAttribute("data-title-font", resolved);
+  return resolved;
+}
+
+export function applyThemeTitleEffect(effect: string | undefined | null): TitleEffect {
+  const resolved = normalizeTitleEffect(effect);
+  if (typeof document === "undefined") return resolved;
+
+  const root = document.documentElement;
+  root.setAttribute("data-title-effect", resolved);
+  root.style.setProperty("--rin-title-effect", resolved);
+  return resolved;
+}
+
+export function applyThemeTitleStyle({
+  font,
+  effect,
+}: {
+  font?: string | null;
+  effect?: string | null;
+}) {
+  return {
+    font: applyThemeTitleFont(font),
+    effect: applyThemeTitleEffect(effect),
+  };
 }
 
 export function applyThemeFontSize(value: unknown) {
@@ -442,9 +734,14 @@ export function applyThemeFontSize(value: unknown) {
 }
 
 export function applyThemeWallpaper(url: string | undefined | null, opacity?: number) {
+  currentWallpaperUrl = url;
+  if (opacity !== undefined) {
+    currentWallpaperOpacity = opacity;
+  }
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   const cleanUrl = (url || "").trim();
+  const isDark = root.getAttribute("data-color-mode") === "dark" || root.classList.contains("dark");
 
   if (!cleanUrl || cleanUrl === "none" || cleanUrl === "empty") {
     root.style.setProperty("--rin-wallpaper-url", "none");
@@ -467,8 +764,9 @@ export function applyThemeWallpaper(url: string | undefined | null, opacity?: nu
   root.style.setProperty("--rin-wallpaper-repeat", isDotPattern ? "repeat" : "no-repeat");
 
   if (opacity !== undefined) {
-    // 历史残留的高饱和 CSS 渐变壁纸自动柔化浓度上限，避免把整张纯白画布染成昏沉粉雾
-    const capped = isCssImageFn && !isDotPattern ? Math.min(28, Math.max(0, opacity)) : Math.min(100, Math.max(0, opacity));
+    // 深色画布自动进一步柔化渐变光晕上限（14%），避免把暗夜底色染成浑浊褐红色
+    const gradientCap = isDark ? 14 : 28;
+    const capped = isCssImageFn && !isDotPattern ? Math.min(gradientCap, Math.max(0, opacity)) : Math.min(100, Math.max(0, opacity));
     const alpha = capped / 100;
     root.style.setProperty("--rin-wallpaper-opacity", alpha.toFixed(2));
   }

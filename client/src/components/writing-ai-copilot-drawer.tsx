@@ -72,11 +72,23 @@ export function WritingAICopilotDrawer({
   const [activeTab, setActiveTab] = useState<"chat" | "pipeline" | "presets">("chat");
   const [selectedPersonaId, setSelectedPersonaId] = useState<string>("tech_architect");
 
-  // 从后台读取自定义提示词预设库（实现前后台双向联动）
-  const [promptPresets] = useState<any[]>(() => {
+  const parseDrawerPresets = (raw: unknown): any[] | null => {
+    if (Array.isArray(raw) && raw.length > 0) return raw;
+    if (typeof raw === "string" && raw.trim()) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return null;
+  };
+
+  // 从后台读取自定义提示词预设库（实现前后台双向联动：优先服务端 ai_summary.prompt_presets，localStorage 仅作空值兜底种子）
+  const [promptPresets, setPromptPresets] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem("rin_ai_prompt_presets");
-      if (saved) return JSON.parse(saved);
+      const fromLocal = saved ? parseDrawerPresets(saved) : null;
+      if (fromLocal) return fromLocal;
     } catch {}
     return [
       { id: "preset_tech_std", stage: "tech", name: "教程技术命令提炼", prompt: "请提取核心执行命令与配置..." },
@@ -84,6 +96,9 @@ export function WritingAICopilotDrawer({
       { id: "preset_summary_std", stage: "summary", name: "精炼置顶摘要生成", prompt: "请输出50~100字高密导读..." },
     ];
   });
+  const [newPresetName, setNewPresetName] = useState("");
+  const [newPresetPrompt, setNewPresetPrompt] = useState("");
+  const [showAddPresetForm, setShowAddPresetForm] = useState(false);
 
   // AI In-Situ Configuration State
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
@@ -91,11 +106,13 @@ export function WritingAICopilotDrawer({
     provider: string;
     model: string;
     apiKey: string;
+    apiKeySet: boolean;
     apiUrl: string;
   }>({
     provider: "worker-ai",
-    model: "@cf/meta/llama-3.1-8b-instruct",
+    model: "llama-3-1-8b",
     apiKey: "",
+    apiKeySet: false,
     apiUrl: "",
   });
   const [testingAi, setTestingAi] = useState(false);
@@ -110,7 +127,7 @@ export function WritingAICopilotDrawer({
       const { data, error } = await client.config.fetchAIModels({
         provider: aiConfig.provider,
         api_url: aiConfig.apiUrl,
-        api_key: aiConfig.apiKey,
+        ...(aiConfig.apiKey.trim() ? { api_key: aiConfig.apiKey.trim() } : {}),
       });
       if (data?.success && Array.isArray(data.models)) {
         setFetchedModels(data.models);
@@ -134,35 +151,78 @@ export function WritingAICopilotDrawer({
     if (isOpen) {
       client.config.get("server").then(({ data }) => {
         if (data) {
-          const s = data as any;
+          const s = data as Record<string, any>;
+          const rawKey = typeof s["ai_summary.api_key"] === "string" ? s["ai_summary.api_key"] : "";
+          const isMasked = rawKey === "••••••••";
           setAiConfig({
-            provider: String(s["ai_provider"] || "worker-ai"),
-            model: String(s["ai_model"] || "@cf/meta/llama-3.1-8b-instruct"),
-            apiKey: String(s["ai_api_key"] || ""),
-            apiUrl: String(s["ai_api_url"] || ""),
+            provider: String(s["ai_summary.provider"] || "openai"),
+            model: String(s["ai_summary.model"] || "gpt-4o-mini"),
+            apiKey: isMasked ? "" : rawKey,
+            apiKeySet: isMasked || rawKey.trim().length > 0,
+            apiUrl: String(s["ai_summary.api_url"] || ""),
           });
+          const serverPresets = parseDrawerPresets(s["ai_summary.prompt_presets"]);
+          if (serverPresets) {
+            setPromptPresets(serverPresets);
+            try {
+              localStorage.setItem("rin_ai_prompt_presets", JSON.stringify(serverPresets));
+            } catch {}
+          }
         }
       });
     }
   }, [isOpen]);
 
+  const persistPromptPresets = async (next: any[]) => {
+    setPromptPresets(next);
+    const serialized = JSON.stringify(next);
+    try {
+      localStorage.setItem("rin_ai_prompt_presets", serialized);
+    } catch {}
+    try {
+      const updateRes = await client.config.update("server", {
+        "ai_summary.prompt_presets": serialized,
+      });
+      if (updateRes?.error) {
+        showToast("⚠️ 提示词预设同步服务端失败");
+      } else {
+        showToast("✓ 提示词预设已同步至服务端");
+      }
+    } catch {
+      showToast("⚠️ 提示词预设同步服务端失败");
+    }
+  };
+
   const handleSaveAndTestAI = async () => {
     setTestingAi(true);
     setAiTestResult(null);
     try {
-      await client.config.update("server", {
-        ai_provider: aiConfig.provider,
-        ai_model: aiConfig.model,
-        ai_api_key: aiConfig.apiKey,
-        ai_api_url: aiConfig.apiUrl,
-        ai_enabled: "true",
-      });
+      const updatePayload: Record<string, unknown> = {
+        "ai_summary.provider": aiConfig.provider,
+        "ai_summary.model": aiConfig.model,
+        "ai_summary.api_url": aiConfig.apiUrl,
+        "ai_summary.enabled": "true",
+      };
+      if (aiConfig.apiKey.trim()) {
+        updatePayload["ai_summary.api_key"] = aiConfig.apiKey.trim();
+      }
+      const updateRes = await client.config.update("server", updatePayload);
+      if (updateRes?.error) {
+        setAiTestResult({
+          success: false,
+          message: `⚠️ 保存配置失败: ${updateRes.error.value || "请检查权限或网络"}`,
+        });
+        return;
+      }
+      if (aiConfig.apiKey.trim()) {
+        setAiConfig((prev) => ({ ...prev, apiKeySet: true }));
+      }
 
       const testRes = await client.config.testAI({
         provider: aiConfig.provider,
         model: aiConfig.model,
-        api_key: aiConfig.apiKey,
         api_url: aiConfig.apiUrl,
+        ...(aiConfig.apiKey.trim() ? { api_key: aiConfig.apiKey.trim() } : {}),
       });
 
       if (testRes.data?.success) {
@@ -494,24 +554,30 @@ export function WritingAICopilotDrawer({
                   {[
                     { id: "worker-ai", name: "Cloudflare Workers AI", desc: "免翻墙·原生免费" },
                     { id: "deepseek", name: "DeepSeek", desc: "国内极速·高智商" },
-                    { id: "openai", name: "OpenAI", desc: "GPT-4o 系列" },
-                    { id: "gemini", name: "Google Gemini", desc: "需中转或海外 IP" },
+                    { id: "openai", name: "OpenAI", desc: "GPT-4o / GPT-5" },
+                    { id: "claude", name: "Claude", desc: "Anthropic 原生协议" },
+                    { id: "gemini", name: "Google Gemini", desc: "OpenAI 兼容/原生" },
+                    { id: "zhipu", name: "智谱 Zhipu", desc: "GLM-4 系列" },
                   ].map((p) => (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => {
                         const defaultModels: Record<string, string> = {
-                          "worker-ai": "@cf/meta/llama-3.1-8b-instruct",
+                          "worker-ai": "llama-3-1-8b",
                           deepseek: "deepseek-chat",
                           openai: "gpt-4o-mini",
-                          gemini: "gemini-1.5-flash",
+                          claude: "claude-sonnet-4-5",
+                          gemini: "gemini-2.5-flash",
+                          zhipu: "glm-4-flash",
                         };
                         const defaultUrls: Record<string, string> = {
                           "worker-ai": "",
                           deepseek: "https://api.deepseek.com/v1",
                           openai: "https://api.openai.com/v1",
+                          claude: "https://api.anthropic.com/v1",
                           gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
+                          zhipu: "https://open.bigmodel.cn/api/paas/v4",
                         };
                         setAiConfig((prev) => ({
                           ...prev,
@@ -540,7 +606,7 @@ export function WritingAICopilotDrawer({
                   <button
                     type="button"
                     onClick={handleFetchModels}
-                    disabled={fetchingModels || (aiConfig.provider !== "worker-ai" && !aiConfig.apiKey)}
+                    disabled={fetchingModels || (aiConfig.provider !== "worker-ai" && !aiConfig.apiKey.trim() && !aiConfig.apiKeySet)}
                     className="text-[10px] font-bold text-theme hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   >
                     {fetchingModels ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-refresh-line" />}
@@ -575,12 +641,17 @@ export function WritingAICopilotDrawer({
               {/* API Key (if not worker-ai) */}
               {aiConfig.provider !== "worker-ai" && (
                 <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-neutral-500">API Key</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-semibold text-neutral-500">API Key</label>
+                    {aiConfig.apiKeySet && (
+                      <span className="text-[10px] font-mono text-emerald-500 font-bold">已配置（留空沿用）</span>
+                    )}
+                  </div>
                   <input
                     type="password"
                     value={aiConfig.apiKey}
                     onChange={(e) => setAiConfig((prev) => ({ ...prev, apiKey: e.target.value.trim() }))}
-                    placeholder="输入大模型 API Key..."
+                    placeholder={aiConfig.apiKeySet ? "••••••••（已安全存储，留空沿用）" : "输入大模型 API Key..."}
                     className="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-mono outline-none focus:border-theme"
                   />
                 </div>
@@ -836,13 +907,67 @@ export function WritingAICopilotDrawer({
             </div>
           )}
 
-          {/* TAB 2: Presets Mode (后台预设联动，支持直接选用预设与插入) */}
+          {/* TAB 2: Presets Mode (后台预设联动，支持直接选用预设与云端同步新增) */}
           {activeTab === "presets" && (
             <div className="flex flex-1 min-h-0 flex-col p-3.5 overflow-y-auto space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
                 <span className="text-xs font-bold t-primary">后台提示词预设工坊 (实时联动)</span>
-                <span className="text-[10px] text-neutral-400 font-mono">共 {promptPresets.length} 套预设</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-neutral-400 font-mono">共 {promptPresets.length} 套预设</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPresetForm((v) => !v)}
+                    className="px-2 py-0.5 rounded bg-theme/10 hover:bg-theme/20 text-theme text-[10px] font-bold transition"
+                  >
+                    {showAddPresetForm ? "收起" : "+ 新增"}
+                  </button>
+                </div>
               </div>
+
+              {showAddPresetForm && (
+                <div className="p-2.5 rounded-xl border border-theme/20 bg-theme/[0.03] space-y-2">
+                  <input
+                    type="text"
+                    value={newPresetName}
+                    onChange={(e) => setNewPresetName(e.target.value)}
+                    placeholder="预设名称..."
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs outline-none focus:border-theme"
+                  />
+                  <textarea
+                    rows={2}
+                    value={newPresetPrompt}
+                    onChange={(e) => setNewPresetPrompt(e.target.value)}
+                    placeholder="提示词指令内容..."
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-w dark:bg-neutral-800 text-xs font-mono outline-none focus:border-theme"
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newPresetName.trim() || !newPresetPrompt.trim()) return;
+                        const next = [
+                          ...promptPresets,
+                          {
+                            id: `preset_custom_${Date.now()}`,
+                            name: newPresetName.trim(),
+                            stage: "custom",
+                            stageLabel: "自定义",
+                            enabled: true,
+                            prompt: newPresetPrompt.trim(),
+                          },
+                        ];
+                        setNewPresetName("");
+                        setNewPresetPrompt("");
+                        setShowAddPresetForm(false);
+                        void persistPromptPresets(next);
+                      }}
+                      className="px-3 py-1 rounded-lg bg-theme text-white text-[10px] font-bold hover:bg-theme-hover transition"
+                    >
+                      保存预设到服务端
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 {promptPresets.map((preset) => (
@@ -850,7 +975,7 @@ export function WritingAICopilotDrawer({
                     key={preset.id}
                     className="p-2.5 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col gap-1.5"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="font-bold text-xs t-primary">{preset.name}</span>
                       <button
                         type="button"
@@ -859,7 +984,7 @@ export function WritingAICopilotDrawer({
                           setActiveTab("chat");
                           showToast("已将预设指令填入对话输入框！");
                         }}
-                        className="px-2 py-0.5 rounded bg-theme/10 hover:bg-theme/20 text-theme text-[10px] font-bold transition"
+                        className="px-2 py-0.5 rounded bg-theme/10 hover:bg-theme/20 text-theme text-[10px] font-bold transition shrink-0"
                       >
                         调用此预设
                       </button>

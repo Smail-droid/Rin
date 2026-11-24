@@ -27,4 +27,19 @@ describe("ImageWithFallback", () => {
 
     expect(getByRole("img", { name: "Profile avatar" }).classList.contains("flex")).toBe(true);
   });
+
+  it("renders an accessible monogram initial when fallbackText is provided and image fails", () => {
+    const { getByRole, getByText } = render(
+      <ImageWithFallback
+        src="https://example.com/broken.png"
+        alt="Zane7991"
+        fallbackText="Zane7991"
+        className="h-12 w-12"
+      />,
+    );
+
+    fireEvent.error(getByRole("img", { name: "Zane7991" }));
+
+    expect(getByText("Z").isConnected).toBe(true);
+  });
 });

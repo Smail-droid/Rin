@@ -6,10 +6,12 @@ import { siteName } from "../utils/constants";
 import { useTranslation } from "react-i18next";
 import { ProfileContext } from "../state/profile";
 import { tryInt } from "../utils/int";
-import { Link, useSearch } from "wouter";
+import { useSearch } from "wouter";
 import { useAlert, useConfirm } from "../components/dialog";
 import { Waiting } from "../components/loading";
 import { MomentItem } from "../components/moment_item";
+import { PageHeader, GALLERY_CONTAINER_CLASS } from "../components/page-header";
+import { emitToast } from "../utils/toast";
 
 interface Moment {
   id: number;
@@ -151,7 +153,7 @@ export function MomentsPage() {
             setEditingMoment(null);
             setIsPublisherOpen(false);
             fetchMoments(1, false);
-            showAlert(t("update.success"));
+            emitToast(t("update.success"), "success");
           }
         })
         .finally(() => {
@@ -167,7 +169,7 @@ export function MomentsPage() {
             setContent("");
             setIsPublisherOpen(false);
             fetchMoments(1, false);
-            showAlert(t("publish.success"));
+            emitToast(t("publish.success"), "success");
           }
         })
         .finally(() => {
@@ -193,7 +195,7 @@ export function MomentsPage() {
           showAlert(t("delete.failed$message", { message: error.value }));
         } else {
           fetchMoments(1, false);
-          showAlert(t("delete.success"));
+          emitToast(t("delete.success"), "success");
         }
       });
     });
@@ -227,11 +229,20 @@ export function MomentsPage() {
         <meta property="og:url" content={document.URL} />
       </Helmet>
       <Waiting for={!loading}>
-        <main className="w-full max-w-5xl mx-auto px-1.5 sm:px-6 mb-12 ani-show">
-          {/* Moments Top Header */}
-          {siteConfig.pageHeaderMode === "hidden" ? (
-            profile?.permission ? (
-              <div className="flex justify-end mb-4">
+        <main className={`${GALLERY_CONTAINER_CLASS} py-6 sm:py-8 mb-14 ani-show`}>
+          <PageHeader
+            eyebrow={`MOMENTS · ${length}`}
+            title={t("moments.title", { defaultValue: "日常随想" })}
+            subtitle={t("moments.desc", {
+              count: length,
+              defaultValue: `记录浮生闲步、片刻闪光与晨昏随笔。(${length} 条记事)`,
+            })}
+            mode={siteConfig.pageHeaderMode}
+            titleFont={siteConfig.themeTitleFont as any}
+            titleEffect={siteConfig.themeTitleEffect}
+            bannerUrl={siteConfig.pageHeaderBannerUrl}
+            actions={
+              profile?.permission ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -241,104 +252,27 @@ export function MomentsPage() {
                       openCreatePublisher();
                     }
                   }}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95 ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95 cursor-pointer ${
                     isPublisherOpen ? "bg-neutral-700 hover:bg-neutral-800" : "bg-theme hover:bg-theme-hover"
                   }`}
                 >
                   <i className={isPublisherOpen ? "ri-close-line" : "ri-edit-line"} />
-                  <span>{isPublisherOpen ? t("moments.collapse", { defaultValue: "收起便签" }) : t("moments.new_moment", { defaultValue: "记录新灵感" })}</span>
+                  <span>
+                    {isPublisherOpen
+                      ? t("moments.collapse", { defaultValue: "收起便签" })
+                      : t("moments.new_moment", { defaultValue: "记录新灵感" })}
+                  </span>
                 </button>
-              </div>
-            ) : null
-          ) : siteConfig.pageHeaderMode === "banner" ? (
-            <div className="relative w-full rounded-3xl overflow-hidden mb-6 p-6 sm:p-7 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ani-show">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary">{t("moments.title", { defaultValue: "日常随想" })}</h1>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                  {t("moments.desc", { count: length, defaultValue: `记录浮生闲步、片刻闪光与晨昏随笔。(${length} 条记事)` })}
-                </p>
-              </div>
-              <div className="flex items-center gap-3 self-start sm:self-auto">
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-3.5 py-1.5 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900/80 backdrop-blur-md"
-                >
-                  <i className="ri-arrow-left-line" />
-                  <span>{t("back_to_gallery", { defaultValue: "返回画廊" })}</span>
-                </Link>
-                {profile?.permission && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isPublisherOpen && !editingMoment) {
-                        setIsPublisherOpen(false);
-                      } else {
-                        openCreatePublisher();
-                      }
-                    }}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95 ${
-                      isPublisherOpen ? "bg-neutral-700 hover:bg-neutral-800" : "bg-theme hover:bg-theme-hover"
-                    }`}
-                  >
-                    <i className={isPublisherOpen ? "ri-close-line" : "ri-edit-line"} />
-                    <span>{isPublisherOpen ? t("moments.collapse", { defaultValue: "收起便签" }) : t("moments.new_moment", { defaultValue: "记录新灵感" })}</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="w-full text-start py-2 mb-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-black/5 dark:border-white/5">
-                <div>
-                  <h1
-                    className={`text-xl sm:text-2xl font-bold tracking-tight t-primary art-title-${
-                      siteConfig.momentsTitleStyle || siteConfig.atelierTitleStyle || "aurora_flow"
-                    }`}
-                  >
-                    {t("moments.title", { defaultValue: "日常随想" })}
-                  </h1>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                    {t("moments.desc", { count: length, defaultValue: `记录浮生闲步、片刻闪光与晨昏随笔。(${length} 条记事)` })}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3 self-start sm:self-auto">
-                  <Link
-                    href="/"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3.5 py-1.5 text-xs font-semibold t-primary shadow-2xs transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900"
-                  >
-                    <i className="ri-arrow-left-line" />
-                    <span>{t("back_to_gallery", { defaultValue: "返回画廊" })}</span>
-                  </Link>
-                  {profile?.permission && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isPublisherOpen && !editingMoment) {
-                          setIsPublisherOpen(false);
-                        } else {
-                          openCreatePublisher();
-                        }
-                      }}
-                      className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95 ${
-                        isPublisherOpen ? "bg-neutral-700 hover:bg-neutral-800" : "bg-theme hover:bg-theme-hover"
-                      }`}
-                    >
-                      <i className={isPublisherOpen ? "ri-close-line" : "ri-edit-line"} />
-                      <span>{isPublisherOpen ? t("moments.collapse", { defaultValue: "收起便签" }) : t("moments.new_moment", { defaultValue: "记录新灵感" })}</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+              ) : undefined
+            }
+          />
 
           <div className="w-full">
             {/* 管理员登录状态下的轻量级手账留言板式发布面板 */}
             {profile?.permission && isPublisherOpen && (
               <div
                 ref={publisherRef}
-                className="relative mb-6 rounded-3xl border border-black/10 bg-w p-4 sm:p-6 shadow-md dark:border-white/10 ani-show overflow-hidden"
+                className="relative mb-6 rounded-3xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] p-4 sm:p-6 shadow-md ani-show overflow-hidden"
               >
                 {/* 顶部胶带微装饰 */}
                 <div className="absolute -top-2.5 left-10 w-12 h-3.5 bg-theme/20 dark:bg-theme/30 backdrop-blur-xs rounded-xs rotate-[-2deg] pointer-events-none" />

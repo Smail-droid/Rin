@@ -8,6 +8,7 @@ import { type Profile } from "../../../state/profile";
 import { removeAuthToken } from "../../../utils/auth";
 import { ImageWithFallback } from "../../image-with-fallback";
 import { HEADER_POPUP_PANEL_CLASS } from "../shared";
+import { AppearancePopover } from "./appearance-popover";
 
 import { getStoredThemeMode, setThemeMode, useColorMode, type ThemeMode } from "../../../utils/darkModeUtils";
 
@@ -25,6 +26,7 @@ export function HeaderActions({
   return (
     <div className={className}>
       <SearchButton plain={plain} />
+      <AppearancePopover plain={plain} popoverUp={popoverUp} />
       <ThemeToggle plain={plain} />
       <LanguageSwitch plain={plain} popoverUp={popoverUp} />
       <UserAvatar profile={profile} plain={plain} popoverUp={popoverUp} />
@@ -74,14 +76,17 @@ export function ThemeToggle({ className = "", plain = false }: { className?: str
         }
       >
         {storedMode === "system" ? (
-          <i className={colorMode === "dark" ? "ri-contrast-2-line text-theme text-base" : "ri-contrast-line text-theme text-base"} />
+          <i
+            className={
+              colorMode === "dark"
+                ? "ri-contrast-line text-neutral-300 hover:text-theme text-base"
+                : "ri-contrast-line text-neutral-600 hover:text-theme text-base"
+            }
+          />
         ) : storedMode === "dark" ? (
-          <i className="ri-moon-line text-rose-400 text-base" />
+          <i className="ri-moon-line text-neutral-300 hover:text-theme text-base" />
         ) : (
           <i className="ri-sun-line text-amber-500 text-base" />
-        )}
-        {storedMode === "system" && (
-          <span className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full bg-theme ring-1 ring-white dark:ring-neutral-900" />
         )}
       </button>
     </div>
@@ -180,13 +185,14 @@ export function SearchButton({ className = "", onClose, plain = false }: { class
     <div ref={containerRef} className={`${className} relative flex items-center`}>
       {!isOpened ? (
         <button
+          type="button"
           onClick={() => setIsOpened(true)}
           title={label}
           aria-label={label}
           className={
             plain
-              ? "flex aspect-[1] items-center justify-center px-1.5 text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
-              : "flex rounded-full border dark:border-neutral-600 px-2 bg-w aspect-[1] items-center justify-center t-primary bg-button"
+              ? "flex h-8 w-8 items-center justify-center rounded-full text-neutral-500 transition-colors hover:bg-black/5 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-neutral-100"
+              : "flex h-8 w-8 rounded-full border dark:border-neutral-600 bg-w items-center justify-center t-primary bg-button"
           }
         >
           <i className="ri-search-line" />
@@ -334,6 +340,7 @@ export function LanguageSwitch({ className, plain = false, popoverUp = false }: 
       <Popup
         trigger={
           <button
+            type="button"
             title="选择语言 (Languages)"
             aria-label="Languages"
             className={
@@ -412,6 +419,7 @@ export function UserAvatar({
           onClose={() => setIsOpen(false)}
           trigger={
             <button
+              type="button"
               title={profile.permission ? (t("admin.title") || "管理员工作台") : t("profile.title")}
               aria-label={t("profile.title")}
               className={
@@ -439,8 +447,9 @@ export function UserAvatar({
             </button>
           }
         >
-          <div className={`mt-3 flex min-w-48 flex-col ${HEADER_POPUP_PANEL_CLASS}`}>
+          <div className="mt-3 flex min-w-48 flex-col rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-elevated-rgb)/0.96)] p-2 text-[rgb(var(--rin-ink-rgb))] shadow-lg shadow-black/5 backdrop-blur-xl dark:shadow-black/30">
             <button
+              type="button"
               onClick={() => {
                 setIsOpen(false);
                 setLocation("/profile");
@@ -467,8 +476,9 @@ export function UserAvatar({
             </button>
             {profile.permission ? (
               <>
-                <div className="h-px bg-black/5 dark:bg-white/5 my-1" />
+                <div className="my-1 h-px bg-[rgb(var(--rin-hairline-rgb)/0.7)]" />
                 <button
+                  type="button"
                   onClick={() => {
                     setIsOpen(false);
                     setLocation("/writing");
@@ -479,6 +489,7 @@ export function UserAvatar({
                   <span className="font-semibold">✍️ 撰写工坊</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setIsOpen(false);
                     setLocation("/gallery");
@@ -489,6 +500,7 @@ export function UserAvatar({
                   <span>🖼️ 云端图床</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setIsOpen(false);
                     setLocation("/music");
@@ -499,6 +511,7 @@ export function UserAvatar({
                   <span>🎵 微光音廊</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setIsOpen(false);
                     setLocation("/hashtags");
@@ -508,31 +521,45 @@ export function UserAvatar({
                   <i className="ri-price-tag-3-line text-amber-500" />
                   <span>🏷️ 标签表格</span>
                 </button>
-                <div className="h-px bg-black/5 dark:bg-white/5 my-1" />
                 <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    setLocation("/admin/ai");
+                  }}
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  <i className="ri-sparkling-2-line text-theme" />
+                  <span>AI 助手</span>
+                </button>
+                <div className="my-1 h-px bg-[rgb(var(--rin-hairline-rgb)/0.7)]" />
+                <button
+                  type="button"
                   onClick={() => {
                     setIsOpen(false);
                     setLocation("/admin/settings");
                   }}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
-                  <i className="ri-settings-4-line text-neutral-500" />
+                  <i className="ri-settings-4-line text-neutral-500 dark:text-neutral-400" />
                   <span>⚙️ 系统设置</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setIsOpen(false);
                     setLocation("/admin/dashboard");
                   }}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10 pb-1.5"
                 >
-                  <i className="ri-dashboard-3-line text-neutral-500" />
+                  <i className="ri-dashboard-3-line text-neutral-500 dark:text-neutral-400" />
                   <span>📊 概览大盘</span>
                 </button>
-                <div className="h-px bg-black/5 dark:bg-white/5 my-1" />
+                <div className="my-1 h-px bg-[rgb(var(--rin-hairline-rgb)/0.7)]" />
               </>
             ) : null}
             <button
+              type="button"
               onClick={async () => {
                 setIsOpen(false);
                 try {

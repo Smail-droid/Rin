@@ -195,8 +195,9 @@ export function GlobalMusicPlayer() {
     if (typeof window === "undefined") return;
 
     const handleResize = () => {
+      const winW = window.innerWidth;
       const winH = window.innerHeight;
-      const defaultX = 20;
+      const defaultX = winW < 640 ? Math.max(12, winW - 56) : 20;
       const defaultY = Math.max(60, winH - 76);
 
       setPosition((prev) => {
@@ -426,7 +427,7 @@ export function GlobalMusicPlayer() {
   }
 
   const currentCoords = position || {
-    x: 20,
+    x: typeof window !== "undefined" && window.innerWidth < 640 ? Math.max(12, window.innerWidth - 56) : 20,
     y: typeof window !== "undefined" ? window.innerHeight - 76 : 500,
   };
 
@@ -509,7 +510,7 @@ export function GlobalMusicPlayer() {
             onDoubleClick={handleResetPosition}
             aria-label="展开音乐播放器"
             style={{ touchAction: "none" }}
-            className={`relative flex h-10 w-10 items-center justify-center rounded-full bg-transparent border-0 p-0 shadow-none hover:scale-120 active:scale-95 transition-transform duration-200 cursor-grab active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-theme/60 outline-none select-none touch-none ${
+            className={`relative flex h-10 w-10 items-center justify-center rounded-full bg-white/85 dark:bg-neutral-900/85 backdrop-blur-md border border-black/10 dark:border-white/10 p-0 shadow-sm hover:scale-115 active:scale-95 transition-transform duration-200 cursor-grab active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-theme/60 outline-none select-none touch-none ${
               isDragging ? "scale-110" : ""
             }`}
             title="点击展开播放器 (按住可拖动，双击复位)"
@@ -522,7 +523,7 @@ export function GlobalMusicPlayer() {
             )}
 
             <AnimeLuminousNoteSvg
-              className="w-8 h-8 pointer-events-none transition-transform"
+              className="w-6 h-6 pointer-events-none transition-transform"
               isPlaying={isPlaying}
             />
           </button>

@@ -26,6 +26,33 @@ import {
     runCompatAISummaryBackfill,
 } from "./config-compat-tasks";
 
+const MASKED_API_KEY = "••••••••";
+
+function resolveApiKeyOverride(bodyApiKey: unknown, storedApiKey: string): string {
+    if (typeof bodyApiKey === "string") {
+        const trimmed = bodyApiKey.trim();
+        if (trimmed.length > 0 && trimmed !== MASKED_API_KEY) {
+            return trimmed;
+        }
+    }
+    return storedApiKey;
+}
+
+function resolveApiUrlOverride(
+    bodyApiUrl: unknown,
+    resolvedProvider: string,
+    storedProvider: string,
+    storedApiUrl: string,
+): string {
+    if (typeof bodyApiUrl === "string" && bodyApiUrl.trim().length > 0) {
+        return bodyApiUrl.trim();
+    }
+    if (resolvedProvider === storedProvider && storedApiUrl.trim().length > 0) {
+        return storedApiUrl.trim();
+    }
+    return "";
+}
+
 export function ConfigService(): Hono {
     const app = new Hono();
 
@@ -110,11 +137,12 @@ export function ConfigService(): Hono {
         const config = await wrapTime(c, 'ai_config', getAIConfig(serverConfig));
 
         // Build test config with overrides
+        const provider = body.provider || config.provider;
         const testConfig = {
-            provider: body.provider || config.provider,
+            provider,
             model: body.model || config.model,
-            api_url: body.api_url !== undefined ? body.api_url : config.api_url,
-            api_key: body.api_key !== undefined ? body.api_key : config.api_key,
+            api_url: resolveApiUrlOverride(body.api_url, provider, config.provider, config.api_url),
+            api_key: resolveApiKeyOverride(body.api_key, config.api_key),
         };
 
         // Test prompt
@@ -131,8 +159,8 @@ export function ConfigService(): Hono {
         const serverConfig = c.get('serverConfig');
         const dbConfig = await getAIConfig(serverConfig);
         const provider = body.provider || dbConfig.provider;
-        const apiUrl = body.api_url !== undefined ? body.api_url : dbConfig.api_url;
-        const apiKey = body.api_key !== undefined ? body.api_key : dbConfig.api_key;
+        const apiUrl = resolveApiUrlOverride(body.api_url, provider, dbConfig.provider, dbConfig.api_url);
+        const apiKey = resolveApiKeyOverride(body.api_key, dbConfig.api_key);
 
         try {
             const models = await fetchExternalAIModels(provider, apiUrl, apiKey);

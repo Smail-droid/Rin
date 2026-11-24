@@ -2,12 +2,14 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "r
 import { Helmet } from 'react-helmet';
 import { useTranslation } from "react-i18next";
 import { Modal } from "@rin/ui";
-import { useConfirm } from "../components/dialog";
+import { useAlert, useConfirm } from "../components/dialog";
 import { ImageWithFallback } from "../components/image-with-fallback";
 import { Waiting } from "../components/loading";
+import { GALLERY_CONTAINER_CLASS, PageHeader } from "../components/page-header";
 import { client } from "../app/runtime";
 import { ProfileContext } from "../state/profile";
 import { safeHttpUrl } from "../utils/url";
+import { emitToast } from "../utils/toast";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 
 export type FriendItem = {
@@ -544,6 +546,7 @@ export function FriendsPage() {
     const [editingFriend, setEditingFriend] = useState<FriendItem | null>(null);
 
     const ref = useRef(false);
+    const { showAlert, AlertUI } = useAlert();
     const { showConfirm, ConfirmUI } = useConfirm();
 
     const [extractBtnFeedback, setExtractBtnFeedback] = useState("");
@@ -620,7 +623,7 @@ export function FriendsPage() {
                         setExtractBtnFeedback(`✓ 已识别: ${finalNsDetail.member_name}`);
                     }
                     if (finalNsDetail.bio && !formDesc) {
-                        setFormDesc(finalNsDetail.bio.slice(0, 40));
+                        setFormDesc(finalNsDetail.bio.trim().slice(0, 200));
                     }
                 } else if (data.inferredName && (!formName || formName.includes("NodeSeek#"))) {
                     setFormName(data.inferredName);
@@ -732,7 +735,7 @@ export function FriendsPage() {
         }
     }, [reloadFriends]);
 
-    const acceptedFriends = useMemo(() => {
+    const approvedFriends = useMemo(() => {
         return allFriends.filter((f) => f.accepted === 1);
     }, [allFriends]);
 
@@ -741,7 +744,7 @@ export function FriendsPage() {
     }, [allFriends]);
 
     const filteredFriends = useMemo(() => {
-        let list = acceptedFriends;
+        let list = approvedFriends;
         if (activeCategory !== "全部") {
             list = list.filter((f) => {
                 const parsed = parseFriendCategory(f.desc, f.url, f.name, f.avatar);
@@ -762,7 +765,7 @@ export function FriendsPage() {
             });
         }
         return list;
-    }, [acceptedFriends, activeCategory, searchKeyword]);
+    }, [approvedFriends, activeCategory, searchKeyword]);
 
     const handleViewStyleChange = (style: "card" | "compact" | "polaroid") => {
         setViewStyle(style);
@@ -774,18 +777,20 @@ export function FriendsPage() {
     const handleApprove = async (id: number) => {
         const { error } = await client.friend.update(id, { accepted: 1 });
         if (error) {
-            alert(typeof error.value === "string" ? error.value : "审核通过失败");
+            showAlert(typeof error.value === "string" ? error.value : "审核通过失败");
             return;
         }
+        emitToast("友链已审核通过", "success");
         reloadFriends();
     };
 
     const handleReject = async (id: number) => {
         const { error } = await client.friend.update(id, { accepted: -1 });
         if (error) {
-            alert(typeof error.value === "string" ? error.value : "拒绝失败");
+            showAlert(typeof error.value === "string" ? error.value : "拒绝失败");
             return;
         }
+        emitToast("已拒绝该友链申请", "success");
         reloadFriends();
     };
 
@@ -793,9 +798,10 @@ export function FriendsPage() {
         showConfirm("删除友链确认", `确定要删除友链${name ? ` “${name}” ` : ""}吗？此操作无法撤销。`, async () => {
             const { error } = await client.friend.delete(id);
             if (error) {
-                alert(typeof error.value === "string" ? error.value : "删除失败");
+                showAlert(typeof error.value === "string" ? error.value : "删除失败");
                 return;
             }
+            emitToast(`已删除友链${name ? `「${name}」` : ""}`, "success");
             reloadFriends();
         });
     };
@@ -869,6 +875,7 @@ export function FriendsPage() {
             setNsAvatarUrl("");
             setNsUserData(null);
             setIconChoice("dual");
+            emitToast(profile?.permission ? "星标站点收录成功" : "友链申请已提交，等待审核", "success");
             reloadFriends();
         } catch (err: any) {
             setSubmitError(err.message || "提交失败，请重试");
@@ -891,7 +898,7 @@ export function FriendsPage() {
             return Boolean(uidMatch);
         });
         if (nsFriends.length === 0) {
-            alert("当前友链列表中没有发现包含 NodeSeek 空间地址或 UID 的站点！请先在友链空间地址中填入如 https://www.nodeseek.com/space/27361");
+            showAlert("当前友链列表中没有发现包含 NodeSeek 空间地址或 UID 的站点！请先在友链空间地址中填入如 https://www.nodeseek.com/space/27361");
             return;
         }
 
@@ -954,7 +961,7 @@ export function FriendsPage() {
                     const hasCustomDesc = existingCleanDesc && existingCleanDesc !== "个人技术生活随想" && !existingCleanDesc.endsWith("的空间");
                     const nextDesc = hasCustomDesc
                         ? existingCleanDesc
-                        : (finalDetail?.bio ? finalDetail.bio.slice(0, 40) : (data?.suggestedDesc || `${nextName}的空间`));
+                        : (finalDetail?.bio ? finalDetail.bio.trim().slice(0, 200) : (data?.suggestedDesc || `${nextName}的空间`));
                     const isR2 = data?.avatarUrl && data.avatarUrl.includes("/api/blob/");
                     const finalAvatar = isR2 ? data.avatarUrl : (uid ? `https://www.nodeseek.com/avatar/${uid}.png` : sanitizeAvatarUrl(f.avatar));
                     const formatted = formatFriendDesc(parsed.category, nextDesc, {
@@ -976,7 +983,7 @@ export function FriendsPage() {
         setIsBatchRefreshing(false);
         setBatchProgress(null);
         reloadFriends();
-        alert(`✓ 批量更正完成：共成功同步 ${successCount} / ${nsFriends.length} 位坛友的数据与 R2 头像！`);
+        emitToast(`批量更正完成：已同步 ${successCount} / ${nsFriends.length} 位坛友数据`, "success");
     };
 
     // 快捷直接移动分类
@@ -991,96 +998,79 @@ export function FriendsPage() {
             nsAvatar: parsed.nsAvatar,
             nsData: parsed.nsData,
         });
-        await client.friend.update(friend.id, { desc: formatted });
+        const { error } = await client.friend.update(friend.id, { desc: formatted });
+        if (error) {
+            showAlert(typeof error.value === "string" ? error.value : "切换分类失败");
+            return;
+        }
+        emitToast(`已移动至「${newCat}」`, "success");
         reloadFriends();
     };
 
     // 输入权重数字敲回车即时排序
     const handleQuickReorder = async (friendId: number, newSortOrder: number) => {
-        await client.friend.update(friendId, { sort_order: newSortOrder });
+        const { error } = await client.friend.update(friendId, { sort_order: newSortOrder });
+        if (error) {
+            showAlert(typeof error.value === "string" ? error.value : "排序更新失败");
+            return;
+        }
+        emitToast("排序已更新", "success");
         reloadFriends();
     };
 
     return (
-        <div className="min-h-screen py-6 sm:py-10 px-1.5 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <main className={`${GALLERY_CONTAINER_CLASS} py-6 sm:py-8 mb-14 ani-show`}>
             <Helmet>
                 <title>{`${t("friends.starry_title", { defaultValue: "星标友链" })} - ${siteConfig.name}`}</title>
             </Helmet>
+            <AlertUI />
             <ConfirmUI />
 
-            {/* 顶栏：标题、描述与新增/申请按钮 */}
-            {siteConfig.pageHeaderMode === "hidden" ? null : siteConfig.pageHeaderMode === "banner" ? (
-                <div className="relative w-full rounded-3xl overflow-hidden mb-6 p-6 sm:p-7 border border-theme/15 dark:border-white/10 bg-gradient-to-br from-theme/10 via-pink-400/5 to-transparent dark:from-theme/15 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ani-show">
-                    <div>
-                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary flex items-center gap-2">
-                            <i className="ri-planet-line text-theme" />
-                            <span>{t("friends.starry_title", { defaultValue: "星标友链" })}</span>
-                        </h1>
-                        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                            {t("friends.desc", { defaultValue: "山海有朋，见字如晤。与志趣相投的旅人一同漫步星空。" })}
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {profile?.permission && (
+            <PageHeader
+                eyebrow={`STARRED GARDEN · ${approvedFriends.length}`}
+                title={t("friends.starry_title", { defaultValue: "星标友链" })}
+                subtitle={t("friends.desc", { defaultValue: "山海有朋，见字如晤。与志趣相投的旅人一同漫步星空。" })}
+                mode={siteConfig.pageHeaderMode}
+                titleFont={siteConfig.themeTitleFont as any}
+                titleEffect={siteConfig.themeTitleEffect}
+                bannerUrl={siteConfig.pageHeaderBannerUrl}
+                actions={
+                    <>
+                        {profile?.permission ? (
                             <button
                                 type="button"
                                 onClick={handleBatchRefreshAll}
                                 disabled={isBatchRefreshing}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 dark:bg-neutral-800/80 border border-black/5 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:text-theme transition cursor-pointer disabled:opacity-50"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-muted-rgb))] hover:border-theme/45 hover:text-theme transition cursor-pointer disabled:opacity-50"
                                 title={isBatchRefreshing ? `刷新中 (${batchProgress?.current}/${batchProgress?.total})` : t("friends.refresh_data", { defaultValue: "刷新友链数据" })}
+                                aria-label={t("friends.refresh_data", { defaultValue: "刷新友链数据" })}
                             >
                                 <i className={`ri-refresh-line text-sm ${isBatchRefreshing ? "animate-spin text-theme" : ""}`} />
                             </button>
-                        )}
+                        ) : null}
                         <button
                             type="button"
                             onClick={() => setIsAddModalOpen(true)}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-theme text-white text-xs font-semibold hover:opacity-90 transition shadow-sm cursor-pointer"
-                        >
-                            <i className="ri-add-line text-base" />
-                            <span>{profile?.permission ? t("friends.add_site", { defaultValue: "收录星标站点" }) : t("friends.apply_site", { defaultValue: "申请加入星标" })}</span>
-                        </button>
-                    </div>
-                </div>
-            ) : (
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-                    <div>
-                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight t-primary flex items-center gap-2">
-                            <i className="ri-planet-line text-theme" />
-                            <span>{t("friends.starry_title", { defaultValue: "星标友链" })}</span>
-                        </h1>
-                        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                            {t("friends.desc", { defaultValue: "山海有朋，见字如晤。与志趣相投的旅人一同漫步星空。" })}
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {profile?.permission && (
-                            <button
-                                type="button"
-                                onClick={handleBatchRefreshAll}
-                                disabled={isBatchRefreshing}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300 hover:text-theme transition cursor-pointer disabled:opacity-50"
-                                title={isBatchRefreshing ? `刷新中 (${batchProgress?.current}/${batchProgress?.total})` : t("friends.refresh_data", { defaultValue: "刷新友链数据" })}
-                            >
-                                <i className={`ri-refresh-line text-sm ${isBatchRefreshing ? "animate-spin text-theme" : ""}`} />
-                            </button>
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => setIsAddModalOpen(true)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-theme text-white text-xs font-semibold hover:opacity-90 transition shadow-sm cursor-pointer"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-theme px-4 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-theme-hover transition active:scale-95 cursor-pointer whitespace-nowrap"
                         >
                             <i className="ri-add-line text-sm" />
-                            <span>{profile?.permission ? "收录星标站点" : "申请加入星标"}</span>
+                            <span>
+                                {profile?.permission
+                                    ? t("friends.add_site", { defaultValue: "收录星标站点" })
+                                    : t("friends.apply_site", { defaultValue: "申请加入星标" })}
+                            </span>
                         </button>
-                    </div>
-                </div>
-            )}
+                    </>
+                }
+            />
 
-            {/* 控制条：分类筛选 Tab、视图风格切换与搜索框 */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 mb-6 border-b border-black/5 dark:border-white/5">
-                {/* 分类 Tab 胶囊与自定义管理 */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            {/* 单行控制工具栏：左侧分类筛选，右侧搜索 + 三态视图切换 */}
+            <div
+                data-friends-toolbar="true"
+                className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-5 mb-6 border-b border-[rgb(var(--rin-hairline-rgb)/0.8)]"
+            >
+                {/* 左侧：分类 Tab 胶囊与自定义管理 */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none min-w-0">
                     {["全部", ...categories].map((cat) => {
                         const isActive = activeCategory === cat;
                         return (
@@ -1088,10 +1078,10 @@ export function FriendsPage() {
                                 key={cat}
                                 type="button"
                                 onClick={() => setActiveCategory(cat)}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition cursor-pointer ${
                                     isActive
-                                        ? "bg-theme text-white shadow-2xs"
-                                        : "bg-black/[0.03] dark:bg-white/[0.03] text-neutral-600 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5"
+                                        ? "bg-theme text-white shadow-2xs font-semibold"
+                                        : "border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme hover:border-theme/40"
                                 }`}
                             >
                                 {cat}
@@ -1099,92 +1089,93 @@ export function FriendsPage() {
                         );
                     })}
 
-                    {profile?.permission && (
+                    {profile?.permission ? (
                         <button
                             type="button"
                             onClick={() => setIsManageCategoriesOpen(true)}
-                            className="px-2.5 py-1.5 rounded-xl border border-dashed border-black/15 dark:border-white/15 bg-black/[0.015] dark:bg-white/[0.02] text-neutral-500 hover:text-theme hover:border-theme/40 text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-full border border-dashed border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme hover:border-theme/45 text-xs font-medium transition flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
                             title="自定义新增、重命名或重排全站星廊分类"
                         >
-                            <i className="ri-settings-3-line text-xs" />
-                            <span>管理分类</span>
+                            <span>+ 管理分类</span>
                         </button>
-                    )}
+                    ) : null}
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
-                    {/* 视图风格切换 */}
-                    <div className="inline-flex items-center p-1 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5 text-neutral-500">
-                        <button
-                            type="button"
-                            onClick={() => handleViewStyleChange("card")}
-                            className={`p-1.5 rounded-lg transition cursor-pointer ${viewStyle === "card" ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs" : "hover:text-neutral-700 dark:hover:text-neutral-200"}`}
-                            title="经典卡片视图"
-                        >
-                            <i className="ri-grid-fill text-sm" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleViewStyleChange("compact")}
-                            className={`p-1.5 rounded-lg transition cursor-pointer ${viewStyle === "compact" ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs" : "hover:text-neutral-700 dark:hover:text-neutral-200"}`}
-                            title="高密书签行视图"
-                        >
-                            <i className="ri-list-check-2 text-sm" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleViewStyleChange("polaroid")}
-                            className={`p-1.5 rounded-lg transition cursor-pointer ${viewStyle === "polaroid" ? "bg-white dark:bg-neutral-800 text-theme shadow-2xs" : "hover:text-neutral-700 dark:hover:text-neutral-200"}`}
-                            title="拍立得和纸胶带便签视图"
-                        >
-                            <i className="ri-polaroid-line text-sm" />
-                        </button>
-                    </div>
-
-                    {/* 搜索输入框 */}
-                    <div className="relative w-48 sm:w-60">
-                        <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
+                {/* 右侧单行紧凑组：搜索 + 横版名片/画廊卡/书签行 */}
+                <div className="flex items-center gap-2.5 shrink-0 flex-nowrap">
+                    <div className="relative flex-1 sm:flex-initial w-40 sm:w-52 min-w-0">
+                        <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-[rgb(var(--rin-ink-muted-rgb))] text-xs pointer-events-none" />
                         <input
                             type="text"
                             value={searchKeyword}
                             onChange={(e) => setSearchKeyword(e.target.value)}
                             placeholder="搜索友邻名称或网址..."
-                            className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5 focus:outline-none focus:border-theme/40 transition placeholder:text-neutral-400"
+                            className="w-full pl-8 pr-7 py-1.5 rounded-full text-xs bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-rgb))] border border-[rgb(var(--rin-hairline-rgb))] focus:outline-none focus:border-theme/55 transition placeholder:text-[rgb(var(--rin-ink-muted-rgb))]"
                         />
-                        {searchKeyword && (
+                        {searchKeyword ? (
                             <button
                                 type="button"
                                 onClick={() => setSearchKeyword("")}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))] cursor-pointer"
+                                aria-label="清空搜索"
                             >
                                 <i className="ri-close-circle-line text-xs" />
                             </button>
-                        )}
+                        ) : null}
+                    </div>
+
+                    <div
+                        role="group"
+                        aria-label="视图切换"
+                        className="inline-flex items-center p-0.5 rounded-full bg-[rgb(var(--rin-surface-rgb))] border border-[rgb(var(--rin-hairline-rgb))] shrink-0"
+                    >
+                        {[
+                            { id: "card" as const, label: "横版名片", icon: "ri-layout-grid-line" },
+                            { id: "polaroid" as const, label: "画廊卡", icon: "ri-polaroid-line" },
+                            { id: "compact" as const, label: "书签行", icon: "ri-list-check-2" },
+                        ].map((modeOpt) => (
+                            <button
+                                key={modeOpt.id}
+                                type="button"
+                                onClick={() => handleViewStyleChange(modeOpt.id)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition cursor-pointer whitespace-nowrap ${
+                                    viewStyle === modeOpt.id
+                                        ? "bg-theme text-white shadow-2xs font-semibold"
+                                        : "text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))]"
+                                }`}
+                                title={modeOpt.label}
+                            >
+                                <i className={`${modeOpt.icon} text-xs hidden sm:inline`} />
+                                <span>{modeOpt.label}</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
             </div>
 
             {/* 管理员待审批提示条 */}
-            {profile?.permission && pendingFriends.length > 0 && (
+            {profile?.permission && pendingFriends.length > 0 ? (
                 <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-xs font-medium">
                         <i className="ri-time-line text-base" />
                         <span>有 {pendingFriends.length} 条待审核的友链申请等待处理</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         {pendingFriends.map((p) => (
-                            <div key={p.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-neutral-800 border border-amber-500/30 text-xs">
+                            <div key={p.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[rgb(var(--rin-surface-rgb))] border border-amber-500/30 text-xs">
                                 <span className="font-medium truncate max-w-[120px]">{p.name}</span>
                                 <button
+                                    type="button"
                                     onClick={() => handleApprove(p.id)}
-                                    className="text-emerald-600 hover:text-emerald-700 font-bold ml-1"
+                                    className="text-emerald-600 hover:text-emerald-700 font-bold ml-1 cursor-pointer"
                                     title="通过审核"
                                 >
                                     ✓
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => handleReject(p.id)}
-                                    className="text-rose-500 hover:text-rose-600 font-bold ml-1"
+                                    className="text-rose-500 hover:text-rose-600 font-bold ml-1 cursor-pointer"
                                     title="拒绝申请"
                                 >
                                     ✕
@@ -1193,7 +1184,7 @@ export function FriendsPage() {
                         ))}
                     </div>
                 </div>
-            )}
+            ) : null}
 
             {/* 核心内容区：按视图风格流体排布 */}
             {status === "loading" && allFriends.length === 0 ? (
@@ -1203,7 +1194,7 @@ export function FriendsPage() {
             ) : filteredFriends.length === 0 ? (
                 <div className="py-24 text-center">
                     <i className="ri-inbox-line text-4xl text-neutral-300 dark:text-neutral-600" />
-                    <p className="mt-3 text-sm text-neutral-500">暂无匹配的友链或星标站点</p>
+                    <p className="mt-3 text-sm text-[rgb(var(--rin-ink-muted-rgb))]">暂无匹配的友链或星标站点</p>
                 </div>
             ) : viewStyle === "compact" ? (
                 <div className="flex flex-col gap-2">
@@ -1218,6 +1209,7 @@ export function FriendsPage() {
                             onApprove={() => handleApprove(friend.id)}
                             onReject={() => handleReject(friend.id)}
                             onUpdate={reloadFriends}
+                            onError={showAlert}
                             onMoveCategory={handleQuickMoveCategory}
                             onReorder={handleQuickReorder}
                         />
@@ -1236,13 +1228,14 @@ export function FriendsPage() {
                             onApprove={() => handleApprove(friend.id)}
                             onReject={() => handleReject(friend.id)}
                             onUpdate={reloadFriends}
+                            onError={showAlert}
                             onMoveCategory={handleQuickMoveCategory}
                             onReorder={handleQuickReorder}
                         />
                     ))}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {filteredFriends.map((friend, idx) => (
                         <FriendCard
                             key={friend.id}
@@ -1254,6 +1247,7 @@ export function FriendsPage() {
                             onApprove={() => handleApprove(friend.id)}
                             onReject={() => handleReject(friend.id)}
                             onUpdate={reloadFriends}
+                            onError={showAlert}
                             onMoveCategory={handleQuickMoveCategory}
                             onReorder={handleQuickReorder}
                         />
@@ -1369,24 +1363,24 @@ export function FriendsPage() {
                     {/* 4. 站点简介与 AI 精炼 */}
                     <div>
                         <div className="flex items-center justify-between mb-1">
-                            <label className="text-neutral-500">极炼简介 (不超过40字)</label>
+                            <label className="text-neutral-500">站点简介（支持完整展示）</label>
                             <button
                                 type="button"
                                 onClick={handleRefineDesc}
                                 disabled={isRefiningDesc}
-                                className="text-[11px] text-theme hover:underline flex items-center gap-0.5"
+                                className="text-[11px] text-theme hover:underline flex items-center gap-0.5 cursor-pointer"
                             >
                                 <i className="ri-magic-line text-xs" />
                                 <span>{isRefiningDesc ? "提炼中..." : "AI 智能精炼"}</span>
                             </button>
                         </div>
-                        <input
-                            type="text"
-                            maxLength={40}
+                        <textarea
+                            rows={2}
+                            maxLength={240}
                             value={formDesc}
                             onChange={(e) => setFormDesc(e.target.value)}
-                            placeholder="个人技术生活随想"
-                            className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 focus:outline-none focus:border-theme/40 text-xs"
+                            placeholder="站点简介（支持完整展示）"
+                            className="w-full px-3 py-2 rounded-xl bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-rgb))] border border-[rgb(var(--rin-hairline-rgb))] focus:outline-none focus:border-theme/45 text-xs resize-none"
                         />
                     </div>
 
@@ -1464,33 +1458,40 @@ export function FriendsPage() {
             </Modal>
 
             {/* 编辑友链弹窗 */}
-            {editingFriend && (
+            {editingFriend ? (
                 <EditFriendModal
                     friend={editingFriend}
                     categories={categories}
                     onClose={() => setEditingFriend(null)}
+                    onError={showAlert}
                     onSuccess={() => {
                         setEditingFriend(null);
+                        emitToast("友链信息已更新", "success");
                         reloadFriends();
                     }}
                 />
-            )}
+            ) : null}
 
             {/* 星廊动态分类自定义管理弹窗 */}
-            {isManageCategoriesOpen && (
+            {isManageCategoriesOpen ? (
                 <ManageCategoriesModal
                     isOpen={isManageCategoriesOpen}
                     onClose={() => setIsManageCategoriesOpen(false)}
                     currentCategories={categories}
                     onSave={async (newCats) => {
-                        await client.config.update("client", {
+                        const { error } = await client.config.update("client", {
                             "friends.categories": JSON.stringify(newCats),
                         });
+                        if (error) {
+                            showAlert(typeof error.value === "string" ? error.value : "保存分类失败");
+                            return;
+                        }
                         setCategories(newCats);
+                        emitToast("星廊分类配置已保存", "success");
                     }}
                 />
-            )}
-        </div>
+            ) : null}
+        </main>
     );
 }
 
@@ -1503,6 +1504,7 @@ interface FriendCardProps {
     onApprove: () => void;
     onReject: () => void;
     onUpdate?: () => void;
+    onError?: (msg: string) => void;
     onMoveCategory?: (friend: FriendItem, newCat: string) => void;
     onReorder?: (friendId: number, newSortOrder: number) => void;
 }
@@ -1511,7 +1513,8 @@ interface FriendCardProps {
 function useFriendNsRefresh(
     friend: FriendItem,
     parsed: ReturnType<typeof parseFriendCategory>,
-    onUpdate?: () => void
+    onUpdate?: () => void,
+    onError?: (msg: string) => void,
 ) {
     const { category, cleanDesc, spaceUrl } = parsed;
 
@@ -1668,7 +1671,7 @@ function useFriendNsRefresh(
                 const hasCustomDesc = existingCleanDesc && existingCleanDesc !== "个人技术生活随想" && !existingCleanDesc.endsWith("的空间");
                 const nextDesc = hasCustomDesc
                     ? existingCleanDesc
-                    : (finalNsDetail?.bio ? finalNsDetail.bio.trim().slice(0, 40) : (serverData?.suggestedDesc || `${nextName}的空间`));
+                    : (finalNsDetail?.bio ? finalNsDetail.bio.trim().slice(0, 200) : (serverData?.suggestedDesc || `${nextName}的空间`));
 
                 const nextNsData = finalNsDetail ? {
                     name: finalNsDetail.member_name,
@@ -1699,15 +1702,21 @@ function useFriendNsRefresh(
                 }
 
                 setRefreshNsDone(true);
+                emitToast(`已同步「${nextName}」资产数据`, "success");
                 if (onUpdate) {
                     onUpdate();
                 }
                 setTimeout(() => setRefreshNsDone(false), 2500);
             } else {
-                alert("未获取到坛友资产数据，请检查 UID 或重新操作");
+                if (onError) {
+                    onError("未获取到坛友资产数据，请检查 UID 或重新操作");
+                }
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error("Quick refresh NS failed:", err);
+            if (onError) {
+                onError(err?.message || "同步坛友资产失败");
+            }
         } finally {
             setIsRefreshingNs(false);
         }
@@ -1722,38 +1731,89 @@ function useFriendNsRefresh(
     };
 }
 
-// 风格 1: 画廊经典卡片 (FriendCard)
+function NodeSeekMetaInline({ uid, nsData }: { uid: string | null; nsData?: NodeSeekUserData }) {
+    if (!uid && !nsData) return null;
+    const hasLeadingUid = Boolean(uid);
+    const hasRank = nsData?.rank !== undefined;
+    const hasCoin = nsData?.coin !== undefined;
+    const hasDays = nsData?.days !== undefined;
+    return (
+        <div className="flex items-center gap-1.5 min-w-0 truncate text-[11px] font-mono text-[rgb(var(--rin-ink-muted-rgb))]">
+            {uid ? (
+                <a
+                    href={`https://www.nodeseek.com/space/${uid}#/general`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center text-theme/90 hover:text-theme font-semibold transition shrink-0"
+                    title="直达 NodeSeek 个人空间"
+                >
+                    NS #{uid}
+                </a>
+            ) : null}
+            {hasRank ? (
+                <>
+                    {hasLeadingUid ? <span aria-hidden="true">·</span> : null}
+                    <span className="inline-flex items-center gap-0.5 text-[rgb(var(--rin-ink-rgb))] shrink-0">
+                        <DiamondRankSvg className="w-2.5 h-2.5 text-amber-500" />
+                        <span>Lv.{nsData?.rank}</span>
+                    </span>
+                </>
+            ) : null}
+            {hasCoin ? (
+                <>
+                    {(hasLeadingUid || hasRank) ? <span aria-hidden="true">·</span> : null}
+                    <span className="inline-flex items-center gap-0.5 shrink-0" title="鸡腿资产">
+                        <i className="ri-copper-coin-line text-amber-500 text-xs" />
+                        <span>{nsData?.coin}</span>
+                    </span>
+                </>
+            ) : null}
+            {hasDays ? (
+                <>
+                    {(hasLeadingUid || hasRank || hasCoin) ? <span aria-hidden="true">·</span> : null}
+                    <span className="inline-flex items-center gap-0.5 shrink-0" title="加入天数">
+                        <i className="ri-time-line text-sky-500 text-xs" />
+                        <span>{nsData?.days} 天</span>
+                    </span>
+                </>
+            ) : null}
+        </div>
+    );
+}
+
+// 风格 1: 横版精致名片卡 (Horizontal Namecard)
 function FriendCard({
     friend,
-    index,
     categories,
     onEdit,
     onDelete,
     onApprove,
     onReject,
     onUpdate,
+    onError,
     onMoveCategory,
     onReorder,
 }: FriendCardProps) {
     const profile = useContext(ProfileContext);
     const parsed = parseFriendCategory(friend.desc, friend.url, friend.name, friend.avatar);
     const { category, cleanDesc, spaceUrl, nsData } = parsed;
-    const { uid, displayName, isRefreshingNs, refreshNsDone, handleQuickRefreshNs } = useFriendNsRefresh(friend, parsed, onUpdate);
+    const { uid, displayName, isRefreshingNs, refreshNsDone, handleQuickRefreshNs } = useFriendNsRefresh(friend, parsed, onUpdate, onError);
+    const [isDescExpanded, setIsDescExpanded] = useState(false);
 
     const primaryUrl = safeHttpUrl(spaceUrl) || safeHttpUrl(friend.url);
-
-    // 拍立得手绘微倾角：奇数项向左倾斜 -1.8deg，偶数项向右倾斜 1.6deg
-    const tiltClass = index % 2 === 0 ? "hover:rotate-[1.6deg]" : "hover:rotate-[-1.8deg]";
+    const cleanHost = friend.url.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    const displayDesc = cleanDesc || "个人技术生活随想";
+    const canExpandDesc = displayDesc.length > 68;
 
     return (
-        <div className={`group relative p-3.5 rounded-2xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/5 backdrop-blur-md shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col gap-2.5 font-sans ${tiltClass}`}>
-            {/* 顶角悬浮管理微胶囊（对标图床卡片：缩进卡片内，完全不增加行高） */}
-            {profile?.permission && (
+        <article className="group relative p-4 rounded-2xl bg-[rgb(var(--rin-surface-rgb))] border border-[rgb(var(--rin-hairline-rgb))] shadow-2xs hover:border-theme/40 hover:shadow-md transition-all duration-200 flex flex-col justify-between font-sans">
+            {/* 顶角悬浮管理微胶囊 */}
+            {profile?.permission ? (
                 <div
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 dark:bg-neutral-800/90 backdrop-blur-xs p-0.5 rounded-xl border border-black/10 dark:border-white/10 shadow-xs"
+                    className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity bg-[rgb(var(--rin-elevated-rgb))] p-0.5 rounded-xl border border-[rgb(var(--rin-hairline-rgb))] shadow-xs"
                 >
-                    {uid && (
+                    {uid ? (
                         <button
                             type="button"
                             onClick={handleQuickRefreshNs}
@@ -1763,11 +1823,11 @@ function FriendCard({
                         >
                             <i className={`ri-refresh-line text-xs ${isRefreshingNs ? "animate-spin" : ""}`} />
                         </button>
-                    )}
+                    ) : null}
                     <button
                         type="button"
                         onClick={onEdit}
-                        className="h-6 w-6 rounded-lg flex items-center justify-center text-neutral-500 hover:text-theme hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
+                        className="h-6 w-6 rounded-lg flex items-center justify-center text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
                         title="编辑友链"
                     >
                         <i className="ri-edit-line text-xs" />
@@ -1775,159 +1835,159 @@ function FriendCard({
                     <button
                         type="button"
                         onClick={onDelete}
-                        className="h-6 w-6 rounded-lg flex items-center justify-center text-neutral-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                        className="h-6 w-6 rounded-lg flex items-center justify-center text-[rgb(var(--rin-ink-muted-rgb))] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
                         title="删除友链"
                     >
                         <i className="ri-delete-bin-line text-xs" />
                     </button>
                 </div>
-            )}
+            ) : null}
 
-            {/* 顶部标签栏与分类 */}
-            <div className="flex items-center justify-between text-[11px]">
-                {profile?.permission && categories && onMoveCategory ? (
-                    <select
-                        value={category}
-                        onChange={(e) => onMoveCategory(friend, e.target.value)}
-                        className="px-2 py-0.5 rounded-lg bg-theme/10 text-theme font-medium text-[11px] outline-none cursor-pointer border border-transparent hover:border-theme/40"
-                        title="点击直接切换此友链分类"
-                    >
-                        {categories.map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                        ))}
-                    </select>
-                ) : (
-                    <span className="px-2 py-0.5 rounded-lg bg-theme/10 text-theme font-medium">
-                        {category}
-                    </span>
-                )}
-                <div className="flex items-center gap-1.5 pr-14 sm:pr-0">
-                    {profile?.permission && onReorder && (
-                        <div className="flex items-center gap-0.5 font-mono text-[11px] text-neutral-400">
-                            <span>#</span>
-                            <input
-                                type="number"
-                                defaultValue={friend.sort_order ?? 0}
-                                key={`${friend.id}_${friend.sort_order}`}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        const val = parseInt(e.currentTarget.value, 10);
-                                        if (!isNaN(val)) onReorder(friend.id, val);
-                                    }
-                                }}
-                                onBlur={(e) => {
-                                    const val = parseInt(e.currentTarget.value, 10);
-                                    if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
-                                }}
-                                className="w-9 text-center rounded bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme focus:border-theme outline-none text-[10px] font-mono font-bold py-0.2"
-                                title="输入排序序号敲回车即时排序 (数字越小越靠前，0 为默认)"
-                            />
-                        </div>
-                    )}
-                    {friend.accepted === 0 && (
-                        <div className="flex items-center gap-1">
-                            <span className="px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 font-bold text-[10px]">
-                                待审核
-                            </span>
-                            {profile?.permission && (
-                                <>
-                                    <button
-                                        onClick={onApprove}
-                                        className="px-1.5 py-0.5 rounded-md bg-emerald-500 text-white font-bold text-[10px] hover:bg-emerald-600 transition"
-                                    >
-                                        通过
-                                    </button>
-                                    <button
-                                        onClick={onReject}
-                                        className="px-1.5 py-0.5 rounded-md bg-rose-500 text-white font-bold text-[10px] hover:bg-rose-600 transition"
-                                    >
-                                        拒绝
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* 卡片核心主体 */}
-            <div className="flex items-start gap-3">
-                {/* 头像区域：支持子母双图融合 */}
-                <div className="relative shrink-0">
+            {/* 横版名片主体：左侧 48x48 图标 + 右侧信息 */}
+            <div className="flex items-start gap-3.5 min-w-0">
+                {/* 左侧：48x48 圆角图标 + 柔和弥散主题光晕 + 可选子母双图角标 */}
+                <div className="relative shrink-0 mt-0.5">
+                    <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute -inset-1 rounded-2xl bg-gradient-to-br from-theme/20 via-theme-secondary/15 to-transparent blur-md opacity-70 group-hover:opacity-100 transition-opacity"
+                    />
                     <ImageWithFallback
                         src={sanitizeAvatarUrl(friend.avatar)}
                         alt={friend.name}
-                        className="w-12 h-12 rounded-2xl object-cover border border-black/10 dark:border-white/10 shadow-2xs group-hover:scale-105 transition-transform"
+                        fallbackText={displayName}
+                        className="relative w-12 h-12 rounded-2xl object-cover border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-sm group-hover:scale-[1.03] transition-transform"
                     />
-                    {parsed.nsAvatar && parsed.siteAvatar && parsed.avatarMode === "dual" && (
+                    {parsed.nsAvatar && parsed.siteAvatar && parsed.avatarMode === "dual" ? (
                         <ImageWithFallback
                             src={sanitizeAvatarUrl(parsed.nsAvatar)}
                             alt="NodeSeek"
-                            className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full object-cover border-2 border-white dark:border-neutral-900 shadow-xs"
+                            fallbackText="N"
+                            className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full object-cover border-2 border-[rgb(var(--rin-surface-rgb))] shadow-xs"
                             title="NodeSeek 坛友认证"
                         />
-                    )}
+                    ) : null}
                 </div>
 
-                <div className="min-w-0 flex-1">
-                    <a
-                        href={primaryUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-bold text-sm t-primary hover:text-theme transition truncate block"
-                        title={displayName}
-                    >
-                        {displayName}
-                    </a>
+                {/* 右侧：顶行站名+分类徽章 -> 域链接 -> 完整简介 */}
+                <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <a
+                                href={primaryUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-semibold text-sm text-[rgb(var(--rin-ink-rgb))] hover:text-theme transition truncate"
+                                title={displayName}
+                            >
+                                {displayName}
+                            </a>
+                            {profile?.permission && categories && onMoveCategory ? (
+                                <select
+                                    value={category}
+                                    onChange={(e) => onMoveCategory(friend, e.target.value)}
+                                    className="text-[11px] px-2 py-0.5 rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-muted-rgb))] outline-none cursor-pointer hover:border-theme/45 hover:text-theme shrink-0"
+                                    title="点击直接切换此友链分类"
+                                >
+                                    {categories.map((c) => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <span className="text-[11px] px-2 py-0.5 rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-canvas-rgb))] text-[rgb(var(--rin-ink-muted-rgb))] shrink-0 whitespace-nowrap">
+                                    {category}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
                     <a
                         href={safeHttpUrl(friend.url)}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[11px] text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition truncate block font-mono mt-0.5"
+                        className="text-[11px] text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme transition truncate block font-mono"
                     >
-                        {friend.url.replace(/^https?:\/\//, "").replace(/\/+$/, "")} ↗
+                        {cleanHost} ↗
                     </a>
+
+                    <div className="pt-0.5">
+                        <p
+                            onClick={() => canExpandDesc && setIsDescExpanded((prev) => !prev)}
+                            className={`text-xs text-[rgb(var(--rin-ink-muted-rgb))] leading-relaxed ${
+                                isDescExpanded ? "" : "line-clamp-3"
+                            } ${canExpandDesc ? "cursor-pointer" : ""}`}
+                        >
+                            {displayDesc}
+                        </p>
+                        {canExpandDesc ? (
+                            <button
+                                type="button"
+                                onClick={() => setIsDescExpanded((prev) => !prev)}
+                                className="mt-0.5 text-[11px] text-theme/85 hover:text-theme hover:underline cursor-pointer"
+                            >
+                                {isDescExpanded ? "收起简介" : "展开全部"}
+                            </button>
+                        ) : null}
+                    </div>
                 </div>
             </div>
 
-            {/* 简介说明 */}
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2">
-                {cleanDesc || "个人技术生活随想"}
-            </p>
+            {/* 底部发丝分隔线：单行紧凑 NodeSeek 元信息 + 待审/管理员排序 */}
+            {(uid || nsData || friend.accepted === 0 || (profile?.permission && onReorder)) ? (
+                <div className="mt-3 pt-2.5 border-t border-[rgb(var(--rin-hairline-rgb)/0.65)] flex items-center justify-between gap-2">
+                    <NodeSeekMetaInline uid={uid} nsData={nsData} />
 
-            {/* NodeSeek 坛友专属资产勋章栏 */}
-            {(uid || nsData) && (
-                <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-black/5 dark:border-white/5 text-[10px] font-mono">
-                    {uid && (
-                        <a
-                            href={`https://www.nodeseek.com/space/${uid}#/general`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold hover:bg-purple-500/20 transition"
-                            title="直达 NodeSeek 个人空间"
-                        >
-                            UID: {uid}
-                        </a>
-                    )}
-                    {nsData?.rank !== undefined && (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 font-bold">
-                            <DiamondRankSvg className="w-2.5 h-2.5" />
-                            <span>Lv.{nsData.rank}</span>
-                        </span>
-                    )}
-                    {nsData?.coin !== undefined && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-orange-500/10 text-orange-600 font-bold" title="鸡腿资产">
-                            🍗 {nsData.coin}
-                        </span>
-                    )}
-                    {nsData?.days !== undefined && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 font-bold" title="加入天数">
-                            🕒 {nsData.days}
-                        </span>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        {friend.accepted === 0 ? (
+                            <div className="flex items-center gap-1">
+                                <span className="px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 font-bold text-[10px]">
+                                    待审核
+                                </span>
+                                {profile?.permission ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={onApprove}
+                                            className="px-1.5 py-0.5 rounded-md bg-emerald-500 text-white font-bold text-[10px] hover:bg-emerald-600 transition cursor-pointer"
+                                        >
+                                            通过
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={onReject}
+                                            className="px-1.5 py-0.5 rounded-md bg-rose-500 text-white font-bold text-[10px] hover:bg-rose-600 transition cursor-pointer"
+                                        >
+                                            拒绝
+                                        </button>
+                                    </>
+                                ) : null}
+                            </div>
+                        ) : null}
+                        {profile?.permission && onReorder ? (
+                            <div className="flex items-center gap-0.5 font-mono text-[11px] text-[rgb(var(--rin-ink-muted-rgb))]">
+                                <span>#</span>
+                                <input
+                                    type="number"
+                                    defaultValue={friend.sort_order ?? 0}
+                                    key={`${friend.id}_${friend.sort_order}`}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            const val = parseInt(e.currentTarget.value, 10);
+                                            if (!isNaN(val)) onReorder(friend.id, val);
+                                        }
+                                    }}
+                                    onBlur={(e) => {
+                                        const val = parseInt(e.currentTarget.value, 10);
+                                        if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
+                                    }}
+                                    className="w-9 text-center rounded bg-[rgb(var(--rin-canvas-rgb))] border border-[rgb(var(--rin-hairline-rgb))] hover:border-theme focus:border-theme outline-none text-[10px] font-mono font-bold py-0.5"
+                                    title="输入排序序号敲回车即时排序 (数字越小越靠前，0 为默认)"
+                                />
+                            </div>
+                        ) : null}
+                    </div>
                 </div>
-            )}
-        </div>
+            ) : null}
+        </article>
     );
 }
 
@@ -1940,28 +2000,30 @@ function CompactFriendRow({
     onApprove,
     onReject,
     onUpdate,
+    onError,
     onMoveCategory,
     onReorder,
 }: FriendCardProps) {
     const profile = useContext(ProfileContext);
     const parsed = parseFriendCategory(friend.desc, friend.url, friend.name, friend.avatar);
     const { category, cleanDesc, spaceUrl } = parsed;
-    const { uid, isRefreshingNs, refreshNsDone, handleQuickRefreshNs } = useFriendNsRefresh(friend, parsed, onUpdate);
+    const { uid, isRefreshingNs, refreshNsDone, handleQuickRefreshNs } = useFriendNsRefresh(friend, parsed, onUpdate, onError);
     const primaryUrl = safeHttpUrl(spaceUrl) || safeHttpUrl(friend.url);
 
     return (
-        <div className="group flex items-center justify-between p-3 rounded-2xl bg-white/60 dark:bg-neutral-900/60 border border-black/5 dark:border-white/5 hover:bg-white dark:hover:bg-neutral-800 transition gap-3 text-xs font-sans">
+        <div className="group flex items-center justify-between p-3 rounded-2xl bg-[rgb(var(--rin-surface-rgb))] border border-[rgb(var(--rin-hairline-rgb))] hover:border-theme/40 transition gap-3 text-xs font-sans">
             <div className="flex items-center gap-3 min-w-0 flex-1">
                 <ImageWithFallback
                     src={sanitizeAvatarUrl(friend.avatar)}
                     alt={friend.name}
-                    className="w-7 h-7 rounded-lg object-cover shrink-0"
+                    fallbackText={friend.name}
+                    className="w-7 h-7 rounded-lg object-cover shrink-0 border border-[rgb(var(--rin-hairline-rgb))]"
                 />
                 {profile?.permission && categories && onMoveCategory ? (
                     <select
                         value={category}
                         onChange={(e) => onMoveCategory(friend, e.target.value)}
-                        className="px-1.5 py-0.5 rounded-md bg-black/5 dark:bg-white/5 text-[10px] text-neutral-500 outline-none cursor-pointer border border-transparent hover:border-theme shrink-0"
+                        className="px-2 py-0.5 rounded-full bg-[rgb(var(--rin-surface-rgb))] border border-[rgb(var(--rin-hairline-rgb))] text-[11px] text-[rgb(var(--rin-ink-muted-rgb))] outline-none cursor-pointer hover:border-theme shrink-0"
                         title="点击直接切换此友链分类"
                     >
                         {categories.map((c) => (
@@ -1969,11 +2031,11 @@ function CompactFriendRow({
                         ))}
                     </select>
                 ) : (
-                    <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 text-[10px] text-neutral-500 shrink-0">
+                    <span className="px-2 py-0.5 rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-canvas-rgb))] text-[11px] text-[rgb(var(--rin-ink-muted-rgb))] shrink-0">
                         {category}
                     </span>
                 )}
-                {profile?.permission && onReorder && (
+                {profile?.permission && onReorder ? (
                     <input
                         type="number"
                         defaultValue={friend.sort_order ?? 0}
@@ -1988,70 +2050,70 @@ function CompactFriendRow({
                             const val = parseInt(e.currentTarget.value, 10);
                             if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
                         }}
-                        className="w-9 text-center rounded bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme outline-none text-[10px] font-mono font-bold py-0.2 shrink-0"
+                        className="w-9 text-center rounded bg-[rgb(var(--rin-canvas-rgb))] border border-[rgb(var(--rin-hairline-rgb))] hover:border-theme outline-none text-[10px] font-mono font-bold py-0.5 shrink-0"
                         title="输入排序序号后敲回车立即换序 (数字越小越靠前，0 为默认)"
                     />
-                )}
+                ) : null}
                 <a
                     href={primaryUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="font-bold t-primary hover:text-theme transition truncate shrink-0 max-w-[150px]"
+                    className="font-semibold t-primary hover:text-theme transition truncate shrink-0 max-w-[160px]"
                 >
                     {friend.name}
                 </a>
-                <span className="text-neutral-400 truncate hidden sm:inline">
+                <span className="text-[rgb(var(--rin-ink-muted-rgb))] truncate hidden sm:inline">
                     {cleanDesc || "个人技术生活随想"}
                 </span>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-                {profile?.permission && uid && friend.accepted !== 0 && (
+                {profile?.permission && uid && friend.accepted !== 0 ? (
                     <button
                         type="button"
                         onClick={handleQuickRefreshNs}
                         disabled={isRefreshingNs}
-                        className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline px-1 py-0.5 rounded"
+                        className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline px-1 py-0.5 rounded cursor-pointer"
                         title="更正坛友资产"
                     >
                         {isRefreshingNs ? "更正中" : refreshNsDone ? "✓ 已更正" : "更正"}
                     </button>
-                )}
+                ) : null}
                 <a
                     href={safeHttpUrl(friend.url)}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-neutral-400 hover:text-theme p-1"
+                    className="text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme p-1"
                     title="访问站点"
                 >
                     <i className="ri-external-link-line" />
                 </a>
-                {profile?.permission && (
+                {profile?.permission ? (
                     <>
-                        {friend.accepted === 0 && (
+                        {friend.accepted === 0 ? (
                             <div className="flex items-center gap-1">
-                                <button onClick={onApprove} className="text-emerald-600 font-bold px-1.5 py-0.5 rounded bg-emerald-500/10">
+                                <button type="button" onClick={onApprove} className="text-emerald-600 font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 cursor-pointer">
                                     通过
                                 </button>
-                                <button onClick={onReject} className="text-amber-600 font-bold px-1.5 py-0.5 rounded bg-amber-500/10">
+                                <button type="button" onClick={onReject} className="text-amber-600 font-bold px-1.5 py-0.5 rounded bg-amber-500/10 cursor-pointer">
                                     拒绝
                                 </button>
                             </div>
-                        )}
-                        <button onClick={onEdit} className="text-neutral-400 hover:text-theme p-1" title="编辑">
+                        ) : null}
+                        <button type="button" onClick={onEdit} className="text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme p-1 cursor-pointer" title="编辑">
                             <i className="ri-edit-line" />
                         </button>
-                        <button onClick={onDelete} className="text-neutral-400 hover:text-rose-500 p-1" title="删除">
+                        <button type="button" onClick={onDelete} className="text-[rgb(var(--rin-ink-muted-rgb))] hover:text-rose-500 p-1 cursor-pointer" title="删除">
                             <i className="ri-delete-bin-line" />
                         </button>
                     </>
-                )}
+                ) : null}
             </div>
         </div>
     );
 }
 
-// 风格 3: 拍立得和纸胶带便签 (Polaroid Notes)
+// 风格 3: 柔和渐变画廊纵卡 (Gallery Vertical Card)
 function PolaroidFriendCard({
     friend,
     index,
@@ -2061,27 +2123,32 @@ function PolaroidFriendCard({
     onApprove,
     onReject,
     onUpdate,
+    onError,
     onMoveCategory,
     onReorder,
 }: FriendCardProps) {
     const profile = useContext(ProfileContext);
     const parsed = parseFriendCategory(friend.desc, friend.url, friend.name, friend.avatar);
     const { category, cleanDesc, spaceUrl } = parsed;
-    const { uid, displayName, isRefreshingNs, refreshNsDone, handleQuickRefreshNs } = useFriendNsRefresh(friend, parsed, onUpdate);
+    const { uid, displayName, isRefreshingNs, refreshNsDone, handleQuickRefreshNs } = useFriendNsRefresh(friend, parsed, onUpdate, onError);
+    const [isDescExpanded, setIsDescExpanded] = useState(false);
+
     const primaryUrl = safeHttpUrl(spaceUrl) || safeHttpUrl(friend.url);
     const safeAvatar = sanitizeAvatarUrl(friend.avatar);
-
-    const tilt = index % 2 === 0 ? "rotate-1" : "-rotate-1";
+    const cleanHost = friend.url.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    const displayDesc = cleanDesc || "个人技术生活随想";
+    const canExpandDesc = displayDesc.length > 68;
+    const tilt = index % 2 === 0 ? "hover:rotate-[0.6deg]" : "hover:-rotate-[0.6deg]";
 
     return (
-        <div className={`group relative pt-4 pb-3.5 px-3.5 sm:px-4 bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 shadow-md hover:shadow-xl transition-all duration-300 rounded-sm font-sans flex flex-col justify-between ${tilt}`}>
+        <article className={`group relative pt-3.5 pb-3.5 px-3.5 sm:px-4 bg-[rgb(var(--rin-surface-rgb))] border border-[rgb(var(--rin-hairline-rgb))] shadow-xs hover:shadow-lg hover:border-theme/40 transition-all duration-300 rounded-2xl font-sans flex flex-col justify-between ${tilt}`}>
             {/* 顶角悬浮管理微胶囊 */}
-            {profile?.permission && (
+            {profile?.permission ? (
                 <div
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 dark:bg-neutral-800/95 backdrop-blur-xs p-0.5 rounded-lg border border-black/10 dark:border-white/10 shadow-xs"
+                    className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity bg-[rgb(var(--rin-elevated-rgb))] p-0.5 rounded-lg border border-[rgb(var(--rin-hairline-rgb))] shadow-xs"
                 >
-                    {uid && (
+                    {uid ? (
                         <button
                             type="button"
                             onClick={handleQuickRefreshNs}
@@ -2091,11 +2158,11 @@ function PolaroidFriendCard({
                         >
                             <i className={`ri-refresh-line text-xs ${isRefreshingNs ? "animate-spin" : ""}`} />
                         </button>
-                    )}
+                    ) : null}
                     <button
                         type="button"
                         onClick={onEdit}
-                        className="h-5 w-5 rounded flex items-center justify-center text-neutral-500 hover:text-theme hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
+                        className="h-5 w-5 rounded flex items-center justify-center text-[rgb(var(--rin-ink-muted-rgb))] hover:text-theme hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
                         title="编辑友链"
                     >
                         <i className="ri-edit-line text-xs" />
@@ -2103,45 +2170,51 @@ function PolaroidFriendCard({
                     <button
                         type="button"
                         onClick={onDelete}
-                        className="h-5 w-5 rounded flex items-center justify-center text-neutral-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                        className="h-5 w-5 rounded flex items-center justify-center text-[rgb(var(--rin-ink-muted-rgb))] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
                         title="删除友链"
                     >
                         <i className="ri-delete-bin-line text-xs" />
                     </button>
                 </div>
-            )}
-
-            {/* 顶端半透明彩色和纸胶带拟物 */}
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-4.5 bg-pink-400/40 dark:bg-pink-500/30 backdrop-blur-xs border-t border-b border-white/40 rotate-1 shadow-2xs pointer-events-none" />
+            ) : null}
 
             <div>
-                {/* 拍立得照片视窗：弥散微光暗纹背景 + 居中高清主体，彻底杜绝小图拉伸发虚 */}
-                <div className="h-28 sm:h-32 w-full rounded-xl bg-gradient-to-br from-theme/10 via-black/5 to-theme/5 dark:from-white/5 dark:to-white/[0.02] overflow-hidden mb-2.5 border border-black/5 dark:border-white/5 relative flex items-center justify-center select-none group/polaroid">
-                    {/* 提取头像主色作为环境氛围弥散光 */}
-                    <img
-                        src={safeAvatar}
-                        alt=""
+                {/* 柔彩弥散网格渐变画廊头：居中磨砂徽章托举 56x56 图标 + 右下角域名水印 */}
+                <div
+                    data-friend-gallery-banner="true"
+                    className="h-28 sm:h-32 w-full rounded-xl bg-gradient-to-br from-theme/15 via-theme-secondary/10 to-transparent overflow-hidden mb-3 border border-[rgb(var(--rin-hairline-rgb)/0.7)] relative flex items-center justify-center select-none group/polaroid"
+                >
+                    <div
                         aria-hidden="true"
-                        className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-125 pointer-events-none"
+                        className="pointer-events-none absolute -top-6 -left-6 h-24 w-24 rounded-full bg-theme/15 blur-2xl"
                     />
-                    <div className="absolute inset-0 bg-white/20 dark:bg-black/25 backdrop-blur-[2px] pointer-events-none" />
+                    <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute -bottom-6 -right-6 h-24 w-24 rounded-full bg-theme-secondary/20 blur-2xl"
+                    />
 
-                    {/* 居中高清无损头像主体 (56px~64px 黄金尺寸，保留原生锐度) */}
-                    <div className="relative z-10 flex flex-col items-center justify-center p-1.5">
+                    {/* 居中磨砂玻璃徽章：托举 56x56 圆角图标 */}
+                    <div className="relative z-10 p-1.5 rounded-2xl bg-white/75 dark:bg-neutral-900/65 backdrop-blur-md border border-white/60 dark:border-white/10 shadow-sm transition-transform duration-300 group-hover/polaroid:scale-105">
                         <ImageWithFallback
                             src={safeAvatar}
                             alt={friend.name}
-                            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover shadow-lg border-2 border-white dark:border-neutral-800 transition-transform duration-300 group-hover/polaroid:scale-105"
+                            fallbackText={displayName}
+                            className="w-14 h-14 rounded-xl object-cover"
                         />
                     </div>
+
+                    {/* 右下角低饱和域名水印 */}
+                    <span className="pointer-events-none absolute bottom-2 right-2.5 z-10 font-mono text-[10px] opacity-55 text-[rgb(var(--rin-ink-muted-rgb))] truncate max-w-[75%]">
+                        {cleanHost}
+                    </span>
                 </div>
 
-                <div className="flex items-center justify-between mb-1 gap-1">
+                <div className="flex items-center justify-between mb-1.5 gap-1.5">
                     <a
                         href={primaryUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="font-bold text-sm t-primary hover:text-theme transition truncate block flex-1"
+                        className="font-semibold text-sm t-primary hover:text-theme transition truncate block flex-1"
                         title={displayName}
                     >
                         {displayName}
@@ -2150,7 +2223,7 @@ function PolaroidFriendCard({
                         <select
                             value={category}
                             onChange={(e) => onMoveCategory(friend, e.target.value)}
-                            className="text-[10px] text-theme font-medium px-1.5 py-0.2 rounded bg-theme/10 shrink-0 border border-transparent hover:border-theme/40 outline-none cursor-pointer"
+                            className="text-[11px] text-[rgb(var(--rin-ink-muted-rgb))] font-medium px-2 py-0.5 rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shrink-0 hover:border-theme/45 outline-none cursor-pointer"
                             title="点击直接切换此友链分类"
                         >
                             {categories.map((c) => (
@@ -2158,92 +2231,89 @@ function PolaroidFriendCard({
                             ))}
                         </select>
                     ) : (
-                        <span className="text-[10px] text-theme font-medium px-1.5 py-0.2 rounded bg-theme/10 shrink-0">
+                        <span className="text-[11px] text-[rgb(var(--rin-ink-muted-rgb))] font-medium px-2 py-0.5 rounded-full border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-canvas-rgb))] shrink-0">
                             {category}
                         </span>
                     )}
-                    {friend.accepted === 0 && (
-                        <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-amber-600 font-bold px-1.5 py-0.2 rounded bg-amber-500/10 shrink-0">
-                                待审核
-                            </span>
-                            {profile?.permission && (
-                                <>
-                                    <button
-                                        onClick={onApprove}
-                                        className="text-emerald-600 font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-[10px]"
-                                    >
-                                        通过
-                                    </button>
-                                    <button
-                                        onClick={onReject}
-                                        className="text-rose-600 font-bold px-1.5 py-0.2 rounded bg-rose-500/10 hover:bg-rose-500/20 text-[10px]"
-                                    >
-                                        拒绝
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    )}
-                    {profile?.permission && onReorder && (
-                        <input
-                            type="number"
-                            defaultValue={friend.sort_order ?? 0}
-                            key={`${friend.id}_${friend.sort_order}`}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    const val = parseInt(e.currentTarget.value, 10);
-                                    if (!isNaN(val)) onReorder(friend.id, val);
-                                }
-                            }}
-                            onBlur={(e) => {
-                                const val = parseInt(e.currentTarget.value, 10);
-                                if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
-                            }}
-                            className="w-9 text-center rounded bg-black/5 dark:bg-white/5 border border-transparent hover:border-theme outline-none text-[10px] font-mono font-bold py-0.2 shrink-0"
-                            title="输入排序序号后敲回车立即换序 (数字越小越靠前，0 为默认)"
-                        />
-                    )}
                 </div>
 
-                <p className="text-xs text-neutral-500 line-clamp-2 my-1 leading-relaxed">
-                    {cleanDesc || "个人技术生活随想"}
-                </p>
-
-                {/* NodeSeek 坛友专属资产勋章栏（UID直达、Lv等级、🍗鸡腿、🕒加入天数） */}
-                {(uid || parsed.nsData) && (
-                    <div className="flex flex-wrap items-center gap-1 my-1.5 py-1 px-1.5 rounded-lg bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5 text-[10px] font-mono">
-                        {uid && (
-                            <a
-                                href={`https://www.nodeseek.com/space/${uid}#/general`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold hover:bg-purple-500/20 transition shrink-0"
-                                title="直达 NodeSeek 个人空间"
-                            >
-                                UID: {uid}
-                            </a>
-                        )}
-                        {parsed.nsData?.rank !== undefined && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 font-bold shrink-0">
-                                <DiamondRankSvg className="w-2.5 h-2.5" />
-                                <span>Lv.{parsed.nsData.rank}</span>
-                            </span>
-                        )}
-                        {parsed.nsData?.coin !== undefined && (
-                            <span className="px-1.5 py-0.2 rounded bg-orange-500/10 text-orange-600 font-bold shrink-0" title="鸡腿资产">
-                                🍗 {parsed.nsData.coin}
-                            </span>
-                        )}
-                        {parsed.nsData?.days !== undefined && (
-                            <span className="px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-600 font-bold shrink-0" title="加入天数">
-                                🕒 {parsed.nsData.days}
-                            </span>
-                        )}
+                {(friend.accepted === 0 || (profile?.permission && onReorder)) ? (
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                        {friend.accepted === 0 ? (
+                            <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-amber-600 font-bold px-1.5 py-0.5 rounded bg-amber-500/10 shrink-0">
+                                    待审核
+                                </span>
+                                {profile?.permission ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={onApprove}
+                                            className="text-emerald-600 font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-[10px] cursor-pointer"
+                                        >
+                                            通过
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={onReject}
+                                            className="text-rose-600 font-bold px-1.5 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-[10px] cursor-pointer"
+                                        >
+                                            拒绝
+                                        </button>
+                                    </>
+                                ) : null}
+                            </div>
+                        ) : <span />}
+                        {profile?.permission && onReorder ? (
+                            <input
+                                type="number"
+                                defaultValue={friend.sort_order ?? 0}
+                                key={`${friend.id}_${friend.sort_order}`}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        const val = parseInt(e.currentTarget.value, 10);
+                                        if (!isNaN(val)) onReorder(friend.id, val);
+                                    }
+                                }}
+                                onBlur={(e) => {
+                                    const val = parseInt(e.currentTarget.value, 10);
+                                    if (!isNaN(val) && val !== (friend.sort_order ?? 0)) onReorder(friend.id, val);
+                                }}
+                                className="w-9 text-center rounded bg-[rgb(var(--rin-canvas-rgb))] border border-[rgb(var(--rin-hairline-rgb))] hover:border-theme outline-none text-[10px] font-mono font-bold py-0.5 shrink-0"
+                                title="输入排序序号后敲回车立即换序 (数字越小越靠前，0 为默认)"
+                            />
+                        ) : null}
                     </div>
-                )}
+                ) : null}
+
+                <div className="my-1">
+                    <p
+                        onClick={() => canExpandDesc && setIsDescExpanded((prev) => !prev)}
+                        className={`text-xs text-[rgb(var(--rin-ink-muted-rgb))] leading-relaxed ${
+                            isDescExpanded ? "" : "line-clamp-3"
+                        } ${canExpandDesc ? "cursor-pointer" : ""}`}
+                    >
+                        {displayDesc}
+                    </p>
+                    {canExpandDesc ? (
+                        <button
+                            type="button"
+                            onClick={() => setIsDescExpanded((prev) => !prev)}
+                            className="mt-0.5 text-[11px] text-theme/85 hover:text-theme hover:underline cursor-pointer"
+                        >
+                            {isDescExpanded ? "收起简介" : "展开全部"}
+                        </button>
+                    ) : null}
+                </div>
+
+                {/* NodeSeek 坛友单行元信息 */}
+                {(uid || parsed.nsData) ? (
+                    <div className="mt-2.5 pt-2 border-t border-[rgb(var(--rin-hairline-rgb)/0.65)]">
+                        <NodeSeekMetaInline uid={uid} nsData={parsed.nsData} />
+                    </div>
+                ) : null}
             </div>
-        </div>
+        </article>
     );
 }
 
@@ -2252,11 +2322,13 @@ function EditFriendModal({
     friend,
     categories = ["友邻博客", "主机算力", "探针测速", "极客工具", "技术社区", "漫游灵感"],
     onClose,
+    onError,
     onSuccess,
 }: {
     friend: FriendItem;
     categories?: string[];
     onClose: () => void;
+    onError?: (msg: string) => void;
     onSuccess: () => void;
 }) {
     const parsed = parseFriendCategory(friend.desc, friend.url, friend.name, friend.avatar);
@@ -2343,8 +2415,11 @@ function EditFriendModal({
                 throw new Error(typeof res.error.value === "string" ? res.error.value : "保存失败，请检查输入或稍后重试");
             }
             onSuccess();
-        } catch (err) {
+        } catch (err: any) {
             console.error("Save friend failed:", err);
+            if (onError) {
+                onError(err?.message || "保存友链失败，请重试");
+            }
         } finally {
             setIsSaving(false);
         }
@@ -2519,7 +2594,7 @@ function EditFriendModal({
 
                 <div>
                     <div className="flex items-center justify-between mb-1">
-                        <label className="text-neutral-500">站点简介 (不超过40字)</label>
+                        <label className="text-neutral-500">站点简介（支持完整展示）</label>
                         <button
                             type="button"
                             onClick={handleRefineDesc}
@@ -2530,12 +2605,13 @@ function EditFriendModal({
                             <span>{isRefiningDesc ? "提炼中..." : "AI 智能精炼"}</span>
                         </button>
                     </div>
-                    <input
-                        type="text"
+                    <textarea
+                        rows={2}
+                        maxLength={240}
                         value={desc}
                         onChange={(e) => setDesc(e.target.value)}
-                        placeholder="一句话介绍此站点"
-                        className="w-full px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 text-xs"
+                        placeholder="站点简介（支持完整展示）"
+                        className="w-full px-3 py-2 rounded-xl bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-rgb))] border border-[rgb(var(--rin-hairline-rgb))] text-xs resize-none focus:outline-none focus:border-theme/45"
                     />
                 </div>
 

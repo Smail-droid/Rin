@@ -2,6 +2,7 @@ import type { GdSearchResultItem } from "../../services/music-api";
 import type { MusicTrack } from "../../components/music-player/types";
 
 interface ExploreViewProps {
+  isAdmin?: boolean;
   autoPersistR2: boolean;
   setAutoPersistR2: (val: boolean) => void;
   searchMode: "song" | "album";
@@ -24,6 +25,7 @@ interface ExploreViewProps {
 }
 
 export function ExploreView({
+  isAdmin = false,
   autoPersistR2,
   setAutoPersistR2,
   searchMode,
@@ -55,15 +57,17 @@ export function ExploreView({
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="inline-flex items-center gap-1 cursor-pointer select-none text-[11px] text-neutral-500 hover:text-theme transition">
-              <input
-                type="checkbox"
-                checked={autoPersistR2}
-                onChange={(e) => setAutoPersistR2(e.target.checked)}
-                className="accent-theme cursor-pointer"
-              />
-              <span>收录时自动转存音廊</span>
-            </label>
+            {isAdmin ? (
+              <label className="inline-flex items-center gap-1 cursor-pointer select-none text-[11px] text-neutral-500 hover:text-theme transition">
+                <input
+                  type="checkbox"
+                  checked={autoPersistR2}
+                  onChange={(e) => setAutoPersistR2(e.target.checked)}
+                  className="accent-theme cursor-pointer"
+                />
+                <span>收录时自动转存音廊</span>
+              </label>
+            ) : null}
 
             <div className="flex items-center gap-1 rounded-xl bg-black/5 dark:bg-white/5 p-0.5 text-xs">
               <button
@@ -134,7 +138,7 @@ export function ExploreView({
                 共探测 {scanProgress.totalFound} 首候选 · <strong className="text-emerald-600 dark:text-emerald-400">{scanProgress.verified} 首 100% 可播</strong> · <span className="text-neutral-400">已排除 {scanProgress.excluded} 首受限</span>
               </span>
             </div>
-            {deepVerifiedTracks.length > 0 && !deepScanning && (
+            {isAdmin && deepVerifiedTracks.length > 0 && !deepScanning ? (
               <button
                 type="button"
                 onClick={onImportAllVerified}
@@ -143,7 +147,7 @@ export function ExploreView({
                 <i className="ri-play-list-add-line" />
                 <span>一键全量入库 ({deepVerifiedTracks.length} 首)</span>
               </button>
-            )}
+            ) : null}
           </div>
         )}
 
@@ -151,7 +155,7 @@ export function ExploreView({
         <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-w overflow-hidden text-xs">
           <div className="p-2.5 bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/5 dark:border-white/5 flex items-center justify-between text-neutral-400">
             <span className="font-mono text-[11px]">{searchResults.length > 0 ? `${searchResults.length} 条匹配 (按相关度置顶)` : "搜索结果"}</span>
-            {searchResults.length > 0 && (
+            {isAdmin && searchResults.length > 0 ? (
               <button
                 type="button"
                 onClick={onBatchCollect}
@@ -161,7 +165,7 @@ export function ExploreView({
                 {batchStatus === "batching" && <i className="ri-loader-4-line animate-spin" />}
                 <span>{batchStatus === "batching" ? "正在批量收录..." : batchStatus === "done" ? "已收录 ✓" : "批量收录前8首"}</span>
               </button>
-            )}
+            ) : null}
           </div>
 
           <div className="divide-y divide-black/5 dark:divide-white/5 max-h-[50vh] overflow-y-auto">
@@ -208,17 +212,19 @@ export function ExploreView({
                         {isResolving ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-play-fill" />}
                         <span>试听</span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => onResolveAndPlay(item, false)}
-                        disabled={isResolving}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
-                          isQueued ? "bg-emerald-500 text-white font-bold" : "bg-black/5 dark:bg-white/5 hover:bg-theme hover:text-white"
-                        }`}
-                      >
-                        <i className={isQueued ? "ri-check-line" : "ri-add-line"} />
-                        <span>{isQueued ? "已收录" : "收录"}</span>
-                      </button>
+                      {isAdmin ? (
+                        <button
+                          type="button"
+                          onClick={() => onResolveAndPlay(item, false)}
+                          disabled={isResolving}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+                            isQueued ? "bg-emerald-500 text-white font-bold" : "bg-black/5 dark:bg-white/5 hover:bg-theme hover:text-white"
+                          }`}
+                        >
+                          <i className={isQueued ? "ri-check-line" : "ri-add-line"} />
+                          <span>{isQueued ? "已收录" : "收录"}</span>
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 );

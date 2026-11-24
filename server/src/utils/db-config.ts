@@ -21,6 +21,7 @@ const AI_CONFIG_FIELDS = [
     "prompt_tech",
     "prompt_format",
     "prompt_summary",
+    "prompt_presets",
 ] as const;
 
 export function readAIConfigFromValues(values: Record<string, unknown>): AIConfig {
@@ -76,6 +77,13 @@ export function readAIConfigFromValues(values: Record<string, unknown>): AIConfi
         config.prompt_summary = promptSummary;
     }
 
+    const promptPresets = values[AI_CONFIG_PREFIX + "prompt_presets"];
+    if (typeof promptPresets === "string") {
+        config.prompt_presets = promptPresets;
+    } else if (Array.isArray(promptPresets) || (promptPresets && typeof promptPresets === "object")) {
+        config.prompt_presets = JSON.stringify(promptPresets);
+    }
+
     return config;
 }
 
@@ -105,7 +113,16 @@ export async function setAIConfig(config: ConfigWriter, updates: Partial<AIConfi
             continue;
         }
 
-        if (field === "api_key" && typeof value === "string" && value.trim() === "") {
+        if (
+            field === "api_key" &&
+            typeof value === "string" &&
+            (value.trim() === "" || value.trim() === "••••••••")
+        ) {
+            continue;
+        }
+
+        if (field === "prompt_presets" && typeof value !== "string") {
+            await config.set(AI_CONFIG_PREFIX + field, JSON.stringify(value), false);
             continue;
         }
 

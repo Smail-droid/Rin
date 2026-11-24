@@ -220,7 +220,8 @@ export function UnifiedCommentComposer({
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-theme/10 hover:bg-theme/20 text-theme text-[11px] font-semibold transition active:scale-95 select-none cursor-pointer"
                       title="换一个二次元昵称与头像"
                     >
-                      <span>🎲 换一个</span>
+                      <i className="ri-shuffle-line text-xs" />
+                      <span>换一个</span>
                     </button>
                   </>
                 )}
@@ -669,7 +670,7 @@ export function GalleryComments({
         </div>
       ) : comments.length === 0 ? (
         <div className="p-8 rounded-2xl border border-dashed border-black/10 dark:border-white/10 text-center my-4">
-          <p className="text-2xl mb-1">🍃</p>
+          <i className="ri-leaf-line text-2xl text-theme/70 mb-1 block" aria-hidden="true" />
           <p className="text-xs font-bold t-primary">展厅长廊静悄悄的</p>
           <p className="text-[11px] text-neutral-400 mt-0.5">在下方留言板写下你的灵感或问候吧~</p>
         </div>

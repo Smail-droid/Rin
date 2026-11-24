@@ -1,9 +1,10 @@
-import { useContext, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useAlert } from "../components/dialog";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { ClientConfigContext } from "../state/config";
 import { client } from "../app/runtime";
+import { emitToast } from "../utils/toast";
 
 interface SEOCheckItem {
   id: string;
@@ -26,11 +27,25 @@ export function AdminSEOPage() {
   const [byText, setByText] = useState(() => clientConfig.get<string>("footer.by_text") || "80hou");
   const [byUrl, setByUrl] = useState(() => clientConfig.get<string>("footer.by_url") || "https://www.nodeseek.com/space/39375#/general");
   const [savingFooter, setSavingFooter] = useState(false);
+  const [footerSaved, setFooterSaved] = useState(false);
 
   // 2. 网站图标 (Favicon) 状态
   const [faviconKey, setFaviconKey] = useState(Date.now());
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [faviconSaved, setFaviconSaved] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
+  const footerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const faviconTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (footerTimerRef.current) clearTimeout(footerTimerRef.current);
+      if (faviconTimerRef.current) clearTimeout(faviconTimerRef.current);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
 
   const handleUploadFavicon = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -50,7 +65,10 @@ export function AdminSEOPage() {
       });
       if (resp.ok) {
         setFaviconKey(Date.now());
-        showAlert("🎉 网站图标 (Favicon) 已成功上传并更新！边缘端已自动切分生成多规格标头。");
+        setFaviconSaved(true);
+        if (faviconTimerRef.current) clearTimeout(faviconTimerRef.current);
+        faviconTimerRef.current = setTimeout(() => setFaviconSaved(false), 2200);
+        emitToast("网站图标 (Favicon) 已成功上传并更新！", "success");
       } else {
         const errText = await resp.text();
         showAlert(`上传失败: ${errText}`);
@@ -73,7 +91,10 @@ export function AdminSEOPage() {
       if (error) {
         showAlert(typeof error === "string" ? error : (error.value as string) || "保存失败");
       } else {
-        showAlert("🎉 首页底部 By 署名与链接已成功更新！前台底部已实时生效。");
+        setFooterSaved(true);
+        if (footerTimerRef.current) clearTimeout(footerTimerRef.current);
+        footerTimerRef.current = setTimeout(() => setFooterSaved(false), 2200);
+        emitToast("首页底部 By 署名与链接已成功更新！", "success");
       }
     } catch (e: any) {
       showAlert(e.message || "更新失败");
@@ -87,9 +108,14 @@ export function AdminSEOPage() {
   const robotsUrl = `${siteUrl}/robots.txt`;
   const rssUrl = `${siteUrl}/rss.xml`;
 
-  const copyToClipboard = (text: string, label: string) => {
+  const copyToClipboard = (text: string, label: string, key: string) => {
     void navigator.clipboard.writeText(text);
-    showAlert(`🎉 已成功复制 ${label} 到剪贴板：\n${text}`);
+    setCopiedKey(key);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => {
+      setCopiedKey((curr) => (curr === key ? null : curr));
+    }, 2000);
+    emitToast(`已复制 ${label} 到剪贴板`, "success");
   };
 
   const seoChecklist: SEOCheckItem[] = [
@@ -187,11 +213,11 @@ export function AdminSEOPage() {
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto shrink-0">
           <button
             type="button"
-            onClick={() => copyToClipboard(sitemapUrl, "Sitemap 地址")}
-            className="px-3 py-1.5 rounded-xl border border-black/10 bg-w hover:border-theme text-xs font-semibold t-primary transition flex items-center gap-1.5 shadow-2xs dark:border-white/10"
+            onClick={() => copyToClipboard(sitemapUrl, "Sitemap 地址", "sitemap")}
+            className="px-3 py-1.5 rounded-xl border border-black/10 bg-w hover:border-theme text-xs font-semibold t-primary transition flex items-center gap-1.5 shadow-2xs dark:border-white/10 cursor-pointer"
           >
-            <i className="ri-file-copy-line text-theme" />
-            <span>复制 Sitemap 链接</span>
+            <i className={copiedKey === "sitemap" ? "ri-check-line text-emerald-500" : "ri-file-copy-line text-theme"} />
+            <span>{copiedKey === "sitemap" ? "✓ 已复制" : "复制 Sitemap 链接"}</span>
           </button>
           <a
             href={sitemapUrl}
@@ -264,10 +290,12 @@ export function AdminSEOPage() {
               type="button"
               onClick={handleSaveFooter}
               disabled={savingFooter}
-              className="px-4 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition flex items-center gap-1"
+              className={`px-4 py-1.5 rounded-xl text-white text-xs font-bold shadow-2xs active:scale-95 disabled:opacity-50 transition flex items-center gap-1 cursor-pointer ${
+                footerSaved ? "bg-emerald-600" : "bg-theme hover:bg-theme-hover"
+              }`}
             >
-              {savingFooter && <i className="ri-loader-4-line animate-spin" />}
-              <span>{savingFooter ? "保存中..." : "保存底部配置"}</span>
+              {savingFooter ? <i className="ri-loader-4-line animate-spin" /> : footerSaved ? <i className="ri-check-line" /> : null}
+              <span>{savingFooter ? "保存中..." : footerSaved ? "✓ 已保存" : "保存底部配置"}</span>
             </button>
           </div>
         </div>
@@ -323,10 +351,18 @@ export function AdminSEOPage() {
               type="button"
               onClick={() => faviconInputRef.current?.click()}
               disabled={uploadingFavicon}
-              className="px-4 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover active:scale-95 disabled:opacity-50 transition flex items-center gap-1.5"
+              className={`px-4 py-1.5 rounded-xl text-white text-xs font-bold shadow-2xs active:scale-95 disabled:opacity-50 transition flex items-center gap-1.5 cursor-pointer ${
+                faviconSaved ? "bg-emerald-600" : "bg-theme hover:bg-theme-hover"
+              }`}
             >
-              {uploadingFavicon ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-upload-cloud-line" />}
-              <span>{uploadingFavicon ? "正在处理并上传..." : "上传网站图标 (Favicon)"}</span>
+              {uploadingFavicon ? (
+                <i className="ri-loader-4-line animate-spin" />
+              ) : faviconSaved ? (
+                <i className="ri-check-line" />
+              ) : (
+                <i className="ri-upload-cloud-line" />
+              )}
+              <span>{uploadingFavicon ? "正在处理并上传..." : faviconSaved ? "✓ 已更新" : "上传网站图标 (Favicon)"}</span>
             </button>
           </div>
         </div>
@@ -498,11 +534,11 @@ export function AdminSEOPage() {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => copyToClipboard(siteUrl, "博客首页直链")}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/5 hover:bg-black/10 dark:bg-white/5 font-semibold text-[11px] t-primary transition"
+                        onClick={() => copyToClipboard(siteUrl, "博客首页直链", "site")}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/5 hover:bg-black/10 dark:bg-white/5 font-semibold text-[11px] t-primary transition cursor-pointer"
                       >
-                        <i className="ri-file-copy-line text-xs" />
-                        <span>复制直链</span>
+                        <i className={copiedKey === "site" ? "ri-check-line text-emerald-500 text-xs" : "ri-file-copy-line text-xs"} />
+                        <span>{copiedKey === "site" ? "✓ 已复制" : "复制直链"}</span>
                       </button>
                     )}
                   </td>

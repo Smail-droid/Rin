@@ -98,6 +98,28 @@ function IconTag({ className = "h-3.5 w-3.5" }: { className?: string }) {
   );
 }
 
+function IconPalette({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <circle cx="13.5" cy="6.5" r=".7" fill="currentColor" />
+      <circle cx="17.5" cy="10.5" r=".7" fill="currentColor" />
+      <circle cx="8.5" cy="7.5" r=".7" fill="currentColor" />
+      <circle cx="6.5" cy="12.5" r=".7" fill="currentColor" />
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2Z" />
+    </svg>
+  );
+}
+
+function IconSparkles({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+      <path d="M20 3v4" />
+      <path d="M22 5h-4" />
+    </svg>
+  );
+}
+
 /**
  * 🌸 画廊微光在场工坊微控制岛（In-Situ Live Studio）：
  * - 彻底消灭半屏抽屉，所见即管理；
@@ -292,157 +314,156 @@ export function TopAtelierRibbon() {
   return (
     <div
       aria-label={t("top_ribbon_aria", { defaultValue: "画廊氛围与在场工坊" })}
-      className="w-full max-w-4xl mx-auto px-4 pt-2 pb-2 flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-1.5 text-xs select-none ani-show"
+      className="w-full max-w-4xl mx-auto px-3 sm:px-4 pt-1.5 pb-2 flex justify-center select-none ani-show"
     >
-      {/* 1. 访客可用：独立氛围微开关 */}
-      {ambienceItems.map((item) => {
-        const active = ambience === item.id;
-        return (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => handleToggleAmbience(item.id)}
-            aria-pressed={active}
-            title={
-              active
-                ? t("ambience.close_mode", { mode: item.label, defaultValue: `关闭${item.label}氛围` })
-                : t("ambience.open_mode", { mode: item.label, defaultValue: `开启${item.label}氛围` })
-            }
-            className={`inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs transition-all duration-200 cursor-pointer ${
-              active
-                ? "text-theme font-semibold glow-theme bg-theme/10 dark:bg-theme/15 border border-theme/25 shadow-2xs"
-                : "text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30"
-            }`}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </button>
-        );
-      })}
+      <div className="inline-flex max-w-full items-center gap-0.5 sm:gap-1 px-2 sm:px-2.5 py-1 rounded-full bg-black/[0.025] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.08] overflow-x-auto scrollbar-none flex-nowrap sm:flex-wrap sm:justify-center text-xs">
+        {/* 1. 访客可用：独立氛围微开关（无框纯排印，仅激活项柔光高亮） */}
+        {ambienceItems.map((item) => {
+          const active = ambience === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => handleToggleAmbience(item.id)}
+              aria-pressed={active}
+              title={
+                active
+                  ? t("ambience.close_mode", { mode: item.label, defaultValue: `关闭${item.label}氛围` })
+                  : t("ambience.open_mode", { mode: item.label, defaultValue: `开启${item.label}氛围` })
+              }
+              className={`inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer ${
+                active
+                  ? "text-theme font-semibold bg-theme/15 dark:bg-theme/20 ring-1 ring-theme/25"
+                  : "text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+              }`}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
 
-      <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/15 rounded-full" aria-hidden="true" />
+        <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/15 rounded-full shrink-0 mx-0.5" aria-hidden="true" />
 
-      {/* 2. 全员可用：现场直调版式、主题色、自由调色与 AI 导读 */}
-      {/* 版式一键即切 */}
-      <button
-        type="button"
-        onClick={handleCycleVariant}
-        title={t("variant.switch_title", { current: currentVariantLabel, defaultValue: `切换文章版式（当前：${currentVariantLabel}）` })}
-        className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer font-medium"
-      >
-        <IconLayout />
-        <span>{currentVariantLabel}</span>
-      </button>
+        {/* 2. 全员可用：现场直调版式、主题色、自由调色与 AI 导读 */}
+        {/* 版式一键即切 */}
+        <button
+          type="button"
+          onClick={handleCycleVariant}
+          title={t("variant.switch_title", { current: currentVariantLabel, defaultValue: `切换文章版式（当前：${currentVariantLabel}）` })}
+          className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-black/[0.04] dark:hover:bg-white/[0.06] whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer font-medium"
+        >
+          <IconLayout />
+          <span>{currentVariantLabel}</span>
+        </button>
 
-      {/* 预设色盘一键即切 */}
-      <button
-        type="button"
-        onClick={handleCyclePalette}
-        title={t("palette.switch_title", { current: currentPaletteName, defaultValue: `切换画廊主题色（当前：${currentPaletteName}）` })}
-        className="inline-flex items-center gap-1.5 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer font-medium"
-      >
-        <span
-          className="h-2.5 w-2.5 rounded-full shrink-0 ring-1 ring-black/10 dark:ring-white/15"
-          style={{ backgroundColor: liveColorHex }}
-          aria-hidden="true"
-        />
-        <span>{currentPaletteName}</span>
-      </button>
+        {/* 预设色盘一键即切 */}
+        <button
+          type="button"
+          onClick={handleCyclePalette}
+          title={t("palette.switch_title", { current: currentPaletteName, defaultValue: `切换画廊主题色（当前：${currentPaletteName}）` })}
+          className="inline-flex items-center gap-1.5 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-black/[0.04] dark:hover:bg-white/[0.06] whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer font-medium"
+        >
+          <span
+            className="h-2.5 w-2.5 rounded-full shrink-0 ring-1 ring-black/10 dark:ring-white/20"
+            style={{ backgroundColor: liveColorHex }}
+            aria-hidden="true"
+          />
+          <span>{currentPaletteName}</span>
+        </button>
 
-      {/* 自由彩虹调色 */}
-      <label
-        title={t("palette.custom_title", { defaultValue: "自由取色实时调控" })}
-        className="relative inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer"
-      >
-        <span
-          className="h-2.5 w-2.5 rounded-full bg-gradient-to-tr from-rose-500 via-amber-400 via-emerald-400 to-sky-500 shrink-0"
-          aria-hidden="true"
-        />
-        <span className="hidden sm:inline">{t("palette.custom_label", { defaultValue: "调色" })}</span>
-        <input
-          ref={colorInputRef}
-          type="color"
-          aria-label={t("palette.custom_aria", { defaultValue: "自由调色盘选色" })}
-          defaultValue={liveColorHex}
-          onInput={(e) => handleLiveColorInput((e.target as HTMLInputElement).value)}
-          onBlur={(e) => {
-            if (pendingColorRef.current) {
-              commitCustomColor(normalizeThemeColor(e.target.value));
-            }
-          }}
-          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-        />
-      </label>
+        {/* 自由取色 */}
+        <label
+          title={t("palette.custom_title", { defaultValue: "自由取色实时调控" })}
+          className="relative inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-black/[0.04] dark:hover:bg-white/[0.06] whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer"
+        >
+          <IconPalette />
+          <span className="hidden sm:inline">{t("palette.custom_label", { defaultValue: "调色" })}</span>
+          <input
+            ref={colorInputRef}
+            type="color"
+            aria-label={t("palette.custom_aria", { defaultValue: "自由调色盘选色" })}
+            defaultValue={liveColorHex}
+            onInput={(e) => handleLiveColorInput((e.target as HTMLInputElement).value)}
+            onBlur={(e) => {
+              if (pendingColorRef.current) {
+                commitCustomColor(normalizeThemeColor(e.target.value));
+              }
+            }}
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+          />
+        </label>
 
-      {/* 现场 AI 导读总开关 (点一下现场立即生效，无需穿门) */}
-      <button
-        type="button"
-        onClick={handleToggleAISummary}
-        title={
-          siteConfig.aiSummaryEnabled
-            ? t("ai_summary.disable_hint", { defaultValue: "点击即刻关闭全站文章导读" })
-            : t("ai_summary.enable_hint", { defaultValue: "点击即刻开启全站文章导读" })
-        }
-        className={`inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs transition-all duration-200 cursor-pointer ${
-          siteConfig.aiSummaryEnabled
-            ? "text-theme font-bold bg-theme/10 dark:bg-theme/15 border border-theme/25 shadow-2xs"
-            : "text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30"
-        }`}
-      >
-        <i className="ri-sparkling-2-line" />
-        <span>
-          {siteConfig.aiSummaryEnabled
-            ? t("ai_summary.status_on", { defaultValue: "导读:开" })
-            : t("ai_summary.status_off", { defaultValue: "导读:关" })}
-        </span>
-      </button>
+        {/* 现场 AI 导读总开关 */}
+        <button
+          type="button"
+          onClick={handleToggleAISummary}
+          title={
+            siteConfig.aiSummaryEnabled
+              ? t("ai_summary.disable_hint", { defaultValue: "点击即刻关闭全站文章导读" })
+              : t("ai_summary.enable_hint", { defaultValue: "点击即刻开启全站文章导读" })
+          }
+          className={`inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer ${
+            siteConfig.aiSummaryEnabled
+              ? "text-theme font-semibold bg-theme/15 dark:bg-theme/20 ring-1 ring-theme/25"
+              : "text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+          }`}
+        >
+          <IconSparkles />
+          <span>
+            {siteConfig.aiSummaryEnabled
+              ? t("ai_summary.status_on", { defaultValue: "导读:开" })
+              : t("ai_summary.status_off", { defaultValue: "导读:关" })}
+          </span>
+        </button>
 
-      {/* 3. 管理员专属：全屏创作与管理直达 */}
-      {isAdmin ? (
-        <>
-          <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/15 rounded-full" aria-hidden="true" />
+        {/* 3. 管理员专属：全屏创作与管理直达 */}
+        {isAdmin ? (
+          <>
+            <span className="h-3 w-px bg-neutral-300/60 dark:bg-white/15 rounded-full shrink-0 mx-0.5" aria-hidden="true" />
 
-          {/* 全屏创作直达 */}
-          <Link
-            href="/writing"
-            title={t("nav.write_title", { defaultValue: "进入全屏沉浸创作台" })}
-            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-theme hover:brightness-110 font-bold bg-theme/10 dark:bg-theme/15 border border-theme/25 transition-all duration-200 cursor-pointer shadow-2xs"
-          >
-            <IconQuill />
-            <span>{t("writing", { defaultValue: "撰写" })}</span>
-          </Link>
+            {/* 全屏创作直达 */}
+            <Link
+              href="/writing"
+              title={t("nav.write_title", { defaultValue: "进入全屏沉浸创作台" })}
+              className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-theme hover:brightness-110 font-bold bg-theme/15 dark:bg-theme/20 ring-1 ring-theme/25 whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer"
+            >
+              <IconQuill />
+              <span>{t("writing", { defaultValue: "撰写" })}</span>
+            </Link>
 
-          {/* 图床画廊直达 */}
-          <Link
-            href="/gallery"
-            title={t("nav.gallery_title", { defaultValue: "进入全宽图床画廊" })}
-            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer"
-          >
-            <IconGallery />
-            <span className="hidden sm:inline">{t("gallery_title", { defaultValue: "图床" })}</span>
-          </Link>
+            {/* 图床画廊直达 */}
+            <Link
+              href="/gallery"
+              title={t("nav.gallery_title", { defaultValue: "进入全宽图床画廊" })}
+              className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-black/[0.04] dark:hover:bg-white/[0.06] whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer"
+            >
+              <IconGallery />
+              <span className="hidden sm:inline">{t("gallery_title", { defaultValue: "图床" })}</span>
+            </Link>
 
-          {/* 音廊电台直达 */}
-          <Link
-            href="/music"
-            title={t("nav.music_title", { defaultValue: "进入沉浸音廊工作台" })}
-            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer"
-          >
-            <IconMusic />
-            <span className="hidden sm:inline">{t("music_title", { defaultValue: "音廊" })}</span>
-          </Link>
+            {/* 音廊电台直达 */}
+            <Link
+              href="/music"
+              title={t("nav.music_title", { defaultValue: "进入沉浸音廊工作台" })}
+              className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-black/[0.04] dark:hover:bg-white/[0.06] whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer"
+            >
+              <IconMusic />
+              <span className="hidden sm:inline">{t("music_title", { defaultValue: "音廊" })}</span>
+            </Link>
 
-          {/* 标签管理直达 */}
-          <Link
-            href="/hashtags"
-            title={t("nav.tags_title", { defaultValue: "标签体系管理" })}
-            className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme bg-black/[0.02] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 hover:border-theme/30 transition-all duration-200 cursor-pointer"
-          >
-            <IconTag />
-            <span className="hidden md:inline">{t("hashtags", { defaultValue: "标签" })}</span>
-          </Link>
-        </>
-      ) : null}
+            {/* 标签管理直达 */}
+            <Link
+              href="/hashtags"
+              title={t("nav.tags_title", { defaultValue: "标签体系管理" })}
+              className="inline-flex items-center gap-1 py-0.5 px-2 rounded-full text-xs text-neutral-600 dark:text-neutral-300 hover:text-theme hover:bg-black/[0.04] dark:hover:bg-white/[0.06] whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer"
+            >
+              <IconTag />
+              <span className="hidden md:inline">{t("hashtags", { defaultValue: "标签" })}</span>
+            </Link>
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import type { Tag } from "../api/client";
 import { client } from "../app/runtime";
 import { useAlert, useConfirm } from "../components/dialog";
 import { useSiteConfig } from "../hooks/useSiteConfig";
+import { emitToast } from "../utils/toast";
 
 export function AdminTagsPage() {
   const siteConfig = useSiteConfig();
@@ -59,7 +60,7 @@ export function AdminTagsPage() {
         body: JSON.stringify({ feedIds: Array.from(associatedFeedIds) }),
       });
       if (res.ok) {
-        showAlert(`🎉 标签「${associatingTag.name}」文章关联已更新！`);
+        emitToast(`标签「${associatingTag.name}」文章关联已更新！`, "success");
         setAssociatingTag(null);
         fetchTags();
       } else {
@@ -239,7 +240,7 @@ export function AdminTagsPage() {
       if (data) {
         setNewTagName("");
         fetchTags();
-        showAlert(`✨ 标签 “#${trimmed}” 添加成功！`);
+        emitToast(`标签 “#${trimmed}” 添加成功！`, "success");
       } else if (error) {
         showAlert(String(error.value || "创建标签失败"));
       }
@@ -277,7 +278,7 @@ export function AdminTagsPage() {
           prev.map((item) => (item.id === editingTag.id ? { ...item, name: trimmed } : item))
         );
         setEditingTag(null);
-        showAlert("标签修改成功！关联文章已自动同步");
+        emitToast("标签修改成功！关联文章已自动同步", "success");
       } else if (error) {
         showAlert(String(error.value || "更新标签失败"));
       }
@@ -304,7 +305,7 @@ export function AdminTagsPage() {
               next.delete(tag.id);
               return next;
             });
-            showAlert("标签删除成功");
+            emitToast("标签删除成功", "success");
           } else {
             showAlert(String(error.value || "删除标签失败"));
           }
@@ -331,7 +332,7 @@ export function AdminTagsPage() {
             const { error } = await client.tag.delete(id);
             if (!error) count++;
           }
-          showAlert(`批量操作完成：成功删除 ${count} 个标签！`);
+          emitToast(`批量操作完成：成功删除 ${count} 个标签！`, "success");
           setSelectedIds(new Set());
           fetchTags();
         } finally {
@@ -360,7 +361,7 @@ export function AdminTagsPage() {
             const { error } = await client.tag.delete(tag.id);
             if (!error) count++;
           }
-          showAlert(`🎉 成功清理 ${count} 个未关联空标签！`);
+          emitToast(`成功清理 ${count} 个未关联空标签！`, "success");
           setSelectedIds(new Set());
           fetchTags();
         } finally {

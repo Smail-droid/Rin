@@ -8,6 +8,7 @@ import { Modal } from "@rin/ui";
 import { normalizeBlobUrl } from "../utils/url";
 import { R2MediaPickerModal } from "../components/r2-media-picker-modal";
 import { getAuthToken } from "../utils/auth";
+import { emitToast } from "../utils/toast";
 import { fetchR2StorageStats, type R2StorageStats } from "../services/music-api";
 
 function formatFileSize(bytes: number): string {
@@ -236,6 +237,7 @@ export function AdminDashboardPage() {
         setAllFeeds((prev) =>
           prev.map((f) => (f.id === feed.id ? { ...f, top: nextTop } : f))
         );
+        emitToast(nextTop > 0 ? `文章 #${feed.id} 已置顶` : `文章 #${feed.id} 已取消置顶`, "success");
       }
     } catch (e: any) {
       showAlert(e.message || "更新失败");
@@ -271,7 +273,7 @@ export function AdminDashboardPage() {
           feedsPublished: nextDraft === 0 ? prev.feedsPublished + 1 : Math.max(0, prev.feedsPublished - 1),
           feedsDraft: nextDraft === 1 ? prev.feedsDraft + 1 : Math.max(0, prev.feedsDraft - 1),
         }));
-        showAlert(`文章 #${feed.id} 状态已变更为：${nextDraft === 1 ? "草稿箱" : "已公开"}`);
+        emitToast(`文章 #${feed.id} 状态已变更为：${nextDraft === 1 ? "草稿箱" : "已公开"}`, "success");
       }
     } catch (e: any) {
       showAlert(e.message || "切换失败");
@@ -301,7 +303,7 @@ export function AdminDashboardPage() {
         setAllFeeds((prev) =>
           prev.map((f) => (f.id === feed.id ? { ...f, ai_summary: data.summary, summary: data.summary, ai_summary_status: "done" } : f))
         );
-        showAlert(`文章 #${feed.id} AI 智能导读重新生成成功！`);
+        emitToast(`文章 #${feed.id} AI 智能导读重新生成成功！`, "success");
       }
     } catch (e: any) {
       showAlert(e.message || "生成异常");
@@ -329,7 +331,7 @@ export function AdminDashboardPage() {
           prev.map((f) => (f.id === id ? { ...f, title: inlineTitleValue.trim() } : f))
         );
         setInlineEditingFeedId(null);
-        showAlert("文章标题已成功更新！");
+        emitToast("文章标题已成功更新！", "success");
       }
     } catch (e: any) {
       showAlert(e.message || "重命名异常");
@@ -346,7 +348,7 @@ export function AdminDashboardPage() {
             showAlert(typeof error === "string" ? error : (error.value as string) || "删除失败");
           } else {
             setAllFeeds((prev) => prev.filter((f) => f.id !== feed.id));
-            showAlert("文章已永久删除！");
+            emitToast("文章已永久删除！", "success");
           }
         } catch (e: any) {
           showAlert(e.message || "删除失败");
@@ -367,7 +369,7 @@ export function AdminDashboardPage() {
           const { error } = await client.feed.delete(id);
           if (!error) count++;
         }
-        showAlert(`批量删除完成，已移除 ${count} 篇文章！`);
+        emitToast(`批量删除完成，已移除 ${count} 篇文章！`, "success");
         setSelectedIds(new Set());
         void loadDashboardData();
       }
@@ -382,7 +384,7 @@ export function AdminDashboardPage() {
       if (error) {
         showAlert(typeof error === "string" ? error : (error?.value as string) || "更换封面失败");
       } else {
-        showAlert(`文章 #${coverTarget.id} 封面已成功置换！`);
+        emitToast(`文章 #${coverTarget.id} 封面已成功置换！`, "success");
         setAllFeeds((prev) =>
           prev.map((f) =>
             f.id === coverTarget.id
@@ -446,7 +448,7 @@ export function AdminDashboardPage() {
           )
         );
         setEditingTarget(null);
-        showAlert("文章就地修改成功！");
+        emitToast("文章就地修改成功！", "success");
       }
     } catch (e: any) {
       showAlert(e.message || "更新失败");
@@ -508,7 +510,7 @@ export function AdminDashboardPage() {
           }
           return next;
         });
-        showAlert(`文章 #${permissionTarget.id} 权限配置已保存并即时生效！`);
+        emitToast(`文章 #${permissionTarget.id} 权限配置已保存并即时生效！`, "success");
         setPermissionTarget(null);
       } else {
         showAlert("保存权限策略失败，请检查登录凭证");
