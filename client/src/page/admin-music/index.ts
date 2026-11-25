@@ -7,3 +7,4 @@ export * from "./playlist-datagrid";
 export * from "./gallery-view";
 export * from "./explore-view";
 export * from "./custom-track-bar";
+export * from "./album-wall-view";

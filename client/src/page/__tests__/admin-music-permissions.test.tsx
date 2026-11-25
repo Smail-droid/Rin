@@ -1,8 +1,9 @@
 import "../../test/setup";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import { PlaylistDataGrid } from "../admin-music/playlist-datagrid";
 import { ExploreView } from "../admin-music/explore-view";
+import { AlbumWallView } from "../admin-music/album-wall-view";
 import type { MusicTrack } from "../../components/music-player/types";
 
 afterEach(() => {
@@ -115,5 +116,31 @@ describe("Music studio visitor vs admin permission isolation", () => {
     expect(queryByText("批量收录前8首")).toBeNull();
     expect(queryByText("收录")).toBeNull();
     expect(getByText("试听")).toBeDefined();
+  });
+
+  it("renders Navidrome AlbumWallView with album/artist aggregation, inline tracklist, and read-only playback", () => {
+    const onPlay = mock();
+    const onPlayAlbum = mock();
+    const { getByText, getByLabelText, queryByText } = render(
+      <AlbumWallView
+        tracks={sampleTracks}
+        currentTrack={null}
+        isPlaying={false}
+        onPlay={onPlay}
+        onPause={mock()}
+        onPlayAlbum={onPlayAlbum}
+      />,
+    );
+
+    expect(getByText("十一月的萧邦")).toBeDefined();
+    expect(queryByText("删除")).toBeNull();
+
+    fireEvent.click(getByLabelText("查看 十一月的萧邦"));
+    expect(getByText("夜曲")).toBeDefined();
+    fireEvent.click(getByText("全部播放"));
+    expect(onPlayAlbum).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(getByText("按歌手聚合"));
+    expect(getByText("周杰伦")).toBeDefined();
   });
 });

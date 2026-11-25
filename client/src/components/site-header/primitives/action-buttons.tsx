@@ -486,7 +486,7 @@ export function UserAvatar({
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   <i className="ri-quill-pen-line text-theme" />
-                  <span className="font-semibold">✍️ 撰写工坊</span>
+                  <span className="font-semibold">撰写工坊</span>
                 </button>
                 <button
                   type="button"
@@ -497,7 +497,7 @@ export function UserAvatar({
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   <i className="ri-folder-image-line text-sky-500" />
-                  <span>🖼️ 云端图床</span>
+                  <span>云端图床</span>
                 </button>
                 <button
                   type="button"
@@ -508,7 +508,7 @@ export function UserAvatar({
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   <i className="ri-disc-line text-pink-500" />
-                  <span>🎵 微光音廊</span>
+                  <span>微光音廊</span>
                 </button>
                 <button
                   type="button"
@@ -519,7 +519,7 @@ export function UserAvatar({
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   <i className="ri-price-tag-3-line text-amber-500" />
-                  <span>🏷️ 标签表格</span>
+                  <span>标签表格</span>
                 </button>
                 <button
                   type="button"
@@ -542,7 +542,7 @@ export function UserAvatar({
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   <i className="ri-settings-4-line text-neutral-500 dark:text-neutral-400" />
-                  <span>⚙️ 系统设置</span>
+                  <span>系统设置</span>
                 </button>
                 <button
                   type="button"
@@ -553,7 +553,7 @@ export function UserAvatar({
                   className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-xs t-primary transition-colors hover:bg-black/5 dark:hover:bg-white/10 pb-1.5"
                 >
                   <i className="ri-dashboard-3-line text-neutral-500 dark:text-neutral-400" />
-                  <span>📊 概览大盘</span>
+                  <span>概览大盘</span>
                 </button>
                 <div className="my-1 h-px bg-[rgb(var(--rin-hairline-rgb)/0.7)]" />
               </>

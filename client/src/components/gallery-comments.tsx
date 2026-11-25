@@ -611,7 +611,7 @@ export function GalleryComments({
       ok: true,
       message: !profile && containsUrl
         ? "🛡️ 留言已提交！因包含外链，将在博主审核后公开。"
-        : "✨ 留言已成功贴上画廊！",
+        : "留言已成功贴上画廊",
     };
   };
 

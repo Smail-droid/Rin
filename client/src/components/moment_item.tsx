@@ -109,11 +109,11 @@ export function MomentItem({
       }
       return {
         ok: true,
-        message: data.message || "✨ 留言已发布！",
+        message: data.message || "留言已发布",
       };
     }
 
-    return { ok: true, message: "✨ 留言已发布！" };
+    return { ok: true, message: "留言已发布" };
   };
 
   const handleApproveComment = async (commentId: number) => {

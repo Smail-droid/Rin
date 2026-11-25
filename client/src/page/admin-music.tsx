@@ -32,6 +32,8 @@ import {
   PlaylistDataGrid,
   GalleryView,
   ExploreView,
+  AlbumWallView,
+  resolveTrackAlbumTitle,
 } from "./admin-music/index";
 
 export function AdminMusicPage() {
@@ -40,9 +42,9 @@ export function AdminMusicPage() {
   const profile = useContext(ProfileContext);
   const isAdmin = Boolean(profile?.permission);
 
-  // 核心三大视界：音廊 (R2云端资产) | 播放列表 (前台歌单) | 曲库探索 (全网检索)
-  const [activeTab, setActiveTab] = useState<"gallery" | "playlist" | "explore">(() =>
-    isAdmin ? "gallery" : "playlist"
+  // 核心四大视界：专辑封面墙 (Navidrome) | 音廊 (R2云端资产) | 播放列表 (前台歌单) | 曲库探索 (全网检索)
+  const [activeTab, setActiveTab] = useState<"albums" | "gallery" | "playlist" | "explore">(() =>
+    isAdmin ? "gallery" : "albums"
   );
 
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -144,7 +146,7 @@ export function AdminMusicPage() {
 
   useEffect(() => {
     if (!isAdmin) {
-      if (activeTab === "gallery") setActiveTab("playlist");
+      if (activeTab === "gallery") setActiveTab("albums");
       return;
     }
     void loadR2Files();
@@ -178,6 +180,12 @@ export function AdminMusicPage() {
   }, [r2Files, searchR2Query, sortR2By]);
 
   // 播放列表分类分组统计
+  const albumCount = useMemo(() => {
+    const set = new Set<string>();
+    player.playlist.forEach((t) => set.add(resolveTrackAlbumTitle(t)));
+    return set.size;
+  }, [player.playlist]);
+
   const customGroups = useMemo(() => {
     const map = new Map<string, number>();
     player.playlist.forEach((t) => {
@@ -788,6 +796,26 @@ export function AdminMusicPage() {
           {/* 分组 2: 音乐资料库 (Library) */}
           <div className="space-y-1">
             <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider px-2">我的资料库</span>
+            <button
+              type="button"
+              onClick={() => setActiveTab("albums")}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                activeTab === "albums"
+                  ? "bg-theme text-white shadow-2xs font-bold"
+                  : "text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <i className="ri-album-line text-sm" />
+                <span>专辑封面墙</span>
+              </div>
+              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                activeTab === "albums" ? "bg-white/20 text-white" : "bg-black/5 dark:bg-white/5 text-neutral-400"
+              }`}>
+                {albumCount}
+              </span>
+            </button>
+
             {isAdmin && (
               <button
                 type="button"
@@ -985,6 +1013,20 @@ export function AdminMusicPage() {
         openListSyncStatus={openListSyncStatus}
         syncCount={syncCount}
       />
+
+      {/* 3.5 视界 0: Navidrome 级专辑封面墙 */}
+      {activeTab === "albums" && (
+        <AlbumWallView
+          tracks={player.playlist}
+          currentTrack={player.currentTrack}
+          isPlaying={player.isPlaying}
+          onPlay={(t: MusicTrack) => player.play(t)}
+          onPause={() => player.pause()}
+          onPlayAlbum={(tracks: MusicTrack[]) => {
+            if (tracks[0]) player.play(tracks[0]);
+          }}
+        />
+      )}
 
       {/* 4. 视界 A: 音廊资产 */}
       {isAdmin && activeTab === "gallery" && (

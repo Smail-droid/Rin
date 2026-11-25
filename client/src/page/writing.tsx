@@ -849,7 +849,7 @@ export function WritingPage({ id: propId }: { id?: number }) {
                 }}
                 className="rounded-xl bg-theme px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-theme-hover transition"
               >
-                ✍️ 确认应用并替换当前编辑器
+                确认应用并替换当前编辑器
               </button>
             </div>
           </div>
