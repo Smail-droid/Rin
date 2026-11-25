@@ -100,24 +100,24 @@ export function AppRoutes() {
         <AdminOpenListPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/music" requirePermission title="音廊" description="全站沉浸式微光音乐电台与 R2 云端资产中枢">
-        <Redirect to="/music" />
+      <AdminRoute path="/admin/music" requirePermission title="音廊电台" description="全站沉浸式微光音乐电台与 R2 云端资产中枢">
+        <AdminMusicPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/access" requirePermission title="权限" description="文章隐私与特定内容保护 · 一键加锁与授权验证">
+      <AdminRoute path="/admin/access" requirePermission title="内容加锁" description="文章隐私与特定内容保护 · 一键加锁与授权验证">
         <AdminAccessPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/tokens" requirePermission title="口令" description="场景化访问通行证工坊 · 单次即焚/限次查看/永久激活密钥">
+      <AdminRoute path="/admin/tokens" requirePermission title="图床口令" description="开放图床 API 上传口令与外部客户端接入凭证">
         <AdminTokensPage />
       </AdminRoute>
 
-      <AdminRoute path="/admin/settings" requirePermission title="设置" description={t("admin.settings_description")}>
+      <AdminRoute path="/admin/settings" requirePermission title="站点设置" description={t("admin.settings_description")}>
         <Settings />
       </AdminRoute>
 
-      <AdminRoute path="/admin/tags" requirePermission title="标签" description="管理与重命名全站标签体系">
-        <Redirect to="/hashtags" />
+      <AdminRoute path="/admin/tags" requirePermission title="标签整理" description="管理与重命名全站标签体系">
+        <HashtagsPage embeddedInAdmin />
       </AdminRoute>
 
       {/* 运维中心 (三合一：健康诊断 + 增量回填 + SEO引擎 左右双拼同屏展示) */}
@@ -197,8 +197,8 @@ export function AppRoutes() {
         }}
       </Route>
 
-      <AdminRoute path="/admin/files" requirePermission title="图床" description={t("admin_files.description")}>
-        <Redirect to="/gallery" />
+      <AdminRoute path="/admin/files" requirePermission title="图床画廊" description={t("admin_files.description")}>
+        <AdminFilesPage readOnly={false} />
       </AdminRoute>
 
       <AppRoute path="/gallery" paddingClassName="px-1.5 sm:px-4 md:px-6">

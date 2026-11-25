@@ -13,7 +13,7 @@ import type { ConfigHealthResponse } from "../api/client";
 function getFixLink(id: string): string {
   if (id.includes("login")) return "/admin/settings?tab=general";
   if (id.includes("webhook") || id.includes("storage") || id.includes("s3")) return "/admin/settings?tab=services";
-  if (id.includes("ai")) return "/admin/ai-hub";
+  if (id.includes("ai")) return "/admin/ai";
   return "/admin/settings?tab=general";
 }
 
@@ -119,7 +119,7 @@ export function AdminOpsHubPage() {
 
   const copyToClipboard = (text: string, label: string) => {
     void navigator.clipboard.writeText(text);
-    showAlert(`🎉 已复制 ${label} 到剪贴板：\n${text}`);
+    showAlert(`已复制 ${label} 到剪贴板：\n${text}`);
   };
 
   return (

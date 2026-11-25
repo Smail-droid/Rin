@@ -538,82 +538,127 @@ export function AdminDashboardPage() {
       />
 
       {/* ====================================================================
-          第 1 层：全站核心资产总览 (音廊与媒体分开，透出剩余容量，无无效留白)
+          第 1 层：Bento Grid 全站核心资产概览 (画廊语义令牌 · 模块化展卡)
           ==================================================================== */}
-      <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-theme/10 text-theme text-2xl shadow-2xs">
-            <i className="ri-dashboard-3-line" />
-          </span>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold t-primary">画廊概览中枢</h2>
-            </div>
-            <p className="text-xs text-neutral-400 mt-0.5">
-              全站文章、随笔、留言与云端资产实时统计
-            </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+        {/* Bento Card 1: 作品与随笔 */}
+        <div className="p-4 sm:p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-2xs flex flex-col justify-between gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-[rgb(var(--rin-ink-muted-rgb))]">
+              作品与随笔
+            </span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-theme/10 text-theme text-base">
+              <i className="ri-article-line" />
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2.5">
+            <span className="text-2xl font-bold tracking-tight text-[rgb(var(--rin-ink-rgb))] font-mono">
+              {stats.loading ? "..." : stats.feedsPublished}
+            </span>
+            <span className="text-xs text-[rgb(var(--rin-ink-muted-rgb))]">篇公开文章</span>
+          </div>
+          <div className="flex items-center gap-3 pt-2 border-t border-[rgb(var(--rin-hairline-rgb)/0.65)] text-xs font-mono">
+            <span className={stats.feedsDraft > 0 ? "text-amber-500 font-semibold" : "text-[rgb(var(--rin-ink-muted-rgb))]"}>
+              草稿 {stats.loading ? "..." : stats.feedsDraft}
+            </span>
+            <span className="text-[rgb(var(--rin-hairline-rgb))]">·</span>
+            <span className="text-[rgb(var(--rin-ink-muted-rgb))]">
+              动态 {stats.loading ? "..." : stats.momentsTotal}
+            </span>
           </div>
         </div>
 
-        {/* 核心真实资产指标胶囊 (音廊与媒体完全独立分开，透出 10GB 剩余配额) */}
-        <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02]">
-            <span className="text-neutral-400">公开:</span>
-            <span className="font-bold text-theme">{stats.loading ? "..." : stats.feedsPublished}</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02]">
-            <span className="text-neutral-400">草稿:</span>
-            <span className={`font-bold ${stats.feedsDraft > 0 ? "text-amber-500 font-extrabold" : "text-neutral-400"}`}>
-              {stats.loading ? "..." : stats.feedsDraft}
+        {/* Bento Card 2: 互动与留言 */}
+        <div className="p-4 sm:p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-2xs flex flex-col justify-between gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-[rgb(var(--rin-ink-muted-rgb))]">
+              互动与留言
+            </span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-pink-500/10 text-pink-500 text-base">
+              <i className="ri-chat-3-line" />
             </span>
           </div>
-
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02]">
-            <span className="text-neutral-400">动态:</span>
-            <span className="font-bold text-sky-500">{stats.loading ? "..." : stats.momentsTotal}</span>
+          <div className="flex items-baseline gap-2.5">
+            <span className="text-2xl font-bold tracking-tight text-[rgb(var(--rin-ink-rgb))] font-mono">
+              {stats.loading ? "..." : stats.commentsTotal}
+            </span>
+            <span className="text-xs text-[rgb(var(--rin-ink-muted-rgb))]">条画廊留言</span>
           </div>
-
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02]">
-            <span className="text-neutral-400">留言:</span>
-            <span className="font-bold text-pink-500">{stats.loading ? "..." : stats.commentsTotal}</span>
-            {stats.commentsPending > 0 && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500 text-white font-bold animate-pulse">
-                {stats.commentsPending} 待审
-              </span>
-            )}
+          <div className="flex items-center justify-between pt-2 border-t border-[rgb(var(--rin-hairline-rgb)/0.65)] text-xs">
+            <span className={stats.commentsPending > 0 ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-[rgb(var(--rin-ink-muted-rgb))]"}>
+              {stats.commentsPending > 0 ? `${stats.commentsPending} 条待审核` : "全部已审核"}
+            </span>
+            <Link href="/admin/ops" className="text-[11px] text-theme hover:underline font-medium">
+              运维巡检
+            </Link>
           </div>
+        </div>
 
-          {/* 媒体资产单独呈现 */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02]">
-            <span className="text-neutral-400">媒体:</span>
-            <span className="font-bold text-amber-500">
-              {r2Stats ? `${r2Stats.imageCount} 张 (${formatFileSize(r2Stats.imageBytes)})` : `${stats.storageCount} 张`}
+        {/* Bento Card 3: 媒体图床与音廊 */}
+        <div className="p-4 sm:p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-2xs flex flex-col justify-between gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-[rgb(var(--rin-ink-muted-rgb))]">
+              云端媒体与音廊
+            </span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-500/10 text-sky-500 text-base">
+              <i className="ri-gallery-line" />
             </span>
           </div>
-
-          {/* 音廊资产单独呈现 */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02]">
-            <span className="text-neutral-400">音廊:</span>
-            <span className="font-bold text-purple-500">
-              {r2Stats ? `${r2Stats.musicCount} 首 (${formatFileSize(r2Stats.musicBytes)})` : "0 首"}
+          <div className="flex items-baseline gap-2.5">
+            <span className="text-2xl font-bold tracking-tight text-[rgb(var(--rin-ink-rgb))] font-mono">
+              {r2Stats ? r2Stats.imageCount : stats.storageCount}
+            </span>
+            <span className="text-xs text-[rgb(var(--rin-ink-muted-rgb))]">
+              张媒体 {r2Stats ? `(${formatFileSize(r2Stats.imageBytes)})` : ""}
             </span>
           </div>
+          <div className="flex items-center justify-between pt-2 border-t border-[rgb(var(--rin-hairline-rgb)/0.65)] text-xs font-mono">
+            <span className="text-[rgb(var(--rin-ink-muted-rgb))]">
+              音廊 {r2Stats ? `${r2Stats.musicCount} 首 (${formatFileSize(r2Stats.musicBytes)})` : "0 首"}
+            </span>
+            <Link href="/admin/music" className="text-[11px] font-sans text-theme hover:underline font-medium">
+              进入音廊
+            </Link>
+          </div>
+        </div>
 
-          {/* R2 剩余免费额度 */}
-          {r2Stats && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
-              <span>剩余容量:</span>
-              <span>{(r2Stats.remainingBytes / (1024 * 1024 * 1024)).toFixed(2)} GB / 10 GB</span>
-            </div>
-          )}
+        {/* Bento Card 4: R2 存储配额与快捷入口 */}
+        <div className="p-4 sm:p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-2xs flex flex-col justify-between gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-[rgb(var(--rin-ink-muted-rgb))]">
+              存储配额 · 10 GB
+            </span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-base">
+              <i className="ri-hard-drive-2-line" />
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
+              {r2Stats ? `${(r2Stats.remainingBytes / (1024 * 1024 * 1024)).toFixed(2)}` : "10.00"}
+            </span>
+            <span className="text-xs text-[rgb(var(--rin-ink-muted-rgb))]">GB 剩余可用</span>
+          </div>
+          <div className="flex items-center gap-2 pt-2 border-t border-[rgb(var(--rin-hairline-rgb)/0.65)] text-[11px] font-medium">
+            <Link href="/writing" className="px-2 py-0.5 rounded-lg bg-theme/10 text-theme hover:bg-theme/15 transition">
+              撰写
+            </Link>
+            <Link href="/admin/files" className="px-2 py-0.5 rounded-lg bg-[rgb(var(--rin-ink-rgb)/0.05)] text-[rgb(var(--rin-ink-rgb))] hover:text-theme transition">
+              图床
+            </Link>
+            <Link href="/admin/settings" className="px-2 py-0.5 rounded-lg bg-[rgb(var(--rin-ink-rgb)/0.05)] text-[rgb(var(--rin-ink-rgb))] hover:text-theme transition">
+              外观
+            </Link>
+            <Link href="/admin/ai" className="px-2 py-0.5 rounded-lg bg-[rgb(var(--rin-ink-rgb)/0.05)] text-[rgb(var(--rin-ink-rgb))] hover:text-theme transition">
+              AI
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* ====================================================================
           第 2 层：文章内容巡检超级表格 (全功能对齐调度超级表单，字体清晰舒适)
           ==================================================================== */}
-      <div className="p-4 sm:p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+      <div className="p-4 sm:p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-2xs space-y-4">
         {/* 工具栏：状态筛选、搜索框、写文章 */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">

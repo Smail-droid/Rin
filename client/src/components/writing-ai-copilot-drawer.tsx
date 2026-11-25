@@ -119,8 +119,18 @@ export function WritingAICopilotDrawer({
   const [aiTestResult, setAiTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [fetchingModels, setFetchingModels] = useState(false);
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+  const [savedProvider, setSavedProvider] = useState<string>("worker-ai");
+  const isProviderSwitched = aiConfig.provider !== savedProvider;
+  const hasEffectiveApiKey = Boolean(aiConfig.apiKey.trim()) || (aiConfig.apiKeySet && !isProviderSwitched);
 
   const handleFetchModels = async () => {
+    if (aiConfig.provider !== "worker-ai" && !hasEffectiveApiKey) {
+      setAiTestResult({
+        success: false,
+        message: `⚠️ 已切换服务商为 ${aiConfig.provider}，请先填写该服务商的 API Key`,
+      });
+      return;
+    }
     setFetchingModels(true);
     setAiTestResult(null);
     try {
@@ -154,8 +164,10 @@ export function WritingAICopilotDrawer({
           const s = data as Record<string, any>;
           const rawKey = typeof s["ai_summary.api_key"] === "string" ? s["ai_summary.api_key"] : "";
           const isMasked = rawKey === "••••••••";
+          const loadedProvider = String(s["ai_summary.provider"] || "openai");
+          setSavedProvider(loadedProvider);
           setAiConfig({
-            provider: String(s["ai_summary.provider"] || "openai"),
+            provider: loadedProvider,
             model: String(s["ai_summary.model"] || "gpt-4o-mini"),
             apiKey: isMasked ? "" : rawKey,
             apiKeySet: isMasked || rawKey.trim().length > 0,
@@ -429,7 +441,7 @@ export function WritingAICopilotDrawer({
           result: data.result,
           summary: data.summary,
         });
-        showToast("✨ 流水线梳理就绪！可查看下方独立分区");
+        showToast("流水线梳理就绪，可查看下方独立分区");
       } else {
         showToast(data?.error || String(error?.value || "梳理失败"));
       }
@@ -606,7 +618,7 @@ export function WritingAICopilotDrawer({
                   <button
                     type="button"
                     onClick={handleFetchModels}
-                    disabled={fetchingModels || (aiConfig.provider !== "worker-ai" && !aiConfig.apiKey.trim() && !aiConfig.apiKeySet)}
+                    disabled={fetchingModels || (aiConfig.provider !== "worker-ai" && !hasEffectiveApiKey)}
                     className="text-[10px] font-bold text-theme hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   >
                     {fetchingModels ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-refresh-line" />}

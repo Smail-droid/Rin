@@ -48,7 +48,7 @@ export function AdminTokensPage() {
         try {
           localStorage.setItem("rin_storage_api_token", newToken);
         } catch {}
-        showAlert(`🎉 新的开放图床 API Token 已生成：\n${newToken}`);
+        showAlert(`新的开放图床 API Token 已生成：\n${newToken}`);
       }
     );
   };
@@ -249,8 +249,8 @@ export function AdminTokensPage() {
               </div>
               <p className="text-[11px] text-neutral-400 mt-1">OpenAI / CF Workers AI 边缘摘要调度凭证</p>
             </div>
-            <Link href="/admin/settings?tab=ai" className="mt-3 text-[11px] text-theme font-semibold hover:underline">
-              前往 AI 设置管理 →
+            <Link href="/admin/ai" className="mt-3 text-[11px] text-theme font-semibold hover:underline">
+              前往 AI 助手管理 →
             </Link>
           </div>
 

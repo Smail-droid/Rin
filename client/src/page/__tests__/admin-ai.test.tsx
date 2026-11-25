@@ -69,10 +69,13 @@ afterEach(() => {
 });
 
 describe("Admin AI hub & sidebar restoration", () => {
-  it("includes /admin/ai (AI 助手) in ADMIN_NAV_ITEMS", () => {
+  it("includes cohesive admin nav items including /admin/ai (AI 助手) and in-admin content routes", () => {
     const aiItem = ADMIN_NAV_ITEMS.find((item) => item.href === "/admin/ai");
     expect(aiItem).toBeDefined();
     expect(aiItem?.label).toBe("AI 助手");
+    expect(ADMIN_NAV_ITEMS.some((item) => item.href === "/admin/files")).toBe(true);
+    expect(ADMIN_NAV_ITEMS.some((item) => item.href === "/admin/music")).toBe(true);
+    expect(ADMIN_NAV_ITEMS.some((item) => item.href === "/admin/tags")).toBe(true);
   });
 
   it("AdminAIPage saves non-blockingly with inline 已保存 ✓ and triggers modal only on error", async () => {
@@ -112,7 +115,7 @@ describe("Admin AI hub & sidebar restoration", () => {
       </Router>,
     );
 
-    await findByText("启用AI总结摘要");
+    await findByText("发布时自动生成文章导读");
     const saveBtn = getByRole("button", { name: "保存" });
     fireEvent.click(saveBtn);
 
@@ -153,7 +156,7 @@ describe("Admin AI hub & sidebar restoration", () => {
       </Router>,
     );
 
-    await findByText("启用AI总结摘要");
+    await findByText("发布时自动生成文章导读");
     const saveBtn = getByRole("button", { name: "保存" });
     fireEvent.click(saveBtn);
 
@@ -323,5 +326,56 @@ describe("Admin AI hub & sidebar restoration", () => {
     expect(saved["ai_summary.enabled"]).toBe("true");
     expect(saved["ai_provider"]).toBeUndefined();
     expect(saved["ai_model"]).toBeUndefined();
+  });
+
+  it("AISummarySettings keeps model configuration and prompt presets accessible even when auto-summary is disabled", () => {
+    const { getByText, getByPlaceholderText } = render(
+      <AISummarySettings
+        value={{
+          enabled: false,
+          provider: "gemini",
+          model: "gemini-2.5-flash",
+          apiKey: "",
+          apiKeySet: false,
+          apiUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+        }}
+        onChange={() => {}}
+      />,
+    );
+
+    expect(getByText("发布时自动生成文章导读")).toBeDefined();
+    expect(getByText("仅写作助手可用")).toBeDefined();
+    expect(getByText("模型接入与鉴权服务 (AI Provider)")).toBeDefined();
+    expect(getByText("AI 流水线多阶段提示词版本库 (Dense DataGrid)")).toBeDefined();
+    expect(getByPlaceholderText("请填写当前服务商的 API Key...")).toBeDefined();
+    expect(getByText("测试连接")).toBeDefined();
+  });
+
+  it("AISummarySettings blocks fetching models when switching provider without entering a new API key", () => {
+    let fetchCalled = false;
+    client.config.fetchAIModels = async () => {
+      fetchCalled = true;
+      return { data: { success: true, models: [] } };
+    };
+
+    const { getByText } = render(
+      <AISummarySettings
+        value={{
+          enabled: false,
+          provider: "gemini",
+          model: "gemini-2.5-flash",
+          apiKey: "",
+          apiKeySet: true,
+          apiUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+        }}
+        savedProvider="openai"
+        onChange={() => {}}
+      />,
+    );
+
+    expect(getByText("切换服务商后请填写新密钥")).toBeDefined();
+    const fetchBtn = getByText("🔄 从端点拉取模型").closest("button")!;
+    expect(fetchBtn.disabled).toBe(true);
+    expect(fetchCalled).toBe(false);
   });
 });

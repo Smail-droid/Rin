@@ -9,23 +9,33 @@ export type NavItem = {
   href: string;
   icon: string;
   label: string;
+  group?: "content" | "security" | "system";
   children?: { href: string; label: string }[];
 };
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
-  { href: "/admin/dashboard", icon: "ri-dashboard-3-line", label: "概览" },
-  { href: "/admin/settings", icon: "ri-equalizer-line", label: "设置" },
-  { href: "/admin/ai", icon: "ri-sparkling-2-line", label: "AI 助手" },
-  { href: "/admin/tokens", icon: "ri-key-2-line", label: "口令" },
-  { href: "/admin/access", icon: "ri-lock-password-line", label: "权限" },
-  { href: "/admin/ops", icon: "ri-pulse-line", label: "运维" },
-  { href: "/admin/queue-status", icon: "ri-stack-line", label: "队列" },
-  { href: "/admin/openlist", icon: "ri-folder-cloud-line", label: "资源" },
+  { href: "/admin/dashboard", icon: "ri-dashboard-3-line", label: "内容总览", group: "content" },
+  { href: "/admin/files", icon: "ri-gallery-line", label: "图床画廊", group: "content" },
+  { href: "/admin/music", icon: "ri-music-2-line", label: "音廊电台", group: "content" },
+  { href: "/admin/tags", icon: "ri-hashtag", label: "标签整理", group: "content" },
+  { href: "/admin/access", icon: "ri-lock-password-line", label: "内容加锁", group: "security" },
+  { href: "/admin/tokens", icon: "ri-key-2-line", label: "图床口令", group: "security" },
+  { href: "/admin/settings", icon: "ri-equalizer-line", label: "站点设置", group: "system" },
+  { href: "/admin/ai", icon: "ri-sparkling-2-line", label: "AI 助手", group: "system" },
+  { href: "/admin/ops", icon: "ri-pulse-line", label: "系统运维", group: "system" },
+  { href: "/admin/queue-status", icon: "ri-stack-line", label: "任务队列", group: "system" },
+  { href: "/admin/openlist", icon: "ri-folder-cloud-line", label: "网盘挂载", group: "system" },
 ];
+
+const NAV_GROUP_LABELS: Record<"content" | "security" | "system", string> = {
+  content: "内容管理",
+  security: "安全与访问",
+  system: "配置与运维",
+};
 
 export function AdminLayout({
   title,
-  description: _description,
+  description,
   children,
 }: {
   title: string;
@@ -36,10 +46,7 @@ export function AdminLayout({
   const [location] = useLocation();
   const colorMode = useColorMode();
 
-  // 移动端菜单开关
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  // 快捷搜索菜单
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -58,7 +65,6 @@ export function AdminLayout({
     }
   };
 
-  // 支持键盘快捷键 Ctrl+K 聚焦搜索
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
@@ -71,155 +77,185 @@ export function AdminLayout({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // 过滤后的导航菜单
   const filteredNavItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return ADMIN_NAV_ITEMS;
     return ADMIN_NAV_ITEMS.filter(
-      (item) => item.label.toLowerCase().includes(q) || item.href.toLowerCase().includes(q)
+      (item) => item.label.toLowerCase().includes(q) || item.href.toLowerCase().includes(q),
     );
   }, [searchQuery]);
 
+  const groupedNav = useMemo(() => {
+    const order: Array<"content" | "security" | "system"> = ["content", "security", "system"];
+    return order
+      .map((group) => ({
+        group,
+        label: NAV_GROUP_LABELS[group],
+        items: filteredNavItems.filter((item) => (item.group || "content") === group),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [filteredNavItems]);
+
   return (
-    <div className="min-h-screen w-full max-w-full bg-[#f8fafc] text-neutral-800 dark:bg-[#12161f] dark:text-[#d1d5db] flex transition-colors duration-200 overflow-x-hidden">
+    <div className="min-h-screen w-full max-w-full bg-[rgb(var(--rin-canvas-rgb))] text-[rgb(var(--rin-ink-rgb))] flex transition-colors duration-200 overflow-x-hidden">
       {/* 移动端全屏半透明遮罩背景 */}
       {mobileMenuOpen && (
         <div
           onClick={() => setMobileMenuOpen(false)}
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs lg:hidden ani-show"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden ani-show"
         />
       )}
 
       {/* ====================================================================
-          1. 紧凑型专业侧边栏 (向日葵专业暗黑风格：深炭黑底色 #18181b / #1f1f23)
+          1. Refero 静谧左侧导航栏 (画廊语义表面 + 发丝描边 + 分组秩序)
           ==================================================================== */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between border-r border-black/10 bg-white dark:border-white/5 dark:bg-[#18181b] shadow-xl transition-transform duration-200 ease-in-out select-none w-16 ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between border-r border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] transition-transform duration-200 ease-in-out select-none w-56 ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        {/* Top Area: 头像与日夜模式切换 */}
-        <div className="flex flex-col items-center">
-          {/* Logo 头像 */}
-          <div className="flex h-16 w-full items-center justify-center border-b border-black/5 dark:border-white/5">
-            <Link href="/" className="relative group" title="返回博客主页">
+        <div className="flex flex-col min-h-0 flex-1">
+          {/* Brand Header */}
+          <div className="flex h-14 w-full items-center gap-2.5 px-4 border-b border-[rgb(var(--rin-hairline-rgb)/0.7)] shrink-0">
+            <Link
+              href="/"
+              className="flex items-center gap-2.5 min-w-0 group"
+              title="返回前台画廊"
+            >
               {siteConfig.avatar ? (
                 <img
                   src={siteConfig.avatar}
                   alt={siteConfig.name || "80Hou"}
-                  className="h-10 w-10 rounded-xl object-cover shadow-sm ring-2 ring-theme/20 group-hover:scale-105 transition-transform"
+                  className="h-8 w-8 rounded-xl object-cover border border-[rgb(var(--rin-hairline-rgb))] group-hover:scale-105 transition-transform shrink-0"
                 />
               ) : (
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-theme to-pink-500 text-white font-extrabold text-xs shadow-sm">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-theme/12 text-theme font-bold text-xs border border-theme/20">
                   80H
                 </span>
               )}
-              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-neutral-900" />
+              <div className="min-w-0">
+                <div className="text-[13px] font-bold text-[rgb(var(--rin-ink-rgb))] truncate leading-tight group-hover:text-theme transition-colors">
+                  {siteConfig.name || "画廊随想"}
+                </div>
+                <div className="text-[10px] font-mono uppercase tracking-wider text-[rgb(var(--rin-ink-muted-rgb))] leading-tight mt-0.5">
+                  Studio Desk
+                </div>
+              </div>
             </Link>
           </div>
 
-          {/* 紧凑纯图标导航列表 (向日葵专业暗黑配色：未选中 #a1a1aa，选中深炭灰底 + 亮粉字；日夜切换严格保留在顶栏唯一一处) */}
-          <nav className="flex flex-col gap-1 p-1.5 w-full overflow-y-auto max-h-[calc(100vh-220px)] scrollbar-none">
-            {filteredNavItems.map((item) => {
-              const isActive = location === item.href || location.startsWith(`${item.href}/`);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`group relative flex flex-col items-center justify-center rounded-xl py-1.5 w-full transition-all duration-150 ${
-                    isActive
-                      ? "bg-theme text-white shadow-xs font-bold dark:bg-[#27272a] dark:text-[#ff4d6d] dark:shadow-inner"
-                      : "text-neutral-500 hover:bg-black/[0.04] hover:text-neutral-900 dark:text-[#a1a1aa] dark:hover:bg-[#27272a]/60 dark:hover:text-white"
-                  }`}
-                  title={item.label}
-                >
-                  <i className={`${item.icon} text-lg shrink-0 transition-transform group-hover:scale-110 ${
-                    isActive ? "dark:text-[#ff4d6d]" : ""
-                  }`} />
-                  <span className="text-xs mt-0.5 tracking-tight font-semibold">
-                    {item.label}
-                  </span>
-
-                  {/* 激活指示条 (暗黑模式下为精致的樱粉高光条) */}
-                  {isActive && (
-                    <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-white dark:bg-[#ff4d6d]" />
-                  )}
-                </Link>
-              );
-            })}
+          {/* 分组导航 */}
+          <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5 scrollbar-none">
+            {groupedNav.map((section) => (
+              <div key={section.group} className="space-y-1">
+                <div className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[rgb(var(--rin-ink-muted-rgb))]">
+                  {section.label}
+                </div>
+                {section.items.map((item) => {
+                  const isActive =
+                    location === item.href ||
+                    location.startsWith(`${item.href}/`) ||
+                    (item.href === "/admin/dashboard" && location === "/admin");
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`group relative flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] transition-colors duration-150 ${
+                        isActive
+                          ? "bg-theme/10 text-theme font-semibold"
+                          : "text-[rgb(var(--rin-ink-muted-rgb))] hover:bg-[rgb(var(--rin-ink-rgb)/0.04)] hover:text-[rgb(var(--rin-ink-rgb))] font-medium"
+                      }`}
+                    >
+                      {isActive && (
+                        <span className="absolute left-0 top-2 bottom-2 w-[2.5px] rounded-r bg-theme" />
+                      )}
+                      <i
+                        className={`${item.icon} text-base shrink-0 transition-transform group-hover:scale-105 ${
+                          isActive ? "text-theme" : "opacity-80"
+                        }`}
+                      />
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
         </div>
 
         {/* Bottom Area: Front-Office & Logout */}
-        <div className="flex flex-col items-center border-t border-black/5 p-1.5 dark:border-white/5 gap-1">
+        <div className="flex flex-col border-t border-[rgb(var(--rin-hairline-rgb)/0.7)] p-3 gap-1 shrink-0">
           <Link
             href="/"
-            className="flex h-9 w-full items-center justify-center rounded-xl text-neutral-400 hover:bg-black/5 hover:text-theme dark:hover:bg-white/5 transition"
-            title="返回前台画廊"
+            className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium text-[rgb(var(--rin-ink-muted-rgb))] hover:bg-[rgb(var(--rin-ink-rgb)/0.04)] hover:text-[rgb(var(--rin-ink-rgb))] transition-colors"
           >
-            <i className="ri-home-4-line text-base" />
+            <i className="ri-home-4-line text-sm" />
+            <span>返回前台画廊</span>
           </Link>
-          {/* 退出登录按钮 */}
           <button
             type="button"
             onClick={handleLogout}
-            className="flex h-9 w-full items-center justify-center rounded-xl text-neutral-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 transition"
-            title="退出登录"
+            className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium text-[rgb(var(--rin-ink-muted-rgb))] hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer text-left"
           >
-            <i className="ri-logout-box-r-line text-base" />
+            <i className="ri-logout-box-r-line text-sm" />
+            <span>退出登录</span>
           </button>
         </div>
       </aside>
 
       {/* ====================================================================
-          2. 主工作区与顶部极简控制栏 (固定留白 64px，绝不挤压抖动)
+          2. 主工作区与顶部极简控制栏
           ==================================================================== */}
-      <div className="flex-1 flex flex-col min-w-0 transition-all duration-150 lg:pl-16 pl-0">
+      <div className="flex-1 flex flex-col min-w-0 transition-all duration-150 lg:pl-56 pl-0">
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-black/5 bg-white/80 px-3 sm:px-6 backdrop-blur-xl dark:border-white/5 dark:bg-[#161b26]/80 select-none">
-          {/* Left: Mobile Hamburger & Breadcrumbs */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            {/* 移动端汉堡菜单触发按钮 */}
+        <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-[rgb(var(--rin-hairline-rgb)/0.85)] bg-[rgb(var(--rin-canvas-rgb)/0.86)] px-4 sm:px-6 lg:px-8 backdrop-blur-xl select-none">
+          {/* Left: Mobile Hamburger, Theme Toggle & Editorial Breadcrumb */}
+          <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="flex lg:hidden h-8 w-8 items-center justify-center rounded-xl bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300"
+              className="flex lg:hidden h-8 w-8 items-center justify-center rounded-xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] text-[rgb(var(--rin-ink-rgb))]"
               title="展开后台菜单"
             >
               <i className={mobileMenuOpen ? "ri-close-line text-lg" : "ri-menu-2-line text-lg"} />
             </button>
 
-            {/* 纯净日夜切换按钮 (无背景底色，太阳黄色，月亮粉色) */}
             <button
               type="button"
               onClick={toggleTheme}
-              className="flex h-8 w-8 items-center justify-center transition-transform hover:scale-115 active:scale-95 select-none"
+              className="flex h-8 w-8 items-center justify-center rounded-xl hover:bg-[rgb(var(--rin-ink-rgb)/0.05)] transition-all active:scale-95 select-none cursor-pointer"
               title={colorMode === "dark" ? "当前: 暗黑模式 (点击切换为浅色)" : "当前: 浅色模式 (点击切换为暗黑)"}
             >
-              <i className={colorMode === "dark" ? "ri-moon-line text-rose-400 text-lg" : "ri-sun-line text-amber-500 text-lg"} />
+              <i className={colorMode === "dark" ? "ri-moon-line text-rose-400 text-base" : "ri-sun-line text-amber-500 text-base"} />
             </button>
 
-            <div className="flex items-center gap-1.5 rounded-full border border-black/10 bg-black/[0.02] px-3 py-1 text-xs dark:border-white/10 dark:bg-white/[0.02]">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span className="font-bold text-neutral-700 dark:text-neutral-300 hidden sm:inline">后台</span>
-              <span className="text-neutral-400 font-bold hidden sm:inline">/</span>
-              <span className="font-bold text-theme truncate">{title}</span>
+            <div className="flex items-center gap-2 text-xs min-w-0">
+              <span className="font-mono text-[11px] uppercase tracking-wider text-[rgb(var(--rin-ink-muted-rgb))] hidden sm:inline">
+                工作台
+              </span>
+              <span className="text-[rgb(var(--rin-ink-muted-rgb))] opacity-50 hidden sm:inline">/</span>
+              <span className="font-semibold text-[rgb(var(--rin-ink-rgb))] truncate">{title}</span>
+              {description ? (
+                <span className="hidden xl:inline text-[11px] text-[rgb(var(--rin-ink-muted-rgb))] truncate max-w-md border-l border-[rgb(var(--rin-hairline-rgb))] pl-2.5 ml-0.5">
+                  {description}
+                </span>
+              ) : null}
             </div>
           </div>
 
-          {/* Right: Quick Search & Avatar Tips */}
-          <div className="flex items-center gap-3">
+          {/* Right: Quick Search & Studio Links */}
+          <div className="flex items-center gap-2.5">
             {searchOpen ? (
               <div className="relative flex items-center ani-show">
-                <i className="ri-search-line absolute left-2.5 text-neutral-400 text-xs" />
+                <i className="ri-search-line absolute left-2.5 text-[rgb(var(--rin-ink-muted-rgb))] text-xs" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="快速检索后台导航..."
-                  className="w-44 sm:w-56 rounded-xl border border-black/10 bg-black/[0.02] py-1 pl-7 pr-7 text-xs t-primary outline-none focus:border-theme dark:border-white/10 dark:bg-white/[0.03]"
+                  className="w-44 sm:w-56 rounded-xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] py-1 pl-7 pr-7 text-xs text-[rgb(var(--rin-ink-rgb))] outline-none focus:border-theme"
                 />
                 <button
                   type="button"
@@ -227,7 +263,7 @@ export function AdminLayout({
                     setSearchQuery("");
                     setSearchOpen(false);
                   }}
-                  className="absolute right-2 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                  className="absolute right-2 text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))] cursor-pointer"
                 >
                   <i className="ri-close-line text-xs" />
                 </button>
@@ -239,7 +275,7 @@ export function AdminLayout({
                   setSearchOpen(true);
                   setTimeout(() => searchInputRef.current?.focus(), 50);
                 }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/5 text-neutral-500 text-xs transition"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] hover:border-theme/40 text-[rgb(var(--rin-ink-muted-rgb))] hover:text-[rgb(var(--rin-ink-rgb))] text-xs transition cursor-pointer"
                 title="搜索后台功能 (Ctrl+K)"
               >
                 <i className="ri-search-line text-xs" />
@@ -247,32 +283,45 @@ export function AdminLayout({
               </button>
             )}
 
-            <div className="flex items-center gap-2.5 text-xs text-neutral-400">
-              <Link href="/writing" className="hover:text-theme transition hidden sm:inline-flex items-center gap-1 font-semibold" title="进入沉浸式撰写工坊">
+            <div className="flex items-center gap-1.5 text-xs text-[rgb(var(--rin-ink-muted-rgb))]">
+              <Link
+                href="/writing"
+                className="hidden sm:inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 hover:bg-[rgb(var(--rin-ink-rgb)/0.05)] hover:text-theme transition font-medium"
+                title="进入沉浸式撰写工坊"
+              >
                 <i className="ri-quill-pen-line text-xs" />
                 <span>撰写</span>
               </Link>
-              <span className="hidden sm:inline opacity-30">|</span>
-              <Link href="/gallery" className="hover:text-theme transition hidden sm:inline-flex items-center gap-1 font-semibold" title="进入云端图床画廊">
+              <Link
+                href="/gallery"
+                className="hidden sm:inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 hover:bg-[rgb(var(--rin-ink-rgb)/0.05)] hover:text-theme transition font-medium"
+                title="进入云端图床画廊"
+              >
                 <i className="ri-folder-image-line text-xs" />
                 <span>图床</span>
               </Link>
-              <span className="hidden sm:inline opacity-30">|</span>
-              <Link href="/music" className="hover:text-theme transition hidden sm:inline-flex items-center gap-1 font-semibold" title="进入微光音廊工作台">
+              <Link
+                href="/music"
+                className="hidden sm:inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 hover:bg-[rgb(var(--rin-ink-rgb)/0.05)] hover:text-theme transition font-medium"
+                title="进入微光音廊工作台"
+              >
                 <i className="ri-disc-line text-xs" />
                 <span>音廊</span>
               </Link>
-              <span className="hidden sm:inline opacity-30">|</span>
-              <Link href="/" className="hover:text-theme transition font-medium">
-                返回画廊前台 &rarr;
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1 rounded-xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] px-2.5 py-1.5 hover:border-theme/40 hover:text-theme transition font-medium text-[rgb(var(--rin-ink-rgb))]"
+              >
+                <span>前台</span>
+                <i className="ri-arrow-right-up-line text-xs opacity-70" />
               </Link>
             </div>
           </div>
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 w-full max-w-full p-3 sm:p-5 lg:p-6 overflow-x-hidden transition-all duration-150">
-          <div className="w-full max-w-full mx-auto flex flex-col gap-4">
+        <main className="flex-1 w-full max-w-full p-4 sm:p-6 lg:p-8 overflow-x-hidden transition-all duration-150">
+          <div className="w-full max-w-7xl mx-auto flex flex-col gap-5">
             {children}
           </div>
         </main>

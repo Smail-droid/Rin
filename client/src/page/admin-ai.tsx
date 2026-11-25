@@ -24,6 +24,7 @@ export function AdminAIPage() {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [draft, setDraft] = useState<SettingsDraft>({ clientConfig: {}, serverConfig: {} });
   const [hasStoredAiApiKey, setHasStoredAiApiKey] = useState(false);
+  const [savedProvider, setSavedProvider] = useState<string>("openai");
 
   useEffect(() => {
     return () => {
@@ -36,6 +37,7 @@ export function AdminAIPage() {
       .then((state) => {
         setDraft(state.draft);
         setHasStoredAiApiKey(state.hasStoredAiApiKey);
+        setSavedProvider(String(state.draft.serverConfig["ai_summary.provider"] ?? "openai"));
       })
       .catch((err) => showAlert(err.message))
       .finally(() => setLoading(false));
@@ -62,6 +64,7 @@ export function AdminAIPage() {
       const state = await saveSettingsConfigState(draft);
       setDraft(state.draft);
       setHasStoredAiApiKey(Boolean(state.hasStoredAiApiKey || (aiValue.apiKey && aiValue.apiKey.trim().length > 0)));
+      setSavedProvider(String(state.draft.serverConfig["ai_summary.provider"] ?? aiValue.provider));
       setSaveStatus("saved");
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
@@ -117,7 +120,7 @@ export function AdminAIPage() {
           </div>
         ) : (
           <div className="flex flex-col space-y-4">
-            <AISummarySettings value={aiValue} onChange={handleAIChange} onSave={handleSave} />
+            <AISummarySettings value={aiValue} savedProvider={savedProvider} onChange={handleAIChange} onSave={handleSave} />
           </div>
         )}
       </div>

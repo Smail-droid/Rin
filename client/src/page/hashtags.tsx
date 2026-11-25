@@ -75,7 +75,7 @@ const CLOUD_STYLE_OPTIONS: Array<{ id: CloudStyle; label: string }> = [
   { id: "pill", label: "微光胶囊" },
 ];
 
-export function HashtagsPage() {
+export function HashtagsPage({ embeddedInAdmin = false }: { embeddedInAdmin?: boolean }) {
   const { t } = useTranslation();
   const siteConfig = useSiteConfig();
   const profile = useContext(ProfileContext);
@@ -508,16 +508,18 @@ export function HashtagsPage() {
       <ConfirmUI />
 
       <Waiting for={hashtags}>
-        <main className={`${GALLERY_CONTAINER_CLASS} py-6 sm:py-8 mb-16 ani-show`}>
-          <PageHeader
-            eyebrow={`HASHTAG ARCHIVE · ${hashtags?.length || 0}`}
-            title={t("hashtags_index", { defaultValue: "标签索引" })}
-            subtitle={`万象归卷，随引而遇 · 共 ${hashtags?.length || 0} 个话题，关联 ${totalFeedsCount} 篇次`}
-            mode={siteConfig.pageHeaderMode}
-            titleFont={siteConfig.themeTitleFont as any}
-            titleEffect={siteConfig.themeTitleEffect}
-            bannerUrl={siteConfig.pageHeaderBannerUrl}
-          />
+        <main className={embeddedInAdmin ? "w-full ani-show" : `${GALLERY_CONTAINER_CLASS} py-6 sm:py-8 mb-16 ani-show`}>
+          {!embeddedInAdmin && (
+            <PageHeader
+              eyebrow={`HASHTAG ARCHIVE · ${hashtags?.length || 0}`}
+              title={t("hashtags_index", { defaultValue: "标签索引" })}
+              subtitle={`万象归卷，随引而遇 · 共 ${hashtags?.length || 0} 个话题，关联 ${totalFeedsCount} 篇次`}
+              mode={siteConfig.pageHeaderMode}
+              titleFont={siteConfig.themeTitleFont as any}
+              titleEffect={siteConfig.themeTitleEffect}
+              bannerUrl={siteConfig.pageHeaderBannerUrl}
+            />
+          )}
 
           {/* 单层均衡控制工具栏 */}
           <section

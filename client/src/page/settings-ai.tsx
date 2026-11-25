@@ -93,10 +93,12 @@ function parsePromptPresetsValue(raw?: string): PromptPresetItem[] | null {
 
 export function AISummarySettings({
   value,
+  savedProvider,
   onChange,
   onSave,
 }: {
   value: AISettingsValue;
+  savedProvider?: string;
   onChange: (updates: Partial<AISettingsValue>) => void;
   onSave?: () => void | Promise<void>;
 }) {
@@ -109,6 +111,10 @@ export function AISummarySettings({
   const [promptSaveState, setPromptSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const promptSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [fetchModelsNotice, setFetchModelsNotice] = useState<string | null>(null);
+  const savedProviderRef = useRef(value.provider);
+  const effectiveSavedProvider = savedProvider ?? savedProviderRef.current;
+  const isProviderSwitched = value.provider !== effectiveSavedProvider;
+  const hasEffectiveApiKey = Boolean(value.apiKey.trim()) || (value.apiKeySet && !isProviderSwitched);
 
   useEffect(() => {
     return () => {
@@ -262,6 +268,10 @@ export function AISummarySettings({
   const [fetchingModels, setFetchingModels] = useState(false);
 
   const handleFetchRemoteModels = async () => {
+    if (providerFields.requiresApiKey && !hasEffectiveApiKey) {
+      showAlert(`已切换服务商为 ${value.provider}，请先填写该服务商的 API Key 后再拉取模型`);
+      return;
+    }
     setFetchingModels(true);
     setFetchModelsNotice(null);
     try {
@@ -295,17 +305,17 @@ export function AISummarySettings({
         <span className="font-bold text-xs uppercase tracking-wider text-theme">智能设置</span>
       </div>
 
-      {/* 开关中枢 (单行紧凑左右排布，消除多余换行占据) */}
+      {/* 自动导读开关中枢（模型与提示词始终可用，供写作页文字侍从等全局能力复用） */}
       <div className="p-3.5 sm:p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <h3 className="text-sm font-bold t-primary shrink-0">启用AI总结摘要</h3>
+          <h3 className="text-sm font-bold t-primary shrink-0">发布时自动生成文章导读</h3>
           <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${
             value.enabled ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-neutral-500/10 text-neutral-400"
           }`}>
-            {value.enabled ? "流水线已就绪" : "已停用"}
+            {value.enabled ? "自动导读已开启" : "仅写作助手可用"}
           </span>
           <span className="text-xs text-neutral-400 truncate hidden lg:inline">
-            · 智能调度大模型生成结构化导读与重点摘要
+            · 关闭时仍可配置下方模型与提示词，供写作页「文字侍从」使用
           </span>
         </div>
         <Switch.Root
@@ -319,9 +329,7 @@ export function AISummarySettings({
         </Switch.Root>
       </div>
 
-      {value.enabled && (
-        <>
-          {/* AI 服务商与核心参数配置切片 (紧凑 2x2 网格) */}
+      {/* AI 服务商与核心参数配置切片 (始终可见，不再受导读开关隐藏) */}
           <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
               <span className="font-bold text-xs t-primary flex items-center gap-1.5">
@@ -354,7 +362,7 @@ export function AISummarySettings({
                   <button
                     type="button"
                     onClick={handleFetchRemoteModels}
-                    disabled={fetchingModels || (value.provider !== "worker-ai" && !value.apiKey.trim() && !value.apiKeySet)}
+                    disabled={fetchingModels || (providerFields.requiresApiKey && !hasEffectiveApiKey)}
                     className="text-[10px] font-bold text-theme hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   >
                     {fetchingModels ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-refresh-line" />}
@@ -388,9 +396,11 @@ export function AISummarySettings({
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">API 密钥 (API Key)</label>
-                    {value.apiKeySet && (
+                    {value.apiKeySet && !isProviderSwitched ? (
                       <span className="text-[10px] font-mono text-emerald-500 font-bold">已配置</span>
-                    )}
+                    ) : isProviderSwitched ? (
+                      <span className="text-[10px] font-mono text-amber-500 font-bold">切换服务商后请填写新密钥</span>
+                    ) : null}
                   </div>
                   <input
                     type="password"
@@ -400,7 +410,11 @@ export function AISummarySettings({
                     onChange={(event) => {
                       onChange({ apiKey: event.target.value });
                     }}
-                    placeholder={value.apiKeySet ? "••••••••••••已安全存储••••••••••••" : "sk-..."}
+                    placeholder={
+                      value.apiKeySet && !isProviderSwitched
+                        ? "••••••••••••已安全存储••••••••••••"
+                        : "请填写当前服务商的 API Key..."
+                    }
                     className="w-full rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] px-3 py-2 text-xs t-primary outline-none focus:border-theme transition"
                   />
                 </div>
@@ -483,7 +497,7 @@ export function AISummarySettings({
                           <div className="flex items-center gap-1.5">
                             <span>{preset.name}</span>
                             {isEditing && (
-                              <span className="text-[10px] text-theme font-mono font-normal">✍️ 正在编辑</span>
+                              <span className="text-[10px] text-theme font-mono font-normal">正在编辑</span>
                             )}
                           </div>
                         </td>
@@ -607,8 +621,6 @@ export function AISummarySettings({
               </button>
             </div>
           </div>
-        </>
-      )}
       <AlertUI />
     </div>
   );

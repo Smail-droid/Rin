@@ -677,7 +677,8 @@ export async function fetchExternalAIModels(
         return Object.keys(WORKER_AI_MODELS);
     }
 
-    if (!apiKey) {
+    const cleanApiKey = (apiKey || "").trim().replace(/^["']|["']$/g, "");
+    if (!cleanApiKey) {
         throw new Error("请先填写 API Key");
     }
 
@@ -688,17 +689,17 @@ export async function fetchExternalAIModels(
 
     const headers: Record<string, string> = useAnthropicHeaders
         ? {
-            "x-api-key": apiKey,
+            "x-api-key": cleanApiKey,
             "anthropic-version": ANTHROPIC_VERSION,
             "Content-Type": "application/json",
         }
         : useGeminiNativeHeaders
             ? {
-                "x-goog-api-key": apiKey,
+                "x-goog-api-key": cleanApiKey,
                 "Content-Type": "application/json",
             }
             : {
-                Authorization: `Bearer ${apiKey}`,
+                Authorization: `Bearer ${cleanApiKey}`,
                 "Content-Type": "application/json",
             };
 
@@ -716,7 +717,7 @@ export async function fetchExternalAIModels(
     ) {
         res = await fetch(endpoint, {
             headers: {
-                Authorization: `Bearer ${apiKey}`,
+                Authorization: `Bearer ${cleanApiKey}`,
                 "Content-Type": "application/json",
             },
             signal: AbortSignal.timeout(15000),
@@ -725,6 +726,9 @@ export async function fetchExternalAIModels(
 
     if (!res.ok) {
         const text = await res.text();
+        if (/Please pass a valid API key|API_KEY_INVALID|invalid_api_key/i.test(text) || res.status === 401) {
+            throw new Error(`HTTP ${res.status}: API Key 无效或与当前服务商不匹配，请检查密钥后重试（${text.slice(0, 120)}）`);
+        }
         throw new Error(`HTTP ${res.status}: ${text.slice(0, 150)}`);
     }
 

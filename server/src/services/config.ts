@@ -28,14 +28,14 @@ import {
 
 const MASKED_API_KEY = "••••••••";
 
-function resolveApiKeyOverride(bodyApiKey: unknown, storedApiKey: string): string {
+function resolveApiKeyOverride(bodyApiKey: unknown, storedApiKey: string, allowStoredFallback = true): string {
     if (typeof bodyApiKey === "string") {
-        const trimmed = bodyApiKey.trim();
+        const trimmed = bodyApiKey.trim().replace(/^["']|["']$/g, "");
         if (trimmed.length > 0 && trimmed !== MASKED_API_KEY) {
             return trimmed;
         }
     }
-    return storedApiKey;
+    return allowStoredFallback ? storedApiKey : "";
 }
 
 function resolveApiUrlOverride(
@@ -136,13 +136,23 @@ export function ConfigService(): Hono {
         // Get current AI config from database
         const config = await wrapTime(c, 'ai_config', getAIConfig(serverConfig));
 
-        // Build test config with overrides
+        // Build test config with overrides (never reuse stored key from a different provider)
         const provider = body.provider || config.provider;
+        const allowStoredKey = provider === config.provider;
+        const resolvedApiKey = resolveApiKeyOverride(body.api_key, config.api_key, allowStoredKey);
+        if (provider !== "worker-ai" && !resolvedApiKey) {
+            return c.json({
+                success: false,
+                error: allowStoredKey
+                    ? "请先填写 API Key"
+                    : `已切换服务商为 ${provider}，请先填写该服务商的 API Key`,
+            });
+        }
         const testConfig = {
             provider,
             model: body.model || config.model,
             api_url: resolveApiUrlOverride(body.api_url, provider, config.provider, config.api_url),
-            api_key: resolveApiKeyOverride(body.api_key, config.api_key),
+            api_key: resolvedApiKey,
         };
 
         // Test prompt
@@ -159,8 +169,18 @@ export function ConfigService(): Hono {
         const serverConfig = c.get('serverConfig');
         const dbConfig = await getAIConfig(serverConfig);
         const provider = body.provider || dbConfig.provider;
+        const allowStoredKey = provider === dbConfig.provider;
         const apiUrl = resolveApiUrlOverride(body.api_url, provider, dbConfig.provider, dbConfig.api_url);
-        const apiKey = resolveApiKeyOverride(body.api_key, dbConfig.api_key);
+        const apiKey = resolveApiKeyOverride(body.api_key, dbConfig.api_key, allowStoredKey);
+
+        if (provider !== "worker-ai" && !apiKey) {
+            return c.json({
+                success: false,
+                error: allowStoredKey
+                    ? "请先填写 API Key"
+                    : `已切换服务商为 ${provider}，请先填写该服务商的 API Key 后再拉取模型`,
+            }, 400);
+        }
 
         try {
             const models = await fetchExternalAIModels(provider, apiUrl, apiKey);
