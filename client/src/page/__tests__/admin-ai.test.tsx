@@ -115,7 +115,7 @@ describe("Admin AI hub & sidebar restoration", () => {
       </Router>,
     );
 
-    await findByText("发布时自动生成文章导读");
+    await findByText("发布时自动生成导读");
     const saveBtn = getByRole("button", { name: "保存" });
     fireEvent.click(saveBtn);
 
@@ -156,7 +156,7 @@ describe("Admin AI hub & sidebar restoration", () => {
       </Router>,
     );
 
-    await findByText("发布时自动生成文章导读");
+    await findByText("发布时自动生成导读");
     const saveBtn = getByRole("button", { name: "保存" });
     fireEvent.click(saveBtn);
 
@@ -216,7 +216,7 @@ describe("Admin AI hub & sidebar restoration", () => {
     expect(String(lastUpdate.promptPresets)).toContain("服务端预设方案");
 
     // Fetch remote models works even when apiKey input is empty because apiKeySet=true
-    const fetchBtn = getByText("🔄 从端点拉取模型");
+    const fetchBtn = getByText("从端点拉取模型");
     fireEvent.click(fetchBtn);
 
     await waitFor(() => {
@@ -309,7 +309,7 @@ describe("Admin AI hub & sidebar restoration", () => {
 
     // Open in-situ settings panel and verify model fetch + save write ai_summary.* keys
     fireEvent.click(getByTitle("AI 模型与服务商就地配置"));
-    const fetchModelsBtn = await findByText("🔄 从端点拉取模型");
+    const fetchModelsBtn = await findByText("从端点拉取模型");
     fireEvent.click(fetchModelsBtn);
     await waitFor(() => {
       expect(fetchCalls).toHaveLength(1);
@@ -343,10 +343,10 @@ describe("Admin AI hub & sidebar restoration", () => {
       />,
     );
 
-    expect(getByText("发布时自动生成文章导读")).toBeDefined();
-    expect(getByText("仅写作助手可用")).toBeDefined();
-    expect(getByText("模型接入与鉴权服务 (AI Provider)")).toBeDefined();
-    expect(getByText("AI 流水线多阶段提示词版本库 (Dense DataGrid)")).toBeDefined();
+    expect(getByText("发布时自动生成导读")).toBeDefined();
+    expect(getByText("已关闭")).toBeDefined();
+    expect(getByText("模型接入与鉴权")).toBeDefined();
+    expect(getByText("提示词预设库")).toBeDefined();
     expect(getByPlaceholderText("请填写当前服务商的 API Key...")).toBeDefined();
     expect(getByText("测试连接")).toBeDefined();
   });
@@ -374,7 +374,7 @@ describe("Admin AI hub & sidebar restoration", () => {
     );
 
     expect(getByText("切换服务商后请填写新密钥")).toBeDefined();
-    const fetchBtn = getByText("🔄 从端点拉取模型").closest("button")!;
+    const fetchBtn = getByText("从端点拉取模型").closest("button")!;
     expect(fetchBtn.disabled).toBe(true);
     expect(fetchCalled).toBe(false);
   });

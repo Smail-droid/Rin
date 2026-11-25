@@ -300,22 +300,14 @@ export function AISummarySettings({
 
   return (
     <div className="space-y-3.5 ani-show select-none">
-      <div className="flex items-center gap-2 pb-1 border-b border-black/5 dark:border-white/5">
-        <i className="ri-sparkling-fill text-theme" />
-        <span className="font-bold text-xs uppercase tracking-wider text-theme">智能设置</span>
-      </div>
-
-      {/* 自动导读开关中枢（模型与提示词始终可用，供写作页文字侍从等全局能力复用） */}
-      <div className="p-3.5 sm:p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <h3 className="text-sm font-bold t-primary shrink-0">发布时自动生成文章导读</h3>
+      {/* 发布自动导读开关 */}
+      <div className="px-4 py-3 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <h3 className="text-sm font-bold t-primary shrink-0">发布时自动生成导读</h3>
           <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${
             value.enabled ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-neutral-500/10 text-neutral-400"
           }`}>
-            {value.enabled ? "自动导读已开启" : "仅写作助手可用"}
-          </span>
-          <span className="text-xs text-neutral-400 truncate hidden lg:inline">
-            · 关闭时仍可配置下方模型与提示词，供写作页「文字侍从」使用
+            {value.enabled ? "已开启" : "已关闭"}
           </span>
         </div>
         <Switch.Root
@@ -329,14 +321,13 @@ export function AISummarySettings({
         </Switch.Root>
       </div>
 
-      {/* AI 服务商与核心参数配置切片 (始终可见，不再受导读开关隐藏) */}
+      {/* 模型接入配置 */}
           <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
               <span className="font-bold text-xs t-primary flex items-center gap-1.5">
                 <i className="ri-cpu-line text-theme" />
-                <span>模型接入与鉴权服务 (AI Provider)</span>
+                <span>模型接入与鉴权</span>
               </span>
-              <span className="text-[11px] font-mono text-neutral-400">支持 OpenAI 兼容/Gemini/DeepSeek</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
@@ -366,7 +357,7 @@ export function AISummarySettings({
                     className="text-[10px] font-bold text-theme hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   >
                     {fetchingModels ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-refresh-line" />}
-                    <span>{fetchingModels ? "拉取中..." : fetchedModelList.length > 0 ? `已拉取 (${fetchedModelList.length})` : "🔄 从端点拉取模型"}</span>
+                    <span>{fetchingModels ? "拉取中..." : fetchedModelList.length > 0 ? `已拉取 (${fetchedModelList.length})` : "从端点拉取模型"}</span>
                   </button>
                 </div>
                 <SearchableSelect
@@ -443,7 +434,7 @@ export function AISummarySettings({
             <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
               <div className="flex items-center gap-2">
                 <i className="ri-list-settings-line text-theme" />
-                <h3 className="font-bold text-xs t-primary">AI 流水线多阶段提示词版本库 (Dense DataGrid)</h3>
+                <h3 className="font-bold text-xs t-primary">提示词预设库</h3>
               </div>
               <button
                 type="button"
@@ -591,14 +582,11 @@ export function AISummarySettings({
             )}
           </div>
 
-          {/* 模型测试单行紧凑切片 (标注 2 解决) */}
-          <div className="p-3.5 sm:p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* 模型测试 */}
+          <div className="px-4 py-3 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <i className="ri-speed-up-line text-theme" />
-              <div>
-                <span className="font-bold text-xs t-primary block">测试模型连通性</span>
-                <span className="text-[11px] text-neutral-400">检测 AI 模型服务商与 API Key 是否可用</span>
-              </div>
+              <span className="font-bold text-xs t-primary">测试模型连通性</span>
             </div>
 
             <div className="flex items-center gap-2.5 self-end sm:self-auto">

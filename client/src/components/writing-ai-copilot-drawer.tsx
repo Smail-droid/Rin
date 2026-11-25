@@ -622,7 +622,7 @@ export function WritingAICopilotDrawer({
                     className="text-[10px] font-bold text-theme hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   >
                     {fetchingModels ? <i className="ri-loader-4-line animate-spin" /> : <i className="ri-refresh-line" />}
-                    <span>{fetchingModels ? "正在拉取..." : fetchedModels.length > 0 ? `已拉取 (${fetchedModels.length})` : "🔄 从端点拉取模型"}</span>
+                    <span>{fetchingModels ? "正在拉取..." : fetchedModels.length > 0 ? `已拉取 (${fetchedModels.length})` : "从端点拉取模型"}</span>
                   </button>
                 </div>
 

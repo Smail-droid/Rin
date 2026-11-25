@@ -724,10 +724,32 @@ export async function fetchExternalAIModels(
         });
     }
 
+    // Fallback for Gemini OpenAI-compat URL -> native v1beta/models with x-goog-api-key
+    let usedGeminiNativeFallback = false;
+    if (
+        !res.ok &&
+        provider === "gemini" &&
+        !useGeminiNativeHeaders &&
+        effectiveUrl.toLowerCase().includes("generativelanguage.googleapis.com") &&
+        (res.status === 400 || res.status === 401 || res.status === 404)
+    ) {
+        const nativeRes = await fetch("https://generativelanguage.googleapis.com/v1beta/models", {
+            headers: {
+                "x-goog-api-key": cleanApiKey,
+                "Content-Type": "application/json",
+            },
+            signal: AbortSignal.timeout(15000),
+        });
+        if (nativeRes.ok) {
+            res = nativeRes;
+            usedGeminiNativeFallback = true;
+        }
+    }
+
     if (!res.ok) {
         const text = await res.text();
         if (/Please pass a valid API key|API_KEY_INVALID|invalid_api_key/i.test(text) || res.status === 401) {
-            throw new Error(`HTTP ${res.status}: API Key 无效或与当前服务商不匹配，请检查密钥后重试（${text.slice(0, 120)}）`);
+            throw new Error(`HTTP ${res.status}: API Key 无效或与当前服务商不匹配，请在「API 密钥」框重新输入有效密钥后再拉取`);
         }
         throw new Error(`HTTP ${res.status}: ${text.slice(0, 150)}`);
     }
@@ -738,7 +760,7 @@ export async function fetchExternalAIModels(
         .map((item: any) => {
             const rawId = typeof item === "string" ? item : item.id || item.name;
             if (typeof rawId !== "string") return "";
-            return useGeminiNativeHeaders ? rawId.replace(/^models\//, "") : rawId;
+            return (useGeminiNativeHeaders || usedGeminiNativeFallback) ? rawId.replace(/^models\//, "") : rawId;
         })
         .filter(Boolean)
         .sort((a: string, b: string) => a.localeCompare(b));

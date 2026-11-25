@@ -107,6 +107,23 @@ export async function getFrontendAIEnabled(config: ConfigReader): Promise<boolea
 }
 
 export async function setAIConfig(config: ConfigWriter, updates: Partial<AIConfig>): Promise<void> {
+    const previousProvider = await config.get(AI_CONFIG_PREFIX + "provider");
+    const nextProvider = updates.provider;
+    const providerChanged =
+        typeof nextProvider === "string" &&
+        nextProvider.length > 0 &&
+        typeof previousProvider === "string" &&
+        previousProvider.length > 0 &&
+        nextProvider !== previousProvider;
+    const hasNewApiKey =
+        typeof updates.api_key === "string" &&
+        updates.api_key.trim() !== "" &&
+        updates.api_key.trim() !== "••••••••";
+
+    if (providerChanged && !hasNewApiKey) {
+        await config.set(AI_CONFIG_PREFIX + "api_key", "", false);
+    }
+
     for (const field of AI_CONFIG_FIELDS) {
         const value = updates[field];
         if (value === undefined) {
