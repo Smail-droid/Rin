@@ -874,7 +874,7 @@ export function Markdown({ content }: { content: string }) {
         details({ children, className, ...props }) {
           return (
             <details
-              className={`my-3.5 rounded-xl border border-theme/20 bg-theme/[0.03] dark:bg-theme/[0.06] px-4 py-2.5 transition-colors open:border-theme/35 ${className || ""}`}
+              className={`my-3 ${className || ""}`.trim()}
               {...props}
             >
               {children}
@@ -884,7 +884,7 @@ export function Markdown({ content }: { content: string }) {
         summary({ children, className, ...props }) {
           return (
             <summary
-              className={`cursor-pointer font-semibold t-primary hover:text-theme transition-colors marker:text-theme select-none ${className || ""}`}
+              className={`cursor-pointer font-semibold t-primary hover:text-theme transition-colors marker:text-theme select-none ${className || ""}`.trim()}
               {...props}
             >
               {children}

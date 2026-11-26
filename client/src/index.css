@@ -244,26 +244,13 @@ textarea:focus {
 }
 
 .toc-content details {
-  margin: 0.875rem 0;
-  border-radius: 0.875rem;
-  border: 1px solid rgb(var(--theme-rgb) / 0.22);
-  background-color: rgb(var(--theme-rgb) / 0.03);
-  padding: 0.65rem 1rem;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
-}
-
-.toc-content details[open] {
-  border-color: rgb(var(--theme-rgb) / 0.35);
-  background-color: rgb(var(--theme-rgb) / 0.045);
-  padding-bottom: 0.9rem;
+  margin: 0.75rem 0;
 }
 
 .toc-content summary {
   cursor: pointer;
   font-weight: 600;
   color: rgb(var(--rin-ink-rgb));
-  list-style-position: outside;
-  padding-left: 0.25rem;
   user-select: none;
   transition: color 0.15s ease;
 }

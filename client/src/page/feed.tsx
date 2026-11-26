@@ -538,6 +538,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                         <button
                           type="button"
                           onClick={toggleDanmaku}
+                          aria-pressed={isDanmakuEnabled}
                           title={isDanmakuEnabled ? "点击关闭海报弹幕" : "点击开启海报弹幕"}
                           className={`h-7 px-2 sm:px-2.5 rounded-full text-[11px] font-bold flex items-center gap-1 backdrop-blur-md shadow-md transition-all select-none active:scale-95 ${
                             isDanmakuEnabled
@@ -546,7 +547,7 @@ export function FeedPage({ id, TOC, clean }: { id: string, TOC: () => JSX.Elemen
                           }`}
                         >
                           <i className={isDanmakuEnabled ? "ri-chat-voice-line text-xs" : "ri-chat-off-line text-xs"} />
-                          <span className="hidden sm:inline">{isDanmakuEnabled ? "弹幕" : "静音"}</span>
+                          <span className="hidden sm:inline">{isDanmakuEnabled ? "弹幕" : "开启弹幕"}</span>
                         </button>
                       </div>
 

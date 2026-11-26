@@ -146,7 +146,10 @@ describe("Markdown readability and syntax highlighting", () => {
     expect(boldSpans.some((el) => el.textContent?.includes("三、"))).toBe(true);
 
     const details = container.querySelector("details");
-    expect(details?.className).toContain("border-theme/20");
+    expect(details).not.toBeNull();
+    expect(details?.className).not.toContain("border");
+    expect(details?.className).not.toContain("rounded-xl");
+    expect(details?.className).not.toContain("bg-theme");
 
     const summary = container.querySelector("summary");
     expect(summary?.className).toContain("marker:text-theme");
