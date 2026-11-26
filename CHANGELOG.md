@@ -257,3 +257,4 @@
 [v1.0.9]: https://github.com/Smail-droid/Rin/releases/tag/v1.0.9
 [v1.0.8]: https://github.com/Smail-droid/Rin/releases/tag/v1.0.8
 [v1.0.11]: https://github.com/Smail-droid/Rin/releases/tag/v1.0.11
+[v1.0.13]: https://github.com/Smail-droid/Rin/releases/tag/v1.0.13
