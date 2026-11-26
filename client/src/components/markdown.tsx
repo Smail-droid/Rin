@@ -195,6 +195,15 @@ function normalizeLanguage(lang: string): string {
     shell: "bash",
     zsh: "bash",
     bash: "bash",
+    env: "bash",
+    dotenv: "bash",
+    cmd: "batch",
+    bat: "batch",
+    batch: "batch",
+    dos: "batch",
+    ps1: "powershell",
+    pwsh: "powershell",
+    powershell: "powershell",
     yml: "yaml",
     yaml: "yaml",
     rs: "rust",
@@ -203,6 +212,7 @@ function normalizeLanguage(lang: string): string {
     golang: "go",
     c: "c",
     cpp: "cpp",
+    "c++": "cpp",
     cxx: "cpp",
     cs: "csharp",
     csharp: "csharp",
@@ -215,6 +225,9 @@ function normalizeLanguage(lang: string): string {
     postgres: "sql",
     html: "html",
     xml: "xml",
+    svg: "xml",
+    vue: "markup",
+    svelte: "markup",
     css: "css",
     scss: "scss",
     less: "less",
@@ -224,12 +237,152 @@ function normalizeLanguage(lang: string): string {
     docker: "dockerfile",
     dockerfile: "dockerfile",
     nginx: "nginx",
+    conf: "nginx",
     lua: "lua",
     toml: "toml",
     ini: "ini",
+    diff: "diff",
+    patch: "diff",
+    make: "makefile",
+    makefile: "makefile",
     graphql: "graphql",
   };
   return aliasMap[l] || l || "text";
+}
+
+const STEP_NUMBER_COLORS = [
+  "text-theme",
+  "text-blue-500 dark:text-blue-400",
+  "text-emerald-500 dark:text-emerald-400",
+  "text-amber-500 dark:text-amber-400",
+  "text-violet-500 dark:text-violet-400",
+  "text-rose-500 dark:text-rose-400",
+] as const;
+
+const CHINESE_NUMERAL_INDEX: Record<string, number> = {
+  一: 1,
+  二: 2,
+  三: 3,
+  四: 4,
+  五: 5,
+  六: 6,
+  七: 7,
+  八: 8,
+  九: 9,
+  十: 10,
+};
+
+function getLeadingNumberColorClass(token: string): string {
+  const digits = token.match(/\d+/);
+  if (digits) {
+    const n = parseInt(digits[0], 10);
+    return STEP_NUMBER_COLORS[(Math.max(n, 1) - 1) % STEP_NUMBER_COLORS.length];
+  }
+  for (const [ch, idx] of Object.entries(CHINESE_NUMERAL_INDEX)) {
+    if (token.includes(ch)) {
+      return STEP_NUMBER_COLORS[(idx - 1) % STEP_NUMBER_COLORS.length];
+    }
+  }
+  return STEP_NUMBER_COLORS[0];
+}
+
+function highlightLeadingNumber(children: React.ReactNode): React.ReactNode {
+  const nodes = React.Children.toArray(children);
+  if (nodes.length === 0) return children;
+  const first = nodes[0];
+  if (typeof first !== "string") return children;
+  // 支持 "1. "、"1、"、"一、"、"（一）" 等常见中文/数字步骤编号前缀
+  const match = first.match(/^((?:\d+[.、])|(?:[一二三四五六七八九十百]+[、.])|(?:[（(](?:\d+|[一二三四五六七八九十]+)[）)]))(\s*.*)?$/s);
+  if (!match) return children;
+  const [, num, rest = ""] = match;
+  const colorClass = getLeadingNumberColorClass(num);
+  return [
+    <span key="leading-num" className={`${colorClass} font-extrabold`}>
+      {num}
+    </span>,
+    rest,
+    ...nodes.slice(1),
+  ];
+}
+
+function MarkdownCodeBlock({
+  rawLanguage,
+  language,
+  rawCode,
+  linesCount,
+  colorMode,
+  codeBlockStyle,
+}: {
+  rawLanguage: string;
+  language: string;
+  rawCode: string;
+  linesCount: number;
+  colorMode: "light" | "dark";
+  codeBlockStyle: React.CSSProperties;
+}) {
+  const [copied, setCopied] = React.useState(false);
+
+  return (
+    <div className="relative group my-4 rounded-2xl border border-black/10 dark:border-white/10 overflow-hidden shadow-xs bg-[#fafafa] dark:bg-[#1e1e24] transition-all">
+      {/* Mac Code Header Bar */}
+      <div className="flex items-center justify-between px-3.5 py-2 border-b border-black/5 dark:border-white/5 bg-black/[0.03] dark:bg-white/[0.03] select-none">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-400 inline-block shadow-2xs" />
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-400 inline-block shadow-2xs" />
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 inline-block shadow-2xs" />
+          </div>
+          {rawLanguage && (
+            <span className="ml-2 font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-theme/10 text-theme border border-theme/20">
+              {rawLanguage}
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            navigator.clipboard.writeText(rawCode);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }}
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-neutral-500 hover:text-neutral-800 hover:bg-black/5 dark:hover:bg-white/10 dark:text-neutral-400 dark:hover:text-white transition"
+          title="一键复制完整代码"
+        >
+          {copied ? (
+            <>
+              <i className="ri-check-line text-emerald-500" />
+              <span className="text-emerald-500 font-bold">已复制!</span>
+            </>
+          ) : (
+            <>
+              <i className="ri-file-copy-line" />
+              <span>复制</span>
+            </>
+          )}
+        </button>
+      </div>
+      <div className="p-1 overflow-x-auto">
+        <SyntaxHighlighter
+          PreTag="div"
+          className="!bg-transparent !p-3.5 !m-0 !text-[13px] leading-relaxed"
+          language={language}
+          style={colorMode === "dark" ? oneDark : oneLight}
+          showLineNumbers={linesCount > 3}
+          lineNumberStyle={{
+            minWidth: "2.5em",
+            paddingRight: "1em",
+            color: colorMode === "dark" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)",
+            fontSize: "12px",
+            userSelect: "none",
+          }}
+          wrapLongLines={false}
+          codeTagProps={{ style: codeBlockStyle }}
+        >
+          {rawCode}
+        </SyntaxHighlighter>
+      </div>
+    </div>
+  );
 }
 
 function cleanCodeBlockContent(code: string): string {
@@ -348,7 +501,9 @@ export function Markdown({ content }: { content: string }) {
 
   const cleanContent = useMemo(() => preprocessMarkdownContent(content), [content]);
 
-  const Content = useMemo(() => (
+  const Content = useMemo(() => {
+    let hrCounter = 0;
+    return (
     <ReactMarkdown
       className="toc-content min-w-0 dark:text-neutral-300 [overflow-wrap:anywhere]"
       remarkPlugins={[gfm, remarkMermaid, remarkAlert, remarkBreaks]}
@@ -397,9 +552,8 @@ export function Markdown({ content }: { content: string }) {
           }
         },
         code(props) {
-          const [copied, setCopied] = React.useState(false);
           const { children, className, node, ...rest } = props;
-          const match = /language-(\w+)/.exec(className || "");
+          const match = /language-([^\s]+)/.exec(className || "");
 
           // 健壮判断是否为多行独立代码块：
           // 1. 带有 language-xxx 类名；或 2. 内容含有换行；或 3. 原始文本切片以 ``` 或 ~~~ 开头
@@ -428,72 +582,20 @@ export function Markdown({ content }: { content: string }) {
 
           if (isCodeBlock) {
             return (
-              <div className="relative group my-4 rounded-2xl border border-black/10 dark:border-white/10 overflow-hidden shadow-xs bg-[#fafafa] dark:bg-[#1e1e24] transition-all">
-                {/* Mac Code Header Bar */}
-                <div className="flex items-center justify-between px-3.5 py-2 border-b border-black/5 dark:border-white/5 bg-black/[0.03] dark:bg-white/[0.03] select-none">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="h-2.5 w-2.5 rounded-full bg-rose-400 inline-block shadow-2xs" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-amber-400 inline-block shadow-2xs" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 inline-block shadow-2xs" />
-                    </div>
-                    {rawLanguage && (
-                      <span className="ml-2 font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/10 text-neutral-500 dark:text-neutral-300">
-                        {rawLanguage}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(rawCode);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
-                    }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-neutral-500 hover:text-neutral-800 hover:bg-black/5 dark:hover:bg-white/10 dark:text-neutral-400 dark:hover:text-white transition"
-                    title="一键复制完整代码"
-                  >
-                    {copied ? (
-                      <>
-                        <i className="ri-check-line text-emerald-500" />
-                        <span className="text-emerald-500 font-bold">已复制!</span>
-                      </>
-                    ) : (
-                      <>
-                        <i className="ri-file-copy-line" />
-                        <span>复制</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <div className="p-1 overflow-x-auto">
-                  <SyntaxHighlighter
-                    PreTag="div"
-                    className="!bg-transparent !p-3.5 !m-0 !text-[13px] leading-relaxed"
-                    language={language}
-                    style={colorMode === "dark" ? oneDark : oneLight}
-                    showLineNumbers={linesCount > 3}
-                    lineNumberStyle={{
-                      minWidth: "2.5em",
-                      paddingRight: "1em",
-                      color: colorMode === "dark" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)",
-                      fontSize: "12px",
-                      userSelect: "none",
-                    }}
-                    wrapLongLines={false}
-                    codeTagProps={{ style: codeBlockStyle }}
-                  >
-                    {rawCode}
-                  </SyntaxHighlighter>
-                </div>
-              </div>
+              <MarkdownCodeBlock
+                rawLanguage={rawLanguage}
+                language={language}
+                rawCode={rawCode}
+                linesCount={linesCount}
+                colorMode={colorMode}
+                codeBlockStyle={codeBlockStyle}
+              />
             );
           } else {
             return (
               <code
                 {...rest}
-                className={`bg-[#eff1f3] dark:bg-[#4a5061] h-[24px] px-[4px] rounded-md mx-[2px] py-[2px] text-neutral-800 dark:text-neutral-300 ${className || ""
-                  }`}
+                className={`bg-theme/10 text-theme border border-theme/20 dark:bg-theme/15 dark:text-theme dark:border-theme/30 px-1.5 py-0.5 rounded-md mx-[2px] font-medium [overflow-wrap:anywhere] ${className || ""}`}
                 style={inlineCodeStyle}
               >
                 {children}
@@ -504,7 +606,7 @@ export function Markdown({ content }: { content: string }) {
         blockquote({ children, ...props }) {
           return (
             <blockquote
-              className="border-l-4 border-gray-300 dark:border-gray-500 pl-4 italic text-gray-500 dark:text-gray-400"
+              className="my-4 border-l-4 border-theme/60 bg-theme/[0.04] dark:bg-theme/[0.08] rounded-r-xl px-4 py-2.5 text-neutral-700 dark:text-neutral-300 leading-relaxed"
               {...props}
             >
               {children}
@@ -513,15 +615,15 @@ export function Markdown({ content }: { content: string }) {
         },
         em({ children, ...props }) {
           return (
-            <em className="ml-[1px] mr-[4px]" {...props}>
+            <em className="ml-[1px] mr-[4px] text-neutral-600 dark:text-neutral-300" {...props}>
               {children}
             </em>
           );
         },
         strong({ children, ...props }) {
           return (
-            <strong className="mx-[1px]" {...props}>
-              {children}
+            <strong className="mx-[1px] font-bold text-neutral-900 dark:text-white" {...props}>
+              {highlightLeadingNumber(children)}
             </strong>
           );
         },
@@ -565,8 +667,8 @@ export function Markdown({ content }: { content: string }) {
         },
         ul({ children, className, ...props }) {
           const listClass = className?.includes("contains-task-list")
-            ? "list-none pl-2 my-2 space-y-1"
-            : "list-disc pl-5 my-2 space-y-1";
+            ? "list-none pl-2 my-2.5 space-y-1.5"
+            : "list-disc pl-5 my-2.5 space-y-1.5 marker:text-theme";
           return (
             <ul className={listClass} {...props}>
               {children}
@@ -575,14 +677,14 @@ export function Markdown({ content }: { content: string }) {
         },
         ol({ children, ...props }) {
           return (
-            <ol className="list-decimal pl-5 my-2 space-y-1.5 marker:text-theme marker:font-bold" {...props}>
+            <ol className="list-decimal pl-5 my-2.5 space-y-2 marker:text-theme marker:font-extrabold" {...props}>
               {children}
             </ol>
           );
         },
         li({ children, ...props }) {
           return (
-            <li className="pl-1 py-0.5 leading-relaxed" {...props}>
+            <li className="pl-1 py-0.5 leading-7" {...props}>
               {children}
             </li>
           );
@@ -590,7 +692,7 @@ export function Markdown({ content }: { content: string }) {
         a({ children, ...props }) {
           return (
             <a
-              className="break-words text-theme font-medium hover:underline [overflow-wrap:anywhere]"
+              className="break-words text-theme font-medium underline decoration-theme/35 underline-offset-4 hover:decoration-theme transition-colors [overflow-wrap:anywhere]"
               {...props}
             >
               {children}
@@ -602,11 +704,11 @@ export function Markdown({ content }: { content: string }) {
             <h1
               id={children?.toString()}
               {...props}
-              className={`${props.className || ""} mt-8 mb-4 text-2xl sm:text-3xl font-extrabold t-primary tracking-tight flex items-center gap-2.5 pb-2.5 border-b border-black/10 dark:border-white/10`.trim()}
+              className={`${props.className || ""} mt-8 mb-4 text-2xl sm:text-3xl font-extrabold t-primary tracking-tight flex items-center gap-2.5 pb-2.5 border-b border-theme/20`.trim()}
               style={{ ...props.style, scrollMarginTop: "var(--header-scroll-offset, 7rem)" }}
             >
               <span className="flex h-6 w-1.5 rounded-full bg-theme shrink-0 shadow-xs" />
-              <span className="break-words [overflow-wrap:anywhere] flex-1">{children}</span>
+              <span className="break-words [overflow-wrap:anywhere] flex-1">{highlightLeadingNumber(children)}</span>
             </h1>
           );
         },
@@ -615,11 +717,11 @@ export function Markdown({ content }: { content: string }) {
             <h2
               id={children?.toString()}
               {...props}
-              className={`${props.className || ""} mt-7 mb-3 text-xl sm:text-2xl font-bold t-primary tracking-tight flex items-center gap-2 pb-1`.trim()}
+              className={`${props.className || ""} mt-7 mb-3 text-xl sm:text-2xl font-bold t-primary tracking-tight flex items-center gap-2.5 pb-1.5 border-b border-theme/15`.trim()}
               style={{ ...props.style, scrollMarginTop: "var(--header-scroll-offset, 7rem)" }}
             >
-              <span className="h-2 w-2 rounded-full bg-theme/80 shrink-0 shadow-2xs" />
-              <span className="break-words [overflow-wrap:anywhere] flex-1">{children}</span>
+              <span className="h-5 w-1 rounded-full bg-theme/85 shrink-0 shadow-2xs" />
+              <span className="break-words [overflow-wrap:anywhere] flex-1">{highlightLeadingNumber(children)}</span>
             </h2>
           );
         },
@@ -628,11 +730,11 @@ export function Markdown({ content }: { content: string }) {
             <h3
               id={children?.toString()}
               {...props}
-              className={`${props.className || ""} mt-5 mb-2 text-lg sm:text-xl font-bold t-primary flex items-center gap-2`.trim()}
+              className={`${props.className || ""} mt-6 mb-2.5 text-lg sm:text-xl font-bold t-primary flex items-center gap-2`.trim()}
               style={{ ...props.style, scrollMarginTop: "var(--header-scroll-offset, 7rem)" }}
             >
-              <span className="text-theme text-xs select-none">◆</span>
-              <span className="break-words [overflow-wrap:anywhere] flex-1">{children}</span>
+              <span className="text-theme text-xs select-none shrink-0">◆</span>
+              <span className="break-words [overflow-wrap:anywhere] flex-1">{highlightLeadingNumber(children)}</span>
             </h3>
           );
         },
@@ -641,10 +743,11 @@ export function Markdown({ content }: { content: string }) {
             <h4
               id={children?.toString()}
               {...props}
-              className={`${props.className || ""} mt-4 break-words text-lg font-bold [overflow-wrap:anywhere]`.trim()}
+              className={`${props.className || ""} mt-5 mb-2 text-base sm:text-lg font-bold t-primary flex items-center gap-2`.trim()}
               style={{ ...props.style, scrollMarginTop: "var(--header-scroll-offset, 7rem)" }}
             >
-              {children}
+              <span className="text-theme/80 text-xs select-none shrink-0">▸</span>
+              <span className="break-words [overflow-wrap:anywhere] flex-1">{highlightLeadingNumber(children)}</span>
             </h4>
           );
         },
@@ -653,10 +756,11 @@ export function Markdown({ content }: { content: string }) {
             <h5
               id={children?.toString()}
               {...props}
-              className={`${props.className || ""} mt-4 break-words text-base font-bold [overflow-wrap:anywhere]`.trim()}
+              className={`${props.className || ""} mt-4 mb-1.5 text-base font-bold t-primary flex items-center gap-2`.trim()}
               style={{ ...props.style, scrollMarginTop: "var(--header-scroll-offset, 7rem)" }}
             >
-              {children}
+              <span className="h-1.5 w-1.5 rounded-full bg-theme/70 shrink-0" />
+              <span className="break-words [overflow-wrap:anywhere] flex-1">{highlightLeadingNumber(children)}</span>
             </h5>
           );
         },
@@ -665,22 +769,62 @@ export function Markdown({ content }: { content: string }) {
             <h6
               id={children?.toString()}
               {...props}
-              className={`${props.className || ""} mt-4 break-words text-sm font-bold [overflow-wrap:anywhere]`.trim()}
+              className={`${props.className || ""} mt-4 mb-1.5 text-sm font-bold t-primary flex items-center gap-2`.trim()}
               style={{ ...props.style, scrollMarginTop: "var(--header-scroll-offset, 7rem)" }}
             >
-              {children}
+              <span className="h-1.5 w-1.5 rounded-full bg-theme/55 shrink-0" />
+              <span className="break-words [overflow-wrap:anywhere] flex-1">{highlightLeadingNumber(children)}</span>
             </h6>
           );
         },
         p({ children, node, ...props }) {
           return (
-            <p className="mt-2 break-words py-1 [overflow-wrap:anywhere]" {...props}>
+            <p className="mt-2.5 py-0.5 leading-7 break-words [overflow-wrap:anywhere]" {...props}>
               {children}
             </p>
           );
         },
         hr({ children, ...props }) {
-          return <hr className="my-4" {...props} />;
+          const variant = hrCounter++ % 4;
+          if (variant === 0) {
+            return (
+              <div className="my-7 flex items-center gap-3 select-none" data-hr-variant="sparkle">
+                <hr className="flex-1 border-0 h-px bg-gradient-to-r from-transparent to-theme/35" {...props} />
+                <span className="text-theme/75 text-xs" aria-hidden="true">✦</span>
+                <span className="flex-1 h-px bg-gradient-to-l from-transparent to-theme/35" aria-hidden="true" />
+              </div>
+            );
+          }
+          if (variant === 1) {
+            return (
+              <div className="my-7 flex items-center justify-center gap-2.5 select-none" data-hr-variant="dots">
+                <hr className="sr-only" {...props} />
+                <span className="h-1.5 w-1.5 rounded-full bg-theme/65" aria-hidden="true" />
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-400/75" aria-hidden="true" />
+                <span className="h-1.5 w-1.5 rounded-full bg-violet-400/75" aria-hidden="true" />
+              </div>
+            );
+          }
+          if (variant === 2) {
+            return (
+              <hr
+                data-hr-variant="prism"
+                className="my-7 border-0 h-[1.5px] rounded-full bg-gradient-to-r from-transparent via-theme/40 via-50% to-transparent"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(90deg, transparent, rgb(var(--theme-rgb) / 0.45), rgba(96, 165, 250, 0.45), rgba(167, 139, 250, 0.45), transparent)",
+                }}
+                {...props}
+              />
+            );
+          }
+          return (
+            <div className="my-7 flex items-center gap-3 select-none" data-hr-variant="diamond">
+              <hr className="flex-1 border-0 h-px bg-gradient-to-r from-transparent to-emerald-400/40" {...props} />
+              <span className="text-emerald-500/70 dark:text-emerald-400/75 text-[10px]" aria-hidden="true">◆</span>
+              <span className="flex-1 h-px bg-gradient-to-l from-transparent to-amber-400/40" aria-hidden="true" />
+            </div>
+          );
         },
         sup: ({ children, ...props }) => (
           <sup className="text-xs mr-[4px]" {...props}>
@@ -727,11 +871,33 @@ export function Markdown({ content }: { content: string }) {
             </div>
           );
         },
+        details({ children, className, ...props }) {
+          return (
+            <details
+              className={`my-3.5 rounded-xl border border-theme/20 bg-theme/[0.03] dark:bg-theme/[0.06] px-4 py-2.5 transition-colors open:border-theme/35 ${className || ""}`}
+              {...props}
+            >
+              {children}
+            </details>
+          );
+        },
+        summary({ children, className, ...props }) {
+          return (
+            <summary
+              className={`cursor-pointer font-semibold t-primary hover:text-theme transition-colors marker:text-theme select-none ${className || ""}`}
+              {...props}
+            >
+              {children}
+            </summary>
+          );
+        },
         div({ children, node, ...props }) {
           return <div {...props}>{children}</div>;
         },
       }}
-    />), [content])
+    />
+    );
+  }, [cleanContent, colorMode])
 
 
 

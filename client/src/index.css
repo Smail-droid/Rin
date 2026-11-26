@@ -191,6 +191,92 @@ textarea:focus {
   outline: none;
 }
 
+/* ============================================================
+   文章正文 Markdown 排版增强（列表标记、折叠详情块）
+   ============================================================ */
+.toc-content ul > li::marker {
+  color: rgb(var(--theme-rgb) / 0.85);
+}
+
+.toc-content ol > li::marker {
+  color: rgb(var(--theme-rgb));
+  font-weight: 800;
+}
+
+.toc-content ol > li:nth-child(6n + 1)::marker {
+  color: rgb(var(--theme-rgb));
+}
+.toc-content ol > li:nth-child(6n + 2)::marker {
+  color: #3b82f6;
+}
+.toc-content ol > li:nth-child(6n + 3)::marker {
+  color: #10b981;
+}
+.toc-content ol > li:nth-child(6n + 4)::marker {
+  color: #f59e0b;
+}
+.toc-content ol > li:nth-child(6n + 5)::marker {
+  color: #8b5cf6;
+}
+.toc-content ol > li:nth-child(6n + 6)::marker {
+  color: #f43f5e;
+}
+
+[data-color-mode="dark"] .toc-content ol > li:nth-child(6n + 2)::marker {
+  color: #60a5fa;
+}
+[data-color-mode="dark"] .toc-content ol > li:nth-child(6n + 3)::marker {
+  color: #34d399;
+}
+[data-color-mode="dark"] .toc-content ol > li:nth-child(6n + 4)::marker {
+  color: #fbbf24;
+}
+[data-color-mode="dark"] .toc-content ol > li:nth-child(6n + 5)::marker {
+  color: #a78bfa;
+}
+[data-color-mode="dark"] .toc-content ol > li:nth-child(6n + 6)::marker {
+  color: #fb7185;
+}
+
+.toc-content blockquote ul > li::marker,
+.toc-content blockquote ol > li::marker {
+  color: rgb(var(--theme-rgb));
+}
+
+.toc-content details {
+  margin: 0.875rem 0;
+  border-radius: 0.875rem;
+  border: 1px solid rgb(var(--theme-rgb) / 0.22);
+  background-color: rgb(var(--theme-rgb) / 0.03);
+  padding: 0.65rem 1rem;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.toc-content details[open] {
+  border-color: rgb(var(--theme-rgb) / 0.35);
+  background-color: rgb(var(--theme-rgb) / 0.045);
+  padding-bottom: 0.9rem;
+}
+
+.toc-content summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: rgb(var(--rin-ink-rgb));
+  list-style-position: outside;
+  padding-left: 0.25rem;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.toc-content summary:hover {
+  color: rgb(var(--theme-rgb));
+}
+
+.toc-content summary::marker,
+.toc-content summary::-webkit-details-marker {
+  color: rgb(var(--theme-rgb));
+}
+
 .wmde-markdown {
   background-color: rgb(var(--rin-surface-rgb));
   font-family: var(--rin-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif) !important;
