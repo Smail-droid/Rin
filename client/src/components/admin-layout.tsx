@@ -43,13 +43,14 @@ export function AdminLayout({
   children: ReactNode;
 }) {
   const siteConfig = useSiteConfig();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const colorMode = useColorMode();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const toggleTheme = () => {
     const current = getStoredThemeMode();
@@ -71,11 +72,25 @@ export function AdminLayout({
         e.preventDefault();
         setSearchOpen((prev) => !prev);
         setTimeout(() => searchInputRef.current?.focus(), 50);
+      } else if (e.key === "Escape" && searchOpen) {
+        setSearchOpen(false);
+        setSearchQuery("");
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [searchOpen]);
 
   const filteredNavItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -247,15 +262,22 @@ export function AdminLayout({
           {/* Right: Quick Search & Studio Links */}
           <div className="flex items-center gap-2.5">
             {searchOpen ? (
-              <div className="relative flex items-center ani-show">
+              <div ref={searchContainerRef} className="relative flex items-center ani-show">
                 <i className="ri-search-line absolute left-2.5 text-[rgb(var(--rin-ink-muted-rgb))] text-xs" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && filteredNavItems.length > 0) {
+                      setLocation(filteredNavItems[0].href);
+                      setSearchOpen(false);
+                      setSearchQuery("");
+                    }
+                  }}
                   placeholder="快速检索后台导航..."
-                  className="w-44 sm:w-56 rounded-xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] py-1 pl-7 pr-7 text-xs text-[rgb(var(--rin-ink-rgb))] outline-none focus:border-theme"
+                  className="w-44 sm:w-60 rounded-xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] py-1 pl-7 pr-7 text-xs text-[rgb(var(--rin-ink-rgb))] outline-none focus:border-theme"
                 />
                 <button
                   type="button"
@@ -267,6 +289,35 @@ export function AdminLayout({
                 >
                   <i className="ri-close-line text-xs" />
                 </button>
+
+                {/* 浮动检索面板（桌面/移动端通用，回车即直达） */}
+                <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-elevated-rgb)/0.96)] backdrop-blur-xl p-1.5 shadow-xl z-50 ani-show max-h-72 overflow-y-auto">
+                  {filteredNavItems.length === 0 ? (
+                    <div className="px-3 py-4 text-center text-[11px] text-[rgb(var(--rin-ink-muted-rgb))]">
+                      未匹配到后台菜单
+                    </div>
+                  ) : (
+                    filteredNavItems.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => {
+                          setSearchOpen(false);
+                          setSearchQuery("");
+                        }}
+                        className="flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-xs text-[rgb(var(--rin-ink-rgb))] hover:bg-theme/10 hover:text-theme transition-colors"
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <i className={`${item.icon} text-sm text-theme`} />
+                          <span className="font-semibold truncate">{item.label}</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-[rgb(var(--rin-ink-muted-rgb))] shrink-0">
+                          {NAV_GROUP_LABELS[item.group || "content"]}
+                        </span>
+                      </Link>
+                    ))
+                  )}
+                </div>
               </div>
             ) : (
               <button
@@ -291,22 +342,6 @@ export function AdminLayout({
               >
                 <i className="ri-quill-pen-line text-xs" />
                 <span>撰写</span>
-              </Link>
-              <Link
-                href="/gallery"
-                className="hidden sm:inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 hover:bg-[rgb(var(--rin-ink-rgb)/0.05)] hover:text-theme transition font-medium"
-                title="进入云端图床画廊"
-              >
-                <i className="ri-folder-image-line text-xs" />
-                <span>图床</span>
-              </Link>
-              <Link
-                href="/music"
-                className="hidden sm:inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 hover:bg-[rgb(var(--rin-ink-rgb)/0.05)] hover:text-theme transition font-medium"
-                title="进入微光音廊工作台"
-              >
-                <i className="ri-disc-line text-xs" />
-                <span>音廊</span>
               </Link>
               <Link
                 href="/"

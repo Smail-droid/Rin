@@ -3,14 +3,11 @@ import {
   DEFAULT_PROMPT_SUMMARY,
   DEFAULT_PROMPT_TECH,
 } from "@rin/config";
-import {
-  SearchableSelect,
-} from "@rin/ui";
-import * as Switch from "@radix-ui/react-switch";
+import { SearchableSelect } from "@rin/ui";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import ReactLoading from "react-loading";
 import { client } from "../app/runtime";
+import { AdminSwitch } from "../components/admin-switch";
 import { useAlert } from "../components/dialog";
 import {
   AI_MODEL_PRESETS,
@@ -50,7 +47,7 @@ const DEFAULT_PROMPT_PRESETS: PromptPresetItem[] = [
     id: "preset_tech_std",
     name: "教程技术命令提炼 (标准极客版)",
     stage: "tech",
-    stageLabel: "① 命令提炼",
+    stageLabel: "01 命令提炼",
     enabled: true,
     prompt: DEFAULT_PROMPT_TECH,
   },
@@ -58,7 +55,7 @@ const DEFAULT_PROMPT_PRESETS: PromptPresetItem[] = [
     id: "preset_format_std",
     name: "文章正文直接排版整理 (盘古空格+代码块修正)",
     stage: "format",
-    stageLabel: "② 结构排版",
+    stageLabel: "02 结构排版",
     enabled: true,
     prompt: DEFAULT_PROMPT_FORMAT,
   },
@@ -66,7 +63,7 @@ const DEFAULT_PROMPT_PRESETS: PromptPresetItem[] = [
     id: "preset_summary_std",
     name: "精炼置顶摘要生成 (50~100字高密导读)",
     stage: "summary",
-    stageLabel: "③ 凝练摘要",
+    stageLabel: "03 凝练摘要",
     enabled: true,
     prompt: DEFAULT_PROMPT_SUMMARY,
   },
@@ -74,7 +71,7 @@ const DEFAULT_PROMPT_PRESETS: PromptPresetItem[] = [
     id: "preset_custom_anime",
     name: "二次元随笔风趣评 (画廊美学定制版)",
     stage: "custom",
-    stageLabel: "④ 随笔风格",
+    stageLabel: "04 随笔风格",
     enabled: false,
     prompt: "请以充满二次元微光美学的画廊随笔口吻，提炼本文最触动人心的 3 个技术或生活金句，语言灵动幽默。",
   },
@@ -299,9 +296,9 @@ export function AISummarySettings({
   }, [value.provider, fetchedModelList]);
 
   return (
-    <div className="space-y-3.5 ani-show select-none">
+    <div className="space-y-4 ani-show select-none">
       {/* 发布自动导读开关 */}
-      <div className="px-4 py-3 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex items-center justify-between gap-4">
+      <div className="px-5 py-3.5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 min-w-0">
           <h3 className="text-sm font-bold t-primary shrink-0">发布时自动生成导读</h3>
           <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${
@@ -310,19 +307,17 @@ export function AISummarySettings({
             {value.enabled ? "已开启" : "已关闭"}
           </span>
         </div>
-        <Switch.Root
-          className="SwitchRoot shrink-0"
+        <AdminSwitch
           checked={value.enabled}
-          onCheckedChange={(checked) => {
+          ariaLabel="发布时自动生成导读"
+          onChange={(checked) => {
             onChange({ enabled: checked });
           }}
-        >
-          <Switch.Thumb className="SwitchThumb" />
-        </Switch.Root>
+        />
       </div>
 
       {/* 模型接入配置 */}
-          <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3">
+          <div className="p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs space-y-3.5">
             <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
               <span className="font-bold text-xs t-primary flex items-center gap-1.5">
                 <i className="ri-cpu-line text-theme" />
@@ -406,7 +401,7 @@ export function AISummarySettings({
                         ? "••••••••••••已安全存储••••••••••••"
                         : "请填写当前服务商的 API Key..."
                     }
-                    className="w-full rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] px-3 py-2 text-xs t-primary outline-none focus:border-theme transition"
+                    className="rin-field"
                   />
                 </div>
               )}
@@ -422,7 +417,7 @@ export function AISummarySettings({
                       onChange({ apiUrl: event.target.value });
                     }}
                     placeholder="https://api.openai.com/v1"
-                    className="w-full rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] px-3 py-2 text-xs font-mono t-primary outline-none focus:border-theme transition"
+                    className="rin-field font-mono"
                   />
                 </div>
               )}
@@ -430,7 +425,7 @@ export function AISummarySettings({
           </div>
 
           {/* 提示词多版本预设工坊 (Dense DataGrid 超级表格，支持新增/勾选组合启用) */}
-          <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-3">
+          <div className="p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs space-y-3.5">
             <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
               <div className="flex items-center gap-2">
                 <i className="ri-list-settings-line text-theme" />
@@ -576,21 +571,21 @@ export function AISummarySettings({
                   value={currentEditingPreset.prompt}
                   onChange={(e) => handlePromptTextChange(e.target.value)}
                   placeholder="在此输入专属提示词指令..."
-                  className="w-full rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] p-3 text-xs leading-relaxed t-primary outline-none focus:border-theme transition font-mono"
+                  className="rin-field p-3 leading-relaxed font-mono"
                 />
               </div>
             )}
           </div>
 
           {/* 模型测试 */}
-          <div className="px-4 py-3 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="px-5 py-3.5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <i className="ri-speed-up-line text-theme" />
               <span className="font-bold text-xs t-primary">测试模型连通性</span>
             </div>
 
             <div className="flex items-center gap-2.5 self-end sm:self-auto">
-              {testStatus === "testing" && <ReactLoading width="1rem" height="1rem" type="spin" color="#FC466B" />}
+              {testStatus === "testing" && <i className="ri-loader-4-line animate-spin text-theme text-base" />}
               {testStatus === "success" && (
                 <span className="text-[11px] font-mono font-bold text-emerald-500">连接测试成功 ✓</span>
               )}

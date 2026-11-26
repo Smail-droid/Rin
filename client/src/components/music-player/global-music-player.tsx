@@ -165,6 +165,7 @@ export function GlobalMusicPlayer() {
   });
 
   const [isDragging, setIsDragging] = useState(false);
+  const activePointerIdRef = useRef<number | null>(null);
   const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number }>({
     startX: 0,
     startY: 0,
@@ -177,6 +178,27 @@ export function GlobalMusicPlayer() {
   // 交互因果锁：只有在卡片已展开后、用户在收起按钮上有意识地按下(pointerdown)或无障碍激活，才允许收起
   // 彻底阻断任何由折叠微标轻触(tap)后延迟穿透的合成 Ghost Click
   const collapseTriggerArmRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const clearStalePointer = (event?: Event) => {
+      if (activePointerIdRef.current === null) return;
+      if (event && "pointerId" in event && (event as PointerEvent).pointerId !== activePointerIdRef.current) {
+        return;
+      }
+      activePointerIdRef.current = null;
+      setIsDragging(false);
+      hasMovedRef.current = false;
+    };
+    window.addEventListener("pointerup", clearStalePointer);
+    window.addEventListener("pointercancel", clearStalePointer);
+    window.addEventListener("blur", clearStalePointer);
+    return () => {
+      window.removeEventListener("pointerup", clearStalePointer);
+      window.removeEventListener("pointercancel", clearStalePointer);
+      window.removeEventListener("blur", clearStalePointer);
+    };
+  }, []);
 
   // 视口边界保护与初始化 (卡片尺寸：宽 228px，高 54px)
   const getSafePosition = (x: number, y: number) => {
@@ -237,21 +259,41 @@ export function GlobalMusicPlayer() {
     };
   }, [showPlaylistDrawer]);
 
+  const getFallbackCoords = () => {
+    const winW = typeof window !== "undefined" ? window.innerWidth : 1024;
+    const winH = typeof window !== "undefined" ? window.innerHeight : 768;
+    return {
+      x: winW < 640 ? Math.max(12, winW - 56) : 20,
+      y: Math.max(60, winH - 76),
+    };
+  };
+
   const handleCollapsedPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    activePointerIdRef.current = e.pointerId;
     touchStartTimeRef.current = Date.now();
     const cx = Number.isFinite(e.clientX) ? e.clientX : 0;
     const cy = Number.isFinite(e.clientY) ? e.clientY : 0;
+    const fallback = getFallbackCoords();
     dragStartRef.current = {
       startX: cx,
       startY: cy,
-      initX: position?.x ?? 20,
-      initY: position?.y ?? (typeof window !== "undefined" ? window.innerHeight - 76 : 500),
+      initX: position?.x ?? fallback.x,
+      initY: position?.y ?? fallback.y,
     };
     hasMovedRef.current = false;
     // 不在按下瞬间强行捕获，避免破坏移动端原生轻触 (tap) 的识别流
   };
 
   const handleCollapsedPointerMove = (e: React.PointerEvent) => {
+    if (activePointerIdRef.current !== e.pointerId) return;
+    if (e.pointerType === "mouse" && e.isTrusted && e.buttons === 0) {
+      activePointerIdRef.current = null;
+      setIsDragging(false);
+      hasMovedRef.current = false;
+      return;
+    }
+
     const cx = Number.isFinite(e.clientX) ? e.clientX : 0;
     const cy = Number.isFinite(e.clientY) ? e.clientY : 0;
     const deltaX = cx - dragStartRef.current.startX;
@@ -275,6 +317,8 @@ export function GlobalMusicPlayer() {
   };
 
   const handleCollapsedPointerUp = (e: React.PointerEvent) => {
+    if (activePointerIdRef.current !== e.pointerId) return;
+    activePointerIdRef.current = null;
     try {
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId);
@@ -303,6 +347,8 @@ export function GlobalMusicPlayer() {
   };
 
   const handleCollapsedPointerCancel = (e: React.PointerEvent) => {
+    if (activePointerIdRef.current !== e.pointerId) return;
+    activePointerIdRef.current = null;
     try {
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId);
@@ -328,6 +374,7 @@ export function GlobalMusicPlayer() {
 
   // 展开态下的拖拽处理 (排除按钮、滑块、进度条)
   const handleExpandedPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (
       target.closest("button") ||
@@ -340,11 +387,13 @@ export function GlobalMusicPlayer() {
     }
 
     e.preventDefault();
+    activePointerIdRef.current = e.pointerId;
+    const fallback = getFallbackCoords();
     dragStartRef.current = {
       startX: e.clientX,
       startY: e.clientY,
-      initX: position?.x ?? 20,
-      initY: position?.y ?? (typeof window !== "undefined" ? window.innerHeight - 76 : 500),
+      initX: position?.x ?? fallback.x,
+      initY: position?.y ?? fallback.y,
     };
     hasMovedRef.current = false;
     setIsDragging(true);
@@ -355,7 +404,13 @@ export function GlobalMusicPlayer() {
   };
 
   const handleExpandedPointerMove = (e: React.PointerEvent) => {
-    if (!isDragging) return;
+    if (!isDragging || activePointerIdRef.current !== e.pointerId) return;
+    if (e.pointerType === "mouse" && e.isTrusted && e.buttons === 0) {
+      activePointerIdRef.current = null;
+      setIsDragging(false);
+      hasMovedRef.current = false;
+      return;
+    }
 
     const deltaX = e.clientX - dragStartRef.current.startX;
     const deltaY = e.clientY - dragStartRef.current.startY;
@@ -371,10 +426,14 @@ export function GlobalMusicPlayer() {
   };
 
   const handleExpandedPointerUp = (e: React.PointerEvent) => {
+    if (activePointerIdRef.current !== e.pointerId) return;
+    activePointerIdRef.current = null;
     if (!isDragging) return;
     setIsDragging(false);
     try {
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      }
     } catch {}
 
     if (position) {
@@ -382,6 +441,18 @@ export function GlobalMusicPlayer() {
         localStorage.setItem("rin_music_player_pos", JSON.stringify(position));
       } catch {}
     }
+  };
+
+  const handleExpandedPointerCancel = (e: React.PointerEvent) => {
+    if (activePointerIdRef.current !== e.pointerId) return;
+    activePointerIdRef.current = null;
+    setIsDragging(false);
+    hasMovedRef.current = false;
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      }
+    } catch {}
   };
 
   const handleResetPosition = () => {
@@ -409,6 +480,7 @@ export function GlobalMusicPlayer() {
       return;
     }
     collapseTriggerArmRef.current = false;
+    activePointerIdRef.current = null;
     setIsDragging(false);
     setIsExpanded(false);
     setShowPlaylistDrawer(false);
@@ -534,6 +606,7 @@ export function GlobalMusicPlayer() {
           onPointerDown={handleExpandedPointerDown}
           onPointerMove={handleExpandedPointerMove}
           onPointerUp={handleExpandedPointerUp}
+          onPointerCancel={handleExpandedPointerCancel}
           onDoubleClick={handleResetPosition}
           className={`relative group flex items-stretch h-[54px] w-[220px] sm:w-[228px] rounded-xl bg-white/95 dark:bg-[#18181b]/95 backdrop-blur-xl border border-neutral-200/80 dark:border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.55)] transition-all select-none cursor-grab active:cursor-grabbing ${
             isDragging ? "scale-95 ring-2 ring-theme/40 transition-none" : "hover:border-theme/40"

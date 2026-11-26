@@ -7,7 +7,7 @@ import { getAuthToken } from "../utils/auth";
 import { emitToast } from "../utils/toast";
 import { Modal } from "@rin/ui";
 
-export type LockMode = "public" | "password";
+export type LockMode = "public" | "password" | "token";
 
 export interface RealArticleAccessRule {
   id: number;
@@ -22,6 +22,7 @@ export function AdminAccessPage() {
   const siteConfig = useSiteConfig();
   const { showAlert, AlertUI } = useAlert();
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "locked" | "public">("all");
   const [loading, setLoading] = useState(true);
 
   // 加锁/换锁交互弹窗状态
@@ -192,10 +193,15 @@ export function AdminAccessPage() {
   };
 
   const filtered = useMemo(() => {
-    return articles.filter(
-      (a) => !searchQuery.trim() || a.title.toLowerCase().includes(searchQuery.trim().toLowerCase())
-    );
-  }, [articles, searchQuery]);
+    return articles.filter((a) => {
+      if (statusFilter === "locked" && !a.isLocked) return false;
+      if (statusFilter === "public" && a.isLocked) return false;
+      if (searchQuery.trim() && !a.title.toLowerCase().includes(searchQuery.trim().toLowerCase())) {
+        return false;
+      }
+      return true;
+    });
+  }, [articles, searchQuery, statusFilter]);
 
   const lockedCount = useMemo(() => articles.filter((a) => a.isLocked).length, [articles]);
   const publicCount = articles.length - lockedCount;
@@ -209,7 +215,7 @@ export function AdminAccessPage() {
 
       {/* 顶部真实指标切片 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-3.5 rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] shadow-2xs flex items-center justify-between">
+        <div className="p-3.5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-2xs flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -222,7 +228,7 @@ export function AdminAccessPage() {
           </span>
         </div>
 
-        <div className="p-3.5 rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] shadow-2xs flex items-center justify-between">
+        <div className="p-3.5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-2xs flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
@@ -235,7 +241,7 @@ export function AdminAccessPage() {
           </span>
         </div>
 
-        <div className="p-3.5 rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] shadow-2xs flex items-center justify-between">
+        <div className="p-3.5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-2xs flex items-center justify-between">
           <div>
             <span className="text-[11px] font-mono text-neutral-400 block">云端 D1 鉴权状态</span>
             <span className="text-sm font-bold font-mono text-emerald-500 mt-1 block">真强鉴权守护中</span>
@@ -247,11 +253,31 @@ export function AdminAccessPage() {
       </div>
 
       {/* 主体：文章可见性与锁定规则控制台超级表格 */}
-      <div className="rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] overflow-hidden shadow-2xs">
-        <div className="p-3 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+      <div className="rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] overflow-hidden shadow-2xs">
+        <div className="p-3.5 border-b border-[rgb(var(--rin-hairline-rgb)/0.7)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <i className="ri-shield-keyhole-line text-theme" />
-            <h3 className="font-bold text-xs t-primary">文章可见性与权限控制台 (真 D1 密码鉴权阻断)</h3>
+            <h3 className="font-bold text-xs t-primary">文章可见性与权限控制台</h3>
+            <div className="flex items-center gap-1 rounded-xl bg-black/5 dark:bg-white/5 p-0.5 text-[11px]">
+              {[
+                { id: "all" as const, label: `全部 (${articles.length})` },
+                { id: "locked" as const, label: `已加锁 (${lockedCount})` },
+                { id: "public" as const, label: `公开 (${publicCount})` },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setStatusFilter(tab.id)}
+                  className={`px-2.5 py-0.5 rounded-lg font-semibold transition cursor-pointer ${
+                    statusFilter === tab.id
+                      ? "bg-[rgb(var(--rin-surface-rgb))] text-theme shadow-2xs"
+                      : "text-neutral-500 hover:text-[rgb(var(--rin-ink-rgb))]"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -261,9 +287,9 @@ export function AdminAccessPage() {
                 placeholder="快速筛选文章..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-44 sm:w-56 rounded-xl border border-black/10 bg-black/[0.02] dark:border-white/10 dark:bg-white/[0.03] pl-7 pr-3 py-1 text-xs outline-none focus:border-theme"
+                className="rin-field w-44 sm:w-56 pl-7 pr-3 py-1"
               />
-              <i className="ri-search-line absolute left-2.5 top-1.5 text-neutral-400 text-xs" />
+              <i className="ri-search-line absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-xs" />
             </div>
           </div>
         </div>
@@ -271,7 +297,7 @@ export function AdminAccessPage() {
         <div className="overflow-x-auto max-h-[60vh] overflow-y-auto scrollbar-thin">
           <table className="w-full text-left text-xs border-collapse min-w-[500px]">
             <thead>
-              <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-400 font-mono sticky top-0 bg-white dark:bg-[#161b26] z-10">
+              <tr className="border-b border-[rgb(var(--rin-hairline-rgb)/0.7)] bg-[rgb(var(--rin-surface-rgb))] select-none text-neutral-400 font-mono sticky top-0 z-10">
                 <th className="py-2.5 px-3.5 w-16">ID</th>
                 <th className="py-2.5 px-3">文章标题与直达</th>
                 <th className="py-2.5 px-3 w-36">当前访问权限</th>
@@ -316,8 +342,8 @@ export function AdminAccessPage() {
                     <td className="py-2.5 px-3">
                       {art.isLocked ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                          <i className="ri-lock-2-line" />
-                          <span>独立密码锁</span>
+                          <i className={art.lockMode === "token" ? "ri-key-2-line" : "ri-lock-2-line"} />
+                          <span>{art.lockMode === "token" ? "口令通行证" : "独立密码锁"}</span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
@@ -393,10 +419,11 @@ export function AdminAccessPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="grid grid-cols-3 gap-2 text-xs">
             {[
               { id: "public" as const, label: "公开访问", desc: "所有人均可畅读" },
-              { id: "password" as const, label: "独立密码锁", desc: "指定密码解锁阅读" },
+              { id: "password" as const, label: "独立密码锁", desc: "指定密码解锁" },
+              { id: "token" as const, label: "口令通行证", desc: "特约口令查阅" },
             ].map((m) => (
               <button
                 key={m.id}
@@ -416,17 +443,19 @@ export function AdminAccessPage() {
             ))}
           </div>
 
-          {selectedLockMode === "password" && (
+          {selectedLockMode !== "public" && (
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-[11px] font-bold text-neutral-500 mb-1">设置查看密码</label>
+                <label className="block text-[11px] font-bold text-neutral-500 mb-1">
+                  {selectedLockMode === "password" ? "设置查看密码" : "设置通行证口令"}
+                </label>
                 <input
                   type="text"
                   required
                   value={secretInput}
                   onChange={(e) => setSecretInput(e.target.value)}
-                  placeholder="输入此随想的阅读密码..."
-                  className="w-full rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] px-3 py-2 text-xs font-mono outline-none focus:border-theme"
+                  placeholder={selectedLockMode === "password" ? "输入此随想的阅读密码..." : "输入此随想的特约口令..."}
+                  className="rin-field font-mono"
                   autoFocus
                 />
               </div>
@@ -438,7 +467,7 @@ export function AdminAccessPage() {
                   value={tipInput}
                   onChange={(e) => setTipInput(e.target.value)}
                   placeholder="如：本文为特约架构文档，需凭密码查阅。"
-                  className="w-full rounded-xl border border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.02] px-3 py-2 text-xs outline-none focus:border-theme"
+                  className="rin-field"
                 />
               </div>
             </div>
@@ -455,7 +484,7 @@ export function AdminAccessPage() {
             <button
               type="button"
               onClick={handleSubmitLock}
-              disabled={isSaving || (selectedLockMode === "password" && !secretInput.trim())}
+              disabled={isSaving || (selectedLockMode !== "public" && !secretInput.trim())}
               className="px-5 py-2 rounded-xl bg-theme text-white font-bold shadow-xs hover:bg-theme-hover transition cursor-pointer disabled:opacity-50"
             >
               {isSaving ? "正在保存..." : "保存策略并在云端生效"}

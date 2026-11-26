@@ -28,6 +28,8 @@ import {
 import { normalizeFeedCardVariant, type FeedCardVariant } from "../components/feed-card-options";
 import { normalizeAmbienceMode, type AmbienceMode } from "../components/ambient-effects-canvas";
 import { normalizeHeaderLayout } from "../components/site-header/layout-options";
+import { useColorMode } from "../utils/darkModeUtils";
+import { AdminSwitch } from "../components/admin-switch";
 
 type ClientConfigReader = {
   get: (key: string) => unknown;
@@ -213,10 +215,8 @@ export function SettingsAppearancePanel({
 
   const matchedPresetObj = THEME_PRESETS.find((p) => p.id === activePreset);
   const matchedPalette = findPaletteByIdOrColor(activePreset, activeColor) ?? MULTI_COLOR_PALETTES[0];
-  const isDarkMode =
-    typeof document !== "undefined" &&
-    (document.documentElement.getAttribute("data-color-mode") === "dark" ||
-      document.documentElement.classList.contains("dark"));
+  const colorMode = useColorMode();
+  const isDarkMode = colorMode === "dark";
 
   const previewCanvasHex = isDarkMode ? matchedPalette.tintDark : matchedPalette.tintLight;
   const previewSurfaceHex = isDarkMode ? matchedPalette.surfaceDark : matchedPalette.surfaceLight;
@@ -288,9 +288,11 @@ export function SettingsAppearancePanel({
     headerLayout === "dock" ? "三岛悬浮" : headerLayout === "compact" ? "极简社论" : "经典居中";
 
   return (
-    <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-4 ani-show">
+    <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 items-start ani-show">
+      {/* 左侧主调控流 (lg:col-span-7) */}
+      <div className="lg:col-span-7 flex flex-col gap-4 order-2 lg:order-1">
       {/* Bento Card A: 主题配色方案 & 自由调色 */}
-      <section className="col-span-1 md:col-span-12 lg:col-span-7 p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col justify-between space-y-4">
+      <section className="p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs flex flex-col justify-between space-y-4">
         <div className="flex items-center justify-between pb-2.5 border-b border-black/5 dark:border-white/5 gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <i className="ri-palette-line text-theme text-base shrink-0" />
@@ -525,269 +527,8 @@ export function SettingsAppearancePanel({
         </div>
       </section>
 
-      {/* Bento Card B: 所见即所得微型画廊预览卡 */}
-      <section className="col-span-1 md:col-span-12 lg:col-span-5 p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col justify-between space-y-3.5">
-        <div className="flex items-center justify-between pb-2.5 border-b border-black/5 dark:border-white/5 gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <i className="ri-eye-2-line text-theme text-base shrink-0" />
-            <h3 className="font-bold text-sm t-primary truncate">所见即所得微型画廊预览</h3>
-          </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-theme/10 text-theme font-bold shrink-0">
-            LIVE WYSIWYG
-          </span>
-        </div>
-
-        {/* 实时画廊预览视口 */}
-        <div
-          className="relative flex-1 rounded-2xl border overflow-hidden p-3.5 flex flex-col justify-between gap-3 transition-colors duration-200 min-h-[280px]"
-          style={{
-            backgroundColor: previewCanvasHex,
-            color: previewInkHex,
-            borderColor: previewHairlineHex,
-            fontFamily: TITLE_FONT_STACKS[normalizeTitleFont(fontFamily)],
-          }}
-        >
-          {/* 背景画布纹理微缩层 */}
-          {wallpaperUrl && wallpaperUrl !== "none" ? (
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0"
-              style={{
-                backgroundImage: /^(radial-gradient|linear-gradient|conic-gradient|url)\(/i.test(wallpaperUrl)
-                  ? wallpaperUrl
-                  : `url('${wallpaperUrl}')`,
-                backgroundSize: /1px,\s*transparent\s*1px/i.test(wallpaperUrl) ? "16px 16px" : "cover",
-                opacity: Math.min(0.45, Math.max(0.06, wallpaperOpacity / 100)),
-              }}
-            />
-          ) : null}
-
-          {/* 微缩顶栏（实时响应 header.layout: classic | compact | dock） */}
-          <div className="relative z-10">
-            {headerLayout === "dock" ? (
-              <div className="flex items-center justify-between gap-1.5 text-[10px]">
-                <span
-                  className="px-2 py-1 rounded-full border font-bold truncate max-w-[84px]"
-                  style={{
-                    backgroundColor: previewCardSurface,
-                    borderColor: previewHairlineHex,
-                    backdropFilter: `blur(${previewCardBlur})`,
-                  }}
-                >
-                  <span className="inline-block h-1.5 w-1.5 rounded-full mr-1 align-middle" style={{ backgroundColor: activeColor }} />
-                  {siteTitle}
-                </span>
-                <span
-                  className="px-2.5 py-1 rounded-full border flex items-center gap-2 font-medium"
-                  style={{
-                    backgroundColor: previewCardSurface,
-                    borderColor: previewHairlineHex,
-                    backdropFilter: `blur(${previewCardBlur})`,
-                  }}
-                >
-                  <span style={{ color: activeColor }}>随想</span>
-                  <span style={{ color: previewMutedHex }}>归档</span>
-                  <span style={{ color: previewMutedHex }}>友链</span>
-                </span>
-                <span
-                  className="px-2 py-1 rounded-full border flex items-center gap-1"
-                  style={{
-                    backgroundColor: previewCardSurface,
-                    borderColor: previewHairlineHex,
-                    backdropFilter: `blur(${previewCardBlur})`,
-                  }}
-                >
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: activeColor }} />
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: previewSecondaryColor }} />
-                </span>
-              </div>
-            ) : headerLayout === "compact" ? (
-              <div
-                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl border text-[10px]"
-                style={{
-                  backgroundColor: previewCardSurface,
-                  borderColor: previewHairlineHex,
-                  backdropFilter: `blur(${previewCardBlur})`,
-                }}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="h-2.5 w-2.5 rounded-md shrink-0" style={{ backgroundColor: activeColor }} />
-                  <span className="font-bold truncate">{siteTitle}</span>
-                  <span style={{ color: activeColor }}>随想</span>
-                  <span style={{ color: previewMutedHex }}>归档</span>
-                </div>
-                <span className="h-2 w-5 rounded-full" style={{ backgroundColor: hexToRgba(activeColor, 0.25) }} />
-              </div>
-            ) : (
-              <div
-                className="flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-xl border text-[10px]"
-                style={{
-                  backgroundColor: previewCardSurface,
-                  borderColor: previewHairlineHex,
-                  backdropFilter: `blur(${previewCardBlur})`,
-                }}
-              >
-                <div className="flex items-center gap-1.5 font-bold">
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: activeColor }} />
-                  <span>{siteTitle}</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-[9px]">
-                  <span style={{ color: activeColor }}>画廊</span>
-                  <span style={{ color: previewMutedHex }}>时光</span>
-                  <span style={{ color: previewMutedHex }}>随笔</span>
-                  <span style={{ color: previewMutedHex }}>关于</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 微缩页面标题（实时响应 theme.title_font × theme.title_effect） */}
-          <div className="relative z-10 space-y-1 px-0.5" data-title-font={activeTitleFont} data-title-effect={activeTitleEffect}>
-            <div className="text-[9px] uppercase tracking-[0.2em]" style={{ color: previewMutedHex }}>
-              GALLERY ATELIER · PREVIEW
-            </div>
-            <div
-              className={`rin-page-title text-lg leading-snug rin-title-font-${activeTitleFont} rin-title-effect-${activeTitleEffect}`}
-              style={{ fontFamily: TITLE_FONT_STACKS[activeTitleFont] }}
-            >
-              微光画廊随想
-            </div>
-            <p className="text-[10px] leading-relaxed truncate" style={{ color: previewMutedHex, fontSize: `${Math.max(10, Math.round(themeFontSize * 0.65))}px` }}>
-              正文字号 {themeFontSize}px · 卡片通透 {themeOpacity}% · 微调即刻映射
-            </p>
-          </div>
-
-          {/* 微缩文章卡片流（实时响应 feed.card_variant & theme.opacity & gallery.tilt_degree） */}
-          <div className="relative z-10">
-            {cardVariant === "poster" ? (
-              <div className="grid grid-cols-2 gap-2">
-                {[0, 1].map((idx) => (
-                  <div
-                    key={idx}
-                    className="relative h-24 rounded-xl overflow-hidden border p-2 flex flex-col justify-end"
-                    style={{
-                      borderColor: previewHairlineHex,
-                      background:
-                        idx === 0
-                          ? `linear-gradient(135deg, ${hexToRgba(activeColor, 0.72)}, ${hexToRgba(previewSecondaryColor, 0.6)})`
-                          : `linear-gradient(135deg, ${hexToRgba(previewSecondaryColor, 0.72)}, ${hexToRgba(activeColor, 0.55)})`,
-                    }}
-                  >
-                    <div className="rounded-lg bg-black/45 px-2 py-1 text-white backdrop-blur-xs">
-                      <div className="text-[10px] font-bold truncate">{idx === 0 ? "光影手记 #01" : "午后漫步 #02"}</div>
-                      <div className="text-[8px] opacity-80">全幅沉浸画册</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : cardVariant === "editorial" ? (
-              <div className="space-y-1.5">
-                {[
-                  { title: "边缘微光设计笔记", tag: "设计", accent: activeColor },
-                  { title: "春日樱雪纸墨漫步", tag: "随笔", accent: previewSecondaryColor },
-                ].map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl border p-2 flex items-center justify-between gap-2.5"
-                    style={{
-                      backgroundColor: previewCardSurface,
-                      borderColor: previewHairlineHex,
-                      backdropFilter: `blur(${previewCardBlur})`,
-                    }}
-                  >
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="text-[11px] font-bold truncate">{item.title}</div>
-                      <div className="flex items-center gap-1.5 text-[9px]" style={{ color: previewMutedHex }}>
-                        <span className="px-1.5 py-px rounded" style={{ backgroundColor: hexToRgba(item.accent, 0.14), color: activeColor }}>
-                          {item.tag}
-                        </span>
-                        <span>3 min read</span>
-                      </div>
-                    </div>
-                    <div
-                      className="h-9 w-12 rounded-lg shrink-0"
-                      style={{ background: `linear-gradient(135deg, ${hexToRgba(activeColor, 0.45)}, ${hexToRgba(previewSecondaryColor, 0.45)})` }}
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : cardVariant === "compact" ? (
-              <div
-                className="rounded-xl border divide-y"
-                style={{
-                  backgroundColor: previewCardSurface,
-                  borderColor: previewHairlineHex,
-                  backdropFilter: `blur(${previewCardBlur})`,
-                }}
-              >
-                {["极简文字流排版规范", "二次元轻磨砂质感调校", "响应式瀑布流密度实践"].map((label, idx) => (
-                  <div
-                    key={idx}
-                    className="px-2.5 py-1.5 flex items-center justify-between gap-2 text-[10px]"
-                    style={{ borderColor: previewHairlineHex }}
-                  >
-                    <span className="flex items-center gap-1.5 font-semibold truncate">
-                      <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: activeColor }} />
-                      <span className="truncate">{label}</span>
-                    </span>
-                    <span className="font-mono text-[9px] shrink-0" style={{ color: previewMutedHex }}>
-                      0{idx + 1}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2.5 px-1">
-                {[
-                  { title: "樱雪纸墨日记", rot: -safeTilt },
-                  { title: "画廊手账拾遗", rot: safeTilt },
-                ].map((card, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl border p-1.5 shadow-xs transition-transform"
-                    style={{
-                      backgroundColor: previewCardSurface,
-                      borderColor: previewHairlineHex,
-                      backdropFilter: `blur(${previewCardBlur})`,
-                      transform: `rotate(${card.rot}deg)`,
-                    }}
-                  >
-                    <div
-                      className="h-12 rounded-lg mb-1.5"
-                      style={{
-                        background:
-                          idx === 0
-                            ? `linear-gradient(135deg, ${hexToRgba(activeColor, 0.42)}, ${hexToRgba(previewSecondaryColor, 0.3)})`
-                            : `linear-gradient(135deg, ${hexToRgba(previewSecondaryColor, 0.42)}, ${hexToRgba(activeColor, 0.25)})`,
-                      }}
-                    />
-                    <div className="flex items-center justify-between gap-1 px-0.5">
-                      <span className="text-[10px] font-bold truncate">{card.title}</span>
-                      <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: activeColor }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 当前实时参数状态标签 */}
-        <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
-          <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
-            标题: {activeTitleFontLabel} × {activeTitleEffectLabel}
-          </span>
-          <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
-            顶栏: {activeHeaderLayoutLabel}
-          </span>
-          <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
-            卡片: {activeCardVariantLabel}
-          </span>
-        </div>
-      </section>
-
       {/* Bento Card C: 正交标题系统 (标题字族 × 标题质感) + 正文字族 & 字号 */}
-      <section className="col-span-1 md:col-span-12 lg:col-span-6 p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+      <section className="p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-2.5 border-b border-black/5 dark:border-white/5 gap-2">
           <div className="flex items-center gap-2">
             <i className="ri-font-size-2 text-theme text-base" />
@@ -930,7 +671,7 @@ export function SettingsAppearancePanel({
       </section>
 
       {/* Bento Card D: 文章卡片版式 (4 套缩略图卡片) + 瀑布流列数 / 对齐 / 间距 / 倾角微调 */}
-      <section className="col-span-1 md:col-span-12 lg:col-span-6 p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+      <section className="p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-2.5 border-b border-black/5 dark:border-white/5 gap-2">
           <div className="flex items-center gap-2">
             <i className="ri-layout-masonry-line text-theme text-base" />
@@ -1063,7 +804,7 @@ export function SettingsAppearancePanel({
       </section>
 
       {/* Bento Card E: 氛围粒子特效 + 趣味鼠标指针 + 阅读进度条开关 */}
-      <section className="col-span-1 md:col-span-12 lg:col-span-6 p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col justify-between space-y-4">
+      <section className="p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs flex flex-col justify-between space-y-4">
         <div className="flex items-center justify-between pb-2.5 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center gap-2">
             <i className="ri-sparkling-line text-theme text-base" />
@@ -1103,39 +844,37 @@ export function SettingsAppearancePanel({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-black/5 dark:border-white/5 text-xs">
-          <label className="flex items-center justify-between gap-2 p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] cursor-pointer">
+          <div className="flex items-center justify-between gap-2 p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
             <div className="min-w-0">
               <span className="font-bold t-primary block">趣味鼠标指针</span>
               <span className="text-[10px] text-neutral-400 block truncate">桌面端轻盈定制光标</span>
             </div>
-            <input
-              type="checkbox"
+            <AdminSwitch
               checked={customCursor}
-              onChange={(e) => {
-                applyThemeCustomCursor(e.target.checked);
-                setConfigValue("client", "theme.custom_cursor", e.target.checked);
+              ariaLabel="趣味鼠标指针"
+              onChange={(checked) => {
+                applyThemeCustomCursor(checked);
+                setConfigValue("client", "theme.custom_cursor", checked);
               }}
-              className="accent-theme rounded h-4 w-4 cursor-pointer"
             />
-          </label>
+          </div>
 
-          <label className="flex items-center justify-between gap-2 p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] cursor-pointer">
+          <div className="flex items-center justify-between gap-2 p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
             <div className="min-w-0">
               <span className="font-bold t-primary block">顶部阅读进度条</span>
               <span className="text-[10px] text-neutral-400 block truncate">长文阅读进度指示线</span>
             </div>
-            <input
-              type="checkbox"
+            <AdminSwitch
               checked={readingProgress}
-              onChange={(e) => setConfigValue("client", "theme.reading_progress", e.target.checked)}
-              className="accent-theme rounded h-4 w-4 cursor-pointer"
+              ariaLabel="顶部阅读进度条"
+              onChange={(checked) => setConfigValue("client", "theme.reading_progress", checked)}
             />
-          </label>
+          </div>
         </div>
       </section>
 
       {/* Bento Card F: 背景画布纹理预设与浓度 */}
-      <section className="col-span-1 md:col-span-12 lg:col-span-6 p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col justify-between space-y-4">
+      <section className="p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs flex flex-col justify-between space-y-4">
         <div className="flex items-center justify-between pb-2.5 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center gap-2">
             <i className="ri-image-2-line text-theme text-base" />
@@ -1207,6 +946,271 @@ export function SettingsAppearancePanel({
               aria-label="背景显影浓度"
             />
           </div>
+        </div>
+      </section>
+      </div>
+
+      {/* 右侧粘性实时预览视口 (Bento Card B: 桌面端随滚动始终悬停对照) */}
+      <section className="lg:col-span-5 lg:sticky lg:top-28 order-1 lg:order-2 p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs flex flex-col justify-between space-y-3.5">
+        <div className="flex items-center justify-between pb-2.5 border-b border-black/5 dark:border-white/5 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <i className="ri-eye-2-line text-theme text-base shrink-0" />
+            <h3 className="font-bold text-sm t-primary truncate">所见即所得微型画廊预览</h3>
+          </div>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-theme/10 text-theme font-bold shrink-0">
+            LIVE WYSIWYG
+          </span>
+        </div>
+
+        {/* 实时画廊预览视口 */}
+        <div
+          className="relative flex-1 rounded-2xl border overflow-hidden p-3.5 flex flex-col justify-between gap-3 transition-colors duration-200 min-h-[290px]"
+          style={{
+            backgroundColor: previewCanvasHex,
+            color: previewInkHex,
+            borderColor: previewHairlineHex,
+            fontFamily: TITLE_FONT_STACKS[normalizeTitleFont(fontFamily)],
+          }}
+        >
+          {/* 背景画布纹理微缩层 */}
+          {wallpaperUrl && wallpaperUrl !== "none" ? (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                backgroundImage: /^(radial-gradient|linear-gradient|conic-gradient|url)\(/i.test(wallpaperUrl)
+                  ? wallpaperUrl
+                  : `url('${wallpaperUrl}')`,
+                backgroundSize: /1px,\s*transparent\s*1px/i.test(wallpaperUrl) ? "16px 16px" : "cover",
+                opacity: Math.min(0.45, Math.max(0.06, wallpaperOpacity / 100)),
+              }}
+            />
+          ) : null}
+
+          {/* 微缩顶栏（实时响应 header.layout: classic | compact | dock） */}
+          <div className="relative z-10">
+            {headerLayout === "dock" ? (
+              <div className="flex items-center justify-between gap-1.5 text-[10px]">
+                <span
+                  className="px-2 py-1 rounded-full border font-bold truncate max-w-[84px]"
+                  style={{
+                    backgroundColor: previewCardSurface,
+                    borderColor: previewHairlineHex,
+                    backdropFilter: `blur(${previewCardBlur})`,
+                  }}
+                >
+                  <span className="inline-block h-1.5 w-1.5 rounded-full mr-1 align-middle" style={{ backgroundColor: activeColor }} />
+                  {siteTitle}
+                </span>
+                <span
+                  className="px-2.5 py-1 rounded-full border flex items-center gap-2 font-medium"
+                  style={{
+                    backgroundColor: previewCardSurface,
+                    borderColor: previewHairlineHex,
+                    backdropFilter: `blur(${previewCardBlur})`,
+                  }}
+                >
+                  <span style={{ color: activeColor }}>随想</span>
+                  <span style={{ color: previewMutedHex }}>归档</span>
+                  <span style={{ color: previewMutedHex }}>友链</span>
+                </span>
+                <span
+                  className="px-2 py-1 rounded-full border flex items-center gap-1"
+                  style={{
+                    backgroundColor: previewCardSurface,
+                    borderColor: previewHairlineHex,
+                    backdropFilter: `blur(${previewCardBlur})`,
+                  }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: activeColor }} />
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: previewSecondaryColor }} />
+                </span>
+              </div>
+            ) : headerLayout === "compact" ? (
+              <div
+                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl border text-[10px]"
+                style={{
+                  backgroundColor: previewCardSurface,
+                  borderColor: previewHairlineHex,
+                  backdropFilter: `blur(${previewCardBlur})`,
+                }}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="h-2.5 w-2.5 rounded-md shrink-0" style={{ backgroundColor: activeColor }} />
+                  <span className="font-bold truncate">{siteTitle}</span>
+                  <span style={{ color: activeColor }}>随想</span>
+                  <span style={{ color: previewMutedHex }}>归档</span>
+                </div>
+                <span className="h-2 w-5 rounded-full" style={{ backgroundColor: hexToRgba(activeColor, 0.25) }} />
+              </div>
+            ) : (
+              <div
+                className="flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-xl border text-[10px]"
+                style={{
+                  backgroundColor: previewCardSurface,
+                  borderColor: previewHairlineHex,
+                  backdropFilter: `blur(${previewCardBlur})`,
+                }}
+              >
+                <div className="flex items-center gap-1.5 font-bold">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: activeColor }} />
+                  <span>{siteTitle}</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-[9px]">
+                  <span style={{ color: activeColor }}>画廊</span>
+                  <span style={{ color: previewMutedHex }}>时光</span>
+                  <span style={{ color: previewMutedHex }}>随笔</span>
+                  <span style={{ color: previewMutedHex }}>关于</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 微缩页面标题（实时响应 theme.title_font × theme.title_effect） */}
+          <div className="relative z-10 space-y-1 px-0.5" data-title-font={activeTitleFont} data-title-effect={activeTitleEffect}>
+            <div className="text-[9px] uppercase tracking-[0.2em]" style={{ color: previewMutedHex }}>
+              GALLERY ATELIER · PREVIEW
+            </div>
+            <div
+              className={`rin-page-title text-lg leading-snug rin-title-font-${activeTitleFont} rin-title-effect-${activeTitleEffect}`}
+              style={{ fontFamily: TITLE_FONT_STACKS[activeTitleFont] }}
+            >
+              微光画廊随想
+            </div>
+            <p className="text-[10px] leading-relaxed truncate" style={{ color: previewMutedHex, fontSize: `${Math.max(10, Math.round(themeFontSize * 0.65))}px` }}>
+              正文字号 {themeFontSize}px · 卡片通透 {themeOpacity}% · 微调即刻映射
+            </p>
+          </div>
+
+          {/* 微缩文章卡片流（实时响应 feed.card_variant & theme.opacity & gallery.tilt_degree） */}
+          <div className="relative z-10">
+            {cardVariant === "poster" ? (
+              <div className="grid grid-cols-2 gap-2">
+                {[0, 1].map((idx) => (
+                  <div
+                    key={idx}
+                    className="relative h-24 rounded-xl overflow-hidden border flex flex-col justify-end"
+                    style={{
+                      borderColor: previewHairlineHex,
+                      background:
+                        idx === 0
+                          ? `linear-gradient(135deg, ${hexToRgba(activeColor, 0.72)}, ${hexToRgba(previewSecondaryColor, 0.6)})`
+                          : `linear-gradient(135deg, ${hexToRgba(previewSecondaryColor, 0.72)}, ${hexToRgba(activeColor, 0.55)})`,
+                    }}
+                  >
+                    <div className="bg-gradient-to-t from-black/55 via-black/15 to-transparent px-2.5 py-2 text-white">
+                      <div className="text-[10px] font-bold truncate">{idx === 0 ? "光影手记 #01" : "午后漫步 #02"}</div>
+                      <div className="text-[8px] opacity-85">全幅沉浸画册</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : cardVariant === "editorial" ? (
+              <div className="space-y-1.5">
+                {[
+                  { title: "边缘微光设计笔记", tag: "设计", accent: activeColor },
+                  { title: "春日樱雪纸墨漫步", tag: "随笔", accent: previewSecondaryColor },
+                ].map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-xl border p-2 flex items-center justify-between gap-2.5"
+                    style={{
+                      backgroundColor: previewCardSurface,
+                      borderColor: previewHairlineHex,
+                      backdropFilter: `blur(${previewCardBlur})`,
+                    }}
+                  >
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="text-[11px] font-bold truncate">{item.title}</div>
+                      <div className="flex items-center gap-1.5 text-[9px]" style={{ color: previewMutedHex }}>
+                        <span className="px-1.5 py-px rounded" style={{ backgroundColor: hexToRgba(item.accent, 0.14), color: activeColor }}>
+                          {item.tag}
+                        </span>
+                        <span>3 min read</span>
+                      </div>
+                    </div>
+                    <div
+                      className="h-9 w-12 rounded-lg shrink-0"
+                      style={{ background: `linear-gradient(135deg, ${hexToRgba(activeColor, 0.45)}, ${hexToRgba(previewSecondaryColor, 0.45)})` }}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : cardVariant === "compact" ? (
+              <div
+                className="rounded-xl border divide-y"
+                style={{
+                  backgroundColor: previewCardSurface,
+                  borderColor: previewHairlineHex,
+                  backdropFilter: `blur(${previewCardBlur})`,
+                }}
+              >
+                {["极简文字流排版规范", "二次元轻磨砂质感调校", "响应式瀑布流密度实践"].map((label, idx) => (
+                  <div
+                    key={idx}
+                    className="px-2.5 py-1.5 flex items-center justify-between gap-2 text-[10px]"
+                    style={{ borderColor: previewHairlineHex }}
+                  >
+                    <span className="flex items-center gap-1.5 font-semibold truncate">
+                      <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: activeColor }} />
+                      <span className="truncate">{label}</span>
+                    </span>
+                    <span className="font-mono text-[9px] shrink-0" style={{ color: previewMutedHex }}>
+                      0{idx + 1}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5 px-1">
+                {[
+                  { title: "樱雪纸墨日记", rot: -safeTilt },
+                  { title: "画廊手账拾遗", rot: safeTilt },
+                ].map((card, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-xl border p-1.5 shadow-xs transition-transform"
+                    style={{
+                      backgroundColor: previewCardSurface,
+                      borderColor: previewHairlineHex,
+                      backdropFilter: `blur(${previewCardBlur})`,
+                      transform: `rotate(${card.rot}deg)`,
+                    }}
+                  >
+                    <div
+                      className="h-12 rounded-lg mb-1.5"
+                      style={{
+                        background:
+                          idx === 0
+                            ? `linear-gradient(135deg, ${hexToRgba(activeColor, 0.42)}, ${hexToRgba(previewSecondaryColor, 0.3)})`
+                            : `linear-gradient(135deg, ${hexToRgba(previewSecondaryColor, 0.42)}, ${hexToRgba(activeColor, 0.25)})`,
+                      }}
+                    />
+                    <div className="flex items-center justify-between gap-1 px-0.5">
+                      <span className="text-[10px] font-bold truncate">{card.title}</span>
+                      <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: activeColor }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 当前实时参数状态标签 */}
+        <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
+          <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
+            标题: {activeTitleFontLabel} × {activeTitleEffectLabel}
+          </span>
+          <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
+            顶栏: {activeHeaderLayoutLabel}
+          </span>
+          <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
+            卡片: {activeCardVariantLabel}
+          </span>
+          <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 text-neutral-600 dark:text-neutral-300">
+            模式: {isDarkMode ? "暗夜" : "日间"}
+          </span>
         </div>
       </section>
     </div>

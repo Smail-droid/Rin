@@ -148,14 +148,3 @@ export async function setAIConfig(config: ConfigWriter, updates: Partial<AIConfi
 
     await config.save();
 }
-
-export async function getAIConfigForFrontend(
-    config: ConfigReader,
-): Promise<AIConfig & { api_key_set: boolean }> {
-    const aiConfig = await getAIConfig(config);
-    return {
-        ...aiConfig,
-        api_key: "",
-        api_key_set: aiConfig.api_key.length > 0,
-    };
-}

@@ -2,7 +2,6 @@
 // This client provides a clean, type-safe interface for all backend API endpoints
 
 import { getAuthToken } from "../utils/auth";
-import { endpoint } from "../config";
 
 // Import shared types
 import type {
@@ -28,7 +27,6 @@ import type {
   CreateMomentRequest,
   ConfigType,
   ConfigResponse,
-  AIConfig,
   UploadResponse,
   MoveFilesResponse,
   AuthStatus,
@@ -428,11 +426,6 @@ class UserAPI {
   async logout(): Promise<ApiResponse<void>> {
     return this.http.post<void>("/api/user/logout");
   }
-
-  // GET /api/user/github
-  githubAuth(): string {
-    return `${endpoint}/api/user/github`;
-  }
 }
 
 /**
@@ -663,26 +656,6 @@ class ConfigAPI {
 }
 
 /**
- * AI Config API methods (deprecated, use ConfigAPI instead)
- * @deprecated AI config is now part of server config. Use client.config.get('server') and client.config.update('server', {...}) instead.
- */
-class AIConfigAPI {
-  constructor(private http: HttpClient) {}
-
-  // GET /api/ai-config
-  /** @deprecated Use client.config.get('server') instead */
-  async get(): Promise<ApiResponse<AIConfig>> {
-    return this.http.get<AIConfig>("/api/ai-config");
-  }
-
-  // POST /api/ai-config
-  /** @deprecated Use client.config.update('server', {...}) instead */
-  async update(body: Partial<AIConfig>): Promise<ApiResponse<void>> {
-    return this.http.post<void>("/api/ai-config", body);
-  }
-}
-
-/**
  * Storage API methods
  */
 class StorageAPI {
@@ -786,31 +759,6 @@ class WordPressAPI {
   }
 }
 
-/**
- * RSS API methods - direct fetch for RSS feeds
- */
-class RSSAPI {
-  constructor(private baseUrl: string) {}
-
-  // GET /rss.xml
-  async getRSS(): Promise<string> {
-    const response = await fetch(`${this.baseUrl}/rss.xml`);
-    return response.text();
-  }
-
-  // GET /atom.xml
-  async getAtom(): Promise<string> {
-    const response = await fetch(`${this.baseUrl}/atom.xml`);
-    return response.text();
-  }
-
-  // GET /rss.json
-  async getJSON(): Promise<unknown> {
-    const response = await fetch(`${this.baseUrl}/rss.json`);
-    return response.json();
-  }
-}
-
 // ============================================================================
 // Main API Client Class
 // ============================================================================
@@ -824,12 +772,10 @@ export class ApiClient {
   friend: FriendAPI;
   moments: MomentsAPI;
   config: ConfigAPI;
-  aiConfig: AIConfigAPI;
   storage: StorageAPI;
   search: SearchAPI;
   auth: AuthAPI;
   wp: WordPressAPI;
-  rss: RSSAPI;
 
   constructor(baseUrl: string) {
     this.http = new HttpClient(baseUrl);
@@ -840,12 +786,10 @@ export class ApiClient {
     this.friend = new FriendAPI(this.http);
     this.moments = new MomentsAPI(this.http);
     this.config = new ConfigAPI(this.http);
-    this.aiConfig = new AIConfigAPI(this.http);
     this.storage = new StorageAPI(this.http);
     this.search = new SearchAPI(this.http);
     this.auth = new AuthAPI(this.http);
     this.wp = new WordPressAPI(this.http);
-    this.rss = new RSSAPI(baseUrl);
   }
 }
 

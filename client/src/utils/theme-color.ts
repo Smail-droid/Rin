@@ -408,10 +408,6 @@ function hexToRgb(hex: string) {
   };
 }
 
-export function themeColorToRgb(value: string | undefined | null) {
-  return hexToRgb(normalizeHex(value));
-}
-
 function mix(value: number, target: number, ratio: number) {
   return Math.round(value + (target - value) * ratio);
 }
@@ -711,19 +707,6 @@ export function applyThemeTitleEffect(effect: string | undefined | null): TitleE
   root.setAttribute("data-title-effect", resolved);
   root.style.setProperty("--rin-title-effect", resolved);
   return resolved;
-}
-
-export function applyThemeTitleStyle({
-  font,
-  effect,
-}: {
-  font?: string | null;
-  effect?: string | null;
-}) {
-  return {
-    font: applyThemeTitleFont(font),
-    effect: applyThemeTitleEffect(effect),
-  };
 }
 
 export function applyThemeFontSize(value: unknown) {

@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
-import ReactLoading from "react-loading";
 import { client } from "../app/runtime";
 import { useAlert } from "../components/dialog";
 import { useSiteConfig } from "../hooks/useSiteConfig";
 import { useApiResource } from "../hooks/use-api-resource";
 import { enrichMarkdownImageMetadata } from "../utils/image-upload";
+import { emitToast } from "../utils/toast";
 import type { ConfigHealthResponse } from "../api/client";
 
 function getFixLink(id: string): string {
@@ -66,10 +66,13 @@ export function AdminOpsHubPage() {
         return;
       }
       if (data) {
-        showAlert(t(
-          data.forced ? "compat_tasks.ai_summary.result_force" : "compat_tasks.ai_summary.result",
-          { queued: data.queued, skipped: data.skipped },
-        ));
+        emitToast(
+          t(
+            data.forced ? "compat_tasks.ai_summary.result_force" : "compat_tasks.ai_summary.result",
+            { queued: data.queued, skipped: data.skipped },
+          ),
+          "success",
+        );
         loadCompatStatus();
       }
     } finally {
@@ -104,7 +107,7 @@ export function AdminOpsHubPage() {
         }
       }
 
-      showAlert(t("compat_tasks.blurhash.result", { updated, failed, total: items.length }));
+      emitToast(t("compat_tasks.blurhash.result", { updated, failed, total: items.length }), "success");
       loadCompatStatus();
     } catch {
       showAlert("执行 Blurhash 回填异常");
@@ -119,7 +122,7 @@ export function AdminOpsHubPage() {
 
   const copyToClipboard = (text: string, label: string) => {
     void navigator.clipboard.writeText(text);
-    showAlert(`已复制 ${label} 到剪贴板：\n${text}`);
+    emitToast(`已复制 ${label} 到剪贴板`, "success");
   };
 
   return (
@@ -132,7 +135,7 @@ export function AdminOpsHubPage() {
       {/* ====================================================================
           第 1 层：顶部通栏 SEO 引擎直达卡片 + Sitemap 快速操作 (高 80px 紧凑)
           ==================================================================== */}
-      <div className="rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] p-3 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] p-3.5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-theme/10 text-theme text-lg">
             <i className="ri-search-eye-line" />
@@ -198,9 +201,9 @@ export function AdminOpsHubPage() {
           ==================================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-start">
         {/* 左半屏：系统健康诊断 Dense DataGrid */}
-        <div className="rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] overflow-hidden shadow-2xs flex flex-col">
+        <div className="rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] overflow-hidden shadow-2xs flex flex-col">
           {/* 表头操作栏 */}
-          <div className="p-3.5 border-b border-black/5 dark:border-white/5 flex items-center justify-between gap-2">
+          <div className="p-3.5 border-b border-[rgb(var(--rin-hairline-rgb)/0.7)] flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <i className="ri-heart-pulse-line text-theme" />
               <span className="font-bold text-xs sm:text-sm t-primary">系统健康与运行环境诊断 ({healthItems.length})</span>
@@ -224,7 +227,7 @@ export function AdminOpsHubPage() {
           <div className="overflow-x-auto max-h-[calc(100vh-270px)]">
             <table className="w-full text-left text-xs sm:text-sm border-collapse">
               <thead>
-                <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-500 dark:text-neutral-400 font-mono text-xs sticky top-0 bg-white dark:bg-[#161b26] z-10">
+                <tr className="border-b border-[rgb(var(--rin-hairline-rgb)/0.7)] bg-[rgb(var(--rin-surface-rgb))] select-none text-neutral-500 dark:text-neutral-400 font-mono text-xs sticky top-0 z-10">
                   <th className="py-2.5 px-3 w-16 text-center">状态</th>
                   <th className="py-2.5 px-3 w-36">巡检项目</th>
                   <th className="py-2.5 px-3">现状诊断摘要</th>
@@ -236,7 +239,7 @@ export function AdminOpsHubPage() {
                   <tr>
                     <td colSpan={4} className="py-8 text-center text-neutral-400 text-xs">
                       <div className="flex items-center justify-center gap-2">
-                        <ReactLoading width="1rem" height="1rem" type="spin" color="#fc466b" />
+                        <i className="ri-loader-4-line animate-spin text-theme text-base" />
                         <span>正在进行全站探针诊断…</span>
                       </div>
                     </td>
@@ -285,9 +288,9 @@ export function AdminOpsHubPage() {
         </div>
 
         {/* 右半屏：增量数据回填与异步任务 Dense DataGrid */}
-        <div className="rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-[#161b26] overflow-hidden shadow-2xs flex flex-col">
+        <div className="rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] overflow-hidden shadow-2xs flex flex-col">
           {/* 表头操作栏 */}
-          <div className="p-3.5 border-b border-black/5 dark:border-white/5 flex items-center justify-between gap-2">
+          <div className="p-3.5 border-b border-[rgb(var(--rin-hairline-rgb)/0.7)] flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <i className="ri-history-line text-theme" />
               <span className="font-bold text-xs sm:text-sm t-primary">增量补偿与离线数据回填控制台</span>
@@ -309,7 +312,7 @@ export function AdminOpsHubPage() {
           <div className="overflow-x-auto max-h-[calc(100vh-270px)]">
             <table className="w-full text-left text-xs sm:text-sm border-collapse">
               <thead>
-                <tr className="border-b border-black/5 bg-black/[0.02] dark:border-white/5 dark:bg-white/[0.02] select-none text-neutral-500 dark:text-neutral-400 font-mono text-xs sticky top-0 bg-white dark:bg-[#161b26] z-10">
+                <tr className="border-b border-[rgb(var(--rin-hairline-rgb)/0.7)] bg-[rgb(var(--rin-surface-rgb))] select-none text-neutral-500 dark:text-neutral-400 font-mono text-xs sticky top-0 z-10">
                   <th className="py-2.5 px-3 w-16 text-center">状态</th>
                   <th className="py-2.5 px-3 w-36">回填任务</th>
                   <th className="py-2.5 px-3">待处理 / 说明</th>
@@ -348,7 +351,7 @@ export function AdminOpsHubPage() {
                         onClick={() => runAISummaryBackfill(false)}
                         className="px-2.5 py-1 rounded-lg bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover disabled:opacity-40 transition flex items-center gap-1"
                       >
-                        {runningTask === "ai-summary" && <ReactLoading width="0.7rem" height="0.7rem" type="spin" color="#fff" />}
+                        {runningTask === "ai-summary" && <i className="ri-loader-4-line animate-spin text-xs" />}
                         <span>增量回填</span>
                       </button>
                       <button
@@ -394,7 +397,7 @@ export function AdminOpsHubPage() {
                       onClick={runBlurhashBackfill}
                       className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold shadow-2xs hover:bg-blue-700 disabled:opacity-40 transition flex items-center gap-1"
                     >
-                      {runningTask === "blurhash" && <ReactLoading width="0.7rem" height="0.7rem" type="spin" color="#fff" />}
+                      {runningTask === "blurhash" && <i className="ri-loader-4-line animate-spin text-xs" />}
                       <span>执行生成</span>
                     </button>
                   </td>

@@ -7,7 +7,6 @@ import { emitToast } from "../utils/toast";
 
 const MASKED_SECRET = "••••••••";
 
-export type ImportMessage = { title: string; reason: string };
 export type SettingsDraft = {
   clientConfig: Record<string, unknown>;
   serverConfig: Record<string, unknown>;
@@ -81,11 +80,11 @@ export function createSettingsConfigWrappers(draft: SettingsDraft) {
   };
 }
 
-export async function uploadFavicon(file: File, t: TFunction, showAlert: (message: string) => void) {
+export async function uploadFavicon(file: File, t: TFunction, showAlert: (message: string) => void): Promise<boolean> {
   const maxFileSize = 10 * 1024 * 1024;
   if (file.size > maxFileSize) {
     showAlert(t("upload.failed$size", { size: maxFileSize / 1024 / 1024 }));
-    return;
+    return false;
   }
 
   const formData = new FormData();
@@ -99,7 +98,7 @@ export async function uploadFavicon(file: File, t: TFunction, showAlert: (messag
 
   if (response.ok) {
     emitToast(t("settings.favicon.update.success"), "success");
-    return;
+    return true;
   }
 
   showAlert(
@@ -107,6 +106,7 @@ export async function uploadFavicon(file: File, t: TFunction, showAlert: (messag
       message: response.statusText,
     }),
   );
+  return false;
 }
 
 export async function importWordPressFile(file: File) {
@@ -154,23 +154,6 @@ function normalizePromptPresetsString(raw: unknown): string {
   if (typeof raw === "string") return raw;
   if (Array.isArray(raw) || (raw && typeof raw === "object")) return JSON.stringify(raw);
   return "";
-}
-
-export async function loadAIConfigState() {
-  const { data } = await client.config.get("server");
-  return {
-    enabled: data?.["ai_summary.enabled"] === true || data?.["ai_summary.enabled"] === "true",
-    provider: data?.["ai_summary.provider"] ?? "openai",
-    model: data?.["ai_summary.model"] ?? "gpt-4o-mini",
-    apiKeySet: data?.["ai_summary.api_key"] === "••••••••",
-    apiUrl: data?.["ai_summary.api_url"] ?? "",
-    systemPrompt: String(data?.["ai_summary.system_prompt"] ?? ""),
-    pipelineStages: String(data?.["ai_summary.pipeline_stages"] ?? "tech,format,summary"),
-    promptTech: String(data?.["ai_summary.prompt_tech"] ?? ""),
-    promptFormat: String(data?.["ai_summary.prompt_format"] ?? ""),
-    promptSummary: String(data?.["ai_summary.prompt_summary"] ?? ""),
-    promptPresets: normalizePromptPresetsString(data?.["ai_summary.prompt_presets"]),
-  };
 }
 
 export function buildAITestRequest({

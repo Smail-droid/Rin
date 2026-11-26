@@ -516,13 +516,6 @@ export function uploadR2AudioFileWithProgress(
 }
 
 /**
- * 直接上传本地音频文件至 Cloudflare R2
- */
-export async function uploadR2AudioFile(file: File): Promise<{ success: boolean; key?: string; url?: string; name?: string }> {
-  return uploadR2AudioFileWithProgress(file);
-}
-
-/**
  * 重命名 R2 存储桶中的音频显示名称
  */
 export async function renameR2Track(key: string, newName: string): Promise<boolean> {

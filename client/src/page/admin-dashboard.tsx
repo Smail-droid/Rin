@@ -63,7 +63,7 @@ export function AdminDashboardPage() {
   const [jumpPageInput, setJumpPageInput] = useState<string>("");
 
   // 排序字段与方向 (表头点击切换正反序)
-  const [sortField, setSortField] = useState<"createdAt" | "id" | "title" | "pv">("createdAt");
+  const [sortField, setSortField] = useState<"createdAt" | "id" | "title">("createdAt");
   const [sortDirection, setSortDirection] = useState<"desc" | "asc">("desc");
 
   // 行内标题重命名状态
@@ -203,10 +203,11 @@ export function AdminDashboardPage() {
 
   // 分页计算
   const totalPages = Math.max(1, Math.ceil(filteredFeeds.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedFeeds = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
+    const start = (safeCurrentPage - 1) * pageSize;
     return filteredFeeds.slice(start, start + pageSize);
-  }, [filteredFeeds, currentPage, pageSize]);
+  }, [filteredFeeds, safeCurrentPage, pageSize]);
 
   // 全选 / 取消全选
   const isAllCurrentSelected = paginatedFeeds.length > 0 && paginatedFeeds.every((f) => selectedIds.has(f.id));
@@ -245,12 +246,12 @@ export function AdminDashboardPage() {
   };
 
   // 表头排序切换
-  const toggleSort = (field: "createdAt" | "id" | "title" | "pv") => {
+  const toggleSort = (field: "createdAt" | "id" | "title") => {
     if (sortField === field) {
       setSortDirection((prev) => (prev === "desc" ? "asc" : "desc"));
     } else {
       setSortField(field);
-      setSortDirection(field === "createdAt" || field === "pv" ? "desc" : "asc");
+      setSortDirection(field === "createdAt" ? "desc" : "asc");
     }
   };
 
@@ -291,7 +292,7 @@ export function AdminDashboardPage() {
       if (error || (data && !data.success && data.error)) {
         const rawErr = String(error?.value || data?.error || "");
         if (rawErr.includes("User location is not supported") || rawErr.includes("FAILED_PRECONDITION") || rawErr.includes("Google Gemini 地区限制")) {
-          showAlert("⚠️ Google Gemini 地区限制：当前服务端 IP（如中国香港/大陆或部分边缘节点）不受 Google 官方直接支持。\n\n解决办法：请前往「后台设置 -> 扩展服务 -> AI设置」：\n1. 将 Provider 切换为原生免翻墙的 Cloudflare Workers AI（如 llama-3.1-8b / deepseek-coder）或 DeepSeek；\n2. 或为 Gemini 配置可用的反向代理/中转 API URL。");
+          showAlert("Google Gemini 地区限制：当前服务端 IP（如中国香港/大陆或部分边缘节点）不受 Google 官方直接支持。\n\n解决办法：请前往「AI 助手」页面：\n1. 将 Provider 切换为原生免翻墙的 Cloudflare Workers AI（如 llama-3.1-8b / deepseek-coder）或 DeepSeek；\n2. 或为 Gemini 配置可用的反向代理/中转 API URL。");
         } else {
           showAlert(rawErr || "AI导读生成失败");
         }
@@ -692,11 +693,12 @@ export function AdminDashboardPage() {
             <button
               type="button"
               onClick={() => { setStatusFilter("top"); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
                 statusFilter === "top" ? "bg-theme text-white shadow-2xs" : "bg-black/5 dark:bg-white/5 text-neutral-500"
               }`}
             >
-              📌 已置顶
+              <i className="ri-pushpin-2-line" />
+              <span>已置顶</span>
             </button>
             <button
               type="button"
@@ -715,19 +717,19 @@ export function AdminDashboardPage() {
             <div className="flex items-center gap-1 font-mono text-xs select-none">
               <button
                 type="button"
-                disabled={currentPage <= 1}
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safeCurrentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, Math.min(totalPages, p) - 1))}
                 className="h-7 w-7 rounded-lg border border-black/10 dark:border-white/10 flex items-center justify-center text-neutral-500 hover:text-theme disabled:opacity-30 hover:bg-black/5 dark:hover:bg-white/5 transition"
                 title="上一页"
               >
                 <i className="ri-arrow-left-s-line" />
               </button>
               <span className="px-1.5 py-1 rounded-lg bg-black/[0.03] dark:bg-white/[0.03] text-neutral-700 dark:text-neutral-300 font-bold">
-                {currentPage} / {totalPages}
+                {safeCurrentPage} / {totalPages}
               </span>
               <button
                 type="button"
-                disabled={currentPage >= totalPages}
+                disabled={safeCurrentPage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 className="h-7 w-7 rounded-lg border border-black/10 dark:border-white/10 flex items-center justify-center text-neutral-500 hover:text-theme disabled:opacity-30 hover:bg-black/5 dark:hover:bg-white/5 transition"
                 title="下一页"
@@ -850,14 +852,14 @@ export function AdminDashboardPage() {
             <tbody className="divide-y divide-black/5 dark:divide-white/5">
               {loadingFeeds ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-neutral-400">
+                  <td colSpan={8} className="py-16 text-center text-neutral-400">
                     <i className="ri-loader-4-line animate-spin text-xl block mb-1 text-theme" />
                     <span>正在读取文章数据...</span>
                   </td>
                 </tr>
               ) : paginatedFeeds.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-neutral-400">
+                  <td colSpan={8} className="py-16 text-center text-neutral-400">
                     未检索到任何符合条件的文章
                   </td>
                 </tr>
@@ -941,7 +943,7 @@ export function AdminDashboardPage() {
                                     if (e.key === "Escape") setInlineEditingFeedId(null);
                                   }}
                                   autoFocus
-                                  className="flex-1 rounded-lg border border-theme bg-w px-2 py-1 text-xs font-bold outline-none shadow-xs dark:bg-neutral-800"
+                                  className="rin-field flex-1 px-2 py-1 font-bold"
                                 />
                                 <button
                                   type="button"
@@ -963,8 +965,9 @@ export function AdminDashboardPage() {
                             ) : (
                               <div className="flex items-center gap-1.5 truncate group/title">
                                 {isTop && (
-                                  <span className="px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold border border-amber-500/30 shrink-0 select-none">
-                                    📌 置顶
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold border border-amber-500/30 shrink-0 select-none">
+                                    <i className="ri-pushpin-2-line text-[10px]" />
+                                    <span>置顶</span>
                                   </span>
                                 )}
                                 <Link
@@ -1156,7 +1159,7 @@ export function AdminDashboardPage() {
                   setPageSize(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="rounded-lg border border-black/10 bg-w px-2 py-1 text-xs outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-800"
+                className="rin-field w-auto px-2 py-1"
               >
                 <option value={10}>10 条</option>
                 <option value={20}>20 条</option>
@@ -1168,21 +1171,21 @@ export function AdminDashboardPage() {
           <div className="flex items-center gap-1.5 self-end sm:self-auto">
             <button
               type="button"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, Math.min(totalPages, p) - 1))}
+              disabled={safeCurrentPage <= 1}
               className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:bg-black/5 disabled:opacity-30 transition"
             >
               上一页
             </button>
 
             <span className="px-2 font-mono font-bold text-neutral-700 dark:text-neutral-300">
-              {currentPage} / {totalPages}
+              {safeCurrentPage} / {totalPages}
             </span>
 
             <button
               type="button"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage >= totalPages}
+              disabled={safeCurrentPage >= totalPages}
               className="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:bg-black/5 disabled:opacity-30 transition"
             >
               下一页
@@ -1204,7 +1207,7 @@ export function AdminDashboardPage() {
                   }
                 }}
                 placeholder="跳转"
-                className="w-12 text-center rounded-lg border border-black/10 bg-w px-1.5 py-1 text-xs outline-none focus:border-theme dark:border-white/10 dark:bg-neutral-800"
+                className="rin-field w-12 text-center px-1.5 py-1"
               />
               <button
                 type="button"
@@ -1391,9 +1394,10 @@ export function AdminDashboardPage() {
               <div className="flex items-center gap-3">
                 <Link
                   href={`/writing/${editingTarget.id}`}
-                  className="text-neutral-400 hover:text-theme transition"
+                  className="inline-flex items-center gap-1 text-neutral-400 hover:text-theme transition"
                 >
-                  前往完整撰写工坊 ➔
+                  <span>前往完整撰写工坊</span>
+                  <i className="ri-arrow-right-line text-xs" />
                 </Link>
                 <button
                   type="button"
@@ -1439,7 +1443,7 @@ export function AdminDashboardPage() {
             className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs transition-opacity ani-show"
             onClick={() => setPermissionTarget(null)}
           />
-          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-w dark:bg-[#12161f] border-l border-black/10 dark:border-white/10 shadow-2xl p-6 flex flex-col justify-between select-none">
+          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-[rgb(var(--rin-surface-rgb))] border-l border-[rgb(var(--rin-hairline-rgb))] shadow-2xl p-6 flex flex-col justify-between select-none">
             <div className="space-y-5">
               <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
                 <div className="flex items-center gap-2.5">
@@ -1512,8 +1516,11 @@ export function AdminDashboardPage() {
                     />
                   </div>
 
-                  <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 text-[11px] text-neutral-500 leading-relaxed">
-                    💡 <strong>真实物理脱敏保护</strong>：当设置为密码锁或口令时，Cloudflare Worker 在边缘端将对未授权访客<strong>物理置空正文（0 字节传输）</strong>，无论通过 DevTools 还是网络抓包均无法获取原文。
+                  <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 text-[11px] text-neutral-500 leading-relaxed flex items-start gap-2">
+                    <i className="ri-shield-check-line text-theme text-sm shrink-0 mt-0.5" />
+                    <span>
+                      <strong>真实物理脱敏保护</strong>：当设置为密码锁或口令时，Cloudflare Worker 在边缘端将对未授权访客<strong>物理置空正文（0 字节传输）</strong>，无论通过 DevTools 还是网络抓包均无法获取原文。
+                    </span>
                   </div>
                 </div>
               )}

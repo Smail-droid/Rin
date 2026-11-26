@@ -193,4 +193,88 @@ describe("GlobalMusicPlayer 移动端触控交互与防穿透", () => {
     expect(getByRole("button", { name: "展开音乐播放器" })).toBeDefined();
     expect(queryByRole("button", { name: "收起为微光音符图标" })).toBeNull();
   });
+
+  it("PC 端鼠标未点击仅悬停或移动经过折叠播放器时，绝不跟随鼠标移动或进入拖拽态", () => {
+    const { getByRole, container } = render(<GlobalMusicPlayer />);
+    const noteBtn = getByRole("button", { name: "展开音乐播放器" });
+    const wrapper = container.firstElementChild as HTMLElement;
+    const initialTransform = wrapper.style.transform;
+
+    const fireMousePointer = (type: string, clientX: number, clientY: number, opts: { button?: number; buttons?: number } = {}) => {
+      const event = new (window as any).PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX,
+        clientY,
+        pointerType: "mouse",
+        pointerId: 1,
+        button: opts.button ?? 0,
+        buttons: opts.buttons ?? 0,
+      });
+      Object.defineProperty(event, "clientX", { value: clientX });
+      Object.defineProperty(event, "clientY", { value: clientY });
+      Object.defineProperty(event, "pointerType", { value: "mouse" });
+      Object.defineProperty(event, "pointerId", { value: 1 });
+      Object.defineProperty(event, "button", { value: opts.button ?? 0 });
+      Object.defineProperty(event, "buttons", { value: opts.buttons ?? 0 });
+      fireEvent(noteBtn, event);
+    };
+
+    // 未按下鼠标直接滑过音符按钮
+    fireMousePointer("pointerover", 320, 480);
+    fireMousePointer("pointermove", 360, 520);
+    fireMousePointer("pointermove", 500, 300);
+
+    expect(wrapper.style.transform).toBe(initialTransform);
+    expect(wrapper.className).not.toContain("cursor-grabbing");
+    expect(noteBtn.className).not.toContain("scale-110");
+    expect(localStorage.getItem("rin_music_player_pos")).toBeNull();
+
+    // 右键按下后移动也不应触发拖拽
+    fireMousePointer("pointerdown", 320, 480, { button: 2, buttons: 2 });
+    fireMousePointer("pointermove", 480, 480, { button: 2, buttons: 2 });
+    expect(wrapper.style.transform).toBe(initialTransform);
+    expect(wrapper.className).not.toContain("cursor-grabbing");
+  });
+
+  it("PC 端鼠标左键按住拖拽后松开，位置更新且后续悬停移动不再跟随", () => {
+    const { getByRole, container, queryByRole } = render(<GlobalMusicPlayer />);
+    const noteBtn = getByRole("button", { name: "展开音乐播放器" });
+    const wrapper = container.firstElementChild as HTMLElement;
+
+    const fireMousePointer = (type: string, clientX: number, clientY: number, buttons = 1) => {
+      const event = new (window as any).PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX,
+        clientY,
+        pointerType: "mouse",
+        pointerId: 7,
+        button: 0,
+        buttons,
+      });
+      Object.defineProperty(event, "clientX", { value: clientX });
+      Object.defineProperty(event, "clientY", { value: clientY });
+      Object.defineProperty(event, "pointerType", { value: "mouse" });
+      Object.defineProperty(event, "pointerId", { value: 7 });
+      Object.defineProperty(event, "button", { value: 0 });
+      Object.defineProperty(event, "buttons", { value: buttons });
+      fireEvent(noteBtn, event);
+    };
+
+    // 按住左键拖拽 60px 并松开
+    fireMousePointer("pointerdown", 100, 100, 1);
+    fireMousePointer("pointermove", 160, 140, 1);
+    expect(wrapper.className).toContain("cursor-grabbing");
+    fireMousePointer("pointerup", 160, 140, 0);
+
+    const settledTransform = wrapper.style.transform;
+    expect(settledTransform).not.toBe("translate3d(20px, 692px, 0)");
+    expect(wrapper.className).not.toContain("cursor-grabbing");
+    expect(queryByRole("button", { name: "收起为微光音符图标" })).toBeNull();
+
+    // 松开后继续移动鼠标，播放器位置必须保持静止
+    fireMousePointer("pointermove", 420, 220, 0);
+    expect(wrapper.style.transform).toBe(settledTransform);
+  });
 });

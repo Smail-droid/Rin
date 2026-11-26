@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet";
 import { Link } from "wouter";
 import { useAlert, useConfirm } from "../components/dialog";
 import { useSiteConfig } from "../hooks/useSiteConfig";
+import { emitToast } from "../utils/toast";
 
 export function AdminTokensPage() {
   const siteConfig = useSiteConfig();
@@ -25,7 +26,7 @@ export function AdminTokensPage() {
       void navigator.clipboard.writeText(text);
       setCopied(label);
       setTimeout(() => setCopied(null), 2000);
-      showAlert(`✓ ${label}已成功复制到剪贴板！`);
+      emitToast(`已复制 ${label} 到剪贴板`, "success");
     } catch {
       showAlert("复制失败，请手动选择复制");
     }
@@ -48,7 +49,7 @@ export function AdminTokensPage() {
         try {
           localStorage.setItem("rin_storage_api_token", newToken);
         } catch {}
-        showAlert(`新的开放图床 API Token 已生成：\n${newToken}`);
+        emitToast(`新的开放图床 API Token 已生成：${newToken}`, "success");
       }
     );
   };
@@ -57,37 +58,15 @@ export function AdminTokensPage() {
   const uploadApiEndpoint = `${origin}/api/storage/upload`;
 
   return (
-    <div className="flex w-full flex-col gap-6 ani-show select-none">
+    <div className="flex w-full flex-col gap-5 ani-show select-none">
       <Helmet>
         <title>{`口令与凭证 · 开发者与外部接入中心 - ${siteConfig.name}`}</title>
       </Helmet>
       <AlertUI />
       <ConfirmUI />
 
-      {/* 顶部职责边界引导：文章访问密码已统一归口 */}
-      <div className="p-4 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-theme/[0.04] to-transparent">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-theme/10 text-theme text-base shrink-0">
-            <i className="ri-shield-keyhole-line" />
-          </span>
-          <div>
-            <h3 className="text-xs sm:text-sm font-bold t-primary">文章加密与私密访问保护已统一收拢</h3>
-            <p className="text-[11px] text-neutral-400 mt-0.5">
-              为文章设置访问密码、未解锁提示词及锁定策略，请前往统一安全治理中枢进行集中配置
-            </p>
-          </div>
-        </div>
-        <Link
-          href="/admin/access"
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-theme text-white text-xs font-bold hover:bg-theme-hover transition shadow-2xs shrink-0 self-start sm:self-auto cursor-pointer"
-        >
-          <span>进入权限与安全中心</span>
-          <i className="ri-arrow-right-line" />
-        </Link>
-      </div>
-
       {/* 核心卡片 1: 开放图床上传 API Token (Typora / PicGo / 脚本一键接入) */}
-      <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col gap-4">
+      <div className="p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs flex flex-col gap-4">
         <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 flex-wrap gap-2">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 text-lg">
@@ -227,7 +206,7 @@ export function AdminTokensPage() {
       </div>
 
       {/* 核心卡片 2: 系统集成与 Webhook 凭证总览 */}
-      <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs flex flex-col gap-4">
+      <div className="p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs flex flex-col gap-4">
         <div className="flex items-center gap-3 pb-3 border-b border-black/5 dark:border-white/5">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 text-lg">
             <i className="ri-puzzle-line" />

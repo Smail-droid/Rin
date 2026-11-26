@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 function joinClasses(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -48,35 +48,5 @@ export function FlatTabButton({
         className,
       )}
     />
-  );
-}
-
-export function FlatActionButton({
-  className,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      {...props}
-      className={joinClasses("rounded-full border border-black/10 bg-secondary px-4 py-2 dark:border-white/10", className)}
-    />
-  );
-}
-
-export function FlatMetaRow({
-  children,
-  className,
-  ...props
-}: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      {...props}
-      className={joinClasses(
-        "flex select-none flex-row items-center justify-between rounded-2xl border border-black/10 bg-secondary px-4 py-3 dark:border-white/10",
-        className,
-      )}
-    >
-      {children}
-    </div>
   );
 }

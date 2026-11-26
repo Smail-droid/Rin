@@ -198,6 +198,3 @@ export class ConfigWrapper {
     return Boolean(value);
   }
 }
-
-export * from "./cartridge";
-export * from "./design-tokens";

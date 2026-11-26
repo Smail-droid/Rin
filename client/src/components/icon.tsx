@@ -1,1 +1,1 @@
-export { Icon, IconSmall } from "@rin/ui";
+export { Icon } from "@rin/ui";

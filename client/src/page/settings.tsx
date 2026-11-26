@@ -3,8 +3,8 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useSearch } from "wouter";
-import ReactLoading from "react-loading";
 import { client } from "../app/runtime";
+import { AdminSwitch } from "../components/admin-switch";
 import { useAlert } from "../components/dialog.tsx";
 import { type HeaderLayoutOption, normalizeHeaderLayout } from "../components/site-header/layout-options";
 import { useSiteConfig } from "../hooks/useSiteConfig";
@@ -20,10 +20,10 @@ import {
   applyThemeWallpaper,
 } from "../utils/theme-color";
 import { emitToast } from "../utils/toast";
-import { AISummarySettings } from "./settings-ai";
 import { SettingsAppearancePanel } from "./settings-appearance";
 import { ItemImageInput, ItemWithUpload } from "./settings-items";
 import {
+  AI_PROVIDER_PRESETS,
   areSettingsDraftsEqual,
   buildAIConfigDraftValue,
   createSettingsConfigWrappers,
@@ -35,8 +35,6 @@ import {
   updateDraftConfig,
   uploadFavicon,
 } from "./settings-helpers";
-
-import "../utils/thumb.css";
 
 const WEBHOOK_METHOD_OPTIONS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"].map((value) => ({
   label: value,
@@ -128,7 +126,12 @@ export function Settings() {
   const [draft, setDraft] = useState<SettingsDraft>({ clientConfig: {}, serverConfig: {} });
   const [initialDraft, setInitialDraft] = useState<SettingsDraft>({ clientConfig: {}, serverConfig: {} });
   const [hasStoredAiApiKey, setHasStoredAiApiKey] = useState(false);
+  const [faviconKey, setFaviconKey] = useState(() => Date.now());
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [faviconSaved, setFaviconSaved] = useState(false);
   const ref = useRef(false);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
+  const faviconTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialDraftRef = useRef<SettingsDraft>({ clientConfig: {}, serverConfig: {} });
   const saveSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { showAlert, AlertUI } = useAlert();
@@ -147,6 +150,7 @@ export function Settings() {
   useEffect(() => {
     return () => {
       if (saveSuccessTimerRef.current) clearTimeout(saveSuccessTimerRef.current);
+      if (faviconTimerRef.current) clearTimeout(faviconTimerRef.current);
     };
   }, []);
 
@@ -249,8 +253,19 @@ export function Settings() {
 
   async function handleFaviconChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) {
-      await uploadFavicon(file, t, showAlert);
+    if (!file) return;
+    setUploadingFavicon(true);
+    try {
+      const ok = await uploadFavicon(file, t, showAlert);
+      if (ok) {
+        setFaviconKey(Date.now());
+        setFaviconSaved(true);
+        if (faviconTimerRef.current) clearTimeout(faviconTimerRef.current);
+        faviconTimerRef.current = setTimeout(() => setFaviconSaved(false), 2200);
+      }
+    } finally {
+      setUploadingFavicon(false);
+      if (faviconInputRef.current) faviconInputRef.current.value = "";
     }
   }
 
@@ -303,94 +318,111 @@ export function Settings() {
   const rawPageHeaderMode = String(clientConfig.get("page.header_mode") || "clean");
   const pageHeaderMode: PageHeaderModeOption =
     rawPageHeaderMode === "banner" || rawPageHeaderMode === "hidden" ? rawPageHeaderMode : "clean";
+  const footerByText = String(clientConfig.get("footer.by_text") ?? "80hou");
+  const footerByUrl = String(
+    clientConfig.get("footer.by_url") ?? "https://www.nodeseek.com/space/39375#/general",
+  );
+  const aiProviderLabel =
+    AI_PROVIDER_PRESETS.find((p) => p.value === aiValue.provider)?.label ?? aiValue.provider;
 
   return (
     <div className="flex w-full flex-col">
       <Helmet>
         <title>{`${t("settings.title")} - ${siteConfig.name}`}</title>
       </Helmet>
-      <main className="w-full max-w-6xl mx-auto rounded-3xl bg-w pb-36 px-2 sm:px-4" aria-label={t("main_content")}>
-        <div className="flex flex-col items-start space-y-4 w-full">
-          {(loading || saving) && <ReactLoading width="1em" height="1em" type="spin" color="#d6336c" />}
-
-          {/* 顶部 3 大清晰分类（外观与版式 / 基础与安全 / 扩展与服务） + 右上角紧凑保存操作区 */}
-          <div className="flex w-full items-center justify-between gap-3 pb-3 border-b border-black/10 dark:border-white/10">
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
-              {[
-                { id: "theme" as const, label: "外观与版式", icon: "ri-palette-line" },
-                { id: "general" as const, label: "基础与安全", icon: "ri-settings-4-line" },
-                { id: "services" as const, label: "扩展与服务", icon: "ri-apps-2-line" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveCategory(tab.id)}
-                  className={`shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition select-none cursor-pointer ${
-                    activeCategory === tab.id
-                      ? "bg-theme text-white shadow-xs"
-                      : "bg-black/5 hover:bg-black/10 text-neutral-600 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
-                  }`}
-                >
-                  <i className={`${tab.icon} text-sm`} />
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              {(hasUnsavedChanges || saving || saveSuccess) && (
-                <div className="flex items-center gap-1.5">
-                  {hasUnsavedChanges && !saving && (
-                    <button
-                      type="button"
-                      onClick={handleReset}
-                      className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-neutral-500 hover:bg-black/5 dark:hover:bg-white/5 text-xs font-semibold transition cursor-pointer"
-                    >
-                      <span>{t("reset")}</span>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving || loading || (!hasUnsavedChanges && saveSuccess)}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-2xs transition cursor-pointer disabled:opacity-80 ${
-                      saveSuccess && !hasUnsavedChanges
-                        ? "bg-emerald-600 text-white"
-                        : "bg-theme text-white hover:bg-theme-hover active:scale-95"
-                    }`}
-                  >
-                    {saving ? (
-                      <i className="ri-loader-4-line animate-spin text-xs" />
-                    ) : saveSuccess && !hasUnsavedChanges ? (
-                      <i className="ri-check-line text-xs" />
-                    ) : (
-                      <i className="ri-save-line text-xs" />
-                    )}
-                    <span>{saving ? "保存中..." : saveSuccess && !hasUnsavedChanges ? "✓ 已保存" : t("save")}</span>
-                  </button>
-                </div>
-              )}
-
-              <Link
-                href="/"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:border-theme hover:text-theme transition shrink-0"
+      <div className="w-full flex flex-col gap-4 pb-10">
+        {/* 顶部 3 大清晰分类 + 唯一粘性保存操作栏 */}
+        <div className="sticky top-16 z-20 flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb)/0.92)] px-3 py-2 shadow-2xs backdrop-blur-xl">
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+            {[
+              { id: "theme" as const, label: "外观与版式", icon: "ri-palette-line" },
+              { id: "general" as const, label: "基础与安全", icon: "ri-settings-4-line" },
+              { id: "services" as const, label: "扩展与服务", icon: "ri-apps-2-line" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveCategory(tab.id)}
+                className={`shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition select-none cursor-pointer ${
+                  activeCategory === tab.id
+                    ? "bg-theme text-white shadow-xs"
+                    : "bg-black/5 hover:bg-black/10 text-neutral-600 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
+                }`}
               >
-                <i className="ri-external-link-line" />
-                <span>查看前台效果</span>
-              </Link>
-            </div>
+                <i className={`${tab.icon} text-sm`} />
+                <span>{tab.label}</span>
+              </button>
+            ))}
           </div>
 
-          {/* Tab 1: 外观与版式（Bento Grid 模块化卡片） */}
-          {activeCategory === "theme" && (
-            <SettingsAppearancePanel clientConfig={clientConfig} setConfigValue={setConfigValue} />
-          )}
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
+            {loading ? (
+              <span className="inline-flex items-center gap-1.5 text-xs text-[rgb(var(--rin-ink-muted-rgb))]">
+                <i className="ri-loader-4-line animate-spin text-theme" />
+                <span>读取配置…</span>
+              </span>
+            ) : null}
 
-          {/* Tab 2: 基础与安全（Bento Grid 模块化分组） */}
-          {activeCategory === "general" && (
-            <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 ani-show">
-              {/* Bento Card 1: 站点身份与展示规范 (Identity) */}
-              <section className="col-span-1 lg:col-span-5 p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+            {hasUnsavedChanges && !saving ? (
+              <span className="hidden md:inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <span>有未保存改动</span>
+              </span>
+            ) : null}
+
+            {(hasUnsavedChanges || saving || saveSuccess) && (
+              <div className="flex items-center gap-1.5">
+                {hasUnsavedChanges && !saving && (
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-neutral-500 hover:bg-black/5 dark:hover:bg-white/5 text-xs font-semibold transition cursor-pointer"
+                  >
+                    <span>{t("reset")}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving || loading || (!hasUnsavedChanges && saveSuccess)}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-2xs transition cursor-pointer disabled:opacity-80 ${
+                    saveSuccess && !hasUnsavedChanges
+                      ? "bg-emerald-600 text-white"
+                      : "bg-theme text-white hover:bg-theme-hover active:scale-95"
+                  }`}
+                >
+                  {saving ? (
+                    <i className="ri-loader-4-line animate-spin text-xs" />
+                  ) : saveSuccess && !hasUnsavedChanges ? (
+                    <i className="ri-check-line text-xs" />
+                  ) : (
+                    <i className="ri-save-line text-xs" />
+                  )}
+                  <span>{saving ? "保存中..." : saveSuccess && !hasUnsavedChanges ? "✓ 已保存" : t("save")}</span>
+                </button>
+              </div>
+            )}
+
+            <Link
+              href="/"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[rgb(var(--rin-hairline-rgb))] text-xs font-semibold text-[rgb(var(--rin-ink-muted-rgb))] hover:border-theme hover:text-theme transition shrink-0"
+            >
+              <i className="ri-external-link-line" />
+              <span>查看前台效果</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Tab 1: 外观与版式（Bento Grid 模块化卡片） */}
+        {activeCategory === "theme" && (
+          <SettingsAppearancePanel clientConfig={clientConfig} setConfigValue={setConfigValue} />
+        )}
+
+        {/* Tab 2: 基础与安全（Bento Grid 模块化分组） */}
+        {activeCategory === "general" && (
+          <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 ani-show">
+            {/* Bento Card 1: 站点身份与展示规范 (Identity) */}
+            <section className="col-span-1 lg:col-span-5 p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
                   <div className="flex items-center gap-2">
                     <i className="ri-user-smile-line text-theme text-base" />
@@ -462,7 +494,7 @@ export function Settings() {
               </section>
 
               {/* Bento Card 2: 前台导航顶栏排布 & 页面页眉 (Navigation & PageHeader) */}
-              <section className="col-span-1 lg:col-span-7 p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+              <section className="col-span-1 lg:col-span-7 p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 gap-3">
                   <div className="flex items-center gap-2 flex-wrap">
                     <i className="ri-layout-top-line text-theme text-base" />
@@ -470,21 +502,11 @@ export function Settings() {
                   </div>
                   <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
                     <span className="text-xs font-semibold t-primary">前台显示导航条</span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={headerShowNav}
-                      onClick={() => setConfigValue("client", "header.show_nav", !headerShowNav)}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
-                        headerShowNav ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 rounded-full bg-white shadow-xs transition transform mt-1 ${
-                          headerShowNav ? "translate-x-6" : "translate-x-1"
-                        }`}
-                      />
-                    </button>
+                    <AdminSwitch
+                      checked={headerShowNav}
+                      ariaLabel="前台显示导航条"
+                      onChange={(next) => setConfigValue("client", "header.show_nav", next)}
+                    />
                   </div>
                 </div>
 
@@ -575,18 +597,17 @@ export function Settings() {
                     />
                   </div>
 
-                  <label className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] cursor-pointer">
+                  <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
                     <div className="min-w-0">
                       <span className="font-bold t-primary block truncate">导航手账微倾角</span>
                       <span className="text-[10px] text-neutral-400 block truncate">灵动手绘斜角点缀</span>
                     </div>
-                    <input
-                      type="checkbox"
+                    <AdminSwitch
                       checked={navOrganicTilt}
-                      onChange={(e) => setConfigValue("client", "header.nav_organic_tilt", e.target.checked)}
-                      className="accent-theme rounded h-4 w-4 cursor-pointer shrink-0"
+                      ariaLabel="导航手账微倾角"
+                      onChange={(next) => setConfigValue("client", "header.nav_organic_tilt", next)}
                     />
-                  </label>
+                  </div>
                 </div>
 
                 {/* PageHeader 页面页眉模式 */}
@@ -667,7 +688,7 @@ export function Settings() {
               </section>
 
               {/* Bento Card 3: 全站核心功能开关矩阵 (Feature Switches) */}
-              <section className="col-span-1 lg:col-span-6 p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+              <section className="col-span-1 lg:col-span-6 p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
                   <div className="flex items-center gap-2">
                     <i className="ri-toggle-line text-theme text-base" />
@@ -694,29 +715,19 @@ export function Settings() {
                           <span className="font-bold text-xs t-primary block truncate">{item.label}</span>
                           <span className="text-[11px] text-neutral-400 block truncate">{item.desc}</span>
                         </div>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={checked}
-                          onClick={() => setConfigValue("client", item.key, !checked)}
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
-                            checked ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
-                              checked ? "translate-x-4.5" : "translate-x-1"
-                            }`}
-                          />
-                        </button>
+                        <AdminSwitch
+                          checked={checked}
+                          ariaLabel={item.label}
+                          onChange={(next) => setConfigValue("client", item.key, next)}
+                        />
                       </div>
                     );
                   })}
                 </div>
               </section>
 
-              {/* Bento Card 4: 图标上传与页脚 HTML (Favicon/Footer) */}
-              <section className="col-span-1 lg:col-span-6 p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+              {/* Bento Card 4: 站点图标 (Favicon) 与页脚署名/自定义 HTML */}
+              <section className="col-span-1 lg:col-span-6 p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
                   <div className="flex items-center gap-2">
                     <i className="ri-code-box-line text-theme text-base" />
@@ -725,12 +736,91 @@ export function Settings() {
                   <span className="text-[10px] font-mono text-neutral-400">Favicon & Footer</span>
                 </div>
 
-                <ItemWithUpload
-                  title={t("settings.favicon.title")}
-                  description={t("settings.favicon.desc")}
-                  accept="image/png,image/jpeg,image/gif,image/svg+xml,image/x-icon"
-                  onFileChange={handleFaviconChange}
+                {/* Favicon 实时预览 + 一键上传 */}
+                <input
+                  ref={faviconInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/svg+xml,image/x-icon,image/webp"
+                  onChange={handleFaviconChange}
+                  className="hidden"
                 />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => faviconInputRef.current?.click()}
+                      title="点击上传更换站点图标"
+                      className="relative h-12 w-12 shrink-0 rounded-xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] flex items-center justify-center overflow-hidden group cursor-pointer"
+                    >
+                      <img
+                        key={faviconKey}
+                        src={`/favicon?t=${faviconKey}`}
+                        alt="Favicon"
+                        className="h-8 w-8 object-contain"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                      <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs">
+                        <i className="ri-upload-cloud-2-line" />
+                      </span>
+                    </button>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold t-primary">{t("settings.favicon.title")}</div>
+                      <p className="text-[11px] text-neutral-400 mt-0.5 line-clamp-2">
+                        推荐 512×512 透明底 PNG 或 SVG，边缘会自动生成多规格适配。
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={uploadingFavicon}
+                    onClick={() => faviconInputRef.current?.click()}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white shadow-2xs transition shrink-0 self-start sm:self-auto cursor-pointer disabled:opacity-60 ${
+                      faviconSaved ? "bg-emerald-600" : "bg-theme hover:bg-theme-hover active:scale-95"
+                    }`}
+                  >
+                    {uploadingFavicon ? (
+                      <i className="ri-loader-4-line animate-spin text-xs" />
+                    ) : faviconSaved ? (
+                      <i className="ri-check-line text-xs" />
+                    ) : (
+                      <i className="ri-upload-cloud-2-line text-xs" />
+                    )}
+                    <span>{uploadingFavicon ? "上传中..." : faviconSaved ? "✓ 已更新" : "上传图标"}</span>
+                  </button>
+                </div>
+
+                {/* 页脚 Powered by 署名可视化定制 */}
+                <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold t-primary">页脚 Powered by 署名与链接</span>
+                    <span className="text-[11px] text-neutral-400 truncate max-w-[220px]">
+                      © {new Date().getFullYear()} Powered by{" "}
+                      <a href={footerByUrl} target="_blank" rel="noreferrer" className="text-theme font-semibold hover:underline">
+                        {footerByText || "80hou"}
+                      </a>
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <input
+                      type="text"
+                      value={footerByText}
+                      placeholder="署名文本 (如 80hou)"
+                      onChange={(e) => setConfigValue("client", "footer.by_text", e.target.value)}
+                      className="rin-field font-semibold"
+                      aria-label="页脚署名文字"
+                    />
+                    <input
+                      type="url"
+                      value={footerByUrl}
+                      placeholder="https://example.com"
+                      onChange={(e) => setConfigValue("client", "footer.by_url", e.target.value)}
+                      className="rin-field font-mono"
+                      aria-label="页脚署名链接"
+                    />
+                  </div>
+                </div>
 
                 <div className="flex flex-col gap-1 p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
                   <div className="flex items-center justify-between">
@@ -750,29 +840,178 @@ export function Settings() {
             </div>
           )}
 
-          {/* Tab 3: 扩展与服务 */}
+          {/* Tab 3: 扩展与服务（Bento Grid 整合：AI 入口收口至 /admin/ai + 缓存迁移 + 友链 + Webhook） */}
           {activeCategory === "services" && (
-            <div className="w-full flex flex-col space-y-4 ani-show">
-              <AISummarySettings
-                value={aiValue}
-                onSave={handleSave}
-                onChange={(updates) => {
-                  if (updates.enabled !== undefined) setConfigValue("server", "ai_summary.enabled", updates.enabled);
-                  if (updates.provider !== undefined) setConfigValue("server", "ai_summary.provider", updates.provider);
-                  if (updates.model !== undefined) setConfigValue("server", "ai_summary.model", updates.model);
-                  if (updates.apiUrl !== undefined) setConfigValue("server", "ai_summary.api_url", updates.apiUrl);
-                  if (updates.apiKey !== undefined) setConfigValue("server", "ai_summary.api_key", updates.apiKey);
-                  if (updates.systemPrompt !== undefined) setConfigValue("server", "ai_summary.system_prompt", updates.systemPrompt);
-                  if (updates.pipelineStages !== undefined) setConfigValue("server", "ai_summary.pipeline_stages", updates.pipelineStages);
-                  if (updates.promptTech !== undefined) setConfigValue("server", "ai_summary.prompt_tech", updates.promptTech);
-                  if (updates.promptFormat !== undefined) setConfigValue("server", "ai_summary.prompt_format", updates.promptFormat);
-                  if (updates.promptSummary !== undefined) setConfigValue("server", "ai_summary.prompt_summary", updates.promptSummary);
-                  if (updates.promptPresets !== undefined) setConfigValue("server", "ai_summary.prompt_presets", updates.promptPresets);
-                }}
-              />
+            <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 ani-show">
+              {/* Bento Card 1: AI 智能导读总览（详细模型与提示词工坊统一收口于 /admin/ai） */}
+              <section className="col-span-1 lg:col-span-6 p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs flex flex-col justify-between space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <i className="ri-sparkling-2-line text-theme text-base shrink-0" />
+                    <h3 className="font-bold text-sm t-primary truncate">AI 智能导读与写作助手</h3>
+                  </div>
+                  <span
+                    className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                      aiValue.enabled
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "bg-neutral-500/10 text-neutral-400"
+                    }`}
+                  >
+                    {aiValue.enabled ? "已开启" : "已关闭"}
+                  </span>
+                </div>
 
-              {/* Webhook 外部通知广播 */}
-              <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
+                <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="font-bold text-xs t-primary block truncate">发布时自动生成文章导读</span>
+                    <span className="text-[11px] text-neutral-400 block truncate">
+                      新文章发布或触发队列回填时自动提炼摘要
+                    </span>
+                  </div>
+                  <AdminSwitch
+                    checked={aiValue.enabled}
+                    ariaLabel="发布时自动生成文章导读"
+                    onChange={(next) => setConfigValue("server", "ai_summary.enabled", next)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                  <div className="p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+                    <span className="text-[10px] text-neutral-400 block">当前服务商</span>
+                    <span className="font-bold t-primary block truncate mt-0.5">{aiProviderLabel}</span>
+                  </div>
+                  <div className="p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+                    <span className="text-[10px] text-neutral-400 block">默认模型</span>
+                    <span className="font-mono font-bold t-primary block truncate mt-0.5">{aiValue.model}</span>
+                  </div>
+                  <div className="p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02]">
+                    <span className="text-[10px] text-neutral-400 block">鉴权密钥</span>
+                    <span
+                      className={`font-mono font-bold block truncate mt-0.5 ${
+                        aiValue.apiKeySet ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500"
+                      }`}
+                    >
+                      {aiValue.apiKeySet ? "已安全托管" : "未填写密钥"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] text-neutral-400">
+                    模型选择、API 端点、连通性测试与提示词预设已统一收口于 AI 助手
+                  </span>
+                  <Link
+                    href="/admin/ai"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-theme text-white text-xs font-bold shadow-2xs hover:bg-theme-hover transition shrink-0"
+                  >
+                    <i className="ri-sparkling-2-line" />
+                    <span>前往 AI 助手工作台</span>
+                    <i className="ri-arrow-right-line" />
+                  </Link>
+                </div>
+              </section>
+
+              {/* Bento Card 2: 边缘性能维护与数据迁移 */}
+              <section className="col-span-1 lg:col-span-6 p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs flex flex-col justify-between space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
+                  <div className="flex items-center gap-2">
+                    <i className="ri-tools-line text-theme text-base" />
+                    <h3 className="font-bold text-sm t-primary">{t("settings.maintenance.title")}</h3>
+                  </div>
+                  <span className="text-[10px] font-mono text-neutral-400">Cache & Migration</span>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="font-bold text-xs t-primary block">{t("settings.cache.enabled.title")}</span>
+                      <span className="text-[11px] text-neutral-400 block truncate">
+                        开启后对文章与首页渲染结果启用边缘缓存加速
+                      </span>
+                    </div>
+                    <AdminSwitch
+                      checked={Boolean(clientConfig.getBoolean("cache.enabled"))}
+                      ariaLabel={t("settings.cache.enabled.title")}
+                      onChange={(next) => setConfigValue("client", "cache.enabled", next)}
+                    />
+                  </div>
+                  <div className="pt-2.5 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-neutral-400 font-mono">强制刷新边缘节点缓存</span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await client.config.clearCache().then(({ error }) => {
+                          if (error) {
+                            showAlert(t("settings.cache.clear_failed$message", { message: error.value }));
+                          } else {
+                            emitToast("边缘 KV 缓存与预渲染结果已成功清空！", "success");
+                          }
+                        });
+                      }}
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white font-bold text-xs transition cursor-pointer"
+                    >
+                      <i className="ri-delete-bin-line" />
+                      <span>{t("clear")}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <ItemWithUpload
+                  title={t("settings.wordpress.title")}
+                  description="从 WordPress WXR .xml 导出文件导入文章与标签（支持 50MB 以内 XML）"
+                  accept="application/xml"
+                  buttonLabel="选择 XML 导入"
+                  onFileChange={onFileChange}
+                />
+              </section>
+
+              {/* Bento Card 3: 友链巡检与申请治理 */}
+              <section className="col-span-1 lg:col-span-12 p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs space-y-4">
+                <div className="flex items-center gap-2 pb-3 border-b border-black/5 dark:border-white/5">
+                  <i className="ri-heart-pulse-line text-theme text-base" />
+                  <h3 className="font-bold text-sm t-primary">{t("settings.friend.title")}</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="font-bold text-xs t-primary block truncate">{t("settings.friend.apply.title")}</span>
+                      <span className="text-[11px] text-neutral-400 block truncate">{t("settings.friend.apply.desc")}</span>
+                    </div>
+                    <AdminSwitch
+                      checked={Boolean(clientConfig.get("friend_apply_enable"))}
+                      ariaLabel={t("settings.friend.apply.title")}
+                      onChange={(next) => setConfigValue("client", "friend_apply_enable", next)}
+                    />
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="font-bold text-xs t-primary block truncate">{t("settings.friend.health.title")}</span>
+                      <span className="text-[11px] text-neutral-400 block truncate">{t("settings.friend.health.desc")}</span>
+                    </div>
+                    <AdminSwitch
+                      checked={Boolean(serverConfig.get("friend_crontab"))}
+                      ariaLabel={t("settings.friend.health.title")}
+                      onChange={(next) => setConfigValue("server", "friend_crontab", next)}
+                    />
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col justify-between gap-2">
+                    <span className="font-bold text-xs t-primary block truncate">{t("settings.friend.health.ua.title")}</span>
+                    <input
+                      type="text"
+                      value={String(serverConfig.get("friend_ua") ?? "")}
+                      placeholder={String(serverConfig.default("friend_ua") ?? "User-Agent")}
+                      onChange={(e) => setConfigValue("server", "friend_ua", e.target.value)}
+                      className="rin-field font-mono"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              {/* Bento Card 4: Webhook 外部通知广播 */}
+              <section className="col-span-1 lg:col-span-12 p-5 rounded-2xl border border-[rgb(var(--rin-hairline-rgb))] bg-[rgb(var(--rin-surface-rgb))] shadow-xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-black/5 dark:border-white/5 gap-2">
                   <div className="flex items-center gap-2">
                     <i className="ri-broadcast-line text-theme text-base" />
@@ -889,194 +1128,10 @@ export function Settings() {
                     <span>{testingWebhook ? t("settings.webhook.test.sending") : t("settings.webhook.test.button")}</span>
                   </button>
                 </div>
-              </div>
-
-              {/* 友链巡检与申请治理 */}
-              <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
-                <div className="flex items-center gap-2 pb-3 border-b border-black/5 dark:border-white/5">
-                  <i className="ri-heart-pulse-line text-theme text-base" />
-                  <h3 className="font-bold text-sm t-primary">{t("settings.friend.title")}</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <span className="font-bold text-xs t-primary block truncate">{t("settings.friend.apply.title")}</span>
-                      <span className="text-[11px] text-neutral-400 block truncate">{t("settings.friend.apply.desc")}</span>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={Boolean(clientConfig.get("friend_apply_enable"))}
-                      onClick={() => setConfigValue("client", "friend_apply_enable", !clientConfig.get("friend_apply_enable"))}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
-                        clientConfig.get("friend_apply_enable") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
-                          clientConfig.get("friend_apply_enable") ? "translate-x-4.5" : "translate-x-1"
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <span className="font-bold text-xs t-primary block truncate">{t("settings.friend.health.title")}</span>
-                      <span className="text-[11px] text-neutral-400 block truncate">{t("settings.friend.health.desc")}</span>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={Boolean(serverConfig.get("friend_crontab"))}
-                      onClick={() => setConfigValue("server", "friend_crontab", !serverConfig.get("friend_crontab"))}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
-                        serverConfig.get("friend_crontab") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
-                          serverConfig.get("friend_crontab") ? "translate-x-4.5" : "translate-x-1"
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col justify-between gap-2">
-                    <span className="font-bold text-xs t-primary block truncate">{t("settings.friend.health.ua.title")}</span>
-                    <input
-                      type="text"
-                      value={String(serverConfig.get("friend_ua") ?? "")}
-                      placeholder={String(serverConfig.default("friend_ua") ?? "User-Agent")}
-                      onChange={(e) => setConfigValue("server", "friend_ua", e.target.value)}
-                      className="rin-field font-mono"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* 边缘性能维护与数据迁移 */}
-              <div className="p-5 rounded-2xl border border-black/10 bg-w dark:border-white/10 shadow-xs space-y-4">
-                <div className="flex items-center gap-2 pb-3 border-b border-black/5 dark:border-white/5">
-                  <i className="ri-tools-line text-theme text-base" />
-                  <h3 className="font-bold text-sm t-primary">{t("settings.maintenance.title")}</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                  <div className="p-4 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col justify-between gap-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-xs t-primary">{t("settings.cache.enabled.title")}</span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={Boolean(clientConfig.getBoolean("cache.enabled"))}
-                        onClick={() => setConfigValue("client", "cache.enabled", !clientConfig.getBoolean("cache.enabled"))}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
-                          clientConfig.getBoolean("cache.enabled") ? "bg-theme" : "bg-neutral-200 dark:bg-neutral-700"
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition transform mt-0.5 ${
-                            clientConfig.getBoolean("cache.enabled") ? "translate-x-4.5" : "translate-x-1"
-                          }`}
-                        />
-                      </button>
-                    </div>
-                    <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between">
-                      <span className="text-[11px] text-neutral-400 font-mono">强制刷新边缘节点</span>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          await client.config.clearCache().then(({ error }) => {
-                            if (error) {
-                              showAlert(t("settings.cache.clear_failed$message", { message: error.value }));
-                            } else {
-                              emitToast("边缘 KV 缓存与预渲染结果已成功清空！", "success");
-                            }
-                          });
-                        }}
-                        className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white font-bold text-xs transition cursor-pointer"
-                      >
-                        <i className="ri-delete-bin-line" />
-                        <span>{t("clear")}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.02] flex flex-col justify-between gap-3">
-                    <div>
-                      <span className="font-bold text-xs t-primary">{t("settings.wordpress.title")}</span>
-                      <p className="text-[11px] text-neutral-400 mt-1">从 WordPress WXR .xml 导出文件导入文章与标签</p>
-                    </div>
-                    <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between">
-                      <span className="text-[11px] text-neutral-400 font-mono">支持 50MB 以内 XML</span>
-                      <ItemWithUpload title="" description="" accept="application/xml" onFileChange={onFileChange} />
-                    </div>
-                  </div>
-                </div>
-              </div>
+              </section>
             </div>
           )}
-
-          {(hasUnsavedChanges || saving || saveSuccess) && (
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 ani-show select-none pointer-events-auto">
-              <div
-                className={`p-3 sm:p-3.5 rounded-2xl bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border shadow-2xl flex items-center justify-between gap-3 ${
-                  saveSuccess && !hasUnsavedChanges ? "border-emerald-500/40" : "border-theme/30"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm ${
-                      saveSuccess && !hasUnsavedChanges
-                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                        : "bg-theme/10 text-theme animate-pulse"
-                    }`}
-                  >
-                    <i className={saveSuccess && !hasUnsavedChanges ? "ri-check-line" : "ri-save-line"} />
-                  </span>
-                  <div className="min-w-0 truncate">
-                    <span className="font-bold text-xs t-primary block truncate">
-                      {saveSuccess && !hasUnsavedChanges ? "配置已保存" : "配置有未保存改动"}
-                    </span>
-                    <span className="text-[10px] text-neutral-400 block truncate">
-                      {saveSuccess && !hasUnsavedChanges ? "已同步至云端并实时生效" : "点击保存立即写入边缘存储"}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {hasUnsavedChanges && (
-                    <button
-                      type="button"
-                      onClick={handleReset}
-                      disabled={saving}
-                      className="px-3 py-1.5 rounded-xl text-neutral-500 hover:bg-black/5 dark:hover:bg-white/5 text-xs font-semibold transition cursor-pointer"
-                    >
-                      {t("reset")}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving || loading || (!hasUnsavedChanges && saveSuccess)}
-                    className={`px-4 py-1.5 rounded-xl text-white text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-80 ${
-                      saveSuccess && !hasUnsavedChanges
-                        ? "bg-emerald-600"
-                        : "bg-theme hover:bg-theme-hover active:scale-95"
-                    }`}
-                  >
-                    {saving && <i className="ri-loader-4-line animate-spin text-xs" />}
-                    <span>
-                      {saving ? "保存中..." : saveSuccess && !hasUnsavedChanges ? "✓ 已保存" : t("save")}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </main>
+      </div>
 
       <Modal
         isOpen={isOpen}

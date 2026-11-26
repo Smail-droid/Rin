@@ -215,12 +215,3 @@ export class HyperLogLog {
         return this.registers;
     }
 }
-
-// Utility functions for managing visit stats
-export function createHLL(): HyperLogLog {
-    return new HyperLogLog();
-}
-
-export function hllFromString(data: string): HyperLogLog {
-    return new HyperLogLog(data);
-}
